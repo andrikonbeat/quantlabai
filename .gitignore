@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+.uv/
+venv/
+
+# Java
+*.class
+*.jar
+target/
+*.war
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Knowledge Lake raw data (potentially large)
+knowledge/raw/*
+!knowledge/raw/.gitkeep
+
+# SQX
+*.cfx
+*.sqx
+*.sqxc
+databanks/
+
+# Logs
+*.log
