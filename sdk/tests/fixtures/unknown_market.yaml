@@ -1,0 +1,6 @@
+campaign: "Unknown Market Test"
+market: UNKNOWN
+timeframe: H1
+strategies:
+  - name: StratA
+    direction: BOTH
