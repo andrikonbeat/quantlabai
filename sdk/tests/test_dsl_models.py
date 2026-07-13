@@ -1,7 +1,8 @@
 """Tests for DSL Pydantic models."""
 
 import pytest
-from pydantic import ValidationError as PydanticValidationError
+
+from quantlab.tools.exceptions import ValidationError
 
 from quantlab.dsl.models import (
     AcceptanceCriterion,
@@ -81,7 +82,7 @@ class TestResearchConfig:
         assert config.criteria[0].value == 1.5
 
     def test_duplicate_strategy_names_raises(self) -> None:
-        with pytest.raises(PydanticValidationError, match="Duplicate"):
+        with pytest.raises(ValidationError, match="Duplicate"):
             ResearchConfig(
                 campaign="Dups",
                 market="EURUSD",
@@ -93,7 +94,7 @@ class TestResearchConfig:
             )
 
     def test_unknown_building_block_ref_raises(self) -> None:
-        with pytest.raises(PydanticValidationError, match="unknown building block"):
+        with pytest.raises(ValidationError, match="unknown building block"):
             ResearchConfig(
                 campaign="Missing",
                 market="EURUSD",

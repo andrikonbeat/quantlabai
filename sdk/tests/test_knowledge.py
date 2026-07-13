@@ -113,6 +113,7 @@ class TestKnowledgeStoreIndex:
         root = tmp_path / "knowledge"
         store = KnowledgeStore(root)
         store.initialize()
+        store.rebuild_index()  # create initial index
 
         # Remove the index
         (root / "index.yaml").unlink()

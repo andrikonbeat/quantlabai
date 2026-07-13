@@ -123,7 +123,7 @@ def serialize(config: ResearchConfig) -> str:
         YAML string.
     """
     return yaml.safe_dump(
-        config.model_dump(mode="python", by_alias=True),
+        config.model_dump(mode="json", by_alias=True),
         default_flow_style=False,
         sort_keys=False,
         allow_unicode=True,
@@ -139,6 +139,7 @@ def validate(config: ResearchConfig) -> ResearchConfig:
     Returns the same model on success. Raises ``ValidationError`` on failure.
     """
     try:
-        return ResearchConfig.model_validate(config.model_dump(mode="python"))
+        ResearchConfig.model_validate(config.model_dump(mode="python"))
     except Exception as e:
         raise ValidationError(str(e), cause=e)
+    return config

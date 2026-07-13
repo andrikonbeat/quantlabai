@@ -23,9 +23,7 @@ SUPPORTED_TIMEFRAMES: set[str] = {
 def _sanitize_xml_text(value: object) -> str:
     """Convert a value to its XML-safe string representation."""
     if isinstance(value, float):
-        # Strip trailing zeros from floats for cleaner output
-        s = f"{value:g}"
-        return s
+        return repr(value)
     return str(value)
 
 

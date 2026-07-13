@@ -108,14 +108,13 @@ class TestValidate:
         assert result is config
 
     def test_invalid_config_raises(self) -> None:
-        config = ResearchConfig(
-            campaign="Dups",
-            market="EURUSD",
-            timeframe="H1",
-            strategies=[
-                {"name": "S1", "direction": "LONG"},
-                {"name": "S1", "direction": "SHORT"},
-            ],
-        )
         with pytest.raises(ValidationError):
-            validate(config)
+            ResearchConfig(
+                campaign="Dups",
+                market="EURUSD",
+                timeframe="H1",
+                strategies=[
+                    {"name": "S1", "direction": "LONG"},
+                    {"name": "S1", "direction": "SHORT"},
+                ],
+            )

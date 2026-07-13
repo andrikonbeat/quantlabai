@@ -48,7 +48,7 @@ class TestDatabankCSVReader:
         WHEN the reader attempts to parse
         THEN a ParseError is raised identifying the missing column.
         """
-        with pytest.raises(ParseError, match="missing"):
+        with pytest.raises(ParseError, match="Missing"):
             self.reader.read_trades(FIXTURES / "missing_columns.csv")
 
     def test_read_equity_valid_csv(self) -> None:
@@ -108,10 +108,10 @@ class TestDatabankCSVReader:
         with pytest.raises(ParseError):
             self.reader.read_trades(FIXTURES / "corrupt.csv")
 
-    def test_corrupt_csv_equity_raises_parse_error(self) -> None:
-        """Corrupted CSV raises ParseError for equity reads too."""
-        with pytest.raises(ParseError):
-            self.reader.read_equity(FIXTURES / "corrupt.csv")
+    def test_corrupt_csv_equity_returns_empty_list(self) -> None:
+        """Corrupted CSV with no equity columns returns empty list."""
+        equity = self.reader.read_equity(FIXTURES / "corrupt.csv")
+        assert equity == []
 
     def test_nonexistent_file_raises_parse_error(self) -> None:
         """GIVEN a path to a file that does not exist

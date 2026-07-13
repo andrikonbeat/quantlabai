@@ -198,9 +198,11 @@ class TestGenerateCfxXml:
         """
         config = ResearchConfig(
             campaign="NoMarket",
-            market=None,  # type: ignore[arg-type]
+            market="EURUSD",
             timeframe="H1",
         )
+        # Bypass Pydantic validation to simulate a config with market=None
+        object.__setattr__(config, "market", None)
 
         with pytest.raises(TranslationError, match="Market is required"):
             generate_cfx_xml(config)
