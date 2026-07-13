@@ -1,0 +1,26 @@
+[project]
+name = "quantlab"
+version = "0.1.0"
+description = "QuantLab AI — Quantitative research SDK for algorithmic trading"
+requires-python = ">=3.11"
+authors = [
+    { name = "QuantLab AI" },
+]
+dependencies = [
+    "pydantic>=2.0,<3",
+    "pyyaml>=6.0",
+    "platformdirs>=4.0",
+    "openpyxl>=3.1",
+    "pandas>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

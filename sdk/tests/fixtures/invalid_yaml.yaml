@@ -1,0 +1,10 @@
+campaign: "Bad YAML"
+market: EURUSD
+timeframe: H1
+building_blocks:
+  - name: broken
+    indicator: { name: EMA }
+    entry:
+      description: Unclosed block
+    conditions:
+      - "something"

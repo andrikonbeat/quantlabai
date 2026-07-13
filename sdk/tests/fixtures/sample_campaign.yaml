@@ -1,0 +1,47 @@
+campaign: "Test Campaign EURUSD H1"
+market: EURUSD
+timeframe: H1
+
+building_blocks:
+  - name: trend_follow
+    indicator:
+      name: EMA
+      params:
+        period: 200
+    entry:
+      description: "Price closes above EMA"
+      conditions:
+        - "close > ema_200"
+    exit:
+      description: "Price closes below EMA"
+      conditions:
+        - "close < ema_200"
+
+  - name: momentum_filter
+    indicator:
+      name: RSI
+      params:
+        period: 14
+    entry:
+      description: "RSI exits oversold"
+      conditions:
+        - "rsi < 30"
+    exit:
+      description: "RSI enters overbought"
+      conditions:
+        - "rsi > 70"
+
+strategies:
+  - name: TrendFollow_v1
+    direction: LONG
+    building_blocks:
+      - trend_follow
+      - momentum_filter
+
+criteria:
+  - metric: profit_factor
+    operator: ">="
+    value: 1.5
+  - metric: sharpe
+    operator: ">="
+    value: 1.0
