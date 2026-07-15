@@ -31,8 +31,20 @@ from quantlab.cfx.models import (
     SetMarketInstruction,
     SettingsSection,
 )
+from quantlab.cfx.dom import (
+    add_ranking_condition,
+    add_timeframe,
+    disable_block,
+    enable_block,
+    enable_crosscheck,
+    set_date_range,
+    set_genetic,
+    set_market,
+)
+from quantlab.cfx.patcher import CfxPatcher, ValidationError
 from quantlab.cfx.reader import CfxReader
 from quantlab.cfx.writer import CfxWriter
+from quantlab.translate.translator import generate_cfx_archive
 
 __all__ = [
     "CfxArchive",
@@ -54,10 +66,23 @@ __all__ = [
     "SetDateRangeInstruction",
     "AddRankingConditionInstruction",
     "EnableCrosscheckInstruction",
+    "CfxPatcher",
+    "ValidationError",
     "CfxReader",
     "CfxWriter",
     "CfxNotFoundError",
     "CfxCorruptError",
     "CfxParseError",
     "VersionError",
+    # Domain methods
+    "set_market",
+    "add_timeframe",
+    "enable_block",
+    "disable_block",
+    "set_genetic",
+    "set_date_range",
+    "add_ranking_condition",
+    "enable_crosscheck",
+    # Translator integration
+    "generate_cfx_archive",
 ]
