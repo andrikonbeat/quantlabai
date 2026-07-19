@@ -44,9 +44,57 @@ class SQXNotFoundError(QuantLabError):
     """Raised when sqcli.exe cannot be located in real-execution mode."""
 
 
+class LicenseError(QuantLabError):
+    """Raised when SQX license validation fails."""
+
+    def __init__(self, detail: str = "", *, cause: BaseException | None = None, license_path: str | None = None) -> None:
+        super().__init__(detail, cause=cause)
+        self.license_path = license_path
+
+
+class CampaignError(QuantLabError):
+    """Raised when a campaign execution fails."""
+
+    def __init__(
+        self, detail: str = "", *, cause: BaseException | None = None, phase: str | None = None, campaign_name: str | None = None
+    ) -> None:
+        super().__init__(detail, cause=cause)
+        self.phase = phase
+        self.campaign_name = campaign_name
+
+
 class TimeoutError(QuantLabError):
     """Raised when a subprocess exceeds the configured timeout."""
 
 
 class InsufficientDataError(QuantLabError):
     """Raised when a computation requires non-empty data."""
+
+
+# ─── Pipeline Exceptions ──────────────────────────────────────────────────────
+
+
+class PipelineError(QuantLabError):
+    """Base exception for pipeline execution errors."""
+
+    def __init__(self, detail: str = "", *, cause: BaseException | None = None, stage_name: str | None = None) -> None:
+        super().__init__(detail, cause=cause)
+        self.stage_name = stage_name
+
+
+class StageExecutionError(PipelineError):
+    """Raised when a pipeline stage fails during execution."""
+
+    def __init__(
+        self, detail: str = "", *, cause: BaseException | None = None, stage_name: str | None = None, original_error: BaseException | None = None
+    ) -> None:
+        super().__init__(detail, cause=cause, stage_name=stage_name)
+        self.original_error = original_error
+
+
+class PipelineConfigError(PipelineError):
+    """Raised when pipeline configuration is invalid."""
+
+    def __init__(self, detail: str = "", *, cause: BaseException | None = None, config_field: str | None = None) -> None:
+        super().__init__(detail, cause=cause)
+        self.config_field = config_field

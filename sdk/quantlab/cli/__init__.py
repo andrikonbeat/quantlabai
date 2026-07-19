@@ -5,6 +5,8 @@
 
 from quantlab.cli.runner import CliResult, CliRunner, Executor, MockExecutor, RealExecutor
 
+from quantlab.cli.daemon import DaemonContext, run_with_daemon
+
 __all__ = [
     # Runner (legacy CLI wrapper)
     "CliResult",
@@ -12,6 +14,9 @@ __all__ = [
     "Executor",
     "MockExecutor",
     "RealExecutor",
+    # Daemon Context (Phase 4+5)
+    "DaemonContext",
+    "run_with_daemon",
 ]
 
 
