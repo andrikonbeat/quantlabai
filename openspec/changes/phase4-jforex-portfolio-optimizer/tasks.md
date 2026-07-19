@@ -49,20 +49,20 @@ Chain strategy: feature-branch-chain
 
 ## Phase 3: Optimizer + Retester + CLI Integration + Translator + Integration Tests
 
-- [ ] 3.1 Create `sdk/quantlab/phase4/optimizer.py` with Optimizer (run via CommandDispatcher lifecycle, export_results CSV, config uses strategy_id for CFX)
-- [ ] 3.2 Create `sdk/quantlab/phase4/retester.py` with Retester (run via CommandDispatcher, export_reports HTML + databank, databank validation regex ^[A-Z]{6}_[A-Z]\d+$, path traversal check)
-- [ ] 3.3 Extend `sdk/quantlab/translate/translator.py` with generate_portfolio_cfx, generate_optimizer_cfx, generate_retester_cfx (delegate to CfxTemplateBuilder)
-- [ ] 3.4 Extend `sdk/quantlab/translate/cfx.py` CFX packaging for portfolio/optimizer/retester task types (config.xml + Portfolio-Task1.xml, Optimizer-Task1.xml, Retester-Task1.xml)
-- [ ] 3.5 Add integration tests: JForex end-to-end dry-run, Portfolio Composer weight optimization dry-run, Portfolio Master genetic search dry-run, Optimizer walk-forward dry-run CSV export, Retester Monte Carlo/WF dry-run HTML export, full DSL → CFX → Optimize → Retest → Portfolio → JForex dry-run chain
-- [ ] 3.6 Add CLI action wiring in cli/runner.py for new project types (portfolio, master, optimizer, retester)
-- [ ] 3.7 Update CLI lock handling: acquire SQXSessionLock in CommandDispatcher for all new project types
-- [ ] 3.8 Update `openspec/config.yaml` rules.tasks if Phase 4 conventions added
-- [ ] 3.9 Documentation: update SDK README with Phase 4 usage examples; add dry-run test scripts to tests/phase4/
+- [x] 3.1 Create `sdk/quantlab/phase4/optimizer.py` with Optimizer (run via CommandDispatcher lifecycle, export_results CSV, config uses strategy_id for CFX)
+- [x] 3.2 Create `sdk/quantlab/phase4/retester.py` with Retester (run via CommandDispatcher, export_reports HTML + databank, databank validation regex ^[A-Z]{6}_[A-Z]\d+$, path traversal check)
+- [x] 3.3 Extend `sdk/quantlab/translate/translator.py` with generate_portfolio_cfx, generate_optimizer_cfx, generate_retester_cfx (delegate to CfxTemplateBuilder)
+- [x] 3.4 Extend `sdk/quantlab/translate/cfx.py` CFX packaging for portfolio/optimizer/retester task types (config.xml + Portfolio-Task1.xml, Optimizer-Task1.xml, Retester-Task1.xml)
+- [x] 3.5 Add integration tests: JForex end-to-end dry-run, Portfolio Composer weight optimization dry-run, Portfolio Master genetic search dry-run, Optimizer walk-forward dry-run CSV export, Retester Monte Carlo/WF dry-run HTML export, full DSL → CFX → Optimize → Retest → Portfolio → JForex dry-run chain
+- [x] 3.6 Add CLI action wiring in cli/main.py for new project types (portfolio, master, optimizer, retester, jforex)
+- [x] 3.7 Update CLI lock handling: acquire SQXSessionLock in CommandDispatcher for all new project types (handled in command_dispatcher.py — PR 2)
+- [x] 3.8 Update `openspec/config.yaml` rules.tasks if Phase 4 conventions added
+- [x] 3.9 Documentation: update SDK README with Phase 4 usage examples; add dry-run test scripts to tests/phase4/
 
 ## Phase 4: Cleanup & Polish
 
-- [ ] 4.1 Remove any temporary/debug code from implementation
-- [ ] 4.2 Verify all public exports in phase4/__init__.py are complete
-- [ ] 4.3 Run full test suite (pytest tests/ -x) and confirm all pass
-- [ ] 4.4 Verify dry-run tests pass without SQX installation
-- [ ] 4.5 Update CHANGELOG.md with Phase 4 summary
+- [x] 4.1 Remove any temporary/debug code from implementation
+- [x] 4.2 Verify all public exports in phase4/__init__.py are complete
+- [x] 4.3 Run full test suite (pytest tests/ -x) and confirm all pass
+- [x] 4.4 Verify dry-run tests pass without SQX installation
+- [x] 4.5 Update CHANGELOG.md with Phase 4 summary

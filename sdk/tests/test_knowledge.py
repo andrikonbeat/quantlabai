@@ -106,7 +106,7 @@ class TestKnowledgeStoreIndex:
         # Should have a valid structure
         assert "directories" in index
         assert "_generated" in index
-        assert index["_version"] == "1"
+        assert index["_version"] == 2  # Post-Indexer version
 
     def test_missing_index_is_rebuilt(self, tmp_path: Path) -> None:
         """If index.yaml doesn't exist, read_index rebuilds it."""

@@ -1,0 +1,50 @@
+# openspec/config.yaml
+schema: spec-driven
+
+context: |
+  Tech stack: Brand-new project, no code yet. Quantitative research lab for
+    algorithmic trading. Tools: StrategyQuant X (SQX) via sqcli CLI and .cfx
+    config files, JForex 4 platform, Dukascopy broker, JCloud deployment.
+    Potential Python for SDK/automation layer.
+  Architecture: AI-directed research engine — OpenCode as research director,
+    SQX as computation engine. Custom Projects + Template Mode + CLI.
+  Testing: None yet. strict_tdd: false.
+  Style: Quant research workflow, component-based strategy library.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Link to relevant SQX CLI commands or .cfx structures when applicable
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Specify market conditions, timeframes, and acceptance criteria explicitly
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Include SQX integration points and .cfx XML structure references
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Separate SQX research tasks from SDK/code tasks
+  apply:
+    - Follow existing code patterns
+    tdd: false
+    test_command: ""
+  verify:
+    test_command: ""
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+
+testing:
+  strict_tdd: false
+  runner: none
+  unit: false
+  integration: false
+  e2e: false
+  coverage: false
+  linter: none
+  type_checker: none
+  formatter: none

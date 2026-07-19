@@ -10,6 +10,7 @@ from quantlab.cfx import (
     BuildTask,
     CfxArchive,
     CfxConfig,
+    CfxProject,
     CfxPatcher,
     CfxWriter,
     SettingsSection,
@@ -20,6 +21,17 @@ from quantlab.cfx import (
     set_date_range,
     set_genetic,
     set_market,
+)
+from quantlab.cfx.models import (
+    AutomaticPortfolioBuilderConfig,
+    PortfolioSettingsConfig,
+    OptimizationConfig,
+    OptimizationParametersConfig,
+    WalkForwardConfig,
+    DatabanksConfig,
+    RankingsConfig,
+    CrossChecksConfig,
+    RetesterDataConfig,
 )
 from quantlab.dsl.models import (
     AcceptanceCriterion,
@@ -211,10 +223,265 @@ def _get_primary_task(archive: CfxArchive) -> BuildTask:
     return BuildTask()
 
 
+# ── Phase 4 — Portfolio / Optimizer / Retester generators ─────────────
+
+
+def generate_portfolio_cfx_archive(
+    strategies: list[str],
+    *,
+    generations: int = 50,
+    population: int = 200,
+    fitness: str = "NetProfit",
+    min_strategies: int = 2,
+    max_strategies: int = 10,
+    rebalance: str = "Monthly",
+) -> CfxArchive:
+    """Generate a Portfolio Master CFX archive.
+
+    Args:
+        strategies: List of strategy IDs to include in the portfolio.
+        generations: Genetic algorithm generations.
+        population: Population size.
+        fitness: Fitness function (e.g. NetProfit, SharpeRatio).
+        min_strategies: Minimum number of strategies in the portfolio.
+        max_strategies: Maximum number of strategies in the portfolio.
+        rebalance: Rebalancing period (Monthly, Quarterly, etc.).
+
+    Returns:
+        A ``CfxArchive`` ready to be written via ``CfxWriter``.
+    """
+    if not strategies:
+        raise TranslationError("At least one strategy is required for portfolio generation")
+    if generations <= 0:
+        raise TranslationError("generations must be positive")
+    if population <= 0:
+        raise TranslationError("population must be positive")
+    if not fitness or not fitness.strip():
+        raise TranslationError("fitness must not be empty")
+    if min_strategies <= 0:
+        raise TranslationError("min_strategies must be positive")
+    if max_strategies is not None and max_strategies < min_strategies:
+        raise TranslationError("max_strategies must be >= min_strategies")
+
+    task = BuildTask()
+    task.automatic_portfolio_builder = AutomaticPortfolioBuilderConfig(
+        raw_xml=f"""<AutomaticPortfolioBuilder>
+  <Generations value="{generations}"/>
+  <PopulationSize value="{population}"/>
+  <FitnessFunction value="{fitness}"/>
+  <MinStrategies value="{min_strategies}"/>
+  <MaxStrategies value="{max_strategies}"/>
+  <RebalancingPeriod value="{rebalance}"/>
+</AutomaticPortfolioBuilder>"""
+    )
+    task.portfolio_settings = PortfolioSettingsConfig(
+        raw_xml=f"""<PortfolioSettings>
+  <MinStrategies value="{min_strategies}"/>
+  <MaxStrategies value="{max_strategies}"/>
+  <RebalancingPeriod value="{rebalance}"/>
+</PortfolioSettings>"""
+    )
+
+    archive = CfxArchive(
+        config=CfxProject(
+            name="Portfolio Master",
+            tasks={"Portfolio-Task1.xml": task},
+            schema_version="144.2953",
+        ),
+        task_files={"Portfolio-Task1.xml": task},
+    )
+    return archive
+
+
+def generate_optimizer_cfx_archive(
+    strategy_id: str,
+    *,
+    method: str = "Genetic",
+    objective: str = "SharpeRatio",
+    walkforward_cycles: int = 10,
+    walkforward_oot_ratio: float = 0.3,
+    population: int = 100,
+    generations: int = 50,
+    crossover: float = 0.8,
+    mutation: float = 0.1,
+    databanks: list[str] | None = None,
+) -> CfxArchive:
+    """Generate an Optimizer CFX archive.
+
+    Args:
+        strategy_id: Strategy identifier to optimize.
+        method: Optimization method (Genetic, BruteForce, Grid).
+        objective: Objective function (SharpeRatio, NetProfit, etc.).
+        walkforward_cycles: Number of walk-forward cycles.
+        walkforward_oot_ratio: Out-of-sample ratio (0 < ratio < 1).
+        population: GA population size.
+        generations: GA generations.
+        crossover: Crossover rate.
+        mutation: Mutation rate.
+        databanks: Optional list of databank symbols (e.g. ["EURUSD_H1"]).
+
+    Returns:
+        A ``CfxArchive`` ready to be written via ``CfxWriter``.
+    """
+    if not strategy_id or not strategy_id.strip():
+        raise TranslationError("strategy_id is required for optimizer generation")
+    valid_methods = {"Genetic", "BruteForce", "Grid"}
+    if method not in valid_methods:
+        raise TranslationError(
+            f"Invalid method '{method}'. Valid: {', '.join(sorted(valid_methods))}"
+        )
+    if not objective or not objective.strip():
+        raise TranslationError("objective must not be empty")
+    if walkforward_cycles <= 0:
+        raise TranslationError("walkforward_cycles must be positive")
+    if not (0 < walkforward_oot_ratio < 1):
+        raise TranslationError("walkforward_oot_ratio must be in (0, 1)")
+    if population <= 0:
+        raise TranslationError("population must be positive")
+    if generations <= 0:
+        raise TranslationError("generations must be positive")
+    if not (0 < crossover <= 1):
+        raise TranslationError("crossover must be in (0, 1]")
+    if not (0 < mutation <= 1):
+        raise TranslationError("mutation must be in (0, 1]")
+
+    task = BuildTask()
+    task.optimization = OptimizationConfig(
+        raw_xml=f"""<Optimization>
+  <Method value="{method}"/>
+  <ObjectiveFunction value="{objective}"/>
+  <WalkforwardCycles value="{walkforward_cycles}"/>
+  <OOTRatio value="{walkforward_oot_ratio}"/>
+</Optimization>"""
+    )
+    task.optimization_parameters = OptimizationParametersConfig(
+        raw_xml=f"""<OptimizationParameters>
+  <Parameter name="PopulationSize" min="{population}" max="{population}" step="1"/>
+  <Parameter name="Generations" min="{generations}" max="{generations}" step="1"/>
+  <Parameter name="CrossoverRate" min="{crossover}" max="{crossover}" step="0.1"/>
+  <Parameter name="MutationRate" min="{mutation}" max="{mutation}" step="0.01"/>
+</OptimizationParameters>"""
+    )
+    task.walk_forward = WalkForwardConfig(
+        raw_xml=f"""<WalkForward>
+  <Cycles value="{walkforward_cycles}"/>
+  <OOTRatio value="{walkforward_oot_ratio}"/>
+  <Anchored value="false"/>
+</WalkForward>"""
+    )
+
+    if databanks:
+        db_lines = []
+        for i, db in enumerate(databanks, 1):
+            db_lines.append(f'<Databank index="{i}" name="{db}" enabled="true"/>')
+        task.databanks_section = DatabanksConfig(
+            raw_xml=f"<Databanks>\n{chr(10).join('  ' + l for l in db_lines)}\n</Databanks>"
+        )
+
+    archive = CfxArchive(
+        config=CfxConfig(
+            task=task,
+            schema_version="144.2953",
+        ),
+        task_files={"Optimizer-Task1.xml": task},
+    )
+    return archive
+
+
+def generate_retester_cfx_archive(
+    strategy_id: str,
+    *,
+    databanks: list[str],
+    mc_runs: int = 100,
+    mc_percentile: int = 95,
+    walkforward_cycles: int = 5,
+    min_trades: int = 30,
+    confidence_level: float = 0.95,
+) -> CfxArchive:
+    """Generate a Retester CFX archive.
+
+    Args:
+        strategy_id: Strategy identifier to retest.
+        databanks: List of databank symbols (e.g. ["EURUSD_H1"]).
+        mc_runs: Monte Carlo simulation runs.
+        mc_percentile: MC percentile for confidence bands.
+        walkforward_cycles: Number of walk-forward cycles.
+        min_trades: Minimum trades for acceptance.
+        confidence_level: Confidence level (0.5 < level < 0.99).
+
+    Returns:
+        A ``CfxArchive`` ready to be written via ``CfxWriter``.
+    """
+    if not strategy_id or not strategy_id.strip():
+        raise TranslationError("strategy_id is required for retester generation")
+    if not databanks:
+        raise TranslationError("databanks must not be empty")
+    if mc_runs <= 0:
+        raise TranslationError("mc_runs must be positive")
+    if not (1 <= mc_percentile <= 99):
+        raise TranslationError("mc_percentile must be in [1, 99]")
+    if walkforward_cycles <= 0:
+        raise TranslationError("walkforward_cycles must be positive")
+    if min_trades <= 0:
+        raise TranslationError("min_trades must be positive")
+    if not (0.5 < confidence_level < 0.99):
+        raise TranslationError("confidence_level must be in (0.5, 0.99)")
+
+    task = BuildTask()
+    task.rankings_section = RankingsConfig(
+        raw_xml=f"""<Rankings>
+  <MinTrades value="{min_trades}"/>
+  <ConfidenceLevel value="{confidence_level}"/>
+</Rankings>"""
+    )
+    task.cross_checks_section = CrossChecksConfig(
+        raw_xml=f"""<CrossChecks>
+  <MonteCarlo enabled="true" runs="{mc_runs}" percentile="{mc_percentile}"/>
+  <WalkForward enabled="true" cycles="{walkforward_cycles}"/>
+  <ConfidenceLevel value="{confidence_level}"/>
+</CrossChecks>"""
+    )
+
+    # Data section (flat key-value for reader compat)
+    task.data = SettingsSection(
+        name="Data",
+        settings={db: "true" for db in databanks},
+    )
+
+    # RetesterData section (typed config for proper serialization)
+    db_items = "\n".join(
+        f'    <Databank name="{db}" enabled="true"/>' for db in databanks
+    )
+    task.retester_data = RetesterDataConfig(
+        raw_xml=f"""<RetesterData>
+  <MonteCarloRuns value="{mc_runs}"/>
+  <WalkforwardCycles value="{walkforward_cycles}"/>
+  <ConfidenceLevel value="{confidence_level}"/>
+  <MinTrades value="{min_trades}"/>
+  <MonteCarloPercentile value="{mc_percentile}"/>
+  <Databanks>
+{db_items}
+  </Databanks>
+</RetesterData>"""
+    )
+
+    archive = CfxArchive(
+        config=CfxConfig(
+            task=task,
+            schema_version="144.2953",
+        ),
+        task_files={"Retester-Task1.xml": task},
+    )
+    return archive
+
+
 # ── Public API ────────────────────────────────────────────────────────
 
 __all__ = [
     "generate_cfx_archive",
     "generate_cfx_xml",
+    "generate_portfolio_cfx_archive",
+    "generate_optimizer_cfx_archive",
+    "generate_retester_cfx_archive",
     "SUPPORTED_TIMEFRAMES",
 ]
