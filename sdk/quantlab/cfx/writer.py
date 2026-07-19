@@ -15,15 +15,56 @@ from xml.etree import ElementTree
 
 from quantlab.cfx.models import (
     AtmConfig,
+    AutomaticPortfolioBuilderConfig,
     BlockConfig,
     BuildTask,
     CfxArchive,
     CfxConfig,
     CfxProject,
+    CrossChecksConfig,
     DataBankConfig,
+    DatabanksConfig,
+    OptimizationConfig,
+    OptimizationParametersConfig,
+    PortfolioSettingsConfig,
+    RankingsConfig,
     ResourceConfig,
+    RetesterDataConfig,
     SettingsSection,
+    WalkForwardConfig,
 )
+
+
+def _append_complex_section(
+    parent: ElementTree.Element,
+    tag: str,
+    config: (
+        BlockConfig
+        | AtmConfig
+        | DataBankConfig
+        | ResourceConfig
+        | AutomaticPortfolioBuilderConfig
+        | OptimizationConfig
+        | OptimizationParametersConfig
+        | WalkForwardConfig
+        | DatabanksConfig
+        | RankingsConfig
+        | CrossChecksConfig
+        | RetesterDataConfig
+        | None
+    ),
+) -> None:
+    """Append a complex section via raw XML passthrough."""
+    if config is None or not config.raw_xml:
+        return
+    try:
+        el = ElementTree.fromstring(config.raw_xml)
+        parent.append(el)
+    except ElementTree.ParseError:
+        pass
+
+
+# ── Phase 4: Builder-style setter methods ─────────────────────────────
 
 
 class CfxWriter:
@@ -68,13 +109,262 @@ class CfxWriter:
             config = archive.config
 
             if isinstance(config, CfxConfig):
-                _write_config_archive(zf, config)
+                _write_config_archive(zf, config, archive.task_files or None)
             elif isinstance(config, CfxProject):
                 _write_project_archive(zf, config)
             else:
                 raise TypeError(f"Unknown config type: {type(config).__name__}")
 
         return buf
+
+    # ── Phase 4 Builder Methods ──────────────────────────────────────────
+
+    @staticmethod
+    def set_automatic_portfolio_builder(
+        task: BuildTask,
+        generations: int,
+        population: int,
+        fitness: str,
+        min_strategies: int = 1,
+        max_strategies: int | None = None,
+        rebalancing: str = "Monthly",
+    ) -> BuildTask:
+        """Set Automatic Portfolio Builder configuration.
+
+        Args:
+            task: BuildTask to modify.
+            generations: Number of genetic generations.
+            population: Population size.
+            fitness: Fitness function name.
+            min_strategies: Minimum strategies in portfolio.
+            max_strategies: Maximum strategies in portfolio.
+            rebalancing: Rebalancing period.
+
+        Returns:
+            Modified BuildTask (for chaining).
+        """
+        xml = f"""<AutomaticPortfolioBuilder>
+  <Generations value="{generations}"/>
+  <Population value="{population}"/>
+  <Fitness value="{fitness}"/>
+  <MinStrategies value="{min_strategies}"/>
+  {f'<MaxStrategies value="{max_strategies}"/>' if max_strategies else ''}
+  <Rebalancing value="{rebalancing}"/>
+</AutomaticPortfolioBuilder>"""
+        task.automatic_portfolio_builder = AutomaticPortfolioBuilderConfig(raw_xml=xml)
+        return task
+
+    @staticmethod
+    def set_portfolio_settings(
+        task: BuildTask,
+        weight_constraints: dict[str, str] | None = None,
+    ) -> BuildTask:
+        """Set Portfolio Settings.
+
+        Args:
+            task: BuildTask to modify.
+            weight_constraints: Optional mapping of strategy_id -> constraint.
+
+        Returns:
+            Modified BuildTask.
+        """
+        xml = "<PortfolioSettings>"
+        if weight_constraints:
+            for sid, constraint in weight_constraints.items():
+                xml += f'<Strategy id="{sid}" constraint="{constraint}"/>'
+        xml += "</PortfolioSettings>"
+        task.portfolio_settings = PortfolioSettingsConfig(raw_xml=xml)
+        return task
+
+    @staticmethod
+    def set_optimization(
+        task: BuildTask,
+        method: str = "Genetic",
+        objective_function: str = "NetProfit",
+        walkforward_cycles: int = 5,
+        walkforward_oot_ratio: float = 0.3,
+    ) -> BuildTask:
+        """Set Optimization configuration.
+
+        Args:
+            task: BuildTask to modify.
+            method: Optimization method (Genetic, BruteForce, Grid).
+            objective_function: Fitness function to optimize.
+            walkforward_cycles: Number of walk-forward cycles.
+            walkforward_oot_ratio: Out-of-sample ratio.
+
+        Returns:
+            Modified BuildTask.
+        """
+        xml = f"""<Optimization>
+  <Method value="{method}"/>
+  <ObjectiveFunction value="{objective_function}"/>
+  <WalkforwardCycles value="{walkforward_cycles}"/>
+  <WalkforwardOOTRatio value="{walkforward_oot_ratio}"/>
+</Optimization>"""
+        task.optimization = OptimizationConfig(raw_xml=xml)
+        return task
+
+    @staticmethod
+    def set_optimization_parameters(
+        task: BuildTask,
+        parameters: dict[str, dict[str, float]],
+    ) -> BuildTask:
+        """Set Optimization Parameters ranges.
+
+        Args:
+            task: BuildTask to modify.
+            parameters: Dict of param_name -> {min, max, step}.
+
+        Returns:
+            Modified BuildTask.
+        """
+        xml = "<OptimizationParameters>"
+        for name, rng in parameters.items():
+            xml += f"""<Parameter name="{name}" min="{rng['min']}" max="{rng['max']}" step="{rng['step']}"/>"""
+        xml += "</OptimizationParameters>"
+        task.optimization_parameters = OptimizationParametersConfig(raw_xml=xml)
+        return task
+
+    @staticmethod
+    def set_walkforward(
+        task: BuildTask,
+        cycles: int,
+        oot_ratio: float,
+        anchored: bool = False,
+    ) -> BuildTask:
+        """Set Walk-Forward configuration.
+
+        Args:
+            task: BuildTask to modify.
+            cycles: Number of walk-forward cycles.
+            oot_ratio: Out-of-sample ratio.
+            anchored: Whether to use anchored walk-forward.
+
+        Returns:
+            Modified BuildTask.
+        """
+        xml = f"""<WalkForward>
+  <Cycles value="{cycles}"/>
+  <OOTRatio value="{oot_ratio}"/>
+  <Anchored value="{str(anchored).lower()}"/>
+</WalkForward>"""
+        task.walk_forward = WalkForwardConfig(raw_xml=xml)
+        return task
+
+    @staticmethod
+    def set_databanks(
+        task: BuildTask,
+        databanks: list[str],
+    ) -> BuildTask:
+        """Set Databanks for optimizer/retester.
+
+        Args:
+            task: BuildTask to modify.
+            databanks: List of databank names (e.g., ["EURUSD_H1", "GBPUSD_H1"]).
+
+        Returns:
+            Modified BuildTask.
+        """
+        xml = "<Databanks>"
+        for i, db in enumerate(databanks, 1):
+            xml += f'<Databank index="{i}" name="{db}" enabled="true"/>'
+        xml += "</Databanks>"
+        task.databanks_section = DatabanksConfig(raw_xml=xml)
+        return task
+
+    @staticmethod
+    def set_rankings(
+        task: BuildTask,
+        metrics: list[str],
+        min_trades: int = 30,
+    ) -> BuildTask:
+        """Set Retester Rankings configuration.
+
+        Args:
+            task: BuildTask to modify.
+            metrics: List of ranking metric names.
+            min_trades: Minimum trades for ranking eligibility.
+
+        Returns:
+            Modified BuildTask.
+        """
+        xml = f"""<Rankings>
+  <MinTrades value="{min_trades}"/>"""
+        for metric in metrics:
+            xml += f'\n  <Metric name="{metric}"/>'
+        xml += "\n</Rankings>"
+        task.rankings_section = RankingsConfig(raw_xml=xml)
+        return task
+
+    @staticmethod
+    def set_crosschecks(
+        task: BuildTask,
+        mc_enabled: bool,
+        wf_enabled: bool,
+        mc_runs: int = 100,
+        mc_percentile: int = 95,
+        wf_cycles: int = 5,
+        confidence_level: float = 0.95,
+    ) -> BuildTask:
+        """Set Retester Cross-Checks configuration.
+
+        Args:
+            task: BuildTask to modify.
+            mc_enabled: Enable Monte Carlo.
+            mc_runs: Number of Monte Carlo runs.
+            mc_percentile: Monte Carlo percentile.
+            wf_enabled: Enable Walk-Forward.
+            wf_cycles: Walk-Forward cycles.
+            confidence_level: Confidence level for statistics.
+
+        Returns:
+            Modified BuildTask.
+        """
+        xml = f"""<CrossChecks>
+  <MonteCarlo enabled="{str(mc_enabled).lower()}" runs="{mc_runs}" percentile="{mc_percentile}"/>
+  <WalkForward enabled="{str(wf_enabled).lower()}" cycles="{wf_cycles}"/>
+  <ConfidenceLevel value="{confidence_level}"/>
+</CrossChecks>"""
+        task.cross_checks_section = CrossChecksConfig(raw_xml=xml)
+        return task
+
+    @staticmethod
+    def set_retester_data(
+        task: BuildTask,
+        databanks: list[str],
+        monte_carlo_runs: int = 100,
+        walkforward_cycles: int = 5,
+        confidence_level: float = 0.95,
+        min_trades: int = 30,
+        mc_percentile: int = 95,
+    ) -> BuildTask:
+        """Set Retester Data configuration.
+
+        Args:
+            task: BuildTask to modify.
+            databanks: List of databank names.
+            monte_carlo_runs: Number of Monte Carlo runs.
+            walkforward_cycles: Number of walk-forward cycles.
+            confidence_level: Statistical confidence level.
+            min_trades: Minimum trades for analysis.
+            mc_percentile: Monte Carlo percentile.
+
+        Returns:
+            Modified BuildTask.
+        """
+        xml = f"""<RetesterData>
+  <MonteCarloRuns value="{monte_carlo_runs}"/>
+  <WalkforwardCycles value="{walkforward_cycles}"/>
+  <ConfidenceLevel value="{confidence_level}"/>
+  <MinTrades value="{min_trades}"/>
+  <MonteCarloPercentile value="{mc_percentile}"/>
+  <Databanks>"""
+        for db in databanks:
+            xml += f'\n    <Databank name="{db}" enabled="true"/>'
+        xml += "\n  </Databanks>\n</RetesterData>"
+        task.retester_data = RetesterDataConfig(raw_xml=xml)
+        return task
 
 
 # ── XML serialisation helpers ────────────────────────────────────────
@@ -89,20 +379,38 @@ def _xml_to_bytes(element: ElementTree.Element) -> bytes:
 # ── Config archive writer (single-task) ──────────────────────────────
 
 
-def _write_config_archive(zf: zipfile.ZipFile, config: CfxConfig) -> None:
-    """Write config.xml + task file for a single-task CFX archive."""
+def _write_config_archive(
+    zf: zipfile.ZipFile,
+    config: CfxConfig,
+    task_files: dict[str, BuildTask] | None = None,
+) -> None:
+    """Write config.xml + task file for a single-task CFX archive.
+
+    Args:
+        zf: Open ZipFile to write into.
+        config: The CfxConfig with a single BuildTask.
+        task_files: Optional task file name overrides. When provided, uses
+            the first (filename, task) pair instead of the hardcoded
+            Build-Task1.xml + config.task.
+    """
+    if task_files and len(task_files) == 1:
+        task_filename, task = next(iter(task_files.items()))
+    else:
+        task_filename = "Build-Task1.xml"
+        task = config.task
+
     task_root = ElementTree.Element(
         "Task",
         attrib={
             "type": "Build",
-            "name": "Build strategies",
+            "name": task_filename.replace(".xml", ""),
             "active": "true",
             "version": config.schema_version,
-            "taskXMLFile": "Build-Task1.xml",
+            "taskXMLFile": task_filename,
         },
     )
     zf.writestr("config.xml", _xml_to_bytes(task_root))
-    zf.writestr("Build-Task1.xml", _serialise_task(config.task))
+    zf.writestr(task_filename, _serialise_task(task))
 
 
 # ── Project archive writer (multi-file) ──────────────────────────────
@@ -168,6 +476,15 @@ def _serialise_task(task: BuildTask) -> bytes:
     _append_complex_section(root, "ATMs", task.atms)
     _append_complex_section(root, "DataBanks", task.databanks)
     _append_complex_section(root, "Resources", task.resources)
+    _append_complex_section(root, "AutomaticPortfolioBuilder", task.automatic_portfolio_builder)
+    _append_complex_section(root, "Optimization", task.optimization)
+    _append_complex_section(root, "OptimizationParameters", task.optimization_parameters)
+    _append_complex_section(root, "WalkForward", task.walk_forward)
+    _append_complex_section(root, "Databanks", task.databanks_section)
+    _append_complex_section(root, "PortfolioSettings", task.portfolio_settings)
+    _append_complex_section(root, "Rankings", task.rankings_section)
+    _append_complex_section(root, "CrossChecks", task.cross_checks_section)
+    _append_complex_section(root, "RetesterData", task.retester_data)
 
     # Unknown sections — raw XML passthrough.
     for u in task.unknown_sections:
@@ -197,7 +514,21 @@ def _append_settings_section(
 def _append_complex_section(
     parent: ElementTree.Element,
     tag: str,
-    config: BlockConfig | AtmConfig | DataBankConfig | ResourceConfig | None,
+    config: (
+        BlockConfig
+        | AtmConfig
+        | DataBankConfig
+        | ResourceConfig
+        | AutomaticPortfolioBuilderConfig
+        | OptimizationConfig
+        | OptimizationParametersConfig
+        | WalkForwardConfig
+        | DatabanksConfig
+        | RankingsConfig
+        | CrossChecksConfig
+        | RetesterDataConfig
+        | None
+    ),
 ) -> None:
     """Append a complex section via raw XML passthrough."""
     if config is None or not config.raw_xml:

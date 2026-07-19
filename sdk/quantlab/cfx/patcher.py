@@ -14,13 +14,31 @@ from quantlab.cfx.errors import CfxParseError
 from quantlab.cfx.models import (
     AddRankingConditionInstruction,
     AddTimeframeInstruction,
+    AutomaticPortfolioBuilderConfig,
+    CrossChecksConfig,
+    DatabanksConfig,
     DisableBlockInstruction,
     EnableBlockInstruction,
     EnableCrosscheckInstruction,
+    OptimizationConfig,
+    OptimizationParametersConfig,
     PatchInstruction,
+    PortfolioSettingsConfig,
+    RankingsConfig,
+    RetesterDataConfig,
+    SetAutomaticPortfolioBuilderInstruction,
+    SetCrossChecksInstruction,
     SetDateRangeInstruction,
+    SetDatabanksInstruction,
     SetGeneticInstruction,
     SetMarketInstruction,
+    SetOptimizationInstruction,
+    SetOptimizationParametersInstruction,
+    SetPortfolioSettingsInstruction,
+    SetRankingsInstruction,
+    SetRetesterDataInstruction,
+    SetWalkForwardInstruction,
+    WalkForwardConfig,
 )
 
 if TYPE_CHECKING:
@@ -100,6 +118,16 @@ class CfxPatcher:
             "set_date_range": self._validate_set_date_range,
             "add_ranking_condition": self._validate_add_ranking_condition,
             "enable_crosscheck": self._validate_enable_crosscheck,
+            # Phase 4 validators
+            "set_automatic_portfolio_builder": self._validate_set_automatic_portfolio_builder,
+            "set_portfolio_settings": self._validate_set_portfolio_settings,
+            "set_optimization": self._validate_set_optimization,
+            "set_optimization_parameters": self._validate_set_optimization_parameters,
+            "set_walkforward": self._validate_set_walkforward,
+            "set_databanks": self._validate_set_databanks,
+            "set_rankings": self._validate_set_rankings,
+            "set_crosschecks": self._validate_set_crosschecks,
+            "set_retester_data": self._validate_set_retester_data,
         }
 
         validator = validator_map.get(instruction.instruction_type)
@@ -158,6 +186,129 @@ class CfxPatcher:
         if instruction.wf_cycles <= 0:
             raise ValidationError("EnableCrosscheckInstruction: wf_cycles must be positive")
 
+    # ── Phase 4 Validators ────────────────────────────────────────────
+
+    def _validate_set_automatic_portfolio_builder(
+        self, instruction: SetAutomaticPortfolioBuilderInstruction
+    ) -> None:
+        if instruction.generations <= 0:
+            raise ValidationError(
+                "SetAutomaticPortfolioBuilderInstruction: generations must be positive"
+            )
+        if instruction.population <= 0:
+            raise ValidationError(
+                "SetAutomaticPortfolioBuilderInstruction: population must be positive"
+            )
+        if instruction.min_strategies <= 0:
+            raise ValidationError(
+                "SetAutomaticPortfolioBuilderInstruction: min_strategies must be positive"
+            )
+        if instruction.max_strategies is not None and instruction.max_strategies < instruction.min_strategies:
+            raise ValidationError(
+                "SetAutomaticPortfolioBuilderInstruction: max_strategies must be >= min_strategies"
+            )
+        if not instruction.fitness or not instruction.fitness.strip():
+            raise ValidationError("SetAutomaticPortfolioBuilderInstruction: fitness must not be empty")
+
+    def _validate_set_portfolio_settings(
+        self, instruction: SetPortfolioSettingsInstruction
+    ) -> None:
+        if instruction.weight_constraints is not None:
+            for sid, constraint in instruction.weight_constraints.items():
+                if not sid or not sid.strip():
+                    raise ValidationError("SetPortfolioSettingsInstruction: strategy_id must not be empty")
+
+    def _validate_set_optimization(self, instruction: SetOptimizationInstruction) -> None:
+        valid_methods = {"Genetic", "BruteForce", "Grid"}
+        if instruction.method not in valid_methods:
+            raise ValidationError(
+                f"SetOptimizationInstruction: invalid method '{instruction.method}'. "
+                f"Valid: {', '.join(sorted(valid_methods))}"
+            )
+        if not instruction.objective_function or not instruction.objective_function.strip():
+            raise ValidationError("SetOptimizationInstruction: objective_function must not be empty")
+        if instruction.walkforward_cycles <= 0:
+            raise ValidationError("SetOptimizationInstruction: walkforward_cycles must be positive")
+        if not (0 < instruction.walkforward_oot_ratio < 1):
+            raise ValidationError("SetOptimizationInstruction: walkforward_oot_ratio must be in (0, 1)")
+
+    def _validate_set_optimization_parameters(
+        self, instruction: SetOptimizationParametersInstruction
+    ) -> None:
+        if not instruction.parameters:
+            raise ValidationError("SetOptimizationParametersInstruction: parameters must not be empty")
+        for param_name, param_range in instruction.parameters.items():
+            if not param_name or not param_name.strip():
+                raise ValidationError("SetOptimizationParametersInstruction: parameter name must not be empty")
+            required_keys = {"min", "max", "step"}
+            if not all(k in param_range for k in required_keys):
+                raise ValidationError(
+                    f"SetOptimizationParametersInstruction: parameter '{param_name}' must have min, max, step"
+                )
+            if param_range["step"] <= 0:
+                raise ValidationError(
+                    f"SetOptimizationParametersInstruction: parameter '{param_name}' step must be positive"
+                )
+            if param_range["max"] < param_range["min"]:
+                raise ValidationError(
+                    f"SetOptimizationParametersInstruction: parameter '{param_name}' max must be >= min"
+                )
+
+    def _validate_set_walkforward(self, instruction: SetWalkForwardInstruction) -> None:
+        if instruction.cycles <= 0:
+            raise ValidationError("SetWalkForwardInstruction: cycles must be positive")
+        if not (0 < instruction.oot_ratio < 1):
+            raise ValidationError("SetWalkForwardInstruction: oot_ratio must be in (0, 1)")
+
+    def _validate_set_databanks(self, instruction: SetDatabanksInstruction) -> None:
+        if not instruction.databanks:
+            raise ValidationError("SetDatabanksInstruction: databanks must not be empty")
+        import re
+        pattern = re.compile(r"^[A-Z]{6}_[A-Z]\d+$")
+        for db in instruction.databanks:
+            if not pattern.match(db):
+                raise ValidationError(
+                    f"SetDatabanksInstruction: invalid databank name '{db}'. "
+                    f"Must match ^[A-Z]{{6}}_[A-Z]\\d+$ (e.g., EURUSD_H1)"
+                )
+
+    def _validate_set_rankings(self, instruction: SetRankingsInstruction) -> None:
+        if not instruction.metrics:
+            raise ValidationError("SetRankingsInstruction: metrics must not be empty")
+        if instruction.min_trades <= 0:
+            raise ValidationError("SetRankingsInstruction: min_trades must be positive")
+
+    def _validate_set_crosschecks(self, instruction: SetCrossChecksInstruction) -> None:
+        if instruction.mc_enabled and instruction.mc_runs <= 0:
+            raise ValidationError("SetCrossChecksInstruction: mc_runs must be positive when mc_enabled")
+        if instruction.mc_enabled and not (1 <= instruction.mc_percentile <= 99):
+            raise ValidationError("SetCrossChecksInstruction: mc_percentile must be in [1, 99]")
+        if instruction.wf_enabled and instruction.wf_cycles <= 0:
+            raise ValidationError("SetCrossChecksInstruction: wf_cycles must be positive when wf_enabled")
+        if not (0.5 < instruction.confidence_level < 0.99):
+            raise ValidationError("SetCrossChecksInstruction: confidence_level must be in (0.5, 0.99)")
+
+    def _validate_set_retester_data(self, instruction: SetRetesterDataInstruction) -> None:
+        if not instruction.databanks:
+            raise ValidationError("SetRetesterDataInstruction: databanks must not be empty")
+        import re
+        pattern = re.compile(r"^[A-Z]{6}_[A-Z]\d+$")
+        for db in instruction.databanks:
+            if not pattern.match(db):
+                raise ValidationError(
+                    f"SetRetesterDataInstruction: invalid databank name '{db}'"
+                )
+        if instruction.monte_carlo_runs <= 0:
+            raise ValidationError("SetRetesterDataInstruction: monte_carlo_runs must be positive")
+        if instruction.walkforward_cycles <= 0:
+            raise ValidationError("SetRetesterDataInstruction: walkforward_cycles must be positive")
+        if not (0.5 < instruction.confidence_level < 0.99):
+            raise ValidationError("SetRetesterDataInstruction: confidence_level must be in (0.5, 0.99)")
+        if instruction.min_trades <= 0:
+            raise ValidationError("SetRetesterDataInstruction: min_trades must be positive")
+        if not (1 <= instruction.mc_percentile <= 99):
+            raise ValidationError("SetRetesterDataInstruction: mc_percentile must be in [1, 99]")
+
     # ── Application ───────────────────────────────────────────────────
 
     def apply(self, instructions: list[PatchInstruction]) -> CfxPatcher:
@@ -192,6 +343,16 @@ class CfxPatcher:
             "set_date_range": self._apply_set_date_range,
             "add_ranking_condition": self._apply_add_ranking_condition,
             "enable_crosscheck": self._apply_enable_crosscheck,
+            # Phase 4
+            "set_automatic_portfolio_builder": self._apply_set_automatic_portfolio_builder,
+            "set_portfolio_settings": self._apply_set_portfolio_settings,
+            "set_optimization": self._apply_set_optimization,
+            "set_optimization_parameters": self._apply_set_optimization_parameters,
+            "set_walkforward": self._apply_set_walkforward,
+            "set_databanks": self._apply_set_databanks,
+            "set_rankings": self._apply_set_rankings,
+            "set_crosschecks": self._apply_set_crosschecks,
+            "set_retester_data": self._apply_set_retester_data,
         }
 
         applier = applier_map.get(instruction.instruction_type)
@@ -204,10 +365,16 @@ class CfxPatcher:
         """Set market symbol in Data section and Resources/Symbols."""
         symbol = instruction.symbol.strip()
 
+        # Create Data section if it doesn't exist
+        if self._task.data is None:
+            self._task.data = SettingsSection(
+                name="Data",
+                settings={},
+            )
+
         # Update Data section → Symbol setting
-        if self._task.data:
-            self._task.data.settings["Symbol@symbol"] = symbol
-            self._task.data.settings["Symbol@name"] = symbol
+        self._task.data.settings["Symbol@symbol"] = symbol
+        self._task.data.settings["Symbol@name"] = symbol
 
         # Update Resources/Symbols section (raw XML) - would need XML parsing
         # For now, update SettingsSection if it exists
@@ -341,6 +508,122 @@ class CfxPatcher:
             self._task.cross_checks.settings["WalkForward@cycles"] = str(
                 instruction.wf_cycles
             )
+
+    # ── Phase 4 Appliers ────────────────────────────────────────────────
+
+    def _apply_set_automatic_portfolio_builder(
+        self, instruction: SetAutomaticPortfolioBuilderInstruction
+    ) -> None:
+        """Configure Automatic Portfolio Builder settings (create if missing)."""
+        xml = (
+            f"""<AutomaticPortfolioBuilder>
+  <Generations value="{instruction.generations}"/>
+  <PopulationSize value="{instruction.population}"/>
+  <FitnessFunction value="{instruction.fitness}"/>
+  <MinStrategies value="{instruction.min_strategies}"/>
+  <MaxStrategies value="{instruction.max_strategies if instruction.max_strategies else 10}"/>
+  <RebalancingPeriod value="{instruction.rebalancing}"/>
+</AutomaticPortfolioBuilder>"""
+        )
+        if not self._task.automatic_portfolio_builder:
+            self._task.automatic_portfolio_builder = AutomaticPortfolioBuilderConfig(raw_xml="")
+        self._task.automatic_portfolio_builder.raw_xml = xml
+
+    def _apply_set_portfolio_settings(
+        self, instruction: SetPortfolioSettingsInstruction
+    ) -> None:
+        """Configure Portfolio Settings (create if missing)."""
+        xml = "<PortfolioSettings>"
+        if instruction.weight_constraints:
+            for sid, constraint in instruction.weight_constraints.items():
+                xml += f'<WeightConstraint strategy="{sid}" constraint="{constraint}"/>'
+        xml += "</PortfolioSettings>"
+        if not self._task.portfolio_settings:
+            self._task.portfolio_settings = PortfolioSettingsConfig(raw_xml="")
+        self._task.portfolio_settings.raw_xml = xml
+
+    def _apply_set_optimization(self, instruction: SetOptimizationInstruction) -> None:
+        """Configure Optimizer main settings (create if missing)."""
+        xml = f"""<Optimization>
+  <Method value="{instruction.method}"/>
+  <ObjectiveFunction value="{instruction.objective_function}"/>
+  <WalkforwardCycles value="{instruction.walkforward_cycles}"/>
+  <WalkforwardOOTRatio value="{instruction.walkforward_oot_ratio}"/>
+</Optimization>"""
+        if not self._task.optimization:
+            self._task.optimization = OptimizationConfig(raw_xml="")
+        self._task.optimization.raw_xml = xml
+
+    def _apply_set_optimization_parameters(
+        self, instruction: SetOptimizationParametersInstruction
+    ) -> None:
+        """Configure optimization parameter ranges (create if missing)."""
+        xml = "<OptimizationParameters>"
+        for name, rng in instruction.parameters.items():
+            xml += f'<Parameter name="{name}" min="{rng["min"]}" max="{rng["max"]}" step="{rng["step"]}"/>'
+        xml += "</OptimizationParameters>"
+        if not self._task.optimization_parameters:
+            self._task.optimization_parameters = OptimizationParametersConfig(raw_xml="")
+        self._task.optimization_parameters.raw_xml = xml
+
+    def _apply_set_walkforward(self, instruction: SetWalkForwardInstruction) -> None:
+        """Configure walk-forward settings (create if missing)."""
+        xml = f"""<WalkForward>
+  <Cycles value="{instruction.cycles}"/>
+  <OOTRatio value="{instruction.oot_ratio}"/>
+  <Anchored value="{str(instruction.anchored).lower()}"/>
+</WalkForward>"""
+        if not self._task.walk_forward:
+            self._task.walk_forward = WalkForwardConfig(raw_xml="")
+        self._task.walk_forward.raw_xml = xml
+
+    def _apply_set_databanks(self, instruction: SetDatabanksInstruction) -> None:
+        """Set databanks for optimizer/retester (create if missing)."""
+        xml = "<Databanks>"
+        for i, db in enumerate(instruction.databanks, 1):
+            xml += f'<Databank index="{i}" name="{db}" enabled="true"/>'
+        xml += "</Databanks>"
+        if not self._task.databanks_section:
+            self._task.databanks_section = DatabanksConfig(raw_xml="")
+        self._task.databanks_section.raw_xml = xml
+
+    def _apply_set_rankings(self, instruction: SetRankingsInstruction) -> None:
+        """Configure retester rankings settings (create if missing)."""
+        xml = f"""<Rankings>
+  <MinTrades value="{instruction.min_trades}"/>"""
+        for metric in instruction.metrics:
+            xml += f'\n  <Metric name="{metric}"/>'
+        xml += "\n</Rankings>"
+        if not self._task.rankings_section:
+            self._task.rankings_section = RankingsConfig(raw_xml="")
+        self._task.rankings_section.raw_xml = xml
+
+    def _apply_set_crosschecks(self, instruction: SetCrossChecksInstruction) -> None:
+        """Configure retester cross-checks (Monte Carlo, Walk-Forward) — create if missing."""
+        xml = f"""<CrossChecks>
+  <MonteCarlo enabled="{str(instruction.mc_enabled).lower()}" runs="{instruction.mc_runs}" percentile="{instruction.mc_percentile}"/>
+  <WalkForward enabled="{str(instruction.wf_enabled).lower()}" cycles="{instruction.wf_cycles}"/>
+  <ConfidenceLevel value="{instruction.confidence_level}"/>
+</CrossChecks>"""
+        if not self._task.cross_checks_section:
+            self._task.cross_checks_section = CrossChecksConfig(raw_xml="")
+        self._task.cross_checks_section.raw_xml = xml
+
+    def _apply_set_retester_data(self, instruction: SetRetesterDataInstruction) -> None:
+        """Configure retester data settings (create if missing)."""
+        xml = f"""<RetesterData>
+  <MonteCarloRuns value="{instruction.monte_carlo_runs}"/>
+  <WalkforwardCycles value="{instruction.walkforward_cycles}"/>
+  <ConfidenceLevel value="{instruction.confidence_level}"/>
+  <MinTrades value="{instruction.min_trades}"/>
+  <MonteCarloPercentile value="{instruction.mc_percentile}"/>
+  <Databanks>"""
+        for db in instruction.databanks:
+            xml += f'\n    <Databank name="{db}" enabled="true"/>'
+        xml += "\n  </Databanks>\n</RetesterData>"
+        if not self._task.retester_data:
+            self._task.retester_data = RetesterDataConfig(raw_xml="")
+        self._task.retester_data.raw_xml = xml
 
     # ── Domain convenience methods (exposed via dom.py) ───────────────
 

@@ -20,15 +20,24 @@ from quantlab.cfx.errors import (
 )
 from quantlab.cfx.models import (
     AtmConfig,
+    AutomaticPortfolioBuilderConfig,
     BlockConfig,
     BuildTask,
     CfxArchive,
     CfxConfig,
     CfxProject,
+    CrossChecksConfig,
     DataBankConfig,
+    DatabanksConfig,
+    OptimizationConfig,
+    OptimizationParametersConfig,
+    PortfolioSettingsConfig,
     RawXmlSection,
+    RankingsConfig,
     ResourceConfig,
+    RetesterDataConfig,
     SettingsSection,
+    WalkForwardConfig,
 )
 
 # Minimum schema version accepted — based on SQX 144.2953 real-world files.
@@ -41,9 +50,7 @@ _SETTINGS_SECTIONS = frozenset({
     "RiskMoneyManagement",
     "WhatToBuild",
     "Data",
-    "Rankings",
     "PartsToImprove",
-    "CrossChecks",
     "Notes",
 })
 
@@ -53,6 +60,16 @@ _COMPLEX_SECTIONS = frozenset({
     "ATMs",
     "DataBanks",
     "Resources",
+    # Phase 4 complex sections
+    "AutomaticPortfolioBuilder",
+    "PortfolioSettings",
+    "Optimization",
+    "OptimizationParameters",
+    "WalkForward",
+    "Databanks",
+    "Rankings",
+    "CrossChecks",
+    "RetesterData",
 })
 
 
@@ -112,6 +129,44 @@ class CfxReader:
             raise CfxParseError(
                 f"Unexpected root element <{root.tag}> in config.xml"
             )
+
+    # ── Phase 4: Portfolio / Optimizer / Retester CFX Readers ─────────
+
+    @staticmethod
+    def read_portfolio_cfx(path: str | Path) -> CfxArchive:
+        """Read a Portfolio Master CFX archive.
+
+        Args:
+            path: Path to .cfx file.
+
+        Returns:
+            CfxArchive with Portfolio Master task.
+        """
+        return CfxReader.read(path)
+
+    @staticmethod
+    def read_optimizer_cfx(path: str | Path) -> CfxArchive:
+        """Read an Optimizer CFX archive.
+
+        Args:
+            path: Path to .cfx file.
+
+        Returns:
+            CfxArchive with Optimizer task.
+        """
+        return CfxReader.read(path)
+
+    @staticmethod
+    def read_retester_cfx(path: str | Path) -> CfxArchive:
+        """Read a Retester CFX archive.
+
+        Args:
+            path: Path to .cfx file.
+
+        Returns:
+            CfxArchive with Retester task.
+        """
+        return CfxReader.read(path)
 
     # ── Single-file Config ───────────────────────────────────────
 
@@ -251,7 +306,23 @@ def _parse_settings_xml(
 def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
     """Parse a <Settings> ElementTree element into a BuildTask model."""
     sections: dict[str, SettingsSection | None] = {}
-    complex_sections: dict[str, BlockConfig | AtmConfig | DataBankConfig | ResourceConfig | None] = {}
+    complex_sections: dict[
+        str,
+        BlockConfig
+        | AtmConfig
+        | DataBankConfig
+        | ResourceConfig
+        | AutomaticPortfolioBuilderConfig
+        | PortfolioSettingsConfig
+        | OptimizationConfig
+        | OptimizationParametersConfig
+        | WalkForwardConfig
+        | DatabanksConfig
+        | RankingsConfig
+        | CrossChecksConfig
+        | RetesterDataConfig
+        | None,
+    ] = {}
     unknown: list[RawXmlSection] = []
 
     for child in root:
@@ -279,6 +350,15 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
         atms=complex_sections.get("ATMs"),
         databanks=complex_sections.get("DataBanks"),
         resources=complex_sections.get("Resources"),
+        automatic_portfolio_builder=complex_sections.get("AutomaticPortfolioBuilder"),
+        portfolio_settings=complex_sections.get("PortfolioSettings"),
+        optimization=complex_sections.get("Optimization"),
+        optimization_parameters=complex_sections.get("OptimizationParameters"),
+        walk_forward=complex_sections.get("WalkForward"),
+        databanks_section=complex_sections.get("Databanks"),
+        rankings_section=complex_sections.get("Rankings"),
+        cross_checks_section=complex_sections.get("CrossChecks"),
+        retester_data=complex_sections.get("RetesterData"),
         unknown_sections=unknown,
     )
 
@@ -315,13 +395,36 @@ def _flatten_element(
 
 def _make_complex_section(
     tag: str, raw_xml: str
-) -> BlockConfig | AtmConfig | DataBankConfig | ResourceConfig:
+) -> (
+    BlockConfig
+    | AtmConfig
+    | DataBankConfig
+    | ResourceConfig
+    | AutomaticPortfolioBuilderConfig
+    | PortfolioSettingsConfig
+    | OptimizationConfig
+    | OptimizationParametersConfig
+    | WalkForwardConfig
+    | DatabanksConfig
+    | RankingsConfig
+    | CrossChecksConfig
+    | RetesterDataConfig
+):
     """Create the appropriate typed config model for a complex section."""
     mapping = {
         "Blocks": BlockConfig,
         "ATMs": AtmConfig,
         "DataBanks": DataBankConfig,
         "Resources": ResourceConfig,
+        "AutomaticPortfolioBuilder": AutomaticPortfolioBuilderConfig,
+        "PortfolioSettings": PortfolioSettingsConfig,
+        "Optimization": OptimizationConfig,
+        "OptimizationParameters": OptimizationParametersConfig,
+        "WalkForward": WalkForwardConfig,
+        "Databanks": DatabanksConfig,
+        "Rankings": RankingsConfig,
+        "CrossChecks": CrossChecksConfig,
+        "RetesterData": RetesterDataConfig,
     }
     cls = mapping.get(tag)
     if cls is None:
