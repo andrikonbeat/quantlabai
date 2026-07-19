@@ -1,17 +1,14 @@
-"""Phase 4 — JForex, Portfolio, Optimizer, Retester Automation.
+"""Phase 4 — Foundation: Errors, HTTP Client, Daemon, Templates.
 
-Unified SDK package for end-to-end SQX automation pipeline.
+This module exports only the Phase 4 Foundation (PR 1) components.
+Phase 2/3 modules (JForex, Portfolio, Optimizer, Retester) are added
+in subsequent PRs in the feature-branch-chain.
 
-Modules:
+Modules (committed in PR 1):
 - errors: Exception hierarchy (Phase4Error and subclasses)
 - http_client: AsyncSQXClient + SQXSessionLock + version detection
 - daemon: SQXDaemonManager for -gui server lifecycle
 - templates: CfxTemplateBuilder for Portfolio/Optimizer/Retester CFX
-- jforex_deploy: JForexDeployer for .java export + indicator deployment
-- portfolio_composer: PortfolioComposer for weight optimization
-- portfolio_master: PortfolioMaster for genetic portfolio building
-- optimizer: Optimizer for walk-forward optimization
-- retester: Retester for Monte Carlo / Walk-Forward retesting
 """
 
 from quantlab.phase4.errors import (
@@ -46,44 +43,7 @@ from quantlab.phase4.http_client import (
 )
 
 from quantlab.phase4.daemon import SQXDaemonManager
-
 from quantlab.phase4.templates import CfxTemplateBuilder
-
-from quantlab.phase4.jforex_deploy import JForexDeployer
-
-from quantlab.phase4.portfolio_composer import (
-    PortfolioComposer,
-    PortfolioWeightResult,
-    WeightResult,
-)
-
-from quantlab.phase4.portfolio_master import (
-    PortfolioMaster,
-    PortfolioMasterResult,
-    SelectedStrategy,
-)
-
-from quantlab.phase4.optimizer import Optimizer, OptimizerConfig, OptimizationResult, WalkForwardCycle
-
-from quantlab.phase4.retester import (
-    Retester,
-    RetesterConfig,
-    RetestResult,
-    MonteCarloResult,
-    WalkForwardResult,
-)
-
-from quantlab.phase4.campaign_orchestrator import (
-    CampaignOrchestrator,
-    CampaignConfig,
-    CampaignResult,
-    CampaignPhase,
-    PhaseStatus,
-    PhaseResult,
-    run_campaign,
-)
-
-from quantlab.phase4.command_dispatcher import CommandDispatcher, CampaignStatus
 
 __all__ = [
     # Errors
@@ -97,6 +57,7 @@ __all__ = [
     "PortfolioOptimizationError",
     "PortfolioStrategyLoadError",
     "PortfolioSaveError",
+    "PortfolioMasterError",
     "OptimizerError",
     "OptimizerRunError",
     "RetesterError",
@@ -116,35 +77,4 @@ __all__ = [
     "SQXDaemonManager",
     # Templates
     "CfxTemplateBuilder",
-    # JForex
-    "JForexDeployer",
-    # Portfolio
-    "PortfolioComposer",
-    "PortfolioWeightResult",
-    "WeightResult",
-    "PortfolioMaster",
-    "PortfolioMasterResult",
-    "SelectedStrategy",
-    # Optimizer
-    "Optimizer",
-    "OptimizerConfig",
-    "OptimizationResult",
-    "WalkForwardCycle",
-    # Retester
-    "Retester",
-    "RetesterConfig",
-    "RetestResult",
-    "MonteCarloResult",
-    "WalkForwardResult",
-    # Campaign Orchestrator
-    "CampaignOrchestrator",
-    "CampaignConfig",
-    "CampaignResult",
-    "CampaignPhase",
-    "PhaseStatus",
-    "PhaseResult",
-    "run_campaign",
-    # Command Dispatcher
-    "CommandDispatcher",
-    "CampaignStatus",
 ]
