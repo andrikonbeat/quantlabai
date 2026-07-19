@@ -261,3 +261,193 @@ class KnowledgeStore:
             for chunk in iter(lambda: f.read(65536), b""):
                 h.update(chunk)
         return h.hexdigest()
+
+    # ── Tag Management ──────────────────────────────────────────────────────────
+
+    def tag(self, campaign_id: str, tags: list[str]) -> None:
+        """Add tags to a campaign.
+
+        Tags stored in ``knowledge/tags/{campaign_id}.yaml``.
+
+        Args:
+            campaign_id: Campaign identifier.
+            tags: List of tag strings to add.
+        """
+        from quantlab.knowledge.indexer import Indexer
+
+        Indexer.tag_campaign(self, campaign_id, tags)
+
+    def get_tags(self, campaign_id: str) -> list[str]:
+        """Get tags for a campaign.
+
+        Args:
+            campaign_id: Campaign identifier.
+
+        Returns:
+            List of tag strings.
+        """
+        from quantlab.knowledge.indexer import Indexer
+
+        return Indexer.get_tags(self, campaign_id)
+
+    # ── Link Management ─────────────────────────────────────────────────────────
+
+    def link(self, parent: str, children: list[str]) -> None:
+        """Create parent-child links between campaigns.
+
+        Args:
+            parent: Parent campaign identifier.
+            children: List of child campaign identifiers.
+        """
+        from quantlab.knowledge.indexer import Indexer
+
+        Indexer.link_campaigns(self, parent, children)
+
+    def get_links(self, campaign_id: str) -> dict[str, list[str]]:
+        """Get links (parents and children) for a campaign.
+
+        Args:
+            campaign_id: Campaign identifier.
+
+        Returns:
+            Dict with optional 'parents' and 'children' keys.
+        """
+        from quantlab.knowledge.indexer import Indexer
+
+        return Indexer.get_links(self, campaign_id)
+
+    # ── Query ───────────────────────────────────────────────────────────────────
+
+    def query(self) -> object:
+        """Create a QueryBuilder for this Knowledge Lake.
+
+        Returns:
+            QueryBuilder instance configured with the current index.
+        """
+        from quantlab.knowledge.query import QueryBuilder
+
+        index = self.read_index()
+        return QueryBuilder(index, self.root)
+
+    # ── Enhanced Indexing ─────────────────────────────────────────────────────────
+
+    def enhance_index(self) -> dict[str, dict[str, object]]:
+        """Rebuild index with enhanced v2 schema (metrics, tags, links).
+
+        Calls ``Indexer.enhance_index()`` to enrich the index with
+        campaign metrics from stats YAML files.
+
+        Returns:
+            The enriched index as a dict.
+        """
+        from quantlab.knowledge.indexer import Indexer
+
+        idx = Indexer(self.root)
+        enriched = idx.enhance_index(self)
+
+        # Merge enriched data into the index
+        current_index = self.read_index()
+
+        # Add campaigns section
+        current_index["campaigns"] = enriched
+        current_index["_version"] = "2"
+
+        # Write updated index
+        index_path = self.root / INDEX_FILENAME
+        index_path.write_text(
+            yaml.dump(current_index, default_flow_style=False, sort_keys=False),
+            encoding="utf-8",
+        )
+
+        return current_index
+
+    # ── Pipeline History ─────────────────────────────────────────────────────────
+
+    def save_pipeline_run(self, run: object) -> None:
+        """Persist a pipeline run record to the Knowledge Lake.
+
+        Stores at ``knowledge/pipeline-runs/{run_id}.yaml``.
+
+        Args:
+            run: PipelineRun object with ``to_dict()`` method.
+        """
+        runs_dir = self.root / "pipeline-runs"
+        runs_dir.mkdir(parents=True, exist_ok=True)
+
+        run_dict = run.to_dict() if hasattr(run, "to_dict") else {}
+        run_file = runs_dir / f"{run_dict.get('run_id', 'unknown')}.yaml"
+        run_file.write_text(
+            yaml.dump(run_dict, default_flow_style=False, sort_keys=False),
+            encoding="utf-8",
+        )
+
+    def load_pipeline_runs(
+        self,
+        limit: int = 50,
+        status: object = None,
+        pipeline: str | None = None,
+    ) -> list[object]:
+        """Load pipeline run records from the Knowledge Lake.
+
+        Args:
+            limit: Max number of runs to return.
+            status: Optional StageStatus filter.
+            pipeline: Optional pipeline name filter.
+
+        Returns:
+            List of PipelineRun objects (deserialized from YAML).
+        """
+        from quantlab.pipeline.models import PipelineRun, StageStatus
+
+        runs_dir = self.root / "pipeline-runs"
+        if not runs_dir.exists():
+            return []
+
+        runs: list[PipelineRun] = []
+        for yaml_path in sorted(runs_dir.rglob("*.yaml"), reverse=True):
+            try:
+                data = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+                if not isinstance(data, dict):
+                    continue
+
+                run = PipelineRun.from_dict(data)
+
+                # Apply filters
+                if status is not None and run.status != status:
+                    continue
+                if pipeline is not None and run.pipeline_name != pipeline:
+                    continue
+
+                runs.append(run)
+                if len(runs) >= limit:
+                    break
+
+            except Exception:
+                continue
+
+        return runs
+
+    def delete_pipeline_runs(self, run_ids: list[str]) -> int:
+        """Delete pipeline run records from the Knowledge Lake.
+
+        Args:
+            run_ids: List of run IDs to delete.
+
+        Returns:
+            Number of runs successfully deleted.
+        """
+        runs_dir = self.root / "pipeline-runs"
+        if not runs_dir.exists():
+            return 0
+
+        deleted = 0
+        for run_id in run_ids:
+            run_file = runs_dir / f"{run_id}.yaml"
+            if run_file.exists():
+                try:
+                    run_file.unlink()
+                    deleted += 1
+                except OSError:
+                    continue
+
+        return deleted
