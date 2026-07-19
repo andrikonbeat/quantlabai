@@ -34,6 +34,7 @@ def generate_report_command(args: argparse.Namespace) -> int:
         theme=ReportTheme(args.theme),
         title=args.title,
         template_path=Path(args.template) if args.template else None,
+        benchmark_equity=benchmark_equity,
     )
 
     # Load campaign data from Knowledge Lake
@@ -80,10 +81,15 @@ def generate_report_command(args: argparse.Namespace) -> int:
         return 2
 
 
-def _load_benchmark_equity(path: str) -> list[dict]:
-    """Load benchmark equity data from CSV file."""
+def _load_benchmark_equity(path: str) -> list:
+    """Load benchmark equity data from CSV file.
+
+    Returns list of EquityPoint objects matching the format expected by
+    ReportConfig.benchmark_equity.
+    """
     import csv
     from datetime import datetime
+    from quantlab.readers.models import EquityPoint
 
     equity = []
     with open(path, newline='') as f:
@@ -95,10 +101,8 @@ def _load_benchmark_equity(path: str) -> list[dict]:
 
             if timestamp and equity_val:
                 try:
-                    equity.append({
-                        "timestamp": datetime.fromisoformat(timestamp.replace('Z', '+00:00')) if 'T' in timestamp else timestamp,
-                        "equity": float(equity_val)
-                    })
+                    ts = datetime.fromisoformat(timestamp.replace('Z', '+00:00')) if 'T' in timestamp else timestamp
+                    equity.append(EquityPoint(timestamp=ts, equity=float(equity_val)))
                 except (ValueError, TypeError):
                     pass  # Skip invalid rows
 

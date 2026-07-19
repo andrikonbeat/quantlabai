@@ -217,6 +217,8 @@ DEFAULT_TEMPLATE = """<!DOCTYPE html>
         </section>
 
         {phase_results_section}
+        {executive_summary_section}
+        {benchmark_section}
         {summary_section}
 
         <footer class="footer">

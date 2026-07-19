@@ -22,6 +22,9 @@ dev = [
 reporting = [
     "plotly>=5.18",
 ]
+reporting-matplotlib = [
+    "matplotlib>=3.7",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

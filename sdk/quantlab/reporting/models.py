@@ -86,6 +86,7 @@ class ReportConfig(BaseModel):
     template_path: Optional[Path] = None
     title: Optional[str] = None
     benchmark_equity: Optional[list] = None
+    chart_config: ChartConfig = Field(default_factory=ChartConfig)
 
     @property
     def effective_title(self) -> str:
