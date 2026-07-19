@@ -40,12 +40,12 @@ Chain strategy: feature-branch-chain
 
 ## Phase 2: JForex Deploy + Portfolio Composer + Portfolio Master
 
-- [ ] 2.1 Create `sdk/quantlab/phase4/jforex_deploy.py` with JForexDeployer (export_strategy via HTTP sourcecode/print, deploy_indicators copy from SQX custom_indicators/JForex/, dry-run mode)
-- [ ] 2.2 Create `sdk/quantlab/phase4/portfolio_composer.py` with PortfolioComposer (atomic load_strategies with rollback on failure, optimize_weights via HTTP /recompute, save_portfolio via HTTP /savePortfolio, create_portfolio high-level method)
-- [ ] 2.3 Create `sdk/quantlab/phase4/portfolio_master.py` with PortfolioMaster (build_cfx via CfxTemplateBuilder, run via CommandDispatcher loadconfig/start/status/export, extract_selected_strategies from result XML)
-- [ ] 2.4 Extend `sdk/quantlab/cli/runner.py` CommandDispatcher with new actions: loadconfig, start, status, stop, export for portfolio/master project types; add PortfolioStatus, OptimizerStatus, RetesterStatus result types; acquire SQXSessionLock before operations
-- [ ] 2.5 Move DaemonManager from cli/runner.py to phase4/daemon_manager.py (already created in Phase 1); update imports in runner.py
-- [ ] 2.6 Add unit tests for Phase 2: JForexDeployer export/deploy dry-run, PortfolioComposer atomic load/optimize/save, PortfolioMaster CFX build/run/extract, CommandDispatcher new actions serialization
+- [x] 2.1 Create `sdk/quantlab/phase4/jforex_deploy.py` with JForexDeployer (export_strategy via HTTP sourcecode/print, deploy_indicators copy from SQX custom_indicators/JForex/, dry-run mode)
+- [x] 2.2 Create `sdk/quantlab/phase4/portfolio_composer.py` with PortfolioComposer (atomic load_strategies with rollback on failure, optimize_weights via HTTP /recompute, save_portfolio via HTTP /savePortfolio, create_portfolio high-level method)
+- [x] 2.3 Create `sdk/quantlab/phase4/portfolio_master.py` with PortfolioMaster (build_cfx via CfxTemplateBuilder, run via CommandDispatcher loadconfig/start/status/export, extract_selected_strategies from result XML)
+- [x] 2.4 Create `sdk/quantlab/phase4/command_dispatcher.py` with CommandDispatcher (load_config, start_project, get_status, stop_project, export_results, _run_with_lock integration for SQXSessionLock, CampaignStatus parsing)
+- [x] 2.5 Move DaemonManager from cli/runner.py to phase4/daemon_manager.py (already created in Phase 1); update imports in runner.py
+- [x] 2.6 Add unit tests for Phase 2: JForexDeployer export/deploy dry-run, PortfolioComposer atomic load/optimize/save, PortfolioMaster CFX build/run/extract, CommandDispatcher new actions serialization
 
 ## Phase 3: Optimizer + Retester + CLI Integration + Translator + Integration Tests
 
