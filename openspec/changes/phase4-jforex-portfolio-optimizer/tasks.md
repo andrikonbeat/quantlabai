@@ -61,8 +61,8 @@ Chain strategy: feature-branch-chain
 
 ## Phase 4: Cleanup & Polish
 
-- [ ] 4.1 Remove any temporary/debug code from implementation
-- [ ] 4.2 Verify all public exports in phase4/__init__.py are complete
-- [ ] 4.3 Run full test suite (pytest tests/ -x) and confirm all pass
-- [ ] 4.4 Verify dry-run tests pass without SQX installation
-- [ ] 4.5 Update CHANGELOG.md with Phase 4 summary
+- [x] 4.1 Remove any temporary/debug code from implementation
+- [x] 4.2 Verify all public exports in phase4/__init__.py are complete
+- [x] 4.3 Run full test suite (pytest tests/ -x) and confirm all pass
+- [x] 4.4 Verify dry-run tests pass without SQX installation
+- [x] 4.5 Update CHANGELOG.md with Phase 4 summary
