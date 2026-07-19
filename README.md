@@ -234,6 +234,68 @@ The entire pipeline works without StrategyQuant X installed:
 | `quantlab.stats` | Trading performance metrics | No |
 | `quantlab.knowledge` | Knowledge Lake management | No |
 
+## Pipeline Commands
+
+Manage pipeline YAML files and execute campaigns.
+
+| Command | Description |
+|---------|-------------|
+| `quantlab pipeline list` | List available pipelines |
+| `quantlab pipeline run <name>` | Run pipeline (dry-run by default) |
+| `quantlab pipeline run <name> --dry-run=false` | Execute real SQX pipeline stages |
+| `quantlab pipeline run <name> --params key=value` | Override pipeline parameters |
+| `quantlab pipeline history` | Show pipeline run history |
+| `quantlab pipeline validate <file>` | Validate pipeline YAML syntax |
+| `quantlab pipeline config <name>` | Show pipeline configuration |
+
+See [Pipeline YAML Reference](docs/pipeline-yaml.md) for complete YAML schema, stage types, and examples.
+
+## Report Commands
+
+Generate campaign reports with themes, benchmarks, and custom templates.
+
+```bash
+# Install reporting extras
+pip install quantlab[reporting]           # Plotly-based (default)
+pip install quantlab[reporting-matplotlib]  # Matplotlib fallback
+```
+
+| Command | Description |
+|---------|-------------|
+| `quantlab report generate <campaign>` | Generate HTML + JSON report |
+| `quantlab report generate <campaign> --theme dark` | Dark theme |
+| `quantlab report generate <campaign> --theme light` | Light theme |
+| `quantlab report generate <campaign> --benchmark bench.csv` | Overlay benchmark equity curve |
+| `quantlab report generate <campaign> --template custom.j2` | Use custom Jinja2 template |
+| `quantlab report generate <campaign> --output-dir ./reports` | Custom output directory |
+| `quantlab report generate <campaign> --json` | JSON-only output |
+
+**Benchmark CSV format:**
+```csv
+timestamp,equity
+2024-01-01 00:00:00,10000
+2024-01-02 00:00:00,10100
+```
+
+See [Reporting Reference](docs/reporting.md) for template variables, themes, API, and exit codes.
+
+## Knowledge Commands
+
+Query, tag, link, and export campaigns from the Knowledge Lake.
+
+| Command | Description |
+|---------|-------------|
+| `quantlab knowledge query [--sharpe ">1.5"] [--pf ">1.2"] [--tags trend]` | Filter campaigns by metrics/tags |
+| `quantlab knowledge query --json` | JSON output |
+| `quantlab knowledge tag <campaign> <tags...>` | Add tags |
+| `quantlab knowledge tag <campaign> <tag> --remove` | Remove tags |
+| `quantlab knowledge link --parent <id> --children <id1> <id2>` | Create parent-child links |
+| `quantlab knowledge link --list <campaign>` | List links |
+| `quantlab knowledge export --format csv|json --output file.csv` | Export query results |
+| `quantlab knowledge rebuild-index` | Rebuild knowledge index |
+
+See [Knowledge Query Reference](docs/knowledge-query.md) for filter syntax, API, and schema details.
+
 ## License
 
 MIT
