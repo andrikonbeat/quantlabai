@@ -1,0 +1,56 @@
+name: "SQXCampaign"
+description: "Full SQX campaign pipeline: validate, translate, daemon, load, run, poll, export, read, stats, store"
+version: "1.0"
+stages:
+  - name: validate
+    type: builtin
+    config:
+      dry_run: false
+
+  - name: translate
+    type: builtin
+    config:
+      strategy_id: "strat_123"
+
+  - name: daemon_start
+    type: builtin
+    config:
+      port: 8888
+
+  - name: load_config
+    type: builtin
+    config:
+      campaign_name: "MyCampaign"
+
+  - name: run_campaign
+    type: builtin
+    config: {}
+
+  - name: poll_campaign
+    type: builtin
+    config:
+      poll_interval: 30
+      timeout: 3600
+
+  - name: export
+    type: builtin
+    config:
+      export_formats: ["csv"]
+      export_databanks: true
+
+  - name: read
+    type: builtin
+    config: {}
+
+  - name: compute_stats
+    type: builtin
+    config: {}
+
+  - name: knowledge_store
+    type: builtin
+    config:
+      knowledge_root: "knowledge"
+
+  - name: report
+    type: builtin
+    config: {}
