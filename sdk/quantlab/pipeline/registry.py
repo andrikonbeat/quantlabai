@@ -37,11 +37,25 @@ class StageRegistry:
             SQXComputeStatsStage,
             SQXKnowledgeStoreStage,
             SQXReportStage,
+            SQXCampaignStage,
         )
 
+        # Map stage type names to concrete SQX stage implementations.
+        # The logical phase5f-i pipeline stages (optimize, walkforward, montecarlo,
+        # portfolio, risk, history, finalize) are composed from these granular
+        # SQX daemon stages that map to actual SQX CLI operations.
         self._stage_map = {
             "validate": SQXValidateStage,
             "translate": SQXTranslateStage,
+            "optimize": SQXRunCampaignStage,
+            "walkforward": SQXPollCampaignStage,
+            "montecarlo": SQXPollCampaignStage,
+            "portfolio": SQXCampaignStage,
+            "risk": SQXReadStage,
+            "report": SQXReportStage,
+            "knowledge_store": SQXKnowledgeStoreStage,
+            "history": SQXExportStage,
+            "finalize": SQXDaemonStartStage,
             "daemon_start": SQXDaemonStartStage,
             "load_config": SQXLoadConfigStage,
             "run_campaign": SQXRunCampaignStage,
@@ -49,8 +63,6 @@ class StageRegistry:
             "export": SQXExportStage,
             "read": SQXReadStage,
             "compute_stats": SQXComputeStatsStage,
-            "knowledge_store": SQXKnowledgeStoreStage,
-            "report": SQXReportStage,
         }
 
     def get_stage_class(self, stage_name: str) -> type[PipelineStage] | None:
