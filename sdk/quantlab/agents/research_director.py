@@ -60,12 +60,17 @@ class ResearchDirector:
             ``knowledge/structured`` relative to CWD.
         engram_save_fn: Optional async function for recording gate decisions
             to Engram. Signature: ``async fn(title, type, scope, topic_key, content)``.
+        gate_orchestrator: Optional ``HumanGateOrchestrator`` instance. When
+            provided, gate callbacks registered via ``register_gate_callback``
+            are forwarded to the orchestrator, and ``build_pipeline`` uses
+            ``orchestrator.on_gate()`` as the per-gate callback.
     """
 
     def __init__(
         self,
         knowledge_root: str | Path | None = None,
         engram_save_fn: Any = None,
+        gate_orchestrator: Any = None,
     ) -> None:
         self._knowledge_root = Path(knowledge_root or "knowledge/structured")
         self._engram_save_fn = engram_save_fn
@@ -74,6 +79,7 @@ class ResearchDirector:
 
         # Optional gate callbacks: gate_id -> async callable
         self._gate_callbacks: dict[str, Any] = {}
+        self._gate_orchestrator = gate_orchestrator
 
     # ── Lazy imports ────────────────────────────────────────────────────────────
 
@@ -102,6 +108,18 @@ class ResearchDirector:
                       ``GateDecision``.
         """
         self._gate_callbacks[gate_id] = callback
+        if self._gate_orchestrator is not None:
+            # Wrap the raw callback so the orchestrator can apply timeout,
+            # fallback, notifications, and Engram audit around it.
+            orchestrator = self._gate_orchestrator
+
+            async def _orchestrator_callback(ctx: dict[str, Any], gid: str, cb: Any) -> Any:
+                return await orchestrator.on_gate(gid, ctx)
+
+            self._gate_orchestrator.register_callback(
+                gate_id,
+                lambda ctx, gid=gate_id, cb=callback: _orchestrator_callback(ctx, gid, cb),
+            )
 
     # ── Task 2.1: Pipeline construction ────────────────────────────────────────
 
@@ -200,9 +218,32 @@ class ResearchDirector:
         for stage_obj in pipeline.stages:
             stage_name = getattr(stage_obj, "name", "")
             gate_id = getattr(stage_obj, "gate_id", "")
-            if gate_id and gate_id in self._gate_callbacks:
+            if not gate_id or not gate_id.startswith("HUMAN_"):
+                continue
+
+            orchestrator = self._gate_orchestrator
+
+            if orchestrator is not None:
+                # Use the orchestrator as the callback so timeout/fallback/
+                # notifications/Engram audit are all applied consistently.
+                async def _orchestrator_wrapper(
+                    gate_ctx: Any,
+                    gid: str = gate_id,
+                    orch: Any = orchestrator,
+                ) -> Any:
+                    ctx_dict: dict[str, Any] = {}
+                    if hasattr(gate_ctx, "__dict__"):
+                        ctx_dict = gate_ctx.__dict__
+                    elif isinstance(gate_ctx, dict):
+                        ctx_dict = gate_ctx
+                    return await orch.on_gate(gid, ctx_dict)
+
+                stage_obj.set_callback(_orchestrator_wrapper)
+
+            elif gate_id in self._gate_callbacks:
                 stage_obj.set_callback(self._gate_callbacks[gate_id])
-            elif stage_name.startswith("gate_") and "HUMAN" in stage_name:
+
+            else:
                 # Set a default auto-approve callback for automated test mode
                 from quantlab.pipeline.stages.gate_interceptor import (
                     GateAction,
