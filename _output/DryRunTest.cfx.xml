@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<StrategyQuantX>
+  <Project>
+    <Name>DryRunTest</Name>
+    <Markets>
+      <Market symbol="EURUSD"/>
+    </Markets>
+    <Timeframes>
+      <Timeframe value="H1"/>
+    </Timeframes>
+    <BuildingBlocks/>
+    <Strategies/>
+  </Project>
+</StrategyQuantX>

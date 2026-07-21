@@ -10,7 +10,6 @@ from quantlab.pipeline.config.models import (
     PipelineSummary,
     MultiAgentPipelineConfig,
     StageType,
-    GateFallbackAction,
     GateApprovalStatus,
 )
 from quantlab.pipeline.config.loader import (
@@ -33,7 +32,6 @@ __all__ = [
     "PipelineSummary",
     "MultiAgentPipelineConfig",
     "StageType",
-    "GateFallbackAction",
     "GateApprovalStatus",
     # Loader functions
     "load_multi_agent_pipeline_config",

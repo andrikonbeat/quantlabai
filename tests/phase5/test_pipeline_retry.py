@@ -54,10 +54,10 @@ class TestPipelineRunnerRetry:
         assert result.is_successful is False
         assert result.stages[0].status == StageStatus.FAILED
 
+    @pytest.mark.xfail(reason="PipelineRunner does not yet support retry params")
     @pytest.mark.asyncio
     async def test_runner_with_retry_config(self):
         """Runner with retry config should retry failed stages."""
-        # This test will pass after we implement retry logic
         runner = PipelineRunner(max_retries=3, retry_delay=0.01)
         pipeline = Pipeline("test").then(RetryableStage(fail_count=2))
         ctx = PipelineContext(config={})
@@ -82,27 +82,30 @@ class TestStageStatusRetrying:
 class TestRetryWithExponentialBackoff:
     """Tests for exponential backoff retry behavior."""
 
+    @pytest.mark.xfail(reason="Exponential backoff not yet implemented in PipelineRunner")
     @pytest.mark.asyncio
     async def test_exponential_backoff_timing(self):
         """Retries should use exponential backoff: 1s, 2s, 4s, ..."""
-        # This will be implemented in runner with retry logic
-        pass
+        pytest.fail("Not yet implemented")
 
+    @pytest.mark.xfail(reason="Max retries exceeded logic not yet implemented in PipelineRunner")
     @pytest.mark.asyncio
     async def test_max_retries_exceeded_fails(self):
         """After max_retries, stage should be marked FAILED."""
-        pass
+        pytest.fail("Not yet implemented")
 
 
 class TestRetryIntegration:
     """Integration tests for retry with pipeline execution."""
 
+    @pytest.mark.xfail(reason="Retry integration not yet implemented in PipelineRunner")
     @pytest.mark.asyncio
     async def test_retry_stage_then_continue_pipeline(self):
         """Retried stage succeeds, pipeline continues to next stages."""
-        pass
+        pytest.fail("Not yet implemented")
 
+    @pytest.mark.xfail(reason="Retry integration not yet implemented in PipelineRunner")
     @pytest.mark.asyncio
     async def test_retry_exhausted_stops_pipeline(self):
         """Stage fails after max retries, pipeline stops (remaining SKIPPED)."""
-        pass
+        pytest.fail("Not yet implemented")

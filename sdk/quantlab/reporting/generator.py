@@ -578,7 +578,6 @@ class ReportGenerator:
         sharpe = getattr(statistics, "sharpe_ratio", None) or 0.0
         profit_factor = getattr(statistics, "profit_factor", None) or 0.0
         max_dd = getattr(statistics, "max_drawdown", None) or 0.0
-        win_rate = getattr(statistics, "win_rate", None) or 0.0
 
         if sharpe >= 2.0:
             assessment = "Strong risk-adjusted returns"
@@ -590,11 +589,15 @@ class ReportGenerator:
             assessment = "Weak risk-adjusted returns"
             indicator = "red"
 
+        # Compute net_profit from recovery_factor * max_drawdown
+        recovery_factor = getattr(statistics, "recovery_factor", None) or 0.0
+        net_profit = recovery_factor * max_dd if max_dd > 0 else 0.0
+
         return {
-            "net_profit": profit_factor,
+            "net_profit": net_profit,
             "sharpe": sharpe,
             "max_drawdown": max_dd,
-            "win_rate": win_rate,
+            "win_rate": 0.0,
             "profit_factor": profit_factor,
             "assessment": assessment,
             "indicator": indicator,

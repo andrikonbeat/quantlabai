@@ -17,14 +17,6 @@ class StageType(str, Enum):
     GATE = "gate"
 
 
-class GateFallbackAction(str, Enum):
-    """Action to take when a gate times out."""
-
-    PROCEED = "proceed"
-    PAUSE = "pause"
-    RETRY = "retry"
-
-
 class GateApprovalStatus(str, Enum):
     """Status of a gate approval."""
 
@@ -43,30 +35,16 @@ class GateDecision(str, Enum):
     TIMEOUT = "timeout"
 
 
-class GateFallbackAction(str, Enum):
-    """Action to take when a gate times out."""
-
-    PROCEED = "proceed"
-    PAUSE = "pause"
-    RETRY = "retry"
-
-
-class GateFallback(str, Enum):
-    """Fallback action when gate times out."""
-
-    PROCEED = "proceed"
-    PAUSE = "pause"
-    RETRY = "retry"
-
-
 class GateConfig(BaseModel):
     """Configuration for a human approval gate."""
 
     name: str = Field(..., description="Unique gate identifier")
+    type: str = Field(default="human_approval", description="Gate type (human_approval, auto)")
     timeout_hours: float = Field(default=24.0, ge=0.1, description="Gate timeout in hours")
-    fallback: GateFallback = Field(default=GateFallback.PROCEED, description="Action on timeout")
+    fallback: str = Field(default="proceed", description="Action on timeout")
     required_approvers: int = Field(default=1, ge=1, description="Number of approvers required")
-    notification_channels: list[str] = Field(default_factory=list, description="Notification webhooks/emails")
+    notifiers: list[str] = Field(default_factory=list, description="Notification channels")
+    config: dict[str, Any] = Field(default_factory=dict, description="Gate-specific config")
 
 
 class MemoryConfig(BaseModel):
@@ -115,18 +93,6 @@ class StageConfig(BaseModel):
     retry_delay: float = Field(default=5.0, description="Base retry delay in seconds")
     timeout: float = Field(default=300.0, description="Stage timeout in seconds")
     config: dict[str, Any] = Field(default_factory=dict, description="Stage-specific config")
-
-
-class GateConfig(BaseModel):
-    """Configuration for a pipeline gate."""
-
-    name: str = Field(..., description="Gate name")
-    type: str = Field(default="human_approval", description="Gate type")
-    timeout_hours: float = Field(default=24.0, ge=0.1, description="Gate timeout in hours")
-    fallback: str = Field(default="proceed", description="Fallback action on timeout")
-    required_approvers: int = Field(default=1, ge=1)
-    notifiers: list[str] = Field(default_factory=list)
-    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class PipelineConfig(BaseModel):

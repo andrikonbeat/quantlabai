@@ -73,25 +73,11 @@ def load_env_overrides() -> dict[str, Any]:
 
     for key, value in os.environ.items():
         if key.startswith("QUANTLAB_PIPELINE_"):
-            path = key[len("QUANTLAB_PIPELINE_"):].lower().split("_")
+            path = _env_key_to_path(key)
             parsed = _parse_env_value(value)
-            current = {}
-            for part in path[:-1]:
-                current[part] = {}
-                current = current[part]
-            current[path[-1]] = _parse_env_value(value)
+            _set_nested(overrides, path, parsed)
 
     return overrides
-
-
-def _set_nested(obj: dict[str, Any], path: list[str], value: Any) -> None:
-    """Set value in nested dictionary using path list."""
-    current = obj
-    for part in path[:-1]:
-        if part not in current:
-            current[part] = {}
-        current = current[part]
-    current[path[-1]] = value
 
 
 def merge_configs(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
@@ -140,18 +126,9 @@ def load_multi_agent_pipeline_config(
 
     # Apply environment variable overrides
     if apply_env_overrides:
-        env_overrides = {}
-        for key, value in os.environ.items():
-            if key.startswith("QUANTLAB_PIPELINE_"):
-                path_parts = key[len("QUANTLAB_PIPELINE_"):].lower().split("_")
-                current = {}
-                for part in path_parts[:-1]:
-                    current[part] = {}
-                    current = current[part]
-                current[path_parts[-1]] = _parse_env_value(value)
+        env_overrides = load_env_overrides()
 
         if env_overrides:
-            # Need to properly merge - use a simple approach for now
             for key, value in env_overrides.items():
                 if key in data and isinstance(data[key], dict) and isinstance(value, dict):
                     merge_configs(data[key], value)
@@ -197,15 +174,7 @@ def load_pipeline_config(path: str) -> dict:
         data = yaml.safe_load(f) or {}
 
     # Apply env overrides
-    env_overrides = {}
-    for key, value in os.environ.items():
-        if key.startswith("QUANTLAB_PIPELINE_"):
-            path_parts = key[len("QUANTLAB_PIPELINE_"):].lower().split("_")
-            current = {}
-            for part in path_parts[:-1]:
-                current[part] = {}
-                current = current[part]
-            current[path_parts[-1]] = _parse_env_value(value)
+    env_overrides = load_env_overrides()
 
     if env_overrides:
         merge_configs(data, env_overrides)

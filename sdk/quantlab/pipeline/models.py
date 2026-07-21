@@ -10,6 +10,7 @@ from uuid import uuid4
 class StageStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
+    RETRYING = "retrying"
     COMPLETED = "completed"
     FAILED = "failed"
     SKIPPED = "skipped"

@@ -122,13 +122,3 @@ class ReportResult(BaseModel):
 
     def is_successful(self) -> bool:
         return len(self.warnings) == 0 and (self.html_path or self.json_path)
-
-
-class ChartConfig(BaseModel):
-    """Configuration for individual chart generation."""
-
-    chart_id: str
-    title: str
-    height: int = 400
-    width: Optional[int] = None
-    colors: ChartColors = Field(default_factory=ChartColors)

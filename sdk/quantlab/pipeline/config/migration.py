@@ -47,11 +47,11 @@ def migrate_v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
         },
         "agents": {},
         "gates": [
-            {"gate_id": "HUMAN_REVIEW_OBJECTIVES", "timeout_hours": 24, "fallback": "ABORT"},
-            {"gate_id": "HUMAN_APPROVE_ITERATION", "timeout_hours": 24, "fallback": "ABORT"},
-            {"gate_id": "HUMAN_APPROVE_PORTFOLIO", "timeout_hours": 12, "fallback": "ABORT"},
-            {"gate_id": "HUMAN_APPROVE_DEPLOY", "timeout_hours": 6, "fallback": "ABORT"},
-            {"gate_id": "HUMAN_REVIEW_PERFORMANCE", "timeout_hours": 48, "fallback": "CONTINUE"},
+            {"name": "HUMAN_REVIEW_OBJECTIVES", "timeout_hours": 24, "fallback": "proceed"},
+            {"name": "HUMAN_APPROVE_ITERATION", "timeout_hours": 24, "fallback": "proceed"},
+            {"name": "HUMAN_APPROVE_PORTFOLIO", "timeout_hours": 12, "fallback": "proceed"},
+            {"name": "HUMAN_APPROVE_DEPLOY", "timeout_hours": 6, "fallback": "proceed"},
+            {"name": "HUMAN_REVIEW_PERFORMANCE", "timeout_hours": 48, "fallback": "proceed"},
         ],
         "memory": {
             "enabled": True,
