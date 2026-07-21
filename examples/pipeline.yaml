@@ -1,0 +1,244 @@
+# Pipeline Configuration Example — 7 Agent Stages + 5 Gate Interceptors
+# ======================================================================
+# This example defines the complete multi-agent pipeline with all 7 agent
+# stages and 5 human gate interceptors in the correct order, following the
+# ResearchDirector architecture.
+#
+# Usage:
+#   from quantlab.pipeline.config.models import MultiAgentPipelineConfig
+#   config = MultiAgentPipelineConfig.load("examples/pipeline.yaml")
+#   runner = PipelineRunner()
+#   pipeline = runner.build_from_config(config)
+#   print(f"Pipeline has {len(pipeline.stages)} stages")
+
+version: "2.0.0"
+
+pipeline:
+  name: "multi-agent-research-pipeline"
+  description: "Complete multi-agent research pipeline with 7 agent stages and 5 gate interceptors"
+  version: "2.0.0"
+
+  # ── Agent Stages ────────────────────────────────────────────────────────
+  # Order: research → gate1 → build → statistics → review → gate2 →
+  #        portfolio → gate3 → deploy → gate4 → monitor → gate5
+  stages:
+    - name: research
+      type: agent
+      agent: research-agent
+      requires: []
+      provides:
+        - research_config
+        - objectives
+        - hypotheses
+        - iteration_config
+        - gate_policies
+
+    - name: builder
+      type: agent
+      agent: builder-agent
+      requires:
+        - research_config
+      provides:
+        - cfx_bytes
+        - campaign_id
+        - sqcli_status
+        - export_paths
+      max_retries: 2
+      timeout: 3600
+
+    - name: statistics
+      type: agent
+      agent: statistics-agent
+      requires:
+        - export_paths
+      provides:
+        - statistics
+        - aggregate_stats
+        - monte_carlo_bands
+        - rolling_metrics
+        - regime_alerts
+
+    - name: review
+      type: agent
+      agent: reviewer-agent
+      requires:
+        - statistics
+        - aggregate_stats
+        - monte_carlo_bands
+      provides:
+        - review_decision
+        - iteration_proposal
+        - wf_degradation
+        - mc_overfit_flag
+        - benchmark_comparison
+
+    - name: portfolio
+      type: agent
+      agent: portfolio-agent
+      requires:
+        - selected_strategies
+        - review_decision
+      provides:
+        - portfolio_cfx
+        - portfolio_result
+        - correlation_matrix
+        - risk_allocation
+        - wf_aggregate_stats
+
+    - name: deploy
+      type: agent
+      agent: deployment-agent
+      requires:
+        - portfolio_cfx
+        - gate_decision_HUMAN_APPROVE_PORTFOLIO
+      provides:
+        - jforex_package
+        - jcloud_config
+        - deployment_result
+
+    - name: monitor
+      type: agent
+      agent: monitoring-agent
+      requires:
+        - live_equity
+        - deployment_result
+      provides:
+        - rolling_metrics
+        - regime_alerts
+        - performance_alerts
+        - gate_decision_HUMAN_REVIEW_PERFORMANCE
+
+# ── Gate Interceptors ──────────────────────────────────────────────────────
+# Each gate is injected after its configured 'after_stage' during pipeline
+# construction. Timeout hours and fallback policies are configurable per gate.
+gates:
+  - gate_id: HUMAN_REVIEW_OBJECTIVES
+    name: HUMAN_REVIEW_OBJECTIVES
+    type: human_approval
+    after_stage: research
+    timeout_hours: 24
+    fallback: ESCALATE
+    required_approvers: 1
+    escalate_to: "research_lead@quantlab.ai"
+    notifications:
+      - email
+
+  - gate_id: HUMAN_APPROVE_ITERATION
+    name: HUMAN_APPROVE_ITERATION
+    type: human_approval
+    after_stage: review
+    timeout_hours: 24
+    fallback: ABORT
+    required_approvers: 1
+    notifications:
+      - email
+
+  - gate_id: HUMAN_APPROVE_PORTFOLIO
+    name: HUMAN_APPROVE_PORTFOLIO
+    type: human_approval
+    after_stage: portfolio
+    timeout_hours: 24
+    fallback: ESCALATE
+    required_approvers: 1
+    escalate_to: "portfolio_manager@quantlab.ai"
+    notifications:
+      - email
+
+  - gate_id: HUMAN_APPROVE_DEPLOY
+    name: HUMAN_APPROVE_DEPLOY
+    type: human_approval
+    after_stage: deploy
+    timeout_hours: 12
+    fallback: HOLD
+    required_approvers: 1
+    notifications:
+      - email
+      - slack
+
+  - gate_id: HUMAN_REVIEW_PERFORMANCE
+    name: HUMAN_REVIEW_PERFORMANCE
+    type: human_approval
+    after_stage: monitor
+    timeout_hours: 48
+    fallback: CONTINUE
+    required_approvers: 1
+    notifications:
+      - email
+
+# ── Agent Configurations ────────────────────────────────────────────────────
+agents:
+  research:
+    name: research
+    type: research-agent
+    enabled: true
+    max_retries: 1
+    timeout_seconds: 300
+    config:
+      max_hypotheses: 10
+      query_lookback_days: 730
+
+  builder:
+    name: builder
+    type: builder-agent
+    enabled: true
+    max_retries: 2
+    timeout_seconds: 3600
+    config:
+      poll_interval_seconds: 30
+
+  statistics:
+    name: statistics
+    type: statistics-agent
+    enabled: true
+    config:
+      mc_simulations: 2000
+      mc_percentiles:
+        - 5
+        - 50
+        - 95
+      rolling_window: 100
+
+  review:
+    name: review
+    type: reviewer-agent
+    enabled: true
+
+  portfolio:
+    name: portfolio
+    type: portfolio-agent
+    enabled: true
+    config:
+      generations: 50
+      population: 200
+
+  deploy:
+    name: deploy
+    type: deployment-agent
+    enabled: true
+    config:
+      dry_run: true
+
+  monitor:
+    name: monitor
+    type: monitoring-agent
+    enabled: true
+    config:
+      min_observation_window: 252
+      alert_thresholds:
+        sharpe_drop: 0.5
+        drawdown_increase: 0.05
+
+# ── Memory Configuration ────────────────────────────────────────────────────
+memory:
+  enabled: true
+  topic_prefix: "quantlab/agent"
+  retention_days: 365
+  cross_agent_sharing: true
+
+# ── Risk Configuration ──────────────────────────────────────────────────────
+risk:
+  max_portfolio_drawdown: 0.20
+  max_strategy_correlation: 0.7
+  max_single_strategy_weight: 0.4
+  kelly_fraction_cap: 0.25
+  var_confidence: 0.95

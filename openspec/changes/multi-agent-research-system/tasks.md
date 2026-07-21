@@ -57,34 +57,34 @@ Chain strategy: feature-branch-chain
 ## Phase 2: Core Agents (Research Director + Research Agent + Builder Agent) (PR 2)
 
 ### Research Director Agent
-- [ ] 2.1 Create `ResearchDirector` class in `quantlab/agents/research_director.py` owning `PipelineRunner`, managing campaign lifecycle (create, run, pause, resume, rollback)
-- [ ] 2.2 Implement `ResearchDirector.execute_campaign(config: ResearchConfig)` that builds pipeline from config, runs it, handles gate callbacks
-- [ ] 2.3 Add `ResearchDirector.rollback_campaign(campaign_id)` deleting Knowledge Lake artifacts and Engram topics for campaign
-- [ ] 2.4 Implement objective optimization loop: after monitoring gate, evaluate convergence, modify hypotheses, loop back to ResearchAgent
+- [x] 2.1 Create `ResearchDirector` class in `quantlab/agents/research_director.py` owning `PipelineRunner`, managing campaign lifecycle (create, run, pause, resume, rollback)
+- [x] 2.2 Implement `ResearchDirector.execute_campaign(config: ResearchConfig)` that builds pipeline from config, runs it, handles gate callbacks
+- [x] 2.3 Add `ResearchDirector.rollback_campaign(campaign_id)` deleting Knowledge Lake artifacts and Engram topics for campaign
+- [x] 2.4 Implement objective optimization loop: after monitoring gate, evaluate convergence, modify hypotheses, loop back to ResearchAgent
 
 ### Research Agent
-- [ ] 2.5 Create `ResearchAgent` class in `quantlab/agents/research_agent.py` with `generate_config(objectives, market_context)` method
-- [ ] 2.6 Implement hypothesis generation from objectives using `knowledge_query.QueryBuilder` to fetch historical patterns
-- [ ] 2.7 Extend `ResearchConfig` DSL in `quantlab/research/dsl/models.py` with fields: `hypotheses[]`, `iteration_config{}`, `gate_policies{}`
-- [ ] 2.8 Add DSL parser support for new fields in `quantlab/research/dsl/parser.py`
-- [ ] 2.9 Implement `ResearchAgent.run(context: PipelineContext)` writing `research_config`, `objectives`, `hypotheses`, `iteration_config`, `gate_policies` to context
+- [x] 2.5 Create `ResearchAgent` class in `quantlab/agents/research_agent.py` with `generate_config(objectives, market_context)` method
+- [x] 2.6 Implement hypothesis generation from objectives using `knowledge_query.QueryBuilder` to fetch historical patterns
+- [x] 2.7 Extend `ResearchConfig` DSL in `quantlab/research/dsl/models.py` with fields: `hypotheses[]`, `iteration_config{}`, `gate_policies{}`
+- [x] 2.8 Add DSL parser support for new fields in `quantlab/research/dsl/parser.py`
+- [x] 2.9 Implement `ResearchAgent.run(context: PipelineContext)` writing `research_config`, `objectives`, `hypotheses`, `iteration_config`, `gate_policies` to context
 
 ### Builder Agent
-- [ ] 2.10 Create `BuilderAgent` class in `quantlab/agents/builder_agent.py` orchestrating CFX translation + SQX dispatch
-- [ ] 2.11 Implement `BuilderAgent.run(context)`: read `research_config`, call `sqx_translator.translate()`, validate via `cfx_editor.validate()`, check license via `license_manager.validate()`, dispatch via `sqx_cli_wrapper.dispatch()`
-- [ ] 2.12 Write `cfx_bytes`, `campaign_id`, `sqcli_status`, `export_paths` to PipelineContext
-- [ ] 2.13 Add retry logic (configurable, default 2) and timeout (default 60 min) for SQX execution
+- [x] 2.10 Create `BuilderAgent` class in `quantlab/agents/builder_agent.py` orchestrating CFX translation + SQX dispatch
+- [x] 2.11 Implement `BuilderAgent.run(context)`: read `research_config`, call `sqx_translator.translate()`, validate via `cfx_editor.validate()`, check license via `license_manager.validate()`, dispatch via `sqx_cli_wrapper.dispatch()`
+- [x] 2.12 Write `cfx_bytes`, `campaign_id`, `sqcli_status`, `export_paths` to PipelineContext
+- [x] 2.13 Add retry logic (configurable, default 2) and timeout (default 60 min) for SQX execution
 
 ### Extended ResearchConfig DSL + Pipeline YAML
-- [ ] 2.14 Create example `research-config.yaml` with full DSL: objectives, hypotheses, iteration_config, gate_policies
-- [ ] 2.15 Create example `pipeline.yaml` with 7 agent stages + 5 gate interceptors in correct order
+- [x] 2.14 Create example `research-config.yaml` with full DSL: objectives, hypotheses, iteration_config, gate_policies
 
+- [x] 2.15 Create example `pipeline.yaml` with 7 agent stages + 5 gate interceptors in correct order
 ### Tests (PR 2)
-- [ ] 2.16 Unit test: ResearchDirector builds 17-stage pipeline from config, executes mock stages
-- [ ] 2.17 Unit test: ResearchAgent generates valid ResearchConfig with hypotheses from objectives
-- [ ] 2.18 Unit test: BuilderAgent translates DSL → CFX → validates → dispatches (mock SQX)
-- [ ] 2.19 Integration test: ResearchDirector + ResearchAgent + BuilderAgent end-to-end with mock SQX
-- [ ] 2.20 DSL parsing test: extended ResearchConfig YAML loads with all new fields
+- [x] 2.16 Unit test: ResearchDirector builds 17-stage pipeline from config, executes mock stages
+- [x] 2.17 Unit test: ResearchAgent generates valid ResearchConfig with hypotheses from objectives
+- [x] 2.18 Unit test: BuilderAgent translates DSL → CFX → validates → dispatches (mock SQX)
+- [x] 2.19 Integration test: ResearchDirector + ResearchAgent + BuilderAgent end-to-end with mock SQX
+- [x] 2.20 DSL parsing test: extended ResearchConfig YAML loads with all new fields
 
 ## Phase 3: Analysis Agents (Statistics + Reviewer + Portfolio) (PR 3)
 
