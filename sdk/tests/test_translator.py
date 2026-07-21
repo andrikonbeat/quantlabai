@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from quantlab.cfx import CfxWriter, generate_cfx_archive
+from quantlab.translate.translator import generate_cfx_archive, generate_cfx_xml
+from quantlab.cfx import CfxWriter
 from quantlab.dsl.models import (
     AcceptanceCriterion,
     BuildingBlock,
@@ -18,7 +19,6 @@ from quantlab.dsl.models import (
     Strategy,
 )
 from quantlab.tools.exceptions import TranslationError, ValidationError
-from quantlab.translate.translator import generate_cfx_xml
 
 
 class TestGenerateCfxArchive:
@@ -217,7 +217,7 @@ class TestTranslationValidation:
         object.__setattr__(config, "market", None)
 
         with pytest.raises(TranslationError, match="Market is required"):
-            generate_cfx_xml(config)
+            generate_cfx_archive(config)
 
     def test_missing_timeframe_raises_translation_error(self) -> None:
         """GIVEN a research model with empty timeframe
@@ -232,7 +232,7 @@ class TestTranslationValidation:
         object.__setattr__(config, "timeframe", None)
 
         with pytest.raises(TranslationError, match="Timeframe is required"):
-            generate_cfx_xml(config)
+            generate_cfx_archive(config)
 
     def test_unsupported_timeframe_raises_validation_error(self) -> None:
         """Unsupported timeframe raises ValidationError."""
@@ -259,7 +259,7 @@ class TestTranslationValidation:
         )
 
         with pytest.raises(TranslationError, match="strategy"):
-            generate_cfx_xml(config)
+            generate_cfx_archive(config)
 
 
 class TestCfxArchiveFactory:
