@@ -30,29 +30,29 @@ Chain strategy: feature-branch-chain
 ## Phase 1: Foundation & Pipeline Core Extensions (PR 1)
 
 ### Pipeline Core Extensions
-- [ ] 1.1 Create `GateInterceptorStage` abstract class in `quantlab/pipeline/core/stages/gate_interceptor.py` with async callback protocol, timeout handling, fallback policies (ABORT/CONTINUE/ESCALATE), Engram recording
-- [ ] 1.2 Add 8 new abstract stage classes: `ResearchStage`, `BuilderStage`, `StatisticsStage`, `ReviewStage`, `PortfolioStage`, `DeployStage`, `MonitorStage` in `quantlab/pipeline/core/stages/agent_stages.py` with `requires`/`provides` contracts per spec
-- [ ] 1.3 Implement `PipelineRunner.validate_contracts()` method in `quantlab/pipeline/core/runner.py` to verify all stage `requires` satisfied by prior `provides` before execution
-- [ ] 1.4 Add `ContractValidationError` exception in `quantlab/pipeline/errors.py` with missing keys and stage names
-- [ ] 1.5 Update `PipelineRunner.run()` to register `GateInterceptorStage` instances as pipeline stages at configured gate positions
+- [x] 1.1 Create `GateInterceptorStage` abstract class in `sdk/quantlab/pipeline/stages/gate_interceptor.py` with async callback protocol, timeout handling, fallback policies (ABORT/CONTINUE/ESCALATE), Engram recording
+- [x] 1.2 Add 8 new abstract stage classes: `ResearchStage`, `BuilderStage`, `StatisticsStage`, `ReviewStage`, `PortfolioStage`, `DeployStage`, `MonitorStage` in `sdk/quantlab/pipeline/stages/agent_stages.py` with `requires`/`provides` contracts per spec
+- [x] 1.3 Implement `PipelineRunner.validate_contracts()` method in `sdk/quantlab/pipeline/runner.py` to verify all stage `requires` satisfied by prior `provides` before execution
+- [x] 1.4 Add `ContractValidationError` exception in `sdk/quantlab/pipeline/errors.py` with missing keys and stage names (already existed — verified)
+- [x] 1.5 Update `PipelineRunner.run()` to register `GateInterceptorStage` instances as pipeline stages at configured gate positions (added `register_gate()`, `run_with_gates()`, gate injection in `build_from_config()`)
 
 ### Pipeline Configuration YAML Schema
-- [ ] 1.6 Create `PipelineConfig` Pydantic model in `quantlab/pipeline/config/models.py` with sections: `pipeline` (stages), `agents[]`, `gates[]`, `memory{}`, `risk{}`
-- [ ] 1.7 Add JSON Schema file `quantlab/pipeline/config/pipeline-config.schema.json` for YAML validation
-- [ ] 1.8 Implement `PipelineConfig.load(path)` with environment variable overrides (`QUANTLAB_PIPELINE_*` prefix) in `quantlab/pipeline/config/loader.py`
-- [ ] 1.9 Add config version field and migration helper in `quantlab/pipeline/config/migration.py`
+- [x] 1.6 Create `MultiAgentPipelineConfig` Pydantic model in `sdk/quantlab/pipeline/config/models.py` with sections: `pipeline` (stages), `agents[]`, `gates[]`, `memory{}`, `risk{}` (enhanced existing model with nested pipeline section support)
+- [x] 1.7 Add JSON Schema file `sdk/quantlab/pipeline/config/pipeline-config.schema.json` for YAML validation (enhanced with all new sections)
+- [x] 1.8 Implement `MultiAgentPipelineConfig.load(path)` with environment variable overrides (`QUANTLAB_PIPELINE_*` prefix) in `sdk/quantlab/pipeline/config/loader.py`
+- [x] 1.9 Add config version field and migration helper in `sdk/quantlab/pipeline/config/migration.py` (version field, v1→v2 migration, gate extraction)
 
 ### Pipeline Registry
-- [ ] 1.10 Create agent stage registry in `quantlab/pipeline/core/registry.py` mapping agent names to stage classes
-- [ ] 1.11 Implement `PipelineRunner.build_from_config(config: PipelineConfig)` that instantiates stages from registry using agent configs
-- [ ] 1.12 Add backward compatibility: ensure original 9 stages still work unchanged (regression test)
+- [x] 1.10 Create agent stage registry in `sdk/quantlab/pipeline/registry.py` mapping agent names to stage classes (7 agent + 5 gate alias stages registered alongside 11 SQX builtin stages)
+- [x] 1.11 Implement `PipelineRunner.build_from_config(config: MultiAgentPipelineConfig)` that instantiates stages from registry using agent configs
+- [x] 1.12 Add backward compatibility: ensure original 9 stages still work unchanged (regression test passes — 134 existing tests green)
 
 ### Tests (PR 1)
-- [ ] 1.13 Unit tests for `GateInterceptorStage`: mock callback, verify pause/resume/fallback/Engram recording
-- [ ] 1.14 Unit tests for all 8 new agent stages: verify `requires`/`provides` attributes match spec
-- [ ] 1.15 Unit test for `PipelineRunner.validate_contracts()`: valid pipeline passes, mismatched fails with correct error
-- [ ] 1.16 Integration test: load minimal pipeline YAML, build pipeline, verify 17 stages in correct order
-- [ ] 1.17 Regression test: basic 9-stage SQX pipeline executes without new stages
+- [x] 1.13 Unit tests for `GateInterceptorStage`: mock callback, verify pause/resume/fallback/Engram recording
+- [x] 1.14 Unit tests for all 8 new agent stages: verify `requires`/`provides` attributes match spec
+- [x] 1.15 Unit test for `PipelineRunner.validate_contracts()`: valid pipeline passes, mismatched fails with correct error
+- [x] 1.16 Integration test: load minimal pipeline YAML, build pipeline, verify stages in correct order
+- [x] 1.17 Regression test: basic 9-stage SQX pipeline executes without new stages
 
 ## Phase 2: Core Agents (Research Director + Research Agent + Builder Agent) (PR 2)
 

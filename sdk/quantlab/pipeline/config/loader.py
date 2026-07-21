@@ -1,4 +1,9 @@
-"""Pipeline configuration loader with environment variable overrides."""
+"""Pipeline configuration loader with environment variable overrides.
+
+Provides ``load_multi_agent_pipeline_config()`` as the primary loader,
+and ``MultiAgentPipelineConfig.load()`` as a convenience classmethod
+on the model.
+"""
 
 from __future__ import annotations
 
@@ -101,7 +106,7 @@ def merge_configs(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, 
 def load_multi_agent_pipeline_config(
     path: str,
     apply_env_overrides: bool = True,
-) -> Any:
+) -> MultiAgentPipelineConfig:
     """Load multi-agent pipeline configuration from YAML with env overrides.
 
     Args:
@@ -115,13 +120,11 @@ def load_multi_agent_pipeline_config(
         FileNotFoundError: If config file doesn't exist.
         ValidationError: If configuration fails schema validation.
     """
-    from quantlab.pipeline.config.models import MultiAgentPipelineConfig
-
     path_obj = Path(path)
     if not path_obj.exists():
         raise FileNotFoundError(f"Pipeline config not found: {path}")
 
-    with path.open("r", encoding="utf-8") as f:
+    with path_obj.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
 
     # Apply environment variable overrides
@@ -139,7 +142,7 @@ def load_multi_agent_pipeline_config(
 
 
 def save_multi_agent_pipeline_config(
-    config: Any,
+    config: MultiAgentPipelineConfig,
     path: str,
 ) -> None:
     """Save multi-agent pipeline configuration to YAML.
