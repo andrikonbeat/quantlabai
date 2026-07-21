@@ -87,6 +87,8 @@ class ReportGenerator:
         statistics: StatsResult,
         phase_results: list[dict] | None = None,
         summary: dict | None = None,
+        agent_decisions: list[dict] | None = None,
+        comparison_campaigns: list[dict] | None = None,
     ) -> ReportResult:
         """Generate report from campaign data."""
 
@@ -97,14 +99,28 @@ class ReportGenerator:
         # Generate JSON report (always)
         if ReportFormat.JSON in self.config.formats:
             json_path = self._generate_json(
-                campaign_id, trades, equity, statistics, phase_results, summary
+                campaign_id,
+                trades,
+                equity,
+                statistics,
+                phase_results,
+                summary,
+                agent_decisions,
+                comparison_campaigns,
             )
             result.json_path = json_path
 
         # Generate HTML report
         if ReportFormat.HTML in self.config.formats:
             html_path = self._generate_html(
-                campaign_id, trades, equity, statistics, phase_results, summary
+                campaign_id,
+                trades,
+                equity,
+                statistics,
+                phase_results,
+                summary,
+                agent_decisions,
+                comparison_campaigns,
             )
             result.html_path = html_path
 
@@ -138,6 +154,8 @@ class ReportGenerator:
         statistics: StatsResult,
         phase_results: list[dict] | None,
         summary: dict | None,
+        agent_decisions: list[dict] | None = None,
+        comparison_campaigns: list[dict] | None = None,
     ) -> Path:
         """Generate machine-readable JSON report."""
 
@@ -181,6 +199,8 @@ class ReportGenerator:
             "executive_summary": exec_summary,
             "summary": summary or {},
             "phase_results": phase_results or [],
+            "agent_decisions": agent_decisions or [],
+            "comparison": comparison_campaigns or [],
         }
 
         json_path = self.config.output_dir / f"{campaign_id}_report.json"
@@ -195,6 +215,8 @@ class ReportGenerator:
         statistics: StatsResult,
         phase_results: list[dict] | None,
         summary: dict | None,
+        agent_decisions: list[dict] | None = None,
+        comparison_campaigns: list[dict] | None = None,
     ) -> Path:
         """Generate interactive HTML report with Plotly charts."""
 
@@ -212,6 +234,16 @@ class ReportGenerator:
         # Compute benchmark comparison
         benchmark_comparison = self._render_benchmark_comparison(statistics, equity)
 
+        # Agent audit section
+        agent_audit_section = ""
+        if agent_decisions:
+            agent_audit_section = self._render_agent_audit_section(agent_decisions)
+
+        # Comparison section
+        comparison_section = ""
+        if comparison_campaigns:
+            comparison_section = self._render_comparison_section(comparison_campaigns)
+
         # Render template
         html_content = self._render_html_template(
             campaign_id=campaign_id,
@@ -226,6 +258,8 @@ class ReportGenerator:
             plotly_available=self._plotly_available,
             executive_summary=executive_summary,
             benchmark_comparison=benchmark_comparison,
+            agent_audit_section=agent_audit_section,
+            comparison_section=comparison_section,
         )
 
         html_path = self.config.output_dir / f"{campaign_id}_report.html"
@@ -643,6 +677,114 @@ class ReportGenerator:
             {"metric": "Max Drawdown", "strategy": f"{strategy_max_dd:.2f}%", "benchmark": f"{bench_max_dd:.2f}% (N/A)"},
         ]
 
+    def _render_agent_audit_section(self, agent_decisions: list[dict]) -> str:
+        """Render the agent audit section from agent decisions.
+
+        Args:
+            agent_decisions: List of agent decision dicts from the campaign
+                phases. Each dict should include keys such as ``agent``,
+                ``decision``, ``reasoning``, ``timestamp``, and
+                ``confidence``.
+
+        Returns:
+            HTML string for the agent audit section, or an empty string if
+            ``agent_decisions`` is empty.
+        """
+        if not agent_decisions:
+            return ""
+
+        rows = ""
+        for decision in agent_decisions:
+            agent = decision.get("agent", "unknown")
+            decision_text = decision.get("decision", "")
+            reasoning = decision.get("reasoning", "")
+            confidence = decision.get("confidence", 0.0)
+            try:
+                confidence_str = f"{float(confidence):.0%}"
+            except (TypeError, ValueError):
+                confidence_str = str(confidence)
+
+            rows += f"""
+            <tr>
+                <td>{agent}</td>
+                <td>{decision_text}</td>
+                <td>{reasoning}</td>
+                <td>{confidence_str}</td>
+            </tr>"""
+
+        return f"""
+        <section class="section" id="agent-audit">
+            <h2>Agent Audit</h2>
+            <div class="card">
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Agent</th>
+                            <th>Decision</th>
+                            <th>Reasoning</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>{rows}
+                    </tbody>
+                </table>
+            </div>
+        </section>"""
+
+    def _render_comparison_section(self, comparison_campaigns: list[dict]) -> str:
+        """Render the multi-campaign comparison section.
+
+        Args:
+            comparison_campaigns: List of comparison campaign dicts. Each
+                dict should include keys such as ``campaign_id``,
+                ``statistics``, and ``trades``.
+
+        Returns:
+            HTML string for the comparison section, or an empty string if
+            ``comparison_campaigns`` is empty.
+        """
+        if not comparison_campaigns:
+            return ""
+
+        cards = ""
+        for campaign in comparison_campaigns:
+            campaign_id = campaign.get("campaign_id", "unknown")
+            stats = campaign.get("statistics", {})
+            sharpe = getattr(stats, "sharpe_ratio", stats.get("sharpe_ratio", 0.0))
+            max_dd = getattr(stats, "max_drawdown", stats.get("max_drawdown", 0.0))
+            win_rate = getattr(stats, "win_rate", stats.get("win_rate", 0.0))
+
+            try:
+                sharpe_str = f"{float(sharpe):.2f}"
+            except (TypeError, ValueError):
+                sharpe_str = str(sharpe)
+            try:
+                max_dd_str = f"{float(max_dd):.2f}%"
+            except (TypeError, ValueError):
+                max_dd_str = str(max_dd)
+            try:
+                win_rate_str = f"{float(win_rate):.2%}"
+            except (TypeError, ValueError):
+                win_rate_str = str(win_rate)
+
+            cards += f"""
+            <div class="card">
+                <h3>Campaign: {campaign_id}</h3>
+                <table class="metrics-table">
+                    <tr><td>Sharpe Ratio</td><td>{sharpe_str}</td></tr>
+                    <tr><td>Max Drawdown</td><td>{max_dd_str}</td></tr>
+                    <tr><td>Win Rate</td><td>{win_rate_str}</td></tr>
+                </table>
+            </div>"""
+
+        return f"""
+        <section class="section" id="comparison">
+            <h2>Campaign Comparison</h2>
+            <div class="grid">
+                {cards}
+            </div>
+        </section>"""
+
     def _render_html_template(
         self,
         campaign_id: str,
@@ -657,6 +799,8 @@ class ReportGenerator:
         plotly_available: bool,
         executive_summary: dict[str, Any] | None = None,
         benchmark_comparison: list[dict[str, Any]] | None = None,
+        agent_audit_section: str = "",
+        comparison_section: str = "",
     ) -> str:
         """Render the complete HTML report using Jinja2 template."""
 
@@ -843,6 +987,8 @@ class ReportGenerator:
             plotly_status="Available" if plotly_available else "Not installed",
             generation_time=time.strftime('%Y-%m-%d %H:%M:%S'),
             generated_at=time.strftime('%Y-%m-%d %H:%M:%S'),
+            agent_audit_section=agent_audit_section,
+            comparison_section=comparison_section,
         )
 
 
@@ -854,6 +1000,8 @@ def generate_report(
     config: ReportConfig | None = None,
     phase_results: list[dict] | None = None,
     summary: dict | None = None,
+    agent_decisions: list[dict] | None = None,
+    comparison_campaigns: list[dict] | None = None,
 ) -> ReportResult:
     """Convenience function for generating a report."""
 
@@ -868,4 +1016,6 @@ def generate_report(
         statistics=statistics,
         phase_results=phase_results,
         summary=summary,
+        agent_decisions=agent_decisions,
+        comparison_campaigns=comparison_campaigns,
     )

@@ -32,7 +32,15 @@ from quantlab.tools.exceptions import ParseError
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-KNOWLEDGE_DIRS = ["raw", "structured", "graph", "embeddings", "datasets", "pipeline-runs"]
+KNOWLEDGE_DIRS = [
+    "raw",
+    "structured",
+    "graph",
+    "embeddings",
+    "datasets",
+    "pipeline-runs",
+    "agent-memory",
+]
 
 ALLOWED_EXTENSIONS = {".yaml", ".yml", ".json", ".csv", ".parquet"}
 
@@ -271,8 +279,9 @@ class KnowledgeStore:
         # Build base index dict
         doc: dict[str, object] = {
             "_generated": now_iso,
-            "_version": "2",
+            "_version": "3",
             "directories": directories,
+            "agent_memory": self._build_agent_memory_index(),
         }
 
         # Enhance with metrics/tags via Indexer (if available)
@@ -311,6 +320,7 @@ class KnowledgeStore:
             data = yaml.safe_load(raw)
             if not isinstance(data, dict):
                 return self.rebuild_index()
+            data = self._upgrade_index(data)
             return data
         except (yaml.YAMLError, OSError):
             return self.rebuild_index()
@@ -444,6 +454,90 @@ class KnowledgeStore:
                 h.update(chunk)
         return h.hexdigest()
 
+    @staticmethod
+    def _upgrade_index(data: dict[str, object]) -> dict[str, object]:
+        """Upgrade a legacy index schema to v3 with backward-compatible defaults."""
+        version = str(data.get("_version", "1"))
+        if version == "3":
+            return data
+
+        if version == "2":
+            data["_version"] = "3"
+            am_index = data.setdefault("agent_memory", {})
+            for path, info in (
+                data.get("directories", {}).get("agent-memory", {}).items()
+            ):
+                if isinstance(info, dict):
+                    info.setdefault("agent_name", None)
+                    info.setdefault("campaign_id", None)
+                    info.setdefault("memory_path", path)
+                    info.setdefault("checkpoint_paths", [])
+                    info.setdefault("last_updated", None)
+                    info.setdefault("embedding_ref", None)
+            return data
+
+        # v1 → v3 (best-effort)
+        if version == "1":
+            data["_version"] = "3"
+            data.setdefault("directories", {})
+            data.setdefault("agent_memory", {})
+        return data
+
+    def _build_agent_memory_index(self) -> dict[str, dict[str, object]]:
+        """Build an index of ``agent-memory/`` entries.
+
+        Returns:
+            Dict mapping memory file path -> metadata with agent_name,
+            campaign_id, checkpoint_paths, last_updated, and embedding_ref.
+        """
+        agent_memory_dir = self.root / "agent-memory"
+        if not agent_memory_dir.exists():
+            return {}
+
+        entries: dict[str, object] = {}
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        for memory_file in agent_memory_dir.rglob("memory.yaml"):
+            rel = str(memory_file.relative_to(self.root))
+            parts = memory_file.relative_to(agent_memory_dir).parts
+            agent_name = parts[0] if len(parts) > 0 else None
+            campaign_id = parts[1] if len(parts) > 1 else None
+
+            checkpoint_paths: list[str] = []
+            parent = memory_file.parent
+            if parent.exists():
+                for cp in parent.glob("checkpoints/*.yaml"):
+                    checkpoint_paths.append(
+                        str(cp.relative_to(self.root))
+                    )
+
+            embedding_ref = None
+            try:
+                from quantlab.knowledge.models import AgentMemoryEntry
+
+                entry = AgentMemoryEntry(
+                    agent_name=agent_name or "",
+                    campaign_id=campaign_id or "",
+                    memory_path=rel,
+                    checkpoint_paths=checkpoint_paths,
+                    last_updated=now_iso,
+                    embedding_ref=embedding_ref,
+                )
+                entries[rel] = entry.to_dict()
+            except Exception:
+                entries[rel] = {
+                    "agent_name": agent_name,
+                    "campaign_id": campaign_id,
+                    "memory_path": rel,
+                    "checkpoint_paths": checkpoint_paths,
+                    "last_updated": now_iso,
+                    "embedding_ref": None,
+                    "size": memory_file.stat().st_size,
+                    "sha256": self._hash_file(memory_file),
+                }
+
+        return entries
+
     # ── Tag Management ──────────────────────────────────────────────────────────
 
     def tag(self, campaign_id: str, tags: list[str]) -> None:
@@ -510,6 +604,83 @@ class KnowledgeStore:
 
         index = self.read_index()
         return QueryBuilder(index, self.root)
+
+    def find_similar_campaigns(
+        self,
+        campaign_id: str,
+        top_k: int = 10,
+        min_similarity: float = 0.7,
+    ) -> list[dict[str, object]]:
+        """Find campaigns similar to the target campaign using embeddings.
+
+        Loads embedding vectors from ``embeddings/`` and computes cosine
+        similarity against the target campaign's embedding.
+
+        Args:
+            campaign_id: Target campaign identifier.
+            top_k: Maximum number of similar campaigns to return.
+            min_similarity: Minimum cosine similarity threshold.
+
+        Returns:
+            List of dicts with ``campaign_id`` and ``similarity_score``.
+        """
+        embeddings_dir = self.root / "embeddings"
+        if not embeddings_dir.exists():
+            return []
+
+        import numpy as np
+
+        target_file = None
+        for ext in (".npy",):
+            candidate = embeddings_dir / f"{campaign_id}{ext}"
+            if candidate.exists():
+                target_file = candidate
+                break
+        if target_file is None:
+            # Also try parquet
+            import pandas as pd
+
+            parquet_file = embeddings_dir / f"{campaign_id}.parquet"
+            if parquet_file.exists():
+                try:
+                    df = pd.read_parquet(parquet_file)
+                    target_vec = df.iloc[:, 0].to_numpy(dtype=np.float64)
+                except Exception:
+                    return []
+            else:
+                return []
+        else:
+            target_vec = np.load(target_file)
+
+        target_norm = float(np.linalg.norm(target_vec))
+        if target_norm == 0:
+            return []
+
+        results: list[dict[str, object]] = []
+        for emb_path in embeddings_dir.iterdir():
+            if emb_path.stem == campaign_id:
+                continue
+            try:
+                if emb_path.suffix == ".npy":
+                    vec = np.load(emb_path)
+                else:
+                    continue
+                norm = float(np.linalg.norm(vec))
+                if norm == 0:
+                    continue
+                similarity = float(np.dot(target_vec, vec) / (target_norm * norm))
+                if similarity >= min_similarity:
+                    results.append(
+                        {
+                            "campaign_id": emb_path.stem,
+                            "similarity_score": similarity,
+                        }
+                    )
+            except Exception:
+                continue
+
+        results.sort(key=lambda x: x.get("similarity_score", 0.0), reverse=True)
+        return results[:top_k]
 
     # ── Enhanced Indexing ─────────────────────────────────────────────────────────
 
@@ -633,3 +804,74 @@ class KnowledgeStore:
                     continue
 
         return deleted
+
+    # ── Agent Memory ─────────────────────────────────────────────────────────────
+
+    def store_agent_memory(
+        self,
+        agent_name: str,
+        campaign_id: str,
+        artifact: dict[str, object],
+    ) -> str:
+        """Append an agent memory artifact to ``agent-memory/{agent}/{campaign}/memory.yaml``.
+
+        Args:
+            agent_name: Agent identifier (e.g. ``"research-agent"``).
+            campaign_id: Campaign identifier.
+            artifact: Memory artifact dict to append.
+
+        Returns:
+            Absolute path to the written memory file.
+        """
+        memory_dir = self.root / "agent-memory" / agent_name / campaign_id
+        memory_dir.mkdir(parents=True, exist_ok=True)
+
+        memory_file = memory_dir / "memory.yaml"
+        existing: list[dict[str, object]] = []
+        if memory_file.exists():
+            try:
+                data = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
+                if isinstance(data, list):
+                    existing = data
+                elif isinstance(data, dict):
+                    existing = [data]
+            except Exception:
+                existing = []
+
+        existing.append(artifact)
+        memory_file.write_text(
+            yaml.dump(existing, default_flow_style=False, sort_keys=False),
+            encoding="utf-8",
+        )
+        return str(memory_file)
+
+    def load_agent_memory(
+        self,
+        agent_name: str,
+        campaign_id: str,
+    ) -> list[dict[str, object]]:
+        """Load agent memory artifacts from Knowledge Lake.
+
+        Args:
+            agent_name: Agent identifier.
+            campaign_id: Campaign identifier.
+
+        Returns:
+            List of memory artifact dicts. Returns ``[]`` when the memory file
+            does not exist or cannot be parsed.
+        """
+        memory_file = (
+            self.root / "agent-memory" / agent_name / campaign_id / "memory.yaml"
+        )
+        if not memory_file.exists():
+            return []
+        try:
+            data = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                return data
+            if isinstance(data, dict):
+                return [data]
+        except Exception:
+            pass
+        return []
+

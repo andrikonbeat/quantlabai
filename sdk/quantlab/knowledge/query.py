@@ -76,6 +76,101 @@ class QueryBuilder:
         self._filter.offset = n
         return self
 
+    def filter_by_agent(self, agent_name: str) -> "QueryBuilder":
+        """Filter to specific agent's memory entries."""
+        self._filter.agent_name = agent_name
+        return self
+
+    def filter_by_campaign(self, campaign_id: str) -> "QueryBuilder":
+        """Filter to specific campaign across all agents."""
+        self._filter.campaign_id = campaign_id
+        return self
+
+    def search_agent_memory(
+        self,
+        text: str,
+        agent_name: str | None = None,
+        campaign_id: str | None = None,
+    ) -> list[dict[str, object]]:
+        """Full-text search in agent memory.yaml files.
+
+        Args:
+            text: Text pattern to search for (case-insensitive).
+            agent_name: Optional agent name filter.
+            campaign_id: Optional campaign filter.
+
+        Returns:
+            List of matching memory decision dicts.
+        """
+        if agent_name:
+            self._filter.agent_name = agent_name
+        if campaign_id:
+            self._filter.campaign_id = campaign_id
+
+        import yaml
+
+        memory_root = self._root / "agent-memory"
+        if not memory_root.exists():
+            return []
+
+        search_lower = text.lower()
+        results: list[dict[str, object]] = []
+        agents = (
+            [memory_root / agent_name]
+            if agent_name
+            else [d for d in memory_root.iterdir() if d.is_dir()]
+        )
+        for agent_dir in agents:
+            if not agent_dir.is_dir():
+                continue
+            campaigns = (
+                [agent_dir / campaign_id]
+                if campaign_id
+                else [d for d in agent_dir.iterdir() if d.is_dir()]
+            )
+            for camp_dir in campaigns:
+                if not camp_dir.is_dir():
+                    continue
+                memory_file = camp_dir / "memory.yaml"
+                if not memory_file.exists():
+                    continue
+                try:
+                    decisions = yaml.safe_load(
+                        memory_file.read_text(encoding="utf-8")
+                    ) or []
+                    if not isinstance(decisions, list):
+                        decisions = [decisions]
+                except Exception:
+                    continue
+                for dec in decisions:
+                    if search_lower in str(dec).lower():
+                        dec.setdefault("agent_name", agent_dir.name)
+                        dec.setdefault("campaign_id", camp_dir.name)
+                        results.append(dec)
+        return results
+
+    def search_similar_campaigns(
+        self,
+        campaign_id: str,
+        top_k: int = 10,
+        min_similarity: float = 0.7,
+    ) -> list[dict[str, object]]:
+        """Find campaigns similar to given campaign using embeddings.
+
+        Reads embedding vectors from the Knowledge Lake ``embeddings/`` directory
+        and returns the top matches by cosine similarity.
+
+        Args:
+            campaign_id: Target campaign identifier.
+            top_k: Maximum number of results to return.
+            min_similarity: Minimum cosine similarity threshold.
+
+        Returns:
+            List of dicts with ``campaign_id`` and ``similarity_score``.
+        """
+        store = KnowledgeStore(self._root)
+        return store.find_similar_campaigns(campaign_id, top_k, min_similarity)
+
     def execute(self, root: Path = None) -> "QueryResult":
         """Execute the query and return results."""
         import time
@@ -104,8 +199,9 @@ class QueryBuilder:
 
     def _extract_campaigns(self, index: dict) -> list:
         """Extract campaign summaries from index."""
-        from quantlab.knowledge.models import CampaignSummary, CampaignMetrics
-        campaigns = []
+        from quantlab.knowledge.models import AgentMemoryEntry, CampaignSummary
+
+        campaigns: list = []
 
         for dir_name in ["results", "campaigns"]:
             if dir_name not in index.get("directories", {}):
@@ -135,6 +231,26 @@ class QueryBuilder:
                     created=datetime.fromisoformat(info.get("created")) if info.get("created") else None,
                     path=info.get("path", ""),
                 ))
+
+        # Agent-memory entries
+        for rel_path, info in index.get("agent_memory", {}).items():
+            agent_name = info.get("agent_name")
+            campaign_id = info.get("campaign_id")
+            if not agent_name or not campaign_id:
+                continue
+            if self._filter.agent_name and agent_name != self._filter.agent_name:
+                continue
+            if self._filter.campaign_id and campaign_id != self._filter.campaign_id:
+                continue
+
+            campaigns.append(CampaignSummary(
+                campaign_id=campaign_id,
+                name=f"{agent_name}:{campaign_id}",
+                metrics=None,
+                tags=[f"agent:{agent_name}"],
+                created=None,
+                path=info.get("memory_path", rel_path),
+            ))
 
         return campaigns
 

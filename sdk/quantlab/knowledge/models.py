@@ -46,6 +46,8 @@ class QueryFilter:
     sort_ascending: bool = False
     limit: Optional[int] = None
     offset: int = 0
+    agent_name: Optional[str] = field(default=None)
+    campaign_id: Optional[str] = field(default=None)
 
 
 @dataclass
@@ -62,3 +64,29 @@ class TaggedCampaign:
     campaign_id: str
     tags: dict[str, str] = field(default_factory=dict)
     metadata: dict = field(default_factory=dict)
+
+
+@dataclass
+class AgentMemoryEntry:
+    """Metadata for a single agent memory artifact."""
+
+    agent_name: str
+    campaign_id: str
+    memory_path: str
+    checkpoint_paths: list[str] = field(default_factory=list)
+    last_updated: Optional[str] = None
+    embedding_ref: Optional[str] = None
+    memory_content: Optional[dict] = field(default=None)
+
+    def to_dict(self) -> dict[str, object]:
+        d: dict[str, object] = {
+            "agent_name": self.agent_name,
+            "campaign_id": self.campaign_id,
+            "memory_path": self.memory_path,
+            "checkpoint_paths": self.checkpoint_paths,
+            "last_updated": self.last_updated,
+            "embedding_ref": self.embedding_ref,
+        }
+        if self.memory_content is not None:
+            d["memory_content"] = self.memory_content
+        return d

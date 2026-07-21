@@ -96,6 +96,9 @@ class ReportConfig(BaseModel):
     template_path: Optional[Path] = None
     title: Optional[str] = None
     benchmark_equity: Optional[list] = None
+    include_agent_decisions: bool = Field(default=False, description="Include agent audit sections")
+    include_comparison_view: bool = Field(default=False, description="Include multi-campaign comparison")
+    comparison_campaign_ids: list[str] = Field(default_factory=list, description="Campaign IDs for comparison")
 
     @property
     def effective_title(self) -> str:
