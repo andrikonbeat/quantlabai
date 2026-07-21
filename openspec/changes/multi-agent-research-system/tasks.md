@@ -89,29 +89,29 @@ Chain strategy: feature-branch-chain
 ## Phase 3: Analysis Agents (Statistics + Reviewer + Portfolio) (PR 3)
 
 ### Statistics Agent
-- [ ] 3.1 Create `StatisticsAgent` in `quantlab/agents/statistics_agent.py` with `run(context)` method
-- [ ] 3.2 Implement statistics computation: call `statistics_engine.compute_all()` on exports, write `statistics`, `aggregate_stats`, `monte_carlo_bands`
-- [ ] 3.3 Add `StatisticsAggregator` integration for cross-campaign aggregation and Monte Carlo bands (configurable n_sims, percentiles)
-- [ ] 3.4 Implement rolling metrics computation for monitoring agent consumption
+- [x] 3.1 Create `StatisticsAgent` in `quantlab/agents/statistics_agent.py` with `run(context)` method
+- [x] 3.2 Implement statistics computation: call `statistics_engine.compute_all()` on exports, write `statistics`, `aggregate_stats`, `monte_carlo_bands`
+- [x] 3.3 Add `StatisticsAggregator` integration for cross-campaign aggregation and Monte Carlo bands (configurable n_sims, percentiles)
+- [x] 3.4 Implement rolling metrics computation for monitoring agent consumption
 
 ### Reviewer Agent
-- [ ] 3.5 Create `ReviewerAgent` in `quantlab/agents/reviewer_agent.py` with criteria evaluation logic
-- [ ] 3.6 Implement `evaluate(statistics, aggregate_stats, monte_carlo_bands)` returning `review_decision` (ACCEPT/ITERATE/REJECT) and `iteration_proposal`
-- [ ] 3.7 Add walk-forward degradation detection, Monte Carlo overfitting flags, benchmark comparison using `knowledge_query.QueryBuilder`
-- [ ] 3.8 Write `review_decision`, `iteration_proposal`, `wf_degradation`, `mc_overfit_flag`, `benchmark_comparison` to context
+- [x] 3.5 Create `ReviewerAgent` in `quantlab/agents/reviewer_agent.py` with criteria evaluation logic
+- [x] 3.6 Implement `evaluate(statistics, aggregate_stats, monte_carlo_bands)` returning `review_decision` (ACCEPT/ITERATE/REJECT) and `iteration_proposal`
+- [x] 3.7 Add walk-forward degradation detection, Monte Carlo overfitting flags, benchmark comparison using `knowledge_query.QueryBuilder`
+- [x] 3.8 Write `review_decision`, `iteration_proposal`, `wf_degradation`, `mc_overfit_flag`, `benchmark_comparison` to context
 
 ### Portfolio Agent
-- [ ] 3.9 Create `PortfolioAgent` in `quantlab/agents/portfolio_agent.py`
-- [ ] 3.10 Implement `run(context)`: read `selected_strategies` + `review_decision`, call `portfolio_master.build_cfx()`, run genetic optimization via `portfolio_master.run()`, compose portfolio CFX via `portfolio_composer.compose()`
-- [ ] 3.11 Add correlation analysis, risk budgeting, Kelly fraction capping using risk config from pipeline YAML
-- [ ] 3.12 Integrate walk-forward validation via `optimizer_automation.walk_forward()`
-- [ ] 3.13 Write `portfolio_cfx`, `portfolio_result`, `correlation_matrix`, `risk_allocation`, `wf_aggregate_stats` to context
+- [x] 3.9 Create `PortfolioAgent` in `quantlab/agents/portfolio_agent.py`
+- [x] 3.10 Implement `run(context)`: read `selected_strategies` + `review_decision`, call `portfolio_master.build_cfx()`, run genetic optimization via `portfolio_master.run()`, compose portfolio CFX via `portfolio_composer.compose()`
+- [x] 3.11 Add correlation analysis, risk budgeting, Kelly fraction capping using risk config from pipeline YAML
+- [x] 3.12 Integrate walk-forward validation via `optimizer_automation.walk_forward()`
+- [x] 3.13 Write `portfolio_cfx`, `portfolio_result`, `correlation_matrix`, `risk_allocation`, `wf_aggregate_stats` to context
 
 ### Tests (PR 3)
-- [ ] 3.14 Unit test: StatisticsAgent computes stats, aggregates, runs MC bands (mock exports)
-- [ ] 3.15 Unit test: ReviewerAgent evaluates criteria, returns correct decision + proposal
-- [ ] 3.16 Unit test: PortfolioAgent runs Portfolio Master, applies risk limits, composes CFX
-- [ ] 3.17 Integration test: Statistics → Reviewer → Portfolio agent chain with shared context
+- [x] 3.14 Unit test: StatisticsAgent computes stats, aggregates, runs MC bands (mock exports)
+- [x] 3.15 Unit test: ReviewerAgent evaluates criteria, returns correct decision + proposal
+- [x] 3.16 Unit test: PortfolioAgent runs Portfolio Master, applies risk limits, composes CFX
+- [x] 3.17 Integration test: Statistics → Reviewer → Portfolio agent chain with shared context
 
 ## Phase 4: Gates & Deployment (PR 4)
 
