@@ -2,6 +2,8 @@
 
 Defines the domain model for quantitative research campaigns:
 markets, timeframes, strategy building blocks, and acceptance criteria.
+
+Extended for multi-agent pipeline with agent configs, gate configs, memory, and risk.
 """
 
 from __future__ import annotations
@@ -128,6 +130,63 @@ class Strategy(BaseModel):
     )
 
 
+# ── Extended configs for multi-agent pipeline ──────────────────────────────────
+
+
+class HypothesisConfig(BaseModel):
+    """A research hypothesis with testable parameters."""
+
+    name: str = Field(..., description="Hypothesis identifier")
+    description: str = Field(..., description="What this hypothesis tests")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Hypothesis parameters")
+    expected_outcome: str = Field(default="", description="Expected result if hypothesis holds")
+    confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Prior confidence 0-1")
+
+
+class IterationConfig(BaseModel):
+    """Configuration for iterative research loops."""
+
+    max_iterations: int = Field(default=5, ge=1, le=50, description="Maximum iteration cycles")
+    convergence_threshold: float = Field(default=0.01, gt=0.0, description="Improvement threshold to stop")
+    early_stop_patience: int = Field(default=2, ge=0, description="Iterations without improvement before stop")
+    auto_iterate: bool = Field(default=True, description="Automatically iterate on ITERATE decision")
+
+
+class GatePolicyConfig(BaseModel):
+    """Policy for a specific gate in the pipeline."""
+
+    gate_id: str = Field(..., description="Gate identifier (e.g., HUMAN_REVIEW_OBJECTIVES)")
+    required: bool = Field(default=True, description="Whether gate must pass")
+    auto_approve_on_timeout: bool = Field(default=False, description="Auto-approve if timeout")
+    escalation_path: list[str] = Field(default_factory=list, description="Escalation contacts")
+
+
+class AgentRefConfig(BaseModel):
+    """Reference to an agent with optional config override."""
+
+    name: str = Field(..., description="Agent name (research, builder, statistics, review, portfolio, deploy, monitor)")
+    config_overrides: dict[str, Any] = Field(default_factory=dict, description="Override agent default config")
+
+
+class MemoryConfig(BaseModel):
+    """Engram agent memory configuration."""
+
+    enabled: bool = Field(default=True, description="Enable agent memory persistence")
+    topic_prefix: str = Field(default="quantlab/agent", description="Engram topic prefix")
+    retention_days: int = Field(default=365, gt=0, description="Memory retention period")
+    cross_agent_sharing: bool = Field(default=True, description="Allow cross-agent memory access")
+
+
+class RiskConfig(BaseModel):
+    """Portfolio risk limits configuration."""
+
+    max_portfolio_drawdown: float = Field(default=0.20, gt=0.0, le=1.0, description="Max portfolio drawdown")
+    max_strategy_correlation: float = Field(default=0.7, ge=0.0, le=1.0, description="Max pairwise strategy correlation")
+    max_single_strategy_weight: float = Field(default=0.4, gt=0.0, le=1.0, description="Max weight per strategy")
+    kelly_fraction_cap: float = Field(default=0.25, gt=0.0, le=1.0, description="Kelly fraction cap")
+    var_confidence: float = Field(default=0.95, gt=0.0, lt=1.0, description="VaR confidence level")
+
+
 # ── Root config ────────────────────────────────────────────────────────────────
 
 
@@ -135,14 +194,24 @@ class ResearchConfig(BaseModel):
     """Top-level research campaign configuration.
 
     Serialises to/from YAML for versionable, human-readable definitions.
+    Extended for multi-agent pipeline with agents, gates, memory, risk configs.
     """
 
+    # Core campaign fields
     campaign: str = Field(..., description="Campaign name / identifier")
     market: Market
     timeframe: Timeframe
     building_blocks: list[BuildingBlock] = Field(default_factory=list)
     strategies: list[Strategy] = Field(default_factory=list)
     criteria: list[AcceptanceCriterion] = Field(default_factory=list)
+
+    # Multi-agent extensions
+    hypotheses: list[HypothesisConfig] = Field(default_factory=list, description="Research hypotheses to test")
+    iteration_config: IterationConfig = Field(default_factory=IterationConfig, description="Iteration control")
+    gate_policies: list[GatePolicyConfig] = Field(default_factory=list, description="Per-gate policies")
+    agents: list[AgentRefConfig] = Field(default_factory=list, description="Agent references with config overrides")
+    memory: MemoryConfig = Field(default_factory=MemoryConfig, description="Agent memory configuration")
+    risk: RiskConfig = Field(default_factory=RiskConfig, description="Portfolio risk limits")
 
     @model_validator(mode="after")
     def _validate_unique_strategy_names(self) -> ResearchConfig:
@@ -171,4 +240,40 @@ class ResearchConfig(BaseModel):
                         f"Strategy '{strategy.name}' references unknown building "
                         f"block '{ref}'. Available: {', '.join(sorted(block_names)) or '(none)'}"
                     )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_agent_names(self) -> ResearchConfig:
+        """Validate agent names against known agents."""
+        known_agents = {
+            "research", "builder", "statistics", "review",
+            "portfolio", "deploy", "monitor", "research_director"
+        }
+        for agent in self.agents:
+            if agent.name not in known_agents:
+                from quantlab.tools.exceptions import ValidationError
+
+                raise ValidationError(
+                    f"Unknown agent '{agent.name}'. Known agents: {', '.join(sorted(known_agents))}"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_gate_policies(self) -> ResearchConfig:
+        """Validate gate policies reference known gates."""
+        known_gates = {
+            "HUMAN_REVIEW_OBJECTIVES",
+            "HUMAN_APPROVE_ITERATION",
+            "HUMAN_APPROVE_PORTFOLIO",
+            "HUMAN_APPROVE_DEPLOY",
+            "HUMAN_REVIEW_PERFORMANCE",
+        }
+        for policy in self.gate_policies:
+            if policy.gate_id not in known_gates:
+                from quantlab.tools.exceptions import ValidationError
+
+                raise ValidationError(
+                    f"Unknown gate_id '{policy.gate_id}' in gate_policies. "
+                    f"Known gates: {', '.join(sorted(known_gates))}"
+                )
         return self
