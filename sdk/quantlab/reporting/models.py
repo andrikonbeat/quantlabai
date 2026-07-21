@@ -75,6 +75,16 @@ class ChartColors(BaseModel):
         }
 
 
+class ChartConfig(BaseModel):
+    """Configuration for individual chart generation."""
+
+    chart_id: str = ""
+    title: str = ""
+    height: int = 400
+    width: Optional[int] = None
+    colors: ChartColors = Field(default_factory=ChartColors)
+
+
 class ReportConfig(BaseModel):
     """Configuration for report generation."""
 

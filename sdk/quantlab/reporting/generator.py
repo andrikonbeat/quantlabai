@@ -435,6 +435,24 @@ class ReportGenerator:
                 template=template,
                 height=350,
                 margin=dict(l=50, r=20, t=50, b=50),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ),
+            )
+
+            charts["equity_curve"] = fig.to_json()
+
+            fig.update_layout(
+                title="Equity Curve",
+                xaxis_title="Time",
+                yaxis_title="Equity",
+                template=template,
+                height=350,
+                margin=dict(l=50, r=20, t=50, b=50),
             )
 
             charts["equity_curve"] = fig.to_json()
