@@ -1,0 +1,22 @@
+{
+  "campaign_id": "TestCampaign",
+  "generated_at": 1784497942.1978235,
+  "statistics": {
+    "profit_factor": null,
+    "sharpe_ratio": null,
+    "sortino_ratio": null,
+    "max_drawdown": null,
+    "mar_ratio": null,
+    "recovery_factor": null,
+    "expectancy": null,
+    "expectancy_ratio": null,
+    "win_rate": null,
+    "total_trades": null
+  },
+  "trade_count": 0,
+  "equity_points": 0,
+  "trades": [],
+  "equity_curve": [],
+  "summary": {},
+  "phase_results": []
+}

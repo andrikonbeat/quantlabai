@@ -44,7 +44,7 @@ from quantlab.cfx.dom import (
 from quantlab.cfx.patcher import CfxPatcher, ValidationError
 from quantlab.cfx.reader import CfxReader
 from quantlab.cfx.writer import CfxWriter
-from quantlab.translate.translator import generate_cfx_archive
+from quantlab.translate.translator import generate_cfx_xml
 
 __all__ = [
     "CfxArchive",
@@ -84,5 +84,5 @@ __all__ = [
     "add_ranking_condition",
     "enable_crosscheck",
     # Translator integration
-    "generate_cfx_archive",
+    "generate_cfx_xml",
 ]

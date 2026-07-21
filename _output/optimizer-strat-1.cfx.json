@@ -1,0 +1,67 @@
+{
+  "config": {
+    "task": {
+      "options": null,
+      "what_to_build": null,
+      "risk_money_mgmt": null,
+      "data": null,
+      "rankings": null,
+      "parts_to_improve": null,
+      "cross_checks": null,
+      "notes": null,
+      "blocks": null,
+      "atms": null,
+      "databanks": null,
+      "resources": null,
+      "automatic_portfolio_builder": null,
+      "portfolio_settings": null,
+      "optimization": {
+        "raw_xml": "<Optimization>\n  <Method value=\"Genetic\"/>\n  <ObjectiveFunction value=\"SharpeRatio\"/>\n  <WalkforwardCycles value=\"10\"/>\n  <OOTRatio value=\"0.3\"/>\n</Optimization>"
+      },
+      "optimization_parameters": {
+        "raw_xml": "<OptimizationParameters>\n  <Parameter name=\"PopulationSize\" min=\"100\" max=\"100\" step=\"1\"/>\n  <Parameter name=\"Generations\" min=\"50\" max=\"50\" step=\"1\"/>\n  <Parameter name=\"CrossoverRate\" min=\"0.8\" max=\"0.8\" step=\"0.1\"/>\n  <Parameter name=\"MutationRate\" min=\"0.1\" max=\"0.1\" step=\"0.01\"/>\n</OptimizationParameters>"
+      },
+      "walk_forward": {
+        "raw_xml": "<WalkForward>\n  <Cycles value=\"10\"/>\n  <OOTRatio value=\"0.3\"/>\n  <Anchored value=\"false\"/>\n</WalkForward>"
+      },
+      "databanks_section": null,
+      "rankings_section": null,
+      "cross_checks_section": null,
+      "retester_data": null,
+      "unknown_sections": []
+    },
+    "schema_version": "144.2953"
+  },
+  "task_files": {
+    "Optimizer-Task1.xml": {
+      "options": null,
+      "what_to_build": null,
+      "risk_money_mgmt": null,
+      "data": null,
+      "rankings": null,
+      "parts_to_improve": null,
+      "cross_checks": null,
+      "notes": null,
+      "blocks": null,
+      "atms": null,
+      "databanks": null,
+      "resources": null,
+      "automatic_portfolio_builder": null,
+      "portfolio_settings": null,
+      "optimization": {
+        "raw_xml": "<Optimization>\n  <Method value=\"Genetic\"/>\n  <ObjectiveFunction value=\"SharpeRatio\"/>\n  <WalkforwardCycles value=\"10\"/>\n  <OOTRatio value=\"0.3\"/>\n</Optimization>"
+      },
+      "optimization_parameters": {
+        "raw_xml": "<OptimizationParameters>\n  <Parameter name=\"PopulationSize\" min=\"100\" max=\"100\" step=\"1\"/>\n  <Parameter name=\"Generations\" min=\"50\" max=\"50\" step=\"1\"/>\n  <Parameter name=\"CrossoverRate\" min=\"0.8\" max=\"0.8\" step=\"0.1\"/>\n  <Parameter name=\"MutationRate\" min=\"0.1\" max=\"0.1\" step=\"0.01\"/>\n</OptimizationParameters>"
+      },
+      "walk_forward": {
+        "raw_xml": "<WalkForward>\n  <Cycles value=\"10\"/>\n  <OOTRatio value=\"0.3\"/>\n  <Anchored value=\"false\"/>\n</WalkForward>"
+      },
+      "databanks_section": null,
+      "rankings_section": null,
+      "cross_checks_section": null,
+      "retester_data": null,
+      "unknown_sections": []
+    }
+  }
+}

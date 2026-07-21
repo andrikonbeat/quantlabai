@@ -28,22 +28,39 @@ CHART_IDS = [
     "metrics_table",
 ]
 
+# Module-level availability flags
+PLOTLY_AVAILABLE: bool = False
+MATPLOTLIB_AVAILABLE: bool = False
+
+try:
+    import plotly  # noqa: F401
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    pass
+
+try:
+    import matplotlib  # noqa: F401
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    pass
+
 
 class ReportGenerator:
     """Generates HTML and JSON reports from CampaignResult data."""
 
     def __init__(self, config: ReportConfig):
         self.config = config
-        self._plotly_available = self._check_plotly()
+        self._plotly_available = PLOTLY_AVAILABLE
+        self._matplotlib_available = MATPLOTLIB_AVAILABLE
         self._jinja_env = self._create_jinja_env()
 
     @staticmethod
     def _check_plotly() -> bool:
-        try:
-            import plotly  # noqa: F401
-            return True
-        except ImportError:
-            return False
+        return PLOTLY_AVAILABLE
+
+    @staticmethod
+    def _check_matplotlib() -> bool:
+        return MATPLOTLIB_AVAILABLE
 
     def _create_jinja_env(self) -> Environment:
         """Create Jinja2 environment for template rendering."""
@@ -95,11 +112,19 @@ class ReportGenerator:
 
         # Add warnings
         if not self._plotly_available and ReportFormat.HTML in self.config.formats:
-            result.warnings.append(
-                "Plotly not installed; HTML report generated without interactive charts. "
-                "Install with: pip install quantlab[reporting]"
-            )
-            result.charts_generated = []
+            if self._matplotlib_available:
+                result.warnings.append(
+                    "Plotly not installed; using matplotlib static fallback. "
+                    "Install with: pip install quantlab[reporting] for interactive charts."
+                )
+                result.charts_generated = CHART_IDS
+            else:
+                result.warnings.append(
+                    "Plotly not installed; HTML report generated without charts. "
+                    "Install with: pip install quantlab[reporting] for interactive charts "
+                    "or pip install quantlab[reporting-matplotlib] for static charts."
+                )
+                result.charts_generated = []
         else:
             result.charts_generated = CHART_IDS
 
@@ -115,6 +140,19 @@ class ReportGenerator:
         summary: dict | None,
     ) -> Path:
         """Generate machine-readable JSON report."""
+
+        # Compute executive summary for JSON
+        exec_summary = self._render_executive_summary(statistics)
+
+        benchmark_equity_json = None
+        if self.config.benchmark_equity:
+            benchmark_equity_json = [
+                {
+                    "timestamp": e.timestamp.isoformat() if hasattr(e.timestamp, "isoformat") else str(e.timestamp),
+                    "equity": e.equity,
+                }
+                for e in self.config.benchmark_equity
+            ]
 
         json_data = {
             "campaign_id": campaign_id,
@@ -139,6 +177,8 @@ class ReportGenerator:
                 }
                 for e in equity
             ],
+            "benchmark_equity": benchmark_equity_json,
+            "executive_summary": exec_summary,
             "summary": summary or {},
             "phase_results": phase_results or [],
         }
@@ -158,10 +198,19 @@ class ReportGenerator:
     ) -> Path:
         """Generate interactive HTML report with Plotly charts."""
 
-        # Prepare chart JSON for embedding
+        # Prepare chart JSON for embedding (Plotly) or base64 PNG (matplotlib)
         charts = {}
-        if self._plotly_available and self.config.include_charts:
-            charts = self._create_charts(trades, equity, statistics)
+        if self.config.include_charts:
+            if self._plotly_available:
+                charts = self._create_charts(trades, equity, statistics)
+            elif self._matplotlib_available:
+                charts = self._create_charts_matplotlib(trades, equity, statistics)
+
+        # Compute executive summary
+        executive_summary = self._render_executive_summary(statistics)
+
+        # Compute benchmark comparison
+        benchmark_comparison = self._render_benchmark_comparison(statistics, equity)
 
         # Render template
         html_content = self._render_html_template(
@@ -175,6 +224,8 @@ class ReportGenerator:
             phase_results=phase_results,
             summary=summary,
             plotly_available=self._plotly_available,
+            executive_summary=executive_summary,
+            benchmark_comparison=benchmark_comparison,
         )
 
         html_path = self.config.output_dir / f"{campaign_id}_report.html"
@@ -190,6 +241,150 @@ class ReportGenerator:
         if hasattr(self.config, "chart_config") and self.config.chart_config:
             return self.config.chart_config.colors
         return ChartColors()
+
+    def _render_chart_matplotlib(self, chart_type: str, data: dict[str, Any]) -> str:
+        """Render a chart as a base64 PNG data URI using matplotlib.
+
+        Args:
+            chart_type: Type of chart ("equity_curve", "drawdown_underwater",
+                        "trade_scatter", "metrics_table").
+            data: Chart data dict with keys like "timestamps", "equities",
+                  "profits", "metrics", etc.
+
+        Returns:
+            Base64-encoded PNG data URI string.
+
+        Raises:
+            ImportError: If matplotlib is not available.
+        """
+        import io
+        import base64
+
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
+
+        fig, ax = plt.subplots(figsize=(8, 3.5))
+        colors = self._get_chart_colors()
+        theme = self.config.theme
+
+        if theme == ReportTheme.DARK:
+            fig.patch.set_facecolor("#1A1A2E")
+            ax.set_facecolor("#16213E")
+            ax.tick_params(colors="#EAEAEA")
+            ax.xaxis.label.set_color("#EAEAEA")
+            ax.yaxis.label.set_color("#EAEAEA")
+            ax.title.set_color("#EAEAEA")
+            for spine in ax.spines.values():
+                spine.set_color("#0F3460")
+
+        if chart_type == "equity_curve":
+            timestamps = data.get("timestamps", [])
+            equities = data.get("equities", [])
+            ax.plot(timestamps, equities, color=colors.equity_line, linewidth=1.5, label="Strategy")
+            if self.config.benchmark_equity:
+                bench_e = self.config.benchmark_equity
+                bench_ts = [e.timestamp for e in bench_e]
+                bench_eq = [e.equity for e in bench_e]
+                if bench_ts and bench_eq:
+                    ax.plot(bench_ts, bench_eq, color=colors.benchmark_line,
+                            linewidth=1.5, linestyle="--", label="Benchmark")
+            ax.legend()
+            ax.set_title("Equity Curve")
+            ax.set_ylabel("Equity")
+
+        elif chart_type == "drawdown_underwater":
+            timestamps = data.get("timestamps", [])
+            equities = data.get("equities", [])
+            running_max = []
+            current_max = equities[0] if equities else 0
+            for eq in equities:
+                current_max = max(current_max, eq)
+                running_max.append(current_max)
+            drawdown = [(eq - mx) / mx * 100 if mx != 0 else 0
+                        for eq, mx in zip(equities, running_max)]
+            ax.fill_between(timestamps, drawdown, 0,
+                            color=colors.drawdown_fill, alpha=0.5)
+            ax.plot(timestamps, drawdown, color=colors.drawdown_line, linewidth=1)
+            ax.set_title("Drawdown Underwater")
+            ax.set_ylabel("Drawdown %")
+
+        elif chart_type == "trade_scatter":
+            profits = data.get("profits", [])
+            ax.scatter(range(len(profits)), profits, c=[
+                colors.trade_win if p >= 0 else colors.trade_loss
+                for p in profits
+            ], s=20)
+            ax.axhline(y=0, color=colors.grid, linestyle="--", linewidth=0.5)
+            ax.set_title("Trade P&L Distribution")
+            ax.set_ylabel("Profit/Loss")
+
+        elif chart_type == "metrics_table":
+            ax.axis("off")
+            metrics = data.get("metrics", {})
+            table_data = [[k, str(v)] for k, v in metrics.items()]
+            ax.table(cellText=table_data, colLabels=["Metric", "Value"],
+                     loc="center", cellLoc="left")
+            ax.set_title("Key Metrics")
+
+        fig.tight_layout()
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+        plt.close(fig)
+        buf.seek(0)
+        b64 = base64.b64encode(buf.read()).decode("utf-8")
+        return f"data:image/png;base64,{b64}"
+
+    def _create_charts_matplotlib(
+        self,
+        trades: list[Trade],
+        equity: list[EquityPoint],
+        statistics: StatsResult,
+    ) -> dict[str, str]:
+        """Create charts using matplotlib fallback (base64 PNG data URIs)."""
+        charts = {}
+        metrics = self._get_metrics_table(statistics)
+
+        # 1. Equity Curve
+        if equity:
+            try:
+                data = {
+                    "timestamps": [e.timestamp for e in equity],
+                    "equities": [e.equity for e in equity],
+                }
+                charts["equity_curve"] = self._render_chart_matplotlib("equity_curve", data)
+            except Exception:
+                pass
+
+        # 2. Drawdown
+        if equity:
+            try:
+                data = {
+                    "timestamps": [e.timestamp for e in equity],
+                    "equities": [e.equity for e in equity],
+                }
+                charts["drawdown_underwater"] = self._render_chart_matplotlib("drawdown_underwater", data)
+            except Exception:
+                pass
+
+        # 3. Trade Scatter
+        if trades:
+            try:
+                profits = [getattr(t, "profit", 0.0) for t in trades]
+                data = {"profits": profits}
+                charts["trade_scatter"] = self._render_chart_matplotlib("trade_scatter", data)
+            except Exception:
+                pass
+
+        # 4. Metrics Table
+        try:
+            data = {"metrics": metrics}
+            charts["metrics_table"] = self._render_chart_matplotlib("metrics_table", data)
+        except Exception:
+            pass
+
+        return charts
 
     def _create_charts(
         self,
@@ -232,6 +427,24 @@ class ReportGenerator:
                         name="Benchmark",
                         line=dict(color=colors.benchmark_line, width=2, dash="dash"),
                     ))
+
+            fig.update_layout(
+                title="Equity Curve",
+                xaxis_title="Time",
+                yaxis_title="Equity",
+                template=template,
+                height=350,
+                margin=dict(l=50, r=20, t=50, b=50),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1
+                ),
+            )
+
+            charts["equity_curve"] = fig.to_json()
 
             fig.update_layout(
                 title="Equity Curve",
@@ -360,6 +573,76 @@ class ReportGenerator:
             "Recovery Factor": fmt(getattr(statistics, "recovery_factor", None)),
         }
 
+    def _render_executive_summary(self, statistics: StatsResult) -> dict[str, Any]:
+        """Compute executive summary with assessment and indicator."""
+        sharpe = getattr(statistics, "sharpe_ratio", None) or 0.0
+        profit_factor = getattr(statistics, "profit_factor", None) or 0.0
+        max_dd = getattr(statistics, "max_drawdown", None) or 0.0
+
+        if sharpe >= 2.0:
+            assessment = "Strong risk-adjusted returns"
+            indicator = "green"
+        elif sharpe >= 1.0:
+            assessment = "Moderate risk-adjusted returns"
+            indicator = "amber"
+        else:
+            assessment = "Weak risk-adjusted returns"
+            indicator = "red"
+
+        # Compute net_profit from recovery_factor * max_drawdown
+        recovery_factor = getattr(statistics, "recovery_factor", None) or 0.0
+        net_profit = recovery_factor * max_dd if max_dd > 0 else 0.0
+
+        return {
+            "net_profit": net_profit,
+            "sharpe": sharpe,
+            "max_drawdown": max_dd,
+            "win_rate": 0.0,
+            "profit_factor": profit_factor,
+            "assessment": assessment,
+            "indicator": indicator,
+        }
+
+    def _render_benchmark_comparison(
+        self,
+        statistics: StatsResult,
+        equity: list[EquityPoint],
+    ) -> list[dict[str, Any]] | None:
+        """Compute strategy vs benchmark comparison when benchmark data provided.
+
+        Args:
+            statistics: Strategy statistics result.
+            equity: Strategy equity curve.
+
+        Returns:
+            List of dicts with metric, strategy, benchmark values, or None.
+        """
+        if not self.config.benchmark_equity:
+            return None
+
+        # Strategy metrics
+        strategy_return = (
+            (equity[-1].equity - equity[0].equity) / equity[0].equity * 100
+            if len(equity) >= 2 else 0.0
+        )
+        strategy_sharpe = getattr(statistics, "sharpe_ratio", None) or 0.0
+        strategy_max_dd = getattr(statistics, "max_drawdown", None) or 0.0
+
+        # Benchmark metrics
+        bench = self.config.benchmark_equity
+        bench_return = (
+            (bench[-1].equity - bench[0].equity) / bench[0].equity * 100
+            if len(bench) >= 2 else 0.0
+        )
+        bench_sharpe = 0.0  # Not available from equity alone
+        bench_max_dd = 0.0
+
+        return [
+            {"metric": "Total Return", "strategy": f"{strategy_return:.2f}%", "benchmark": f"{bench_return:.2f}%"},
+            {"metric": "Sharpe Ratio", "strategy": f"{strategy_sharpe:.2f}", "benchmark": f"{bench_sharpe:.2f} (N/A)"},
+            {"metric": "Max Drawdown", "strategy": f"{strategy_max_dd:.2f}%", "benchmark": f"{bench_max_dd:.2f}% (N/A)"},
+        ]
+
     def _render_html_template(
         self,
         campaign_id: str,
@@ -372,6 +655,8 @@ class ReportGenerator:
         phase_results: list[dict] | None,
         summary: dict | None,
         plotly_available: bool,
+        executive_summary: dict[str, Any] | None = None,
+        benchmark_comparison: list[dict[str, Any]] | None = None,
     ) -> str:
         """Render the complete HTML report using Jinja2 template."""
 
@@ -426,12 +711,20 @@ class ReportGenerator:
         # Prepare template context
         theme_class = f"theme-{theme_value}"
 
+        matplotlib_available = not plotly_available and self._matplotlib_available and charts
         charts_html = ""
         if plotly_available and charts:
             for chart_id, chart_json in charts.items():
                 charts_html += f"""
                 <div class="chart-container" id="{chart_id}">
                     <div id="plotly-{chart_id}"></div>
+                </div>
+                """
+        elif matplotlib_available:
+            for chart_id, chart_data in charts.items():
+                charts_html += f"""
+                <div class="chart-container" id="{chart_id}">
+                    <img src="{chart_data}" alt="{chart_id}" style="width:100%;max-width:800px;">
                 </div>
                 """
 
@@ -451,6 +744,47 @@ class ReportGenerator:
                     <td>{p.get('detail', '')}</td>
                     <td>{p.get('duration', '')}s</td>
                 </tr>"""
+
+        # Executive summary section
+        executive_summary_section = ""
+        if executive_summary:
+            indicator = executive_summary.get("indicator", "amber")
+            indicator_colors = {"green": "#2A9D8F", "amber": "#F4A261", "red": "#E63946"}
+            indicator_color = indicator_colors.get(indicator, "#F4A261")
+            executive_summary_section = f"""
+            <section class="section" id="executive-summary">
+                <h2>Executive Summary</h2>
+                <div class="card">
+                    <div class="indicator-bar" style="background:{indicator_color};padding:4px 16px;border-radius:4px;color:white;font-weight:bold;text-align:center;">
+                        {executive_summary.get('assessment', '')}
+                    </div>
+                    <table class="metrics-table">
+                        <tr><td>Net Profit</td><td>{executive_summary.get('net_profit', 0):.2f}</td></tr>
+                        <tr><td>Sharpe Ratio</td><td>{executive_summary.get('sharpe', 0):.2f}</td></tr>
+                        <tr><td>Max Drawdown</td><td>{executive_summary.get('max_drawdown', 0):.2f}%</td></tr>
+                        <tr><td>Win Rate</td><td>{executive_summary.get('win_rate', 0):.2%}</td></tr>
+                        <tr><td>Profit Factor</td><td>{executive_summary.get('profit_factor', 0):.2f}</td></tr>
+                    </table>
+                </div>
+            </section>"""
+
+        # Benchmark comparison section
+        benchmark_section = ""
+        if benchmark_comparison:
+            bench_rows = "".join(
+                f"<tr><td>{b['metric']}</td><td>{b['strategy']}</td><td>{b['benchmark']}</td></tr>"
+                for b in benchmark_comparison
+            )
+            benchmark_section = f"""
+            <section class="section" id="benchmark-comparison">
+                <h2>Benchmark Comparison</h2>
+                <div class="card">
+                    <table class="metrics-table">
+                        <thead><tr><th>Metric</th><th>Strategy</th><th>Benchmark</th></tr></thead>
+                        {bench_rows}
+                    </table>
+                </div>
+            </section>"""
 
         summary_rows = ""
         if summary:
@@ -478,6 +812,11 @@ class ReportGenerator:
                 phase_results=phase_results,
                 charts_json=json.dumps(charts),
                 plotly_available=plotly_available,
+                matplotlib_available=matplotlib_available,
+                executive_summary=executive_summary or {},
+                executive_summary_section=executive_summary_section,
+                benchmark_comparison=benchmark_comparison or [],
+                benchmark_section=benchmark_section,
                 generation_time=time.strftime('%Y-%m-%d %H:%M:%S'),
             )
 
@@ -497,6 +836,8 @@ class ReportGenerator:
             phase_results=phase_results,
             phase_results_section=phase_rows if phase_results else "",
             summary_section=f"<section class='section'><h2>Summary</h2><div class='card'><table class='metrics-table'>{summary_rows}</table></div></section>" if summary else "",
+            executive_summary_section=executive_summary_section,
+            benchmark_section=benchmark_section,
             charts_json=json.dumps(charts),
             plotly_available=plotly_available,
             plotly_status="Available" if plotly_available else "Not installed",

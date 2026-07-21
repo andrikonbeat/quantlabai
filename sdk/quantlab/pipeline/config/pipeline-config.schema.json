@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://quantlab.ai/schemas/pipeline-config.schema.json",
+  "title": "QuantLab Multi-Agent Pipeline Configuration",
+  "description": "Schema for declarative pipeline YAML with agents, gates, memory, and risk sections",
+  "type": "object",
+  "required": ["pipeline"],
+  "additionalProperties": false,
+  "properties": {
+    "pipeline": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "default": "" },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$", "default": "1.0.0" },
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string", "enum": [
+                "validate", "translate", "daemon_start", "load_config", "run_campaign",
+                "poll_campaign", "campaign", "export", "read", "compute_stats",
+                "knowledge_store", "report",
+                "research", "builder", "statistics", "review", "portfolio",
+                "deploy", "monitor", "research_director",
+                "gate_human_review_objectives", "gate_human_approve_iteration",
+                "gate_human_approve_portfolio", "gate_human_approve_deploy",
+                "gate_human_review_performance"
+              ]},
+              "type": { "type": "string", "enum": ["builtin", "custom"] },
+              "config": { "type": "object", "additionalProperties": true }
+            }
+          }
+        }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "model": { "type": "string", "default": "gpt-4" },
+          "temperature": { "type": "number", "minimum": 0.0, "maximum": 2.0, "default": 0.7 },
+          "max_retries": { "type": "integer", "minimum": 0, "default": 2 },
+          "timeout_seconds": { "type": "integer", "minimum": 1, "default": 3600 },
+          "custom_params": { "type": "object", "additionalProperties": true, "default": {} }
+        }
+      }
+    },
+    "gates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["gate_id"],
+        "additionalProperties": false,
+        "properties": {
+          "gate_id": { "type": "string", "enum": [
+            "HUMAN_REVIEW_OBJECTIVES",
+            "HUMAN_APPROVE_ITERATION",
+            "HUMAN_APPROVE_PORTFOLIO",
+            "HUMAN_APPROVE_DEPLOY",
+            "HUMAN_REVIEW_PERFORMANCE"
+          ]},
+          "timeout_hours": { "type": "integer", "minimum": 1, "default": 24 },
+          "fallback": { "type": "string", "enum": ["ABORT", "CONTINUE", "ESCALATE", "RETRY"], "default": "ABORT" },
+          "escalate_to": { "type": ["string", "null"], "default": null },
+          "notifications": { "type": "array", "items": { "type": "string" }, "default": [] },
+          "slack_channel": { "type": ["string", "null"], "default": null }
+        }
+      },
+      "minItems": 5,
+      "maxItems": 5
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "topic_prefix": { "type": "string", "default": "quantlab/agent" },
+        "retention_days": { "type": "integer", "minimum": 1, "default": 365 },
+        "cross_agent_sharing": { "type": "boolean", "default": true }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_portfolio_drawdown": { "type": "number", "minimum": 0.0, "exclusiveMinimum": true, "maximum": 1.0, "default": 0.20 },
+        "max_strategy_correlation": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 0.7 },
+        "max_single_strategy_weight": { "type": "number", "minimum": 0.0, "exclusiveMinimum": true, "maximum": 1.0, "default": 0.4 },
+        "kelly_fraction_cap": { "type": "number", "minimum": 0.0, "exclusiveMinimum": true, "maximum": 1.0, "default": 0.25 },
+        "var_confidence": { "type": "number", "minimum": 0.0, "exclusiveMinimum": true, "maximum": 1.0, "exclusiveMaximum": true, "default": 0.95 }
+      }
+    }
+  }
+}

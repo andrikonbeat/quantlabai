@@ -1,0 +1,77 @@
+{
+  "config": {
+    "task": {
+      "options": null,
+      "what_to_build": null,
+      "risk_money_mgmt": null,
+      "data": {
+        "name": "Data",
+        "settings": {
+          "EURUSD_H1": "true"
+        }
+      },
+      "rankings": null,
+      "parts_to_improve": null,
+      "cross_checks": null,
+      "notes": null,
+      "blocks": null,
+      "atms": null,
+      "databanks": null,
+      "resources": null,
+      "automatic_portfolio_builder": null,
+      "portfolio_settings": null,
+      "optimization": null,
+      "optimization_parameters": null,
+      "walk_forward": null,
+      "databanks_section": null,
+      "rankings_section": {
+        "raw_xml": "<Rankings>\n  <MinTrades value=\"30\"/>\n  <ConfidenceLevel value=\"0.95\"/>\n</Rankings>"
+      },
+      "cross_checks_section": {
+        "raw_xml": "<CrossChecks>\n  <MonteCarlo enabled=\"true\" runs=\"100\" percentile=\"95\"/>\n  <WalkForward enabled=\"true\" cycles=\"5\"/>\n  <ConfidenceLevel value=\"0.95\"/>\n</CrossChecks>"
+      },
+      "retester_data": {
+        "raw_xml": "<RetesterData>\n  <MonteCarloRuns value=\"100\"/>\n  <WalkforwardCycles value=\"5\"/>\n  <ConfidenceLevel value=\"0.95\"/>\n  <MinTrades value=\"30\"/>\n  <MonteCarloPercentile value=\"95\"/>\n  <Databanks>\n    <Databank name=\"EURUSD_H1\" enabled=\"true\"/>\n  </Databanks>\n</RetesterData>"
+      },
+      "unknown_sections": []
+    },
+    "schema_version": "144.2953"
+  },
+  "task_files": {
+    "Retester-Task1.xml": {
+      "options": null,
+      "what_to_build": null,
+      "risk_money_mgmt": null,
+      "data": {
+        "name": "Data",
+        "settings": {
+          "EURUSD_H1": "true"
+        }
+      },
+      "rankings": null,
+      "parts_to_improve": null,
+      "cross_checks": null,
+      "notes": null,
+      "blocks": null,
+      "atms": null,
+      "databanks": null,
+      "resources": null,
+      "automatic_portfolio_builder": null,
+      "portfolio_settings": null,
+      "optimization": null,
+      "optimization_parameters": null,
+      "walk_forward": null,
+      "databanks_section": null,
+      "rankings_section": {
+        "raw_xml": "<Rankings>\n  <MinTrades value=\"30\"/>\n  <ConfidenceLevel value=\"0.95\"/>\n</Rankings>"
+      },
+      "cross_checks_section": {
+        "raw_xml": "<CrossChecks>\n  <MonteCarlo enabled=\"true\" runs=\"100\" percentile=\"95\"/>\n  <WalkForward enabled=\"true\" cycles=\"5\"/>\n  <ConfidenceLevel value=\"0.95\"/>\n</CrossChecks>"
+      },
+      "retester_data": {
+        "raw_xml": "<RetesterData>\n  <MonteCarloRuns value=\"100\"/>\n  <WalkforwardCycles value=\"5\"/>\n  <ConfidenceLevel value=\"0.95\"/>\n  <MinTrades value=\"30\"/>\n  <MonteCarloPercentile value=\"95\"/>\n  <Databanks>\n    <Databank name=\"EURUSD_H1\" enabled=\"true\"/>\n  </Databanks>\n</RetesterData>"
+      },
+      "unknown_sections": []
+    }
+  }
+}
