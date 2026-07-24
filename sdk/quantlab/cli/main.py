@@ -53,6 +53,7 @@ from quantlab.cli.pipeline_commands import (
 
 # Knowledge command handlers (Phase 5c)
 from quantlab.cli.knowledge_commands import add_knowledge_subparser
+from quantlab.cli.agent_commands import add_agent_subparser
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Constants & Defaults
@@ -1072,6 +1073,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ── knowledge ──────────────────────────────────────────────────────────────
     add_knowledge_subparser(subparsers)
+
+    # ── agent ──────────────────────────────────────────────────────────────────
+    add_agent_subparser(subparsers)
 
     # ── pipeline ───────────────────────────────────────────────────────────────
     p_pipeline = subparsers.add_parser("pipeline", help="Pipeline execution and management")

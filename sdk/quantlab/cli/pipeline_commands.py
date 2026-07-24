@@ -354,6 +354,55 @@ def add_pipeline_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_history.add_argument("--status", choices=["running", "completed", "failed"], help="Filter by status")
     p_history.set_defaults(func=cmd_pipeline_history)
 
+    # pipeline validate - PR 6
+    p_validate = pipeline_sub.add_parser("validate", help="Validate pipeline configuration")
+    _add_common_args(p_validate)
+    p_validate.add_argument("config", help="Path to pipeline YAML config file")
+    p_validate.set_defaults(func=cmd_pipeline_validate)
+
+
+async def cmd_pipeline_validate(args: argparse.Namespace) -> int:
+    """Validate pipeline configuration file."""
+    from quantlab.pipeline.config.models import MultiAgentPipelineConfig
+    from quantlab.pipeline.config.loader import MultiAgentPipelineConfigLoader
+    
+    try:
+        # Load and validate the configuration
+        config = MultiAgentPipelineConfig.load(args.config)
+        
+        # Additional validation - run contract validation
+        from quantlab.pipeline.runner import PipelineRunner
+        from quantlab.pipeline.registry import PipelineRegistry
+        
+        # Create a runner to validate contracts
+        registry = PipelineRegistry()
+        runner = PipelineRunner(registry=registry)
+        
+        # Build pipeline from config to validate contracts
+        pipeline = runner.build_from_config(config)
+        
+        # Validate contracts
+        try:
+            runner.validate_contracts(pipeline)
+            print_human(f"✓ Configuration '{args.config}' is valid")
+            print_human(f"  Pipeline: {config.pipeline.name if config.pipeline else 'unnamed'}")
+            print_human(f"  Stages: {len(pipeline)}")
+            if config.agents:
+                print_human(f"  Agents: {len(config.agents)}")
+            if hasattr(config, 'gates') and config.gates:
+                print_human(f"  Gates: {len(config.gates)}")
+            return 0
+        except Exception as e:
+            print_error(f"Contract validation failed: {e}")
+            return 1
+            
+    except FileNotFoundError:
+        print_error(f"Configuration file not found: {args.config}")
+        return 1
+    except Exception as e:
+        print_error(f"Failed to validate configuration: {e}")
+        return 1
+
 
 def dispatch_pipeline(args: argparse.Namespace) -> int:
     """Dispatch pipeline subcommand using async runner."""
