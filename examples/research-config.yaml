@@ -1,0 +1,172 @@
+# Research Configuration Example — Full DSL with Multi-Agent Extensions
+# ====================================================================
+# This example demonstrates the complete ResearchConfig DSL with all
+# PR 2 extensions: hypotheses[], iteration_config{}, gate_policies{},
+# agents[], memory{}, and risk{}.
+#
+# Usage:
+#   from quantlab.dsl.parser import parse_yaml
+#   config = parse_yaml("examples/research-config.yaml")
+#   print(config.campaign, len(config.hypotheses), "hypotheses")
+
+campaign: "Mean Reversion EURUSD H1 — Multi-Agent Campaign"
+market: EURUSD
+timeframe: H1
+
+# ── Building Blocks ──────────────────────────────────────────────────────────
+building_blocks:
+  - name: RSI_MeanReversion
+    indicator:
+      name: RSI
+      params:
+        period: 14
+        oversold: 30
+        overbought: 70
+    entry:
+      description: "RSI oversold entry"
+      conditions:
+        - "rsi(14) < 30"
+    exit:
+      description: "RSI overbought exit"
+      conditions:
+        - "rsi(14) > 70"
+
+  - name: BollingerBands
+    indicator:
+      name: BB
+      params:
+        period: 20
+        deviation: 2.0
+    entry:
+      description: "Bollinger lower band touch"
+      conditions:
+        - "close < bb_lower(20, 2)"
+
+  - name: ATRFilter
+    indicator:
+      name: ATR
+      params:
+        period: 14
+
+# ── Strategies ───────────────────────────────────────────────────────────────
+strategies:
+  - name: PrimaryStrategy
+    direction: BOTH
+    building_blocks:
+      - RSI_MeanReversion
+      - BollingerBands
+      - ATRFilter
+
+# ── Acceptance Criteria ──────────────────────────────────────────────────────
+criteria:
+  - metric: profit_factor
+    operator: ">="
+    value: 1.5
+  - metric: sharpe
+    operator: ">="
+    value: 1.0
+  - metric: max_drawdown
+    operator: "<="
+    value: 0.15
+  - metric: win_rate
+    operator: ">="
+    value: 0.35
+
+# ── Hypotheses (PR 2 Extension) ─────────────────────────────────────────────
+hypotheses:
+  - name: mean_reversion_rsi_bb
+    description: "RSI(14) < 30 + Bollinger lower band touch entry, take profit at middle band"
+    confidence: 0.7
+    parameters:
+      rsi_period: 14
+      rsi_oversold: 30
+      bb_period: 20
+      bb_deviation: 2.0
+    expected_outcome: "Sharpe > 1.2, win rate > 40%, max drawdown < 15%"
+
+  - name: mean_reversion_dual_rsi
+    description: "RSI(7) cross above 30 after RSI(14) < 25 confirmation entry"
+    confidence: 0.55
+    parameters:
+      fast_rsi: 7
+      slow_rsi: 14
+      oversold_fast: 30
+      oversold_slow: 25
+    expected_outcome: "Higher win rate than single RSI, sharpe improvement 0.2"
+
+  - name: robustness_validation
+    description: "Validate across 2020-2024 with walk-forward, min 30 trades, max 20% drawdown"
+    confidence: 0.5
+    parameters:
+      min_trades: 30
+      max_drawdown: 0.20
+      wf_cycles: 10
+      wf_oot_ratio: 0.3
+    expected_outcome: "At least 1 strategy passes all robustness checks"
+
+  - name: regime_adaptive_params
+    description: "Adapt entry parameters based on ADX/DMI market regime detection"
+    confidence: 0.4
+    parameters:
+      adx_period: 14
+      trend_threshold: 25
+    expected_outcome: "Improved Sharpe in ranging markets, reduced drawdown"
+
+# ── Iteration Config (PR 2 Extension) ────────────────────────────────────────
+iteration_config:
+  max_iterations: 5
+  convergence_threshold: 0.02
+  early_stop_patience: 2
+  auto_iterate: true
+
+# ── Gate Policies (PR 2 Extension) ───────────────────────────────────────────
+gate_policies:
+  - gate_id: HUMAN_REVIEW_OBJECTIVES
+    required: true
+    auto_approve_on_timeout: false
+    escalation_path:
+      - "research_lead@quantlab.ai"
+  - gate_id: HUMAN_APPROVE_ITERATION
+    required: true
+    auto_approve_on_timeout: false
+  - gate_id: HUMAN_APPROVE_PORTFOLIO
+    required: true
+    auto_approve_on_timeout: false
+    escalation_path:
+      - "portfolio_manager@quantlab.ai"
+  - gate_id: HUMAN_APPROVE_DEPLOY
+    required: true
+    auto_approve_on_timeout: false
+  - gate_id: HUMAN_REVIEW_PERFORMANCE
+    required: true
+    auto_approve_on_timeout: true
+
+# ── Agent References (PR 2 Extension) ────────────────────────────────────────
+agents:
+  - name: research
+    config_overrides:
+      max_hypotheses: 10
+      query_lookback_days: 730
+  - name: builder
+    config_overrides:
+      max_retries: 2
+      timeout_minutes: 60
+  - name: statistics
+    config_overrides:
+      mc_simulations: 2000
+      rolling_window: 100
+
+# ── Memory Config (PR 2 Extension) ───────────────────────────────────────────
+memory:
+  enabled: true
+  topic_prefix: "quantlab/agent"
+  retention_days: 365
+  cross_agent_sharing: true
+
+# ── Risk Config (PR 2 Extension) ─────────────────────────────────────────────
+risk:
+  max_portfolio_drawdown: 0.20
+  max_strategy_correlation: 0.7
+  max_single_strategy_weight: 0.4
+  kelly_fraction_cap: 0.25
+  var_confidence: 0.95

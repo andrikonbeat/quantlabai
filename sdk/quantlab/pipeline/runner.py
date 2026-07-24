@@ -74,7 +74,11 @@ class PipelineRunner:
     
     # ─── Contract Validation ────────────────────────────────────────────────────
     
-    def validate_contracts(self, pipeline: Pipeline) -> None:
+    def validate_contracts(
+        self,
+        pipeline: Pipeline,
+        external_provides: set[str] | None = None,
+    ) -> None:
         """Verify that every stage's ``requires`` are satisfied by prior stages' ``provides``.
         
         Iterates through pipeline stages in order, accumulates the set of
@@ -82,12 +86,15 @@ class PipelineRunner:
         
         Args:
             pipeline: The pipeline to validate.
+            external_provides: Optional set of keys that are provided externally
+                (e.g. "selected_strategies", "live_equity"), so contract validation
+                treats them as pre-satisfied.
         
         Raises:
             ContractValidationError: If any stage requires a key not provided by
                 any earlier stage. Includes details of missing keys per stage.
         """
-        provided: set[str] = set()
+        provided: set[str] = set(external_provides or ())
         missing_keys: dict[str, list[str]] = {}
         stage_names: list[str] = []
         
@@ -227,7 +234,12 @@ class PipelineRunner:
     
     # ─── Pipeline Execution ────────────────────────────────────────────────────
     
-    async def run(self, pipeline: Pipeline, ctx: PipelineContext) -> PipelineResult:
+    async def run(
+        self,
+        pipeline: Pipeline,
+        ctx: PipelineContext,
+        external_provides: set[str] | None = None,
+    ) -> PipelineResult:
         """Run all stages in the pipeline sequentially.
         
         Validates contracts before execution.
@@ -235,6 +247,9 @@ class PipelineRunner:
         Args:
             pipeline: The pipeline to execute.
             ctx: Shared pipeline context.
+            external_provides: Optional set of keys provided externally (e.g.
+                "selected_strategies", "live_equity"). These are treated as
+                pre-satisfied during contract validation.
         
         Returns:
             PipelineResult with per-stage results.
@@ -243,7 +258,7 @@ class PipelineRunner:
         pipeline_start = time.monotonic()
         
         # Validate contracts before any execution
-        self.validate_contracts(pipeline)
+        self.validate_contracts(pipeline, external_provides=external_provides)
         
         for i, stage in enumerate(pipeline.stages):
             # Check if previous stage failed
@@ -307,6 +322,7 @@ class PipelineRunner:
         self,
         pipeline: Pipeline,
         ctx: PipelineContext,
+        external_provides: set[str] | None = None,
     ) -> PipelineResult:
         """Run pipeline with gate interceptors injected at registered positions.
         
@@ -316,6 +332,7 @@ class PipelineRunner:
         Args:
             pipeline: The pipeline to execute.
             ctx: Pipeline context.
+            external_provides: Optional set of keys provided externally.
         
         Returns:
             PipelineResult with per-stage and per-gate results.
@@ -324,7 +341,7 @@ class PipelineRunner:
         pipeline_start = time.monotonic()
         
         # Validate contracts before any execution
-        self.validate_contracts(pipeline)
+        self.validate_contracts(pipeline, external_provides=external_provides)
         
         for i, stage in enumerate(pipeline.stages):
             # Check if previous stage failed
