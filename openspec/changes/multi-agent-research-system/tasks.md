@@ -116,27 +116,27 @@ Chain strategy: feature-branch-chain
 ## Phase 4: Gates & Deployment (PR 4)
 
 ### Human Gate Orchestrator
-- [ ] 4.1 Create `HumanGateOrchestrator` in `quantlab/gates/orchestrator.py` managing 5 gates: `HUMAN_REVIEW_OBJECTIVES`, `HUMAN_APPROVE_ITERATION`, `HUMAN_APPROVE_PORTFOLIO`, `HUMAN_APPROVE_DEPLOY`, `HUMAN_REVIEW_PERFORMANCE`
-- [ ] 4.2 Implement async approval protocol: `on_gate(gate_id, context) -> Awaitable[GateDecision]` callback
-- [ ] 4.3 Add configurable timeout per gate (default 24h, deploy 12h, performance 48h) with fallback policies (ESCALATE/STOP/HOLD/CONTINUE)
-- [ ] 4.4 Implement notification hooks: email, Slack webhook, file-based callback (configurable per gate)
-- [ ] 4.5 Integrate with `GateInterceptorStage`: on gate stage execution, invoke orchestrator, await decision, record to Engram
+- [x] 4.1 Create `HumanGateOrchestrator` in `quantlab/gates/orchestrator.py` managing 5 gates: `HUMAN_REVIEW_OBJECTIVES`, `HUMAN_APPROVE_ITERATION`, `HUMAN_APPROVE_PORTFOLIO`, `HUMAN_APPROVE_DEPLOY`, `HUMAN_REVIEW_PERFORMANCE`
+- [x] 4.2 Implement async approval protocol: `on_gate(gate_id, context) -> Awaitable[GateDecision]` callback
+- [x] 4.3 Add configurable timeout per gate (default 24h, deploy 12h, performance 48h) with fallback policies (ESCALATE/STOP/HOLD/CONTINUE)
+- [x] 4.4 Implement notification hooks: email, Slack webhook, file-based callback (configurable per gate)
+- [x] 4.5 Integrate with `GateInterceptorStage`: on gate stage execution, invoke orchestrator, await decision, record to Engram
 
 ### Gate Interceptor Stage Injection
-- [ ] 4.6 Update `PipelineRunner` to inject `GateInterceptorStage` instances at `gate_after` positions defined in pipeline YAML
-- [ ] 4.7 Ensure gate decision (`gate_decision_{gate_id}`) written to context for downstream stages
+- [x] 4.6 Update `PipelineRunner` to inject `GateInterceptorStage` instances at `gate_after` positions defined in pipeline YAML
+- [x] 4.7 Ensure gate decision (`gate_decision_{gate_id}`) written to context for downstream stages
 
 ### Deployment Agent
-- [ ] 4.8 Create `DeploymentAgent` in `quantlab/agents/deployment_agent.py`
-- [ ] 4.9 Implement `run(context)`: read `portfolio_cfx`, call `jforex_deploy.package()` for JAR/WAR, generate JCloud config via `jforex_deploy.jcloud_config()`
-- [ ] 4.10 Add dry-run mode: validate CFX via `cfx_editor.validate()`, simulate packaging without upload
-- [ ] 4.11 Write `jforex_package`, `jcloud_config`, `deployment_result` to context
+- [x] 4.8 Create `DeploymentAgent` in `quantlab/agents/deployment_agent.py`
+- [x] 4.9 Implement `run(context)`: read `portfolio_cfx`, call `jforex_deploy.package()` for JAR/WAR, generate JCloud config via `jforex_deploy.jcloud_config()`
+- [x] 4.10 Add dry-run mode: validate CFX via `cfx_editor.validate()`, simulate packaging without upload
+- [x] 4.11 Write `jforex_package`, `jcloud_config`, `deployment_result` to context
 
 ### Tests (PR 4)
-- [ ] 4.12 Unit test: HumanGateOrchestrator triggers callback, handles timeout, executes fallback
-- [ ] 4.13 Unit test: GateInterceptorStage pauses pipeline, resumes on approval, records to Engram
-- [ ] 4.14 Unit test: DeploymentAgent packages CFX, generates JCloud config, dry-run validation
-- [ ] 4.15 Integration test: Full pipeline with all 5 gates, mock async approvals, verify context flow
+- [x] 4.12 Unit test: HumanGateOrchestrator triggers callback, handles timeout, executes fallback
+- [x] 4.13 Unit test: GateInterceptorStage pauses pipeline, resumes on approval, records to Engram
+- [x] 4.14 Unit test: DeploymentAgent packages CFX, generates JCloud config, dry-run validation
+- [x] 4.15 Integration test: Full pipeline with all 5 gates, mock async approvals, verify context flow
 
 ## Phase 5: Monitoring, Persistence & Reporting (PR 5)
 
