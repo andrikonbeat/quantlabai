@@ -75,7 +75,17 @@ def print_table(headers: list[str], rows: list[list[str]]) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 
 async def cmd_pipeline_run(args: argparse.Namespace) -> int:
-    """Run a pipeline from registry or config file."""
+    """Run a pipeline from registry or config file.
+
+    When ``--research-config`` is provided, runs in multi-agent mode using
+    ``ResearchDirector``. Otherwise falls back to the standard pipeline runner.
+    """
+    # ── Multi-agent mode (ResearchDirector) ─────────────────────────────────────
+    research_config_path = getattr(args, "research_config", None)
+    if research_config_path:
+        return await _run_multi_agent_pipeline(args, research_config_path)
+
+    # ── Standard pipeline run ───────────────────────────────────────────────────
     try:
         # Initialize registry
         config_dirs = [args.config] if args.config else ["pipelines"]
@@ -83,14 +93,12 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
 
         # Load pipeline config
         if args.config:
-            # Direct YAML file
             from quantlab.pipeline.config import PipelineConfig
             pipeline_config = PipelineConfig.from_yaml(args.config)
         else:
-            # From registry
             pipeline_config = registry.get(args.name)
 
-        # Dry-run mode: just build and show what would run
+        # Dry-run mode
         if args.dry_run:
             print_human(f"Dry-run: Pipeline '{pipeline_config.name}'")
             print_human(f"Stages: {len(pipeline_config.stages)}")
@@ -103,7 +111,7 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
         # Build pipeline from config
         pipeline = registry.build_pipeline(args.name)
 
-        # Prepare context with config
+        # Prepare context
         context_dict = {
             "dry_run": args.dry_run,
             "sqx_install_path": args.sqx_path,
@@ -111,18 +119,15 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
             "campaign_name": args.name,
             "output_dir": args.output_dir,
             "knowledge_root": getattr(args, "knowledge_root", None),
-            "research_config_path": getattr(args, "research_config", None),
             "poll_interval": getattr(args, "poll_interval", 30.0),
             "poll_timeout": getattr(args, "poll_timeout", 3600.0),
             "export_formats": getattr(args, "export_formats", ["csv"]),
             "export_databanks": getattr(args, "export_databanks", True),
         }
-        # Filter out None values
         context_dict = {k: v for k, v in context_dict.items() if v is not None}
 
         ctx = PipelineContext(config=context_dict)
 
-        # Create PipelineRun record for history
         run = PipelineRun(
             pipeline_name=pipeline_config.name,
             config_snapshot=pipeline_config.to_dict(),
@@ -135,7 +140,6 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
             knowledge_store = KnowledgeStore(root=context_dict["knowledge_root"])
             knowledge_store.initialize()
 
-        # Run pipeline
         runner = PipelineRunner()
         print_human(f"Running pipeline: {pipeline_config.name}")
         start_time = time.monotonic()
@@ -144,7 +148,6 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
             result = await runner.run(pipeline, ctx)
             run.duration = time.monotonic() - start_time
 
-            # Convert result to run record
             run.status = StageStatus.COMPLETED if result.is_successful else StageStatus.FAILED
             run.error = result.error
             run.started_at = min(
@@ -168,7 +171,6 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
                 for s in result.stages
             ]
 
-            # Collect artifacts from context
             artifacts = {}
             for key, value in ctx.artifacts.items():
                 if isinstance(value, Path):
@@ -197,7 +199,6 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
                 print_human(f"✗ Pipeline '{pipeline_config.name}' failed: {e}", error=True)
             return 1
         finally:
-            # Persist run to Knowledge Lake
             if knowledge_store:
                 knowledge_store.save_pipeline_run(run)
 
@@ -217,6 +218,68 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
         if args.json:
             import traceback
             print_json({"error": str(e), "traceback": traceback.format_exc()})
+        return 1
+
+
+async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) -> int:
+    """Run a multi-agent research campaign via ResearchDirector."""
+    try:
+        from pathlib import Path as _Path
+        import sys as _sys
+
+        # Load research config
+        from quantlab.dsl.models import ResearchConfig
+        from quantlab.dsl.parser import parse_yaml
+
+        print_human(f"Loading research config: {config_path}")
+        research_config: ResearchConfig = parse_yaml(config_path)
+
+        # Dry-run: show config without executing
+        if args.dry_run:
+            print_human(f"Dry-run: Multi-agent campaign '{research_config.campaign}'")
+            print_human(f"  Hypotheses: {len(research_config.hypotheses)}")
+            print_human(f"  Max iterations: {research_config.iteration_config.max_iterations}")
+            print_human(f"  Gate policies: {len(research_config.gate_policies)}")
+            print_human(f"  Agents: {len(research_config.agents)}")
+            return 0
+
+        # Create ResearchDirector
+        from quantlab.agents.research_director import ResearchDirector
+
+        knowledge_root = getattr(args, "knowledge_root", "knowledge/structured")
+        director = ResearchDirector(knowledge_root=knowledge_root)
+
+        # Execute campaign
+        print_human(f"Starting multi-agent campaign: {research_config.campaign}")
+        start_time = time.monotonic()
+        result = await director.execute_campaign(research_config)
+        duration = time.monotonic() - start_time
+
+        if args.json:
+            import json as _json
+            print(_json.dumps({
+                "campaign_id": result.campaign_id,
+                "state": result.state.value,
+                "iterations": result.current_iteration,
+                "duration_seconds": duration,
+                "error": result.error,
+            }, indent=2))
+        else:
+            status_icon = "✓" if result.state.value in ("completed", "converged") else "✗"
+            print_human(f"{status_icon} Campaign '{result.campaign_id}' — {result.state.value}")
+            print_human(f"  Iterations: {result.current_iteration}")
+            print_human(f"  Duration: {duration:.1f}s")
+            if result.error:
+                print_human(f"  Error: {result.error}", error=True)
+
+        return 0 if result.state.value in ("completed", "converged") else 1
+
+    except Exception as e:
+        print_error(f"Multi-agent campaign failed: {e}")
+        if getattr(args, "json", False):
+            import json as _json, traceback
+            _sys.stderr.flush()
+            print(_json.dumps({"error": str(e), "traceback": traceback.format_exc()}))
         return 1
 
 
@@ -353,6 +416,55 @@ def add_pipeline_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_history.add_argument("--limit", type=int, default=50, help="Max history entries")
     p_history.add_argument("--status", choices=["running", "completed", "failed"], help="Filter by status")
     p_history.set_defaults(func=cmd_pipeline_history)
+
+    # pipeline validate - PR 6
+    p_validate = pipeline_sub.add_parser("validate", help="Validate pipeline configuration")
+    _add_common_args(p_validate)
+    p_validate.add_argument("config", help="Path to pipeline YAML config file")
+    p_validate.set_defaults(func=cmd_pipeline_validate)
+
+
+async def cmd_pipeline_validate(args: argparse.Namespace) -> int:
+    """Validate pipeline configuration file."""
+    from quantlab.pipeline.config.models import MultiAgentPipelineConfig
+    from quantlab.pipeline.config.loader import MultiAgentPipelineConfigLoader
+    
+    try:
+        # Load and validate the configuration
+        config = MultiAgentPipelineConfig.load(args.config)
+        
+        # Additional validation - run contract validation
+        from quantlab.pipeline.runner import PipelineRunner
+        from quantlab.pipeline.registry import PipelineRegistry
+        
+        # Create a runner to validate contracts
+        registry = PipelineRegistry()
+        runner = PipelineRunner(registry=registry)
+        
+        # Build pipeline from config to validate contracts
+        pipeline = runner.build_from_config(config)
+        
+        # Validate contracts
+        try:
+            runner.validate_contracts(pipeline)
+            print_human(f"✓ Configuration '{args.config}' is valid")
+            print_human(f"  Pipeline: {config.pipeline.name if config.pipeline else 'unnamed'}")
+            print_human(f"  Stages: {len(pipeline)}")
+            if config.agents:
+                print_human(f"  Agents: {len(config.agents)}")
+            if hasattr(config, 'gates') and config.gates:
+                print_human(f"  Gates: {len(config.gates)}")
+            return 0
+        except Exception as e:
+            print_error(f"Contract validation failed: {e}")
+            return 1
+            
+    except FileNotFoundError:
+        print_error(f"Configuration file not found: {args.config}")
+        return 1
+    except Exception as e:
+        print_error(f"Failed to validate configuration: {e}")
+        return 1
 
 
 def dispatch_pipeline(args: argparse.Namespace) -> int:

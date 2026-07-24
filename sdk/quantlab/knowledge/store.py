@@ -716,23 +716,7 @@ class KnowledgeStore:
 
     # ── Pipeline History ─────────────────────────────────────────────────────────
 
-    def save_pipeline_run(self, run: object) -> None:
-        """Persist a pipeline run record to the Knowledge Lake.
 
-        Stores at ``knowledge/pipeline-runs/{run_id}.yaml``.
-
-        Args:
-            run: PipelineRun object with ``to_dict()`` method.
-        """
-        runs_dir = self.root / "pipeline-runs"
-        runs_dir.mkdir(parents=True, exist_ok=True)
-
-        run_dict = run.to_dict() if hasattr(run, "to_dict") else {}
-        run_file = runs_dir / f"{run_dict.get('run_id', 'unknown')}.yaml"
-        run_file.write_text(
-            yaml.dump(run_dict, default_flow_style=False, sort_keys=False),
-            encoding="utf-8",
-        )
 
     def load_pipeline_runs(
         self,

@@ -10,12 +10,12 @@ from quantlab.pipeline.config import PipelineConfig, StageConfig
 class TestStageRegistry:
     """Tests for StageRegistry class."""
 
-    def test_registry_initializes_with_25_stages(self):
-        """Registry should contain all 11 SQX + 7 agent + 1 gate + 5 gate aliases + campaign stages."""
+    def test_registry_initializes_with_all_stages(self):
+        """Registry should contain all SQX + multi-agent stage types."""
         registry = StageRegistry()
+        # 11 SQX builtin + 7 agent + 1 gate + 5 gate aliases + campaign
         assert len(registry._stage_map) == 25
         expected_stages = {
-            # 11 SQX builtin stages
             "validate",
             "translate",
             "daemon_start",
@@ -27,7 +27,6 @@ class TestStageRegistry:
             "compute_stats",
             "knowledge_store",
             "report",
-            # 7 agent stages
             "research",
             "builder",
             "statistics",
@@ -35,15 +34,12 @@ class TestStageRegistry:
             "portfolio",
             "deploy",
             "monitor",
-            # 1 base gate
             "gate",
-            # 5 gate aliases
             "gate_human_review_objectives",
             "gate_human_approve_iteration",
             "gate_human_approve_portfolio",
             "gate_human_approve_deploy",
             "gate_human_review_performance",
-            # Campaign
             "campaign",
         }
         assert set(registry._stage_map.keys()) == expected_stages

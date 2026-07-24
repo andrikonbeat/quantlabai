@@ -92,10 +92,9 @@ class AgentMemoryManager:
         memory_path = self._agent_memory_path(agent, campaign)
         memory_path.mkdir(parents=True, exist_ok=True)
         memory_file = memory_path / "memory.yaml"
+        import yaml  # noqa: F811
         existing: list[dict[str, Any]] = []
         if memory_file.exists():
-            import yaml
-
             try:
                 existing = yaml.safe_load(memory_file.read_text(encoding="utf-8")) or []
                 if not isinstance(existing, list):
