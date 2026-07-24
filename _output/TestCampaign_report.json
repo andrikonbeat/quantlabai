@@ -1,6 +1,6 @@
 {
   "campaign_id": "TestCampaign",
-  "generated_at": 1784497942.1978235,
+  "generated_at": 1784856320.2475426,
   "statistics": {
     "profit_factor": null,
     "sharpe_ratio": null,
@@ -17,6 +17,16 @@
   "equity_points": 0,
   "trades": [],
   "equity_curve": [],
+  "benchmark_equity": null,
+  "executive_summary": {
+    "net_profit": 0.0,
+    "sharpe": 0.0,
+    "max_drawdown": 0.0,
+    "win_rate": 0.0,
+    "profit_factor": 0.0,
+    "assessment": "Weak risk-adjusted returns",
+    "indicator": "red"
+  },
   "summary": {},
   "phase_results": []
 }

@@ -1,6 +1,6 @@
 {
   "campaign_id": "smoke_test_campaign",
-  "generated_at": 1784497970.395471,
+  "generated_at": 1784856346.3304102,
   "statistics": {},
   "trade_count": 10,
   "equity_points": 10,
@@ -118,6 +118,16 @@
       "equity": 10500.0
     }
   ],
+  "benchmark_equity": null,
+  "executive_summary": {
+    "net_profit": 10.0,
+    "sharpe": 1.2,
+    "max_drawdown": 5.0,
+    "win_rate": 0.0,
+    "profit_factor": 1.5,
+    "assessment": "Moderate risk-adjusted returns",
+    "indicator": "amber"
+  },
   "summary": {},
   "phase_results": []
 }

@@ -69,11 +69,23 @@ from quantlab.phase4.retester import (
 
 # Phase 3 — Campaign Orchestrator (guarded: requires pipeline framework)
 try:
-    from quantlab.phase4.campaign_orchestrator import CampaignOrchestrator, CampaignConfig, CampaignResult
+    from quantlab.phase4.campaign_orchestrator import (
+        CampaignOrchestrator,
+        CampaignConfig,
+        CampaignResult,
+        CampaignPhase,
+        PhaseStatus,
+        PhaseResult,
+        run_campaign,
+    )
 except ImportError:
     CampaignOrchestrator = None  # type: ignore[assignment]
     CampaignConfig = None
     CampaignResult = None
+    CampaignPhase = None
+    PhaseStatus = None
+    PhaseResult = None
+    run_campaign = None
 
 __all__ = [
     # Errors
@@ -134,4 +146,8 @@ __all__ = [
     "CampaignOrchestrator",
     "CampaignConfig",
     "CampaignResult",
+    "CampaignPhase",
+    "PhaseStatus",
+    "PhaseResult",
+    "run_campaign",
 ]
