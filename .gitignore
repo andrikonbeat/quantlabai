@@ -38,3 +38,7 @@ databanks/
 
 # Logs
 *.log
+
+# Generated output files
+_output/
+reports/
