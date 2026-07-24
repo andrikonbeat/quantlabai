@@ -3,7 +3,7 @@
 > **Actualizado**: 2026-07-23
 > Proyecto: `/home/ogzuz/Proyectos/QuantLab AI`
 > Rama: `main` (limpia)
-> Test suite: **622 passed, 3 skipped, 5 xfailed**
+> Test suite: **630 passed, 3 skipped, 0 xfailed**
 
 ---
 
@@ -23,14 +23,14 @@ sdk/
 │   ├── dsl/            # ResearchConfig models + parser
 │   ├── gates/          # HumanGateOrchestrator, notifiers, models
 │   ├── knowledge/      # KnowledgeStore, Indexer, QueryBuilder, Models
-│   ├── phase4/         # JForex, Portfolio, Optimizer, Retester, CampaignOrchestrator
-│   ├── pipeline/       # Pipeline runner, stages, registry, config, checkpoint, license
+│   ├── phase4/         # JForex, Portfolio, Optimizer, Retester, CampaignOrchestrator, Checkpoint
+│   ├── pipeline/       # Pipeline runner, stages, registry, config, license, progress
 │   ├── readers/        # CSV/XLSX databank readers
 │   ├── reporting/      # Report generator, templates, CLI
 │   ├── stats/          # StatisticsEngine, aggregation
 │   ├── tools/          # Exception hierarchy
 │   └── translate/      # DSL-to-CFX translator
-├── tests/              # 622 tests across all modules
+├── tests/              # 630 tests across all modules
 ├── docs/               # Architecture, configuration, multi-agent docs
 └── examples/           # pipeline.yaml, research-config.yaml
 ```
@@ -83,11 +83,14 @@ sdk/
 
 | Módulo | Propósito |
 |--------|-----------|
-| `pipeline/checkpoint.py` | Checkpoint save/resume para campañas sqcli |
+| `phase4/checkpoint.py` | Checkpoint save/resume para campañas sqcli (moved from pipeline/) |
+| `phase4/models.py` | Tipos compartidos: CampaignPhase, PhaseStatus, PhaseResult |
 | `pipeline/license.py` | LicenseManager para licencias SQX |
 | `pipeline/progress.py` | ProgressCallback protocol |
+| `pipeline/runner.py` | Retry logic con exponential backoff + ProgressCallback integration |
 
 (Cherry-picked desde `feature/phase2-local-execution` — adaptados a main.)
+Checkpoint movido a `phase4/` para evitar circulares y cableado en `CampaignOrchestrator`.
 
 ---
 
@@ -105,17 +108,19 @@ sdk/
 
 | Suite | Pasados | Saltados | XFail |
 |-------|---------|----------|-------|
-| SDK total | **622** | **3** | **5** |
+| SDK total | **630** | **3** | **0** |
 
-0 errores, 0 fallos. 5 xfailed son de retry sin implementar en PipelineRunner base.
+0 errores, 0 fallos, 0 xfail. 3 skipped: 1 deliberado (integración 17-stage pendiente de fixture fix),
+2 descartes internos de pytest (colección).
 
 ---
 
 ## 🗺️ Pendientes y Deuda Técnica
 
-- [ ] `feature/phase2-local-execution` — evaluada, cherry-pick hecho. Descartar el branch (código obsoleto)
-- [ ] Retry logic en PipelineRunner (para los 5 tests xfail)
-- [ ] Integrar checkpoint/license en ResearchDirector o CLI (cuando se necesiten)
+- [ ] `test_full_17_stage_pipeline_dry_run` — fixture setup roto, marcado @skip deliberadamente
+- [ ] `LicenseManager` — exportado pero sin uso. Integrar en CLI como subcomando `license`
+- [ ] `test_phase5b_e_smoke.py` — duplicaba la clase TestPhase5bESmoke (corregido), unused imports (limpiado)
+- [ ] PipelineRunner.run_with_gates() — tiene retry logic pero no maneja GateTimeoutError como el run() simple
 
 ---
 
