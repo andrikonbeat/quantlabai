@@ -1,7 +1,9 @@
-"""Abstract base stages for the SQX campaign pipeline.
+"""Abstract base stages for the SQX campaign pipeline (original 12 stages).
 
-Each stage declares its I/O contract via `requires`/`provides`.
-Concrete SQX implementations live in quantlab.phase4.stages.
+Each stage declares its I/O contract via ``requires``/``provides``.
+Concrete SQX implementations live in ``quantlab.phase4.stages``.
+
+This is a private module — import via ``quantlab.pipeline.stages`` instead.
 """
 
 from quantlab.pipeline.base import PipelineContext, Stage

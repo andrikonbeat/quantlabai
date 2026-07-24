@@ -1,4 +1,8 @@
-"""Pipeline Registry — stage registry and pipeline configuration discovery."""
+"""Pipeline Registry — stage registry and pipeline configuration discovery.
+
+The ``StageRegistry`` maps stage type names to their concrete classes,
+supporting both SQX built-in stages and multi-agent stages (agent + gate types).
+"""
 
 from __future__ import annotations
 
@@ -8,64 +12,193 @@ from typing import Any
 
 from quantlab.pipeline.base import Pipeline, Stage as PipelineStage
 from quantlab.pipeline.config import PipelineConfig, PipelineSummary, StageConfig
+from quantlab.pipeline.stages.agent_stages import (
+    BuilderStage,
+    DeployStage,
+    MonitorStage,
+    PortfolioStage,
+    ResearchStage,
+    ReviewStage,
+    StatisticsStage,
+)
+from quantlab.pipeline.stages.gate_interceptor import GateInterceptorStage
 
 logger = logging.getLogger(__name__)
 
 
 class StageRegistry:
-    """Registry mapping stage type strings to SQX concrete stage classes.
+    """Registry mapping stage type strings to concrete stage classes.
+
+    Supports three stage types:
+        - ``builtin``: SQX pipeline stages (validate, translate, daemon_start, etc.)
+        - ``agent``: Multi-agent stages (research, builder, statistics, etc.)
+        - ``gate``: Gate interceptor stages (human approval gates)
 
     Allows dynamic pipeline construction from configuration by looking up
     the appropriate stage implementation for each stage name.
     """
 
-    # Map of stage name -> SQX concrete stage class
-    _stage_map: dict[str, type[PipelineStage]] = {}
-
     def __init__(self) -> None:
-        """Initialize registry with all 11 SQX stage implementations."""
-        # Import all 11 SQX stages
-        from quantlab.phase4.stages import (
-            SQXValidateStage,
-            SQXTranslateStage,
-            SQXDaemonStartStage,
-            SQXLoadConfigStage,
-            SQXRunCampaignStage,
-            SQXPollCampaignStage,
-            SQXExportStage,
-            SQXReadStage,
-            SQXComputeStatsStage,
-            SQXKnowledgeStoreStage,
-            SQXReportStage,
-        )
+        """Initialize registry with all builtin SQX stages and agent stages."""
+        self._stage_map: dict[str, type[PipelineStage]] = {}
 
-        self._stage_map = {
-            "validate": SQXValidateStage,
-            "translate": SQXTranslateStage,
-            "daemon_start": SQXDaemonStartStage,
-            "load_config": SQXLoadConfigStage,
-            "run_campaign": SQXRunCampaignStage,
-            "poll_campaign": SQXPollCampaignStage,
-            "export": SQXExportStage,
-            "read": SQXReadStage,
-            "compute_stats": SQXComputeStatsStage,
-            "knowledge_store": SQXKnowledgeStoreStage,
-            "report": SQXReportStage,
-        }
+        # Register builtin SQX stages (tries to import from phase4, falls back to abstract)
+        self._register_builtin_stages()
+
+        # Register agent stages (abstract base classes — concrete in PR 2/3/4/5)
+        self._register_agent_stages()
+
+    def _register_builtin_stages(self) -> None:
+        """Register the 11 SQX builtin stages from phase4, or fall back to abstract."""
+        try:
+            from quantlab.phase4.stages import (
+                SQXComputeStatsStage,
+                SQXDaemonStartStage,
+                SQXExportStage,
+                SQXKnowledgeStoreStage,
+                SQXLoadConfigStage,
+                SQXPollCampaignStage,
+                SQXReadStage,
+                SQXReportStage,
+                SQXRunCampaignStage,
+                SQXTranslateStage,
+                SQXValidateStage,
+            )
+            # Also import SQXCampaignStage — the combined stage
+            from quantlab.phase4.stages import SQXCampaignStage  # type: ignore[no-redef]
+
+            self._stage_map.update({
+                "validate": SQXValidateStage,
+                "translate": SQXTranslateStage,
+                "daemon_start": SQXDaemonStartStage,
+                "load_config": SQXLoadConfigStage,
+                "run_campaign": SQXRunCampaignStage,
+                "poll_campaign": SQXPollCampaignStage,
+                "campaign": SQXCampaignStage,
+                "export": SQXExportStage,
+                "read": SQXReadStage,
+                "compute_stats": SQXComputeStatsStage,
+                "knowledge_store": SQXKnowledgeStoreStage,
+                "report": SQXReportStage,
+            })
+        except ImportError:
+            # Fall back to abstract base stages from pipeline.stages
+            from quantlab.pipeline.stages import (
+                ValidateStage,
+                TranslateStage,
+                DaemonStartStage,
+                LoadConfigStage,
+                RunCampaignStage,
+                PollCampaignStage,
+                CampaignStage,
+                ExportStage,
+                ReadStage,
+                ComputeStatsStage,
+                KnowledgeStoreStage,
+                ReportStage,
+            )
+
+            self._stage_map.update({
+                "validate": ValidateStage,
+                "translate": TranslateStage,
+                "daemon_start": DaemonStartStage,
+                "load_config": LoadConfigStage,
+                "run_campaign": RunCampaignStage,
+                "poll_campaign": PollCampaignStage,
+                "campaign": CampaignStage,
+                "export": ExportStage,
+                "read": ReadStage,
+                "compute_stats": ComputeStatsStage,
+                "knowledge_store": KnowledgeStoreStage,
+                "report": ReportStage,
+            })
+            logger.debug("SQX phase4 stages not available — using abstract base stages")
+
+    def _register_agent_stages(self) -> None:
+        """Register the 7 multi-agent stage classes plus gate interceptor."""
+        self._stage_map.update({
+            # Agent stages (abstract — concrete impls come in later PRs)
+            "research": ResearchStage,
+            "builder": BuilderStage,
+            "statistics": StatisticsStage,
+            "review": ReviewStage,
+            "portfolio": PortfolioStage,
+            "deploy": DeployStage,
+            "monitor": MonitorStage,
+            # Gate interceptor
+            "gate": GateInterceptorStage,
+            # Aliases for gate names
+            "gate_human_review_objectives": GateInterceptorStage,
+            "gate_human_approve_iteration": GateInterceptorStage,
+            "gate_human_approve_portfolio": GateInterceptorStage,
+            "gate_human_approve_deploy": GateInterceptorStage,
+            "gate_human_review_performance": GateInterceptorStage,
+        })
+
+    def register(self, name: str, stage_class: type[PipelineStage]) -> None:
+        """Register a stage class under a given name.
+
+        Args:
+            name: Stage name key.
+            stage_class: Stage class to register.
+        """
+        self._stage_map[name] = stage_class
+        logger.debug(f"Registered stage '{name}' -> {stage_class.__name__}")
 
     def get_stage_class(self, stage_name: str) -> type[PipelineStage] | None:
         """Return the stage class for a given stage name.
 
         Args:
-            stage_name: The stage name (e.g., "validate", "translate", etc.)
+            stage_name: The stage name (e.g., "validate", "research", "gate").
 
         Returns:
-            The corresponding SQX stage class, or None if unknown.
+            The corresponding stage class, or None if unknown.
         """
         stage_class = self._stage_map.get(stage_name)
         if stage_class is None:
-            logger.warning(f"Unknown stage type '{stage_name}'. Available: {', '.join(sorted(self._stage_map.keys()))}")
+            logger.warning(
+                "Unknown stage type '%s'. Available: %s",
+                stage_name,
+                ", ".join(sorted(self._stage_map.keys())),
+            )
         return stage_class
+
+    def list_stage_names(self) -> list[str]:
+        """Return all registered stage names."""
+        return list(self._stage_map.keys())
+
+    def list_stage_names_by_type(self, stage_type: str) -> list[str]:
+        """Return stage names filtered by type prefix.
+
+        Args:
+            stage_type: "builtin", "agent", or "gate".
+
+        Returns:
+            List of matching stage names.
+        """
+        builtin_names = {
+            "validate", "translate", "daemon_start", "load_config",
+            "run_campaign", "poll_campaign", "campaign", "export",
+            "read", "compute_stats", "knowledge_store", "report",
+        }
+        agent_names = {
+            "research", "builder", "statistics", "review",
+            "portfolio", "deploy", "monitor",
+        }
+        gate_names = {
+            "gate", "gate_human_review_objectives", "gate_human_approve_iteration",
+            "gate_human_approve_portfolio", "gate_human_approve_deploy",
+            "gate_human_review_performance",
+        }
+
+        if stage_type == "builtin":
+            return sorted(n for n in self._stage_map if n in builtin_names)
+        elif stage_type == "agent":
+            return sorted(n for n in self._stage_map if n in agent_names)
+        elif stage_type == "gate":
+            return sorted(n for n in self._stage_map if n in gate_names)
+        else:
+            return sorted(self._stage_map.keys())
 
     def create_pipeline(self, config: PipelineConfig) -> Pipeline:
         """Build a Pipeline from PipelineConfig by instantiating each stage.
@@ -82,22 +215,22 @@ class StageRegistry:
         pipeline = Pipeline(config.name)
 
         for stage_config in config.stages:
-            if stage_config.type != "builtin":
+            if stage_config.type not in ("builtin", "agent", "gate"):
                 raise ValueError(
                     f"Unknown stage type '{stage_config.type}' for stage '{stage_config.name}'. "
-                    f"Only 'builtin' stages are currently supported."
+                    f"Supported types: builtin, agent, gate."
                 )
 
             stage_class = self.get_stage_class(stage_config.name)
             if stage_class is None:
                 raise ValueError(
-                    f"Unknown builtin stage '{stage_config.name}'. "
+                    f"Unknown stage '{stage_config.name}'. "
                     f"Available: {', '.join(sorted(self._stage_map.keys()))}"
                 )
 
             # Instantiate stage with any config parameters
             stage = stage_class()
-            pipeline.then(stage)
+            pipeline = pipeline.then(stage)
 
         return pipeline
 
