@@ -22,6 +22,7 @@ class GateDecisionAction(str, Enum):
     ESCALATE = "escalate"
     TIMEOUT = "timeout"
     FALLBACK = "fallback"
+    HOLD = "hold"
 
 
 class FallbackPolicy(str, Enum):

@@ -179,7 +179,6 @@ class TestCampaignOrchestrator:
             assert phase_result.completed_at is not None
 
     @pytest.mark.asyncio
-    @pytest.mark.xfail(reason="DSL parser raises ParseError, not CampaignError — pre-existing on main")
     async def test_error_propagation(self, mock_config):
         """Errors should propagate as CampaignError with phase info."""
         mock_config.dry_run = True

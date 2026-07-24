@@ -2,7 +2,7 @@
 
 A GateInterceptorStage is inserted after a configurable pipeline stage position.
 It pauses pipeline execution, invokes an async callback for human approval,
-handles timeout with configurable fallback (ABORT / CONTINUE / ESCALATE),
+handles timeout with configurable fallback (ABORT / CONTINUE / ESCALATE / HOLD),
 and records the gate decision to Engram for audit.
 """
 
@@ -28,6 +28,7 @@ class GateAction(str, Enum):
     ABORT = "abort"
     TIMEOUT = "timeout"
     FALLBACK = "fallback"
+    HOLD = "hold"
 
 
 class FallbackPolicy(str, Enum):
@@ -35,6 +36,7 @@ class FallbackPolicy(str, Enum):
     ABORT = "ABORT"          # Stop the pipeline
     CONTINUE = "CONTINUE"    # Proceed as if approved
     ESCALATE = "ESCALATE"    # Escalate to a human lead (external)
+    HOLD = "HOLD"            # Hold the pipeline until manually resolved
 
 
 @dataclass
@@ -73,7 +75,7 @@ class GateInterceptorStage(Stage, ABC):
         requires: Artifact keys this gate reads. Typically gate-specific artifacts.
         provides: Artifact keys this gate writes. Includes "gate_decision_{gate_id}".
         timeout_hours: Maximum wait time for human response.
-        fallback: Fallback policy on timeout (ABORT / CONTINUE / ESCALATE).
+        fallback: Fallback policy on timeout (ABORT / CONTINUE / ESCALATE / HOLD).
         callback: Async callable invoked with GateContext, returns GateDecision.
             Set via ``set_callback()``.
     """
@@ -142,6 +144,9 @@ class GateInterceptorStage(Stage, ABC):
         elif self.fallback == FallbackPolicy.ESCALATE:
             action = GateAction.FALLBACK
             reason = "ESCALATE fallback — external escalation required"
+        elif self.fallback == FallbackPolicy.HOLD:
+            action = GateAction.HOLD
+            reason = "HOLD fallback — pipeline paused pending manual resolution"
         else:  # CONTINUE
             action = GateAction.FALLBACK
             reason = "CONTINUE fallback — proceeding as approved"
