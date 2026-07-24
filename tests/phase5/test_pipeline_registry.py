@@ -10,11 +10,11 @@ from quantlab.pipeline.config import PipelineConfig, StageConfig
 class TestStageRegistry:
     """Tests for StageRegistry class."""
 
-    def test_registry_initializes_with_11_stages(self):
-        """Registry should contain all 11 SQX stage types."""
+    def test_registry_initializes_with_all_stages(self):
+        """Registry should contain all SQX + multi-agent stage types."""
         registry = StageRegistry()
-        # Access internal map to verify all 11 are registered
-        assert len(registry._stage_map) == 11
+        # 11 SQX builtin + 7 agent + 1 gate + 5 gate aliases + campaign
+        assert len(registry._stage_map) == 25
         expected_stages = {
             "validate",
             "translate",
@@ -27,6 +27,20 @@ class TestStageRegistry:
             "compute_stats",
             "knowledge_store",
             "report",
+            "research",
+            "builder",
+            "statistics",
+            "review",
+            "portfolio",
+            "deploy",
+            "monitor",
+            "gate",
+            "gate_human_review_objectives",
+            "gate_human_approve_iteration",
+            "gate_human_approve_portfolio",
+            "gate_human_approve_deploy",
+            "gate_human_review_performance",
+            "campaign",
         }
         assert set(registry._stage_map.keys()) == expected_stages
 
@@ -99,7 +113,7 @@ class TestStageRegistry:
             stages=[StageConfig(name="nonexistent", type="builtin", config={})],
         )
 
-        with pytest.raises(ValueError, match="Unknown builtin stage 'nonexistent'"):
+        with pytest.raises(ValueError, match="Unknown stage 'nonexistent'"):
             registry.create_pipeline(config)
 
     def test_create_pipeline_uses_stage_config(self):

@@ -54,6 +54,7 @@ from quantlab.cli.pipeline_commands import (
 # Knowledge command handlers (Phase 5c)
 from quantlab.cli.knowledge_commands import add_knowledge_subparser
 from quantlab.cli.agent_commands import add_agent_subparser
+from quantlab.cli.campaign_commands import add_campaign_subparser
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Constants & Defaults
@@ -1077,6 +1078,9 @@ def build_parser() -> argparse.ArgumentParser:
     # ── agent ──────────────────────────────────────────────────────────────────
     add_agent_subparser(subparsers)
 
+    # ── campaign ───────────────────────────────────────────────────────────────
+    add_campaign_subparser(subparsers)
+
     # ── pipeline ───────────────────────────────────────────────────────────────
     p_pipeline = subparsers.add_parser("pipeline", help="Pipeline execution and management")
     pipeline_sub = p_pipeline.add_subparsers(dest="pipeline_cmd", required=True)
@@ -1085,13 +1089,18 @@ def build_parser() -> argparse.ArgumentParser:
     # Don't use _add_common_args - it conflicts with explicit --dry-run
     p_pipe_run.add_argument("--sqx-path", default=DEFAULT_SQX_PATH, help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})")
     p_pipe_run.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"SQX -gui port (default: {DEFAULT_PORT})")
-    p_pipe_run.add_argument("--dry-run", action="store_true", help="Generate CFX only")
+    p_pipe_run.add_argument("--dry-run", action="store_true", help="Generate CFX only or show multi-agent plan")
     p_pipe_run.add_argument("--no-daemon-stop", action="store_true", help="Leave daemon running")
-    p_pipe_run.add_argument("name", help="Pipeline name")
+    p_pipe_run.add_argument("name", nargs="?", default="default", help="Pipeline name (from registry)")
     p_pipe_run.add_argument("--config", help="Pipeline config YAML")
+    p_pipe_run.add_argument("--research-config", help="Multi-agent research config YAML (activates ResearchDirector)")
     p_pipe_run.add_argument("--output-dir", default="_output", help="Output directory")
     p_pipe_run.add_argument("--json", action="store_true", help="Output JSON")
     p_pipe_run.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
+    p_pipe_run.add_argument("--poll-interval", type=float, default=30.0, help="SQX polling interval (seconds)")
+    p_pipe_run.add_argument("--poll-timeout", type=float, default=3600.0, help="SQX polling timeout")
+    p_pipe_run.add_argument("--export-formats", nargs="+", default=["csv"], help="Export formats")
+    p_pipe_run.add_argument("--no-export-databanks", action="store_false", dest="export_databanks", help="Skip databank export")
     p_pipe_run.set_defaults(func=cmd_pipeline_run)
 
     p_pipe_list = pipeline_sub.add_parser("list", help="List available pipelines")

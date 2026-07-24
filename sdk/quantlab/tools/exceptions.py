@@ -13,7 +13,7 @@ Usage:
 from typing import Any
 
 
-class QuantLabError(BaseException):
+class QuantLabError(Exception):
     """Base exception for all QuantLab SDK errors."""
 
     def __init__(self, detail: str = "", *, cause: BaseException | None = None) -> None:
@@ -58,6 +58,10 @@ class CampaignError(QuantLabError):
     def __init__(
         self, detail: str = "", *, cause: BaseException | None = None, phase: str | None = None, campaign_name: str | None = None
     ) -> None:
+        if campaign_name:
+            prefix = f"[{campaign_name}] "
+            if not detail.startswith(prefix):
+                detail = prefix + detail
         super().__init__(detail, cause=cause)
         self.phase = phase
         self.campaign_name = campaign_name

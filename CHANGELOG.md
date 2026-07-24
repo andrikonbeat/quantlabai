@@ -2,7 +2,63 @@
 
 All notable changes to QuantLab AI will be documented in this file.
 
-## [Unreleased] — Phase 4: JForex, Portfolio & Optimizer Automation
+## [Unreleased] — Multi-Agent Research System
+
+### Added (PR 1 — Foundation & Pipeline Core Extensions, ≈2100 lines)
+- `GateInterceptorStage` abstract stage with async callback protocol, timeout handling, fallback policies (ABORT/CONTINUE/ESCALATE), Engram recording
+- 8 abstract agent stage classes (Research, Builder, Statistics, Review, Portfolio, Deploy, Monitor, Gate) with `requires`/`provides` contracts
+- `PipelineRunner.validate_contracts()` for stage dependency verification with `ContractValidationError`
+- `MultiAgentPipelineConfig` Pydantic model with pipeline/agents/gates/memory/risk sections
+- Pipeline config JSON Schema for YAML validation
+- Config migration helper (v1→v2) for backward compatibility
+- Env-var overrides via `QUANTLAB_PIPELINE_*` prefix
+- Agent stage registry with 7 agent + 5 gate aliases alongside 11 SQX builtin stages
+- `PipelineRunner.build_from_config()` for multi-agent pipeline construction
+- `PipelineRunner.run_with_gates()` method with gate injection at configured positions
+- Full backward compatibility: original 9-stage pipeline unchanged
+
+### Added (PR 2 — Core Agents, ≈4700 lines)
+- `ResearchDirector`: central orchestrator owning PipelineRunner, managing campaign lifecycle (create/run/pause/resume/rollback), iteration optimisation loop with convergence detection
+- `ResearchAgent`: hypothesis generation from objectives, DSL extension for hypotheses/iteration config/gate policies
+- `BuilderAgent`: CFX translation + SQX dispatch with retry logic and timeout
+- Extended `ResearchConfig` DSL with hypotheses, iteration_config, gate_policies
+- Example `research-config.yaml` and `pipeline.yaml` for multi-agent campaigns
+
+### Added (PR 3 — Analysis Agents, ≈4300 lines)
+- `StatisticsAgent`: full statistics computation, cross-campaign aggregation, Monte Carlo bands
+- `ReviewerAgent`: criteria evaluation (ACCEPT/ITERATE/REJECT), walk-forward degradation detection, MC overfitting flags, benchmark comparison
+- `PortfolioAgent`: Portfolio Master integration with correlation analysis, risk budgeting, Kelly fraction capping, walk-forward validation
+
+### Added (PR 4 — Gates & Deployment, ≈2400 lines)
+- `HumanGateOrchestrator`: manages 5 human gates with async approval protocol, configurable timeouts, fallback policies, notification hooks (email/Slack/file)
+- Gate interceptor integration: `GateInterceptorStage` pauses pipeline, invokes orchestrator, records decision to Engram
+- `DeploymentAgent`: JForex packaging (JAR/WAR), JCloud config generation, dry-run validation mode
+
+### Added (PR 5 — Monitoring, Persistence & Reporting, ≈1300 lines)
+- `MonitoringAgent`: live equity streaming, rolling Sharpe/drawdown, regime detection (252-period), alerting via context + gate trigger
+- Knowledge Lake agent-memory directory structure (`agent-memory/{agent_name}/{campaign_id}/`)
+- `AgentMemoryManager` wrapping Engram with per-agent topic keys and TTL policies
+- Reporting extensions: agent decision audit sections, multi-campaign comparison, iteration progression views
+- Cross-agent queries via `QueryBuilder.query_agent_memory()` and campaign similarity search
+
+### Added (PR 6 — CLI, Integration, Docs, ≈3200 lines)
+- `pipeline validate <config>` — validate pipeline config YAML with contract checking
+- `pipeline run --research-config <file>` — run multi-agent campaigns via ResearchDirector
+- `agent memory inspect <agent> <campaign>` — query Engram for agent memory
+- `agent memory query <pattern>` — cross-agent pattern search
+- `campaign rollback <id>` — delete Knowledge Lake artifacts for a campaign
+- `campaign status <id>` — show campaign state from Knowledge Lake
+- Full integration test suite: 17-stage dry-run, mock SQX e2e smoke, Knowledge Lake + Engram persistence
+- Architecture docs: multi-agent system, pipeline config, agents, deployment, gates
+
+### Changed
+- `PipelineRunner` extended with multi-agent pipeline building and gate injection (PR 1)
+- Pipeline config models support both flat and nested `pipeline.*` format (PR 1)
+- `KnowledgeStore` extended with agent-memory directory structure and campaign indexing (PR 5)
+- `ReportingGenerator` extended with agent decision audit and multi-campaign comparison views (PR 5)
+- All PRs maintain backward compatibility: original 9-stage pipeline unchanged
+
+## [Phase 4] — 2026-07-18
 
 ### Added (PR 1 — Foundation, ≈1900 lines)
 - `quantlab.phase4` package with error hierarchy (Phase4Error + 13 subclasses incl. StrategyNotFoundError, DatabankPathError, UnsupportedSQXVersionError, SQXBindingError)
