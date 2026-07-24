@@ -67,25 +67,28 @@ from quantlab.phase4.retester import (
     WalkForwardResult,
 )
 
+# Phase 3 shared models
+from quantlab.phase4.models import CampaignPhase, PhaseResult, PhaseStatus
+
 # Phase 3 — Campaign Orchestrator (guarded: requires pipeline framework)
 try:
     from quantlab.phase4.campaign_orchestrator import (
         CampaignOrchestrator,
         CampaignConfig,
         CampaignResult,
-        CampaignPhase,
-        PhaseStatus,
-        PhaseResult,
         run_campaign,
+    )
+    from quantlab.phase4.checkpoint import (
+        CampaignCheckpoint,
+        CheckpointManager,
     )
 except ImportError:
     CampaignOrchestrator = None  # type: ignore[assignment]
     CampaignConfig = None
     CampaignResult = None
-    CampaignPhase = None
-    PhaseStatus = None
-    PhaseResult = None
     run_campaign = None
+    CampaignCheckpoint = None
+    CheckpointManager = None
 
 __all__ = [
     # Errors
@@ -150,4 +153,7 @@ __all__ = [
     "PhaseStatus",
     "PhaseResult",
     "run_campaign",
+    # Checkpoint
+    "CampaignCheckpoint",
+    "CheckpointManager",
 ]

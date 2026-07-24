@@ -1,61 +1,17 @@
 """Checkpoint persistence — JSON save/load/resume for campaign state.
 
-Provides ``CheckpointManager`` for durable campaign checkpoints and
-``CampaignCheckpoint`` as the serialisable state container.
+Provides ``CheckpointManager`` backed by the orchestrator's campaign types
+(``CampaignPhase``, ``PhaseResult``) for durable campaign checkpoints.
 """
 
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from quantlab.pipeline.models import StageStatus
-
-
-class CampaignPhase(str, Enum):
-    """Execution phases for an sqcli campaign lifecycle.
-
-    Matches the 7-phase flow: translate → daemon_start → load_config →
-    run → poll → export → store.
-    """
-
-    TRANSLATE = "translate"
-    DAEMON_START = "daemon_start"
-    LOAD_CONFIG = "load_config"
-    RUN = "run"
-    POLL = "poll"
-    EXPORT = "export"
-    STORE = "store"
-
-
-# ── Data types ────────────────────────────────────────────────────────────────
-
-
-class PhaseResult:
-    """Outcome of a single campaign phase.
-
-    Args:
-        phase: The phase that executed.
-        status: ``StageStatus.COMPLETED`` on success, ``StageStatus.FAILED``
-            on error.
-        duration: Wall-clock seconds the phase took.
-        error: Error detail when the phase failed, else ``None``.
-    """
-
-    def __init__(
-        self,
-        phase: CampaignPhase,
-        status: StageStatus,
-        duration: float,
-        error: str | None = None,
-    ) -> None:
-        self.phase = phase
-        self.status = status
-        self.duration = duration
-        self.error = error
+from quantlab.phase4.models import CampaignPhase, PhaseResult, PhaseStatus
 
 
 class CampaignCheckpoint:
@@ -140,6 +96,13 @@ class CheckpointManager:
         if path.exists():
             path.unlink()
 
+    def latest_phase(self, project_name: str) -> CampaignPhase | None:
+        """Return the last successfully completed phase, or ``None``."""
+        cp = self.load(project_name)
+        if cp is None or not cp.completed_phases:
+            return None
+        return cp.completed_phases[-1]
+
     # ── Serialisation helpers ───────────────────────────────────────────
 
     def _serialize(self, checkpoint: CampaignCheckpoint) -> dict[str, Any]:
@@ -154,6 +117,7 @@ class CheckpointManager:
                     "phase": r.phase.value,
                     "status": r.status.value,
                     "duration": r.duration,
+                    "detail": r.detail,
                     "error": r.error,
                 }
                 for r in checkpoint.phase_results
@@ -167,8 +131,8 @@ class CheckpointManager:
             phase_results=[
                 PhaseResult(
                     phase=CampaignPhase(r["phase"]),
-                    status=StageStatus(r["status"]),
-                    duration=r["duration"],
+                    status=PhaseStatus(r["status"]),
+                    detail=r.get("detail", ""),
                     error=r.get("error"),
                 )
                 for r in data["phase_results"]

@@ -49,15 +49,8 @@ from quantlab.pipeline.stages.gate_interceptor import (
     GateInterceptorStage,
 )
 
-# Campaign utilities (cherry-picked from feature/phase2-local-execution)
-from quantlab.pipeline.checkpoint import (
-    CampaignCheckpoint,
-    CampaignPhase,
-    CheckpointManager,
-    PhaseResult,
-)
 from quantlab.pipeline.license import LicenseManager, LicenseStatus
-from quantlab.pipeline.progress import PhaseStatus, ProgressCallback
+from quantlab.pipeline.progress import ProgressCallback
 
 __all__ = [
     # Core
@@ -105,13 +98,8 @@ __all__ = [
     "PipelineConfig",
     "StageConfig",
     "PipelineSummary",
-    # Campaign utilities (cherry-picked)
-    "CampaignCheckpoint",
-    "CampaignPhase",
-    "CheckpointManager",
+    # Utility
     "LicenseManager",
     "LicenseStatus",
-    "PhaseResult",
-    "PhaseStatus",
     "ProgressCallback",
 ]

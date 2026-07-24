@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from datetime import datetime
 from typing import Any
@@ -9,6 +10,7 @@ from typing import Any
 from quantlab.pipeline.base import Pipeline, PipelineContext, Stage as PipelineStage
 from quantlab.pipeline.errors import ContractValidationError, GateTimeoutError
 from quantlab.pipeline.models import PipelineResult, StageResult, StageStatus
+from quantlab.pipeline.progress import PhaseStatus, ProgressCallback
 from quantlab.pipeline.registry import StageRegistry
 from quantlab.pipeline.stages.gate_interceptor import (
     FallbackPolicy,
@@ -18,19 +20,29 @@ from quantlab.pipeline.stages.gate_interceptor import (
 
 
 class PipelineRunner:
-    """Executes a Pipeline sequentially with per-stage timing and error isolation.
+    """Executes a Pipeline sequentially with per-stage timing, retry, and error isolation.
     
     Features:
         - Sequential stage execution with per-stage timing
+        - Retry with configurable max retries, delay, and exponential backoff
         - Error isolation: on failure, stops execution, marks remaining SKIPPED
+        - Progress callback: optional ``ProgressCallback`` protocol for phase events
         - Contract validation: validates all stage ``requires`` before execution
         - Gate injection: registers ``GateInterceptorStage`` instances at configured positions
         - Fluent gate registration API
     """
     
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        max_retries: int = 0,
+        retry_delay: float = 1.0,
+        progress: ProgressCallback | None = None,
+    ) -> None:
         self._gates: dict[str, GateInterceptorStage] = {}
         self._registry: StageRegistry | None = None
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        self.progress = progress
     
     # ─── Gate Registration ─────────────────────────────────────────────────────
     
@@ -240,9 +252,12 @@ class PipelineRunner:
         ctx: PipelineContext,
         external_provides: set[str] | None = None,
     ) -> PipelineResult:
-        """Run all stages in the pipeline sequentially.
+        """Run all stages in the pipeline sequentially with retry support.
         
-        Validates contracts before execution.
+        Validates contracts before execution.  Stages that raise an exception
+        are retried up to ``max_retries`` times with exponential backoff.
+        If the stage still fails after all retries, the pipeline stops and
+        remaining stages are marked SKIPPED.
         
         Args:
             pipeline: The pipeline to execute.
@@ -254,6 +269,8 @@ class PipelineRunner:
         Returns:
             PipelineResult with per-stage results.
         """
+        _notify = self.progress
+
         result = PipelineResult(pipeline_name=pipeline.name)
         pipeline_start = time.monotonic()
         
@@ -270,9 +287,11 @@ class PipelineRunner:
                     error=f"Skipped due to previous failure: {ctx.error}",
                 )
                 result.stages.append(skipped)
+                if _notify:
+                    _notify(f"pipeline/{stage.name}", PhaseStatus.ERROR, str(ctx.error))
                 continue
             
-            # Execute stage
+            # Execute stage (with retries)
             stage_start = time.monotonic()
             stage_result = StageResult(
                 stage_name=stage.name,
@@ -280,35 +299,71 @@ class PipelineRunner:
                 started_at=datetime.now(),
             )
             
-            try:
-                output = await stage.execute(ctx)
-                stage_duration = time.monotonic() - stage_start
+            if _notify:
+                _notify(f"pipeline/{stage.name}", PhaseStatus.STARTED)
+            
+            last_error: Exception | None = None
+            max_attempts = max(1, self.max_retries + 1)
+            
+            for attempt in range(max_attempts):
+                if attempt > 0:
+                    stage_result.status = StageStatus.RETRYING
+                    delay = self.retry_delay * (2 ** (attempt - 1))
+                    if _notify:
+                        _notify(
+                            f"pipeline/{stage.name}",
+                            PhaseStatus.STARTED,
+                            f"retry {attempt}/{self.max_retries} (backoff {delay:.1f}s)",
+                        )
+                    await asyncio.sleep(delay)
                 
-                stage_result.status = StageStatus.COMPLETED
-                stage_result.duration = stage_duration
-                stage_result.output = output
-                stage_result.completed_at = datetime.now()
-                
-            except GateTimeoutError:
-                stage_duration = time.monotonic() - stage_start
-                stage_result.status = StageStatus.FAILED
-                stage_result.duration = stage_duration
-                stage_result.error = "Gate timed out and aborted pipeline"
-                stage_result.completed_at = datetime.now()
-                ctx.error = GateTimeoutError(
-                    f"Gate aborted pipeline"
-                )
-                
-            except Exception as e:
-                stage_duration = time.monotonic() - stage_start
-                
-                stage_result.status = StageStatus.FAILED
-                stage_result.duration = stage_duration
-                stage_result.error = f"{type(e).__name__}: {e}"
-                stage_result.completed_at = datetime.now()
-                
-                # Set context error to skip remaining stages
-                ctx.error = e
+                try:
+                    output = await stage.execute(ctx)
+                    stage_duration = time.monotonic() - stage_start
+                    
+                    stage_result.status = StageStatus.COMPLETED
+                    stage_result.duration = stage_duration
+                    stage_result.output = output
+                    stage_result.completed_at = datetime.now()
+                    
+                    if _notify:
+                        _notify(f"pipeline/{stage.name}", PhaseStatus.SUCCESS)
+                    
+                    last_error = None
+                    break  # success, exit retry loop
+                    
+                except GateTimeoutError:
+                    stage_duration = time.monotonic() - stage_start
+                    stage_result.status = StageStatus.FAILED
+                    stage_result.duration = stage_duration
+                    stage_result.error = "Gate timed out and aborted pipeline"
+                    stage_result.completed_at = datetime.now()
+                    ctx.error = GateTimeoutError("Gate aborted pipeline")
+                    last_error = ctx.error
+                    break  # gate abort is immediate, no retry
+                    
+                except Exception as e:
+                    last_error = e
+                    if attempt < self.max_retries:
+                        # Will retry (loop continues)
+                        continue
+                    else:
+                        # Max retries exceeded
+                        stage_duration = time.monotonic() - stage_start
+                        stage_result.status = StageStatus.FAILED
+                        stage_result.duration = stage_duration
+                        stage_result.error = (
+                            f"{type(e).__name__}: {e} "
+                            f"(failed after {self.max_retries} retries)"
+                        )
+                        stage_result.completed_at = datetime.now()
+                        ctx.error = e
+                        if _notify:
+                            _notify(
+                                f"pipeline/{stage.name}",
+                                PhaseStatus.ERROR,
+                                f"failed after {self.max_retries} retries: {e}",
+                            )
             
             result.stages.append(stage_result)
         
@@ -337,6 +392,8 @@ class PipelineRunner:
         Returns:
             PipelineResult with per-stage and per-gate results.
         """
+        _notify = self.progress
+
         result = PipelineResult(pipeline_name=pipeline.name)
         pipeline_start = time.monotonic()
         
@@ -353,9 +410,11 @@ class PipelineRunner:
                     error=f"Skipped due to previous failure: {ctx.error}",
                 )
                 result.stages.append(skipped)
+                if _notify:
+                    _notify(f"pipeline/{stage.name}", PhaseStatus.ERROR, str(ctx.error))
                 continue
             
-            # Execute pipeline stage
+            # Execute pipeline stage (with retries)
             stage_start = time.monotonic()
             stage_result = StageResult(
                 stage_name=stage.name,
@@ -363,21 +422,56 @@ class PipelineRunner:
                 started_at=datetime.now(),
             )
             
-            try:
-                output = await stage.execute(ctx)
-                stage_duration = time.monotonic() - stage_start
-                stage_result.status = StageStatus.COMPLETED
-                stage_result.duration = stage_duration
-                stage_result.output = output
-                stage_result.completed_at = datetime.now()
+            if _notify:
+                _notify(f"pipeline/{stage.name}", PhaseStatus.STARTED)
+            
+            last_error: Exception | None = None
+            max_attempts = max(1, self.max_retries + 1)
+            
+            for attempt in range(max_attempts):
+                if attempt > 0:
+                    stage_result.status = StageStatus.RETRYING
+                    delay = self.retry_delay * (2 ** (attempt - 1))
+                    if _notify:
+                        _notify(
+                            f"pipeline/{stage.name}",
+                            PhaseStatus.STARTED,
+                            f"retry {attempt}/{self.max_retries} (backoff {delay:.1f}s)",
+                        )
+                    await asyncio.sleep(delay)
                 
-            except Exception as e:
-                stage_duration = time.monotonic() - stage_start
-                stage_result.status = StageStatus.FAILED
-                stage_result.duration = stage_duration
-                stage_result.error = f"{type(e).__name__}: {e}"
-                stage_result.completed_at = datetime.now()
-                ctx.error = e
+                try:
+                    output = await stage.execute(ctx)
+                    stage_duration = time.monotonic() - stage_start
+                    stage_result.status = StageStatus.COMPLETED
+                    stage_result.duration = stage_duration
+                    stage_result.output = output
+                    stage_result.completed_at = datetime.now()
+                    if _notify:
+                        _notify(f"pipeline/{stage.name}", PhaseStatus.SUCCESS)
+                    last_error = None
+                    break  # success
+                    
+                except Exception as e:
+                    last_error = e
+                    if attempt < self.max_retries:
+                        continue  # retry
+                    else:
+                        stage_duration = time.monotonic() - stage_start
+                        stage_result.status = StageStatus.FAILED
+                        stage_result.duration = stage_duration
+                        stage_result.error = (
+                            f"{type(e).__name__}: {e} "
+                            f"(failed after {self.max_retries} retries)"
+                        )
+                        stage_result.completed_at = datetime.now()
+                        ctx.error = e
+                        if _notify:
+                            _notify(
+                                f"pipeline/{stage.name}",
+                                PhaseStatus.ERROR,
+                                f"failed after {self.max_retries} retries: {e}",
+                            )
             
             # Append stage result BEFORE gate result
             result.stages.append(stage_result)

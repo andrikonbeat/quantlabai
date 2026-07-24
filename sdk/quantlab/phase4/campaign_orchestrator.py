@@ -16,7 +16,6 @@ import tempfile
 import time
 import yaml
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -26,10 +25,12 @@ from quantlab.translate.cfx import CfxArchive
 from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.command_dispatcher import CommandDispatcher, CampaignStatus
 from quantlab.phase4.http_client import AsyncSQXClient
+from quantlab.phase4.models import CampaignPhase, PhaseResult, PhaseStatus
 from quantlab.tools.exceptions import LicenseError, CampaignError
 from quantlab.readers.databank import DatabankCSVReader
 from quantlab.stats.engine import StatisticsEngine
 from quantlab.knowledge.store import KnowledgeStore
+from quantlab.phase4.checkpoint import CampaignCheckpoint, CheckpointManager
 
 # Import pipeline framework
 from quantlab.pipeline import (
@@ -53,49 +54,6 @@ from quantlab.phase4.stages import (
     SQXKnowledgeStoreStage,
     SQXReportStage,
 )
-
-
-class CampaignPhase(str, Enum):
-    """Pipeline execution phases."""
-
-    VALIDATE = "validate"
-    TRANSLATE = "translate"
-    DAEMON_START = "daemon_start"
-    LOAD_CONFIG = "load_config"
-    RUN = "run"
-    POLL = "poll"
-    EXPORT = "export"
-    READ = "read"
-    COMPUTE = "compute"
-    STORE = "store"
-    COMPLETE = "complete"
-
-
-class PhaseStatus(str, Enum):
-    """Phase execution status."""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    SKIPPED = "skipped"
-
-
-@dataclass
-class PhaseResult:
-    """Result of a single pipeline phase."""
-
-    phase: CampaignPhase
-    status: PhaseStatus
-    detail: str = ""
-    started_at: float = field(default_factory=time.time)
-    completed_at: Optional[float] = None
-    error: Optional[str] = None
-
-    @property
-    def duration(self) -> float:
-        end = self.completed_at or time.time()
-        return end - self.started_at
 
 
 @dataclass
@@ -172,6 +130,15 @@ class CampaignOrchestrator:
         self._dispatcher: Optional[CommandDispatcher] = None
         self._client: Optional[AsyncSQXClient] = None
         self._result = CampaignResult(campaign_name=config.campaign_name)
+        self._checkpoint_mgr: Optional[CheckpointManager] = None
+
+    def enable_checkpoints(self, root: Path) -> None:
+        """Enable checkpoint persistence for this campaign.
+
+        When enabled, a checkpoint is saved after each successful phase
+        so the campaign can be resumed from the last completed phase.
+        """
+        self._checkpoint_mgr = CheckpointManager(root)
 
     #   Public API  
 
@@ -200,6 +167,11 @@ class CampaignOrchestrator:
 
             # Map pipeline result to CampaignResult
             self._map_pipeline_result(pipeline_result, ctx)
+
+            # Save checkpoint after successful full run
+            if self._checkpoint_mgr and self._result.is_successful:
+                checkpoint = self._build_checkpoint()
+                self._checkpoint_mgr.save(checkpoint)
 
         except CampaignError as e:
             self._result.error = str(e)
@@ -384,6 +356,24 @@ class CampaignOrchestrator:
             await self._daemon.stop()
         if self._client:
             await self._client.close()
+
+    def _build_checkpoint(self) -> CampaignCheckpoint:
+        """Build a CampaignCheckpoint from current results."""
+        completed = [
+            r.phase for r in self._result.phase_results
+            if r.status == PhaseStatus.COMPLETED
+        ]
+        cfx_path = str(self._result.cfx_path) if self._result.cfx_path else None
+        export_paths = {
+            k: str(v) for k, v in self._result.export_paths.items()
+        } if self._result.export_paths else {}
+        return CampaignCheckpoint(
+            project_name=self._result.campaign_name,
+            completed_phases=completed,
+            phase_results=self._result.phase_results,
+            cfx_path=cfx_path,
+            export_paths=export_paths,
+        )
 
     def _fire_callback(
         self,
