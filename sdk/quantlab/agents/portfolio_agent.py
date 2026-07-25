@@ -521,7 +521,7 @@ class PortfolioAgent(PortfolioStage):
 
             return {
                 "status": "completed",
-                "cfx_bytes": cfx_bytes.hex() if isinstance(cfx_bytes, bytes) else cfx_bytes,
+                "cfx_bytes": cfx_bytes,
                 "strategy_count": len(selected_strategies),
                 "weights": weights,
                 "portfolio_settings": {

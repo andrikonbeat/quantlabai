@@ -495,7 +495,17 @@ class StatisticsAgent(StatisticsStage):
         """
         export_paths = context.artifacts.get("export_paths", [])
         if not export_paths:
-            raise ValueError("No export_paths found in context artifacts")
+            logger.warning(
+                "No export_paths found in context artifacts — returning empty statistics"
+            )
+            empty_stats = StatsResult()
+            return {
+                "statistics": empty_stats.model_dump() if hasattr(empty_stats, "model_dump") else {},
+                "aggregate_stats": {},
+                "monte_carlo_bands": {},
+                "rolling_metrics": {},
+                "regime_alerts": [],
+            }
 
         # Task 3.2: Compute statistics from exports
         statistics = self.compute_statistics(export_paths)

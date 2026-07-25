@@ -564,7 +564,17 @@ class ReviewerAgent(ReviewStage):
         monte_carlo_bands = context.artifacts.get("monte_carlo_bands", {})
 
         if not statistics:
-            raise ValueError("No statistics found in context artifacts")
+            logger.warning(
+                "No statistics found in context artifacts — returning default review decision"
+            )
+            return {
+                "review_decision": "needs_review",
+                "iteration_proposal": None,
+                "wf_degradation": {"overfitting_flag": False, "degradation_ratio": None},
+                "mc_overfit_flag": False,
+                "benchmark_comparison": {},
+                "gate_decision_HUMAN_APPROVE_ITERATION": {"status": "pending", "decision": "abstain"},
+            }
 
         # Task 3.6: Evaluate acceptance criteria
         evaluation = self.evaluate(

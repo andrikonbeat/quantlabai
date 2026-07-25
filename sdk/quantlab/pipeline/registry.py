@@ -116,15 +116,60 @@ class StageRegistry:
 
     def _register_agent_stages(self) -> None:
         """Register the 7 multi-agent stage classes plus gate interceptor."""
+        # Concrete agent implementations from quantlab.agents
+        from quantlab.agents.research_agent import ResearchAgent
+        from quantlab.agents.builder_agent import BuilderAgent
+        from quantlab.agents.statistics_agent import StatisticsAgent
+        from quantlab.agents.reviewer_agent import ReviewerAgent
+        from quantlab.agents.portfolio_agent import PortfolioAgent
+        from quantlab.agents.deployment_agent import DeploymentAgent
+        from quantlab.agents.monitoring_agent import MonitoringAgent
+
+        # Stage wrappers for agents that don't inherit from Stage ABC
+        from quantlab.pipeline.stages.agent_stages import (
+            ResearchStage, BuilderStage, StatisticsStage,
+            ReviewStage, PortfolioStage, DeployStage, MonitorStage,
+        )
+
+        class ResearchAgentStage(ResearchStage):
+            """Wrapper: adapts ResearchAgent.run() to Stage.execute()."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                self._agent = ResearchAgent()
+                super().__init__(**kwargs)
+
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+                return await self._agent.run(ctx)
+
+        class BuilderAgentStage(BuilderStage):
+            """Wrapper: adapts BuilderAgent.run() to Stage.execute()."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                self._agent = BuilderAgent()
+                super().__init__(**kwargs)
+
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+                return await self._agent.run(ctx)
+
+        class DeployAgentStage(DeployStage):
+            """Wrapper: adapts DeploymentAgent.run() to Stage.execute()."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                self._agent = DeploymentAgent()
+                super().__init__(**kwargs)
+
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+                return await self._agent.run(ctx)
+
         self._stage_map.update({
-            # Agent stages (abstract — concrete impls come in later PRs)
-            "research": ResearchStage,
-            "builder": BuilderStage,
-            "statistics": StatisticsStage,
-            "review": ReviewStage,
-            "portfolio": PortfolioStage,
-            "deploy": DeployStage,
-            "monitor": MonitorStage,
+            # Agent stages — concrete implementations
+            "research": ResearchAgentStage,
+            "builder": BuilderAgentStage,
+            "statistics": StatisticsAgent,
+            "review": ReviewerAgent,
+            "portfolio": PortfolioAgent,
+            "deploy": DeployAgentStage,
+            "monitor": MonitoringAgent,
             # Gate interceptor
             "gate": GateInterceptorStage,
             # Aliases for gate names

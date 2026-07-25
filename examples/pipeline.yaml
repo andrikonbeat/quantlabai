@@ -32,6 +32,8 @@ pipeline:
         - hypotheses
         - iteration_config
         - gate_policies
+        - selected_strategies
+        - gate_decision_HUMAN_REVIEW_OBJECTIVES
 
     - name: builder
       type: agent
@@ -71,6 +73,7 @@ pipeline:
         - wf_degradation
         - mc_overfit_flag
         - benchmark_comparison
+        - gate_decision_HUMAN_APPROVE_ITERATION
 
     - name: portfolio
       type: agent
@@ -84,6 +87,7 @@ pipeline:
         - correlation_matrix
         - risk_allocation
         - wf_aggregate_stats
+        - gate_decision_HUMAN_APPROVE_PORTFOLIO
 
     - name: deploy
       type: agent
@@ -95,6 +99,8 @@ pipeline:
         - jforex_package
         - jcloud_config
         - deployment_result
+        - gate_decision_HUMAN_APPROVE_DEPLOY
+        - live_equity
 
     - name: monitor
       type: agent

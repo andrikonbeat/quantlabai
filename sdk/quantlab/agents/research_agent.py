@@ -584,6 +584,7 @@ class ResearchAgent:
         context.artifacts["hypotheses"] = hypotheses_dict
         context.artifacts["iteration_config"] = iteration_config_dict
         context.artifacts["gate_policies"] = gate_policies_dict
+        context.artifacts["selected_strategies"] = [s.name for s in research_config.strategies]
 
         logger.info(
             "ResearchAgent: generated config for '%s' with %d hypotheses",
