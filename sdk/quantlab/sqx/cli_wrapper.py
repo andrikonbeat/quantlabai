@@ -43,6 +43,7 @@ _EXPORT_DIRS = [
     "user/projects/{campaign_id}/exports",
     "user/settings/Exports/{campaign_id}",
     "/tmp/sqx-exports/{campaign_id}",
+    "/tmp/sqx-mock-exports/{campaign_id}",
 ]
 
 _COMMAND_ENDPOINT = "/call?cmd="
@@ -63,6 +64,7 @@ async def dispatch_campaign(
     sqx_install_path: str | None = None,
     poll_interval: float = _DEFAULT_POLL_INTERVAL,
     timeout: float = _DEFAULT_TIMEOUT,
+    force_mock: bool = False,
 ) -> dict[str, Any]:
     """Dispatch a CFX campaign to SQX.
 
@@ -99,7 +101,12 @@ async def dispatch_campaign(
             temp_cfx = f.name
         logger.info("Wrote CFX (%d bytes) to %s", len(cfx_bytes), temp_cfx)
 
-        if sqcli_path:
+        use_mock = (
+            force_mock
+            or os.environ.get("SQX_FORCE_MOCK", "").lower() in ("1", "true", "yes")
+        )
+
+        if sqcli_path and not use_mock:
             return await _dispatch_real(
                 sqcli_path=sqcli_path,
                 sqx_install_path=sqx_install_path,

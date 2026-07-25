@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -417,10 +418,15 @@ class BuilderAgent:
             try:
                 from quantlab.sqx.cli_wrapper import dispatch_campaign
 
+                # Use mock server when in dry_run mode or SQX_FORCE_MOCK is set
+                _is_dry = config.get("dry_run", False) if isinstance(config, dict) else getattr(config, "dry_run", False)
+                force_mock = _is_dry or os.environ.get("SQX_FORCE_MOCK", "").lower() in ("1", "true", "yes")
+
                 sqcli_result = await dispatch_campaign(
                     cfx_bytes=cfx_bytes,
                     campaign_id=campaign_id,
                     config=config,
+                    force_mock=force_mock,
                 )
                 result.sqcli_status = sqcli_result.get("status", "completed")
                 result.export_paths = sqcli_result.get("export_paths", [])

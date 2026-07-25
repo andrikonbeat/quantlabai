@@ -142,7 +142,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                 )
             if action == "action=export":
                 self._generate_mock_exports(project)
-                return
+                return self._send_text("Databank contents exported.\n")
 
         return self._send_text(f"Unrecognized command {cmd}.", status=400)
 
