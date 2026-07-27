@@ -129,6 +129,7 @@ class StageRegistry:
         from quantlab.pipeline.stages.agent_stages import (
             ResearchStage, BuilderStage, StatisticsStage,
             ReviewStage, PortfolioStage, DeployStage, MonitorStage,
+            GuardianEvaluationStage,
         )
 
         class ResearchAgentStage(ResearchStage):
@@ -170,6 +171,8 @@ class StageRegistry:
             "portfolio": PortfolioAgent,
             "deploy": DeployAgentStage,
             "monitor": MonitoringAgent,
+            # Guardian evaluation
+            "guardian_evaluate": GuardianEvaluationStage,
             # Gate interceptor
             "gate": GateInterceptorStage,
             # Aliases for gate names

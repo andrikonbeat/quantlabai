@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from datetime import datetime
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from quantlab.pipeline.base import Pipeline, PipelineContext, Stage as PipelineStage
 from quantlab.pipeline.errors import ContractValidationError, GateTimeoutError

@@ -165,3 +165,25 @@ class MonitorStage(Stage, ABC):
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError("MonitorStage must be implemented by a concrete agent subclass")
+
+
+class GuardianEvaluationStage(Stage, ABC):
+    """Evaluates all guardians before builder stage.
+
+    Runs MetaGuardianOrchestrator to check market, risk, portfolio,
+    capital, quality, and execution conditions before building strategies.
+
+    **Requires**: research_config
+    **Provides**: guardian_state, portfolio_state
+    """
+    name: str = "guardian_evaluate"
+    requires: list[str] = [
+        "research_config",
+    ]
+    provides: list[str] = [
+        "guardian_state",
+        "portfolio_state",
+    ]
+
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
+        raise NotImplementedError("GuardianEvaluationStage must be implemented by a concrete agent subclass")

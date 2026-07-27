@@ -751,7 +751,7 @@ class BuilderAgent:
                 "description": f"Multi-agent research pipeline for {config.campaign}",
                 "version": "2.0.0",
                 "stages": stages,
-            },\n            "guardian_enabled": True,
+            },
             "guardian_enabled": True,
             "gates": gates,
             "memory": {
@@ -759,16 +759,14 @@ class BuilderAgent:
                 "topic_prefix": "quantlab/agent",
                 "retention_days": 365,
                 "cross_agent_sharing": True,
-            },\n            "guardian_enabled": True,
-            "guardian_enabled": True,
+            },
             "risk": {
                 "max_portfolio_drawdown": 0.20,
                 "max_strategy_correlation": 0.7,
                 "max_single_strategy_weight": 0.4,
                 "kelly_fraction_cap": 0.25,
                 "var_confidence": 0.95,
-            },\n            "guardian_enabled": True,
-            "guardian_enabled": True,
+            },
         }
 
         return pipeline_config

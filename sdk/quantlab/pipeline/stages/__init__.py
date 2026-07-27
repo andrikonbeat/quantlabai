@@ -31,6 +31,7 @@ from quantlab.pipeline._stages import (
 from quantlab.pipeline.stages.agent_stages import (
     BuilderStage,
     DeployStage,
+    GuardianEvaluationStage,
     MonitorStage,
     PortfolioStage,
     ResearchStage,
@@ -71,6 +72,7 @@ __all__ = [
     "PortfolioStage",
     "DeployStage",
     "MonitorStage",
+    "GuardianEvaluationStage",
     # Gate interceptor
     "GateInterceptorStage",
     "GateDecision",

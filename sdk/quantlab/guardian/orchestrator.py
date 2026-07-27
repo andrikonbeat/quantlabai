@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Callable
 from typing import Dict, List, Tuple
 
 from .base import BaseGuardian
@@ -18,15 +20,18 @@ from .models import (
 class MetaGuardianOrchestrator:
     """Coordinates all guardians and manages the state machine."""
 
-    def __init__(self, config: MetaGuardianConfig, guardians: List[BaseGuardian]):
+    def __init__(self, config: MetaGuardianConfig, guardians: List[BaseGuardian],
+                 action_hooks: List[Callable[[PortfolioState, PortfolioState], None]] | None = None):
         """Initialize the orchestrator.
 
         Args:
             config: Configuration for the orchestrator
             guardians: List of guardian instances to coordinate
+            action_hooks: Optional list of callables(old_state, new_state) for state transitions
         """
         self.config = config
         self.guardians = guardians
+        self.action_hooks = action_hooks or []
         self.state = PortfolioState.NORMAL
         self.state_history: List[Tuple[PortfolioState, float]] = []
         self.strategy_states: Dict[str, StrategyState] = {}
@@ -38,7 +43,6 @@ class MetaGuardianOrchestrator:
         Returns:
             PortfolioState: Current portfolio state after evaluation.
         """
-        import time
         current_time = time.time()
         
         # Collect results from all guardians
@@ -194,12 +198,16 @@ class MetaGuardianOrchestrator:
             old_state: Previous state
             new_state: New state
         """
-        # This would trigger configured actions like:
-        # - Adjusting position sizes
-        # - Pausing/resuming strategies
-        # - Sending alerts
-        # For now, we just note the transition (could be extended for logging/notifications)
-        pass
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("Portfolio state transition: %s -> %s", old_state, new_state)
+        
+        # Execute configured action hooks
+        for hook in self.action_hooks:
+            try:
+                hook(old_state, new_state)
+            except Exception:
+                logger.exception("Action hook failed on transition %s -> %s", old_state, new_state)
 
     def _update_strategy_states(self, results: List[GuardianResult]) -> None:
         """Update individual strategy states based on guardian results.
