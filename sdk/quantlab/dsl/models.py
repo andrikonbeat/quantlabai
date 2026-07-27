@@ -9,7 +9,7 @@ Extended for multi-agent pipeline with agent configs, gate configs, memory, and 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -194,7 +194,8 @@ class ResearchConfig(BaseModel):
     """Top-level research campaign configuration.
 
     Serialises to/from YAML for versionable, human-readable definitions.
-    Extended for multi-agent pipeline with agents, gates, memory, risk configs.
+    Extended for multi-agent pipeline with agent configs, gate configs, memory, and risk.
+    Extended for MetaGuardian integration with guardian state.
     """
 
     # Core campaign fields
@@ -204,6 +205,14 @@ class ResearchConfig(BaseModel):
     building_blocks: list[BuildingBlock] = Field(default_factory=list)
     strategies: list[Strategy] = Field(default_factory=list)
     criteria: list[AcceptanceCriterion] = Field(default_factory=list)
+    default_criteria: list[AcceptanceCriterion] = Field(
+        default_factory=lambda: [
+            AcceptanceCriterion(metric="profit_factor", operator=">", value=1.0),
+            AcceptanceCriterion(metric="return_dd_ratio", operator=">", value=1.0),
+            AcceptanceCriterion(metric="avg_trades_per_month", operator=">", value=0.5),
+        ],
+        description="Default acceptance criteria used when criteria list is empty",
+    )
 
     # Multi-agent extensions
     hypotheses: list[HypothesisConfig] = Field(default_factory=list, description="Research hypotheses to test")
@@ -212,6 +221,9 @@ class ResearchConfig(BaseModel):
     agents: list[AgentRefConfig] = Field(default_factory=list, description="Agent references with config overrides")
     memory: MemoryConfig = Field(default_factory=MemoryConfig, description="Agent memory configuration")
     risk: RiskConfig = Field(default_factory=RiskConfig, description="Portfolio risk limits")
+    
+    # MetaGuardian integration
+    guardian_state: Optional[dict] = Field(default=None, description="Current MetaGuardian state for DSL translation")
 
     @model_validator(mode="after")
     def _validate_unique_strategy_names(self) -> ResearchConfig:

@@ -13,10 +13,49 @@ import json
 import logging
 import os
 import time
+import urllib.parse
 from dataclasses import dataclass, field
 from typing import Any
 
+import httpx
+
 logger = logging.getLogger(__name__)
+
+
+def _try_int(value: str, default: int) -> int:
+    """Parse an int from a string, returning *default* on failure."""
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+
+def _try_float(value: str, default: float | None) -> float | None:
+    """Parse a float from a string, returning *default* on failure."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+
+@dataclass
+class BuildProgress:
+    """Progress of an SQX build campaign, polled from the HTTP API.
+
+    Attributes:
+        strategies_generated: Number of strategies generated so far.
+        strategies_accepted: Number of strategies accepted so far.
+        generation: Current generation index (0-based or 1-based).
+        total_generations: Total number of generations expected.
+        status: One of ``running``, ``completed``, ``failed``, ``timeout``, or ``unknown``.
+        eta_seconds: Estimated seconds remaining, if available.
+    """
+    strategies_generated: int = 0
+    strategies_accepted: int = 0
+    generation: int = 0
+    total_generations: int = 0
+    status: str = "unknown"
+    eta_seconds: float | None = None
 
 
 @dataclass
@@ -45,8 +84,8 @@ class BuilderAgent:
 
     def __init__(
         self,
-        max_retries: int = 1,
-        timeout_minutes: int = 6,
+        max_retries: int = 2,
+        timeout_minutes: int = 60,
         poll_interval_seconds: int = 30,
     ) -> None:
         self._max_retries = max_retries
@@ -83,6 +122,14 @@ class BuilderAgent:
             research_config = research_config_raw
         else:
             raise ValueError(f"Unexpected research_config type: {type(research_config_raw)}")
+
+        # Apply guardian state from context if available
+        guardian_state = context.artifacts.get("guardian_state")
+        if guardian_state is not None:
+            if isinstance(research_config, dict):
+                research_config["guardian_state"] = guardian_state
+            else:
+                research_config.guardian_state = guardian_state
 
         # Phase 1: Translate DSL → CFX
         cfx_bytes, translate_log = await self._translate(research_config)
@@ -335,22 +382,33 @@ class BuilderAgent:
                 return result
 
             except asyncio.TimeoutError:
+                from quantlab.tools.exceptions import BuildTimeoutError
+
                 log_entry["status"] = "timeout"
                 log_entry["error"] = f"Timeout after {self._timeout_minutes} min"
                 dispatch_log.append(log_entry)
+
+                if attempt >= self._max_retries:
+                    logger.error(
+                        "All %d attempts timed out — raising BuildTimeoutError",
+                        self._max_retries + 1,
+                    )
+                    raise BuildTimeoutError(
+                        f"Campaign timed out after {self._timeout_minutes} minutes"
+                    )
+
                 last_error = f"Campaign timed out after {self._timeout_minutes} minutes"
                 logger.warning(
                     "Dispatch attempt %d/%d timed out",
                     attempt + 1, self._max_retries + 1,
                 )
 
-                if attempt < self._max_retries:
-                    # Send stop command before retry
-                    await self._send_stop()
-                    # Exponential backoff
-                    wait = min(2 ** attempt * 10, 120)
-                    logger.info("Retrying in %ds...", wait)
-                    await asyncio.sleep(wait)
+                # Send stop command before retry
+                await self._send_stop()
+                # Exponential backoff
+                wait = min(2 ** attempt * 10, 120)
+                logger.info("Retrying in %ds...", wait)
+                await asyncio.sleep(wait)
 
             except Exception as e:
                 log_entry["status"] = "failed"
@@ -391,10 +449,119 @@ class BuilderAgent:
 
         return result
 
+    # ── Task 2.2: Build status polling ───────────────────────────────────────────
+
+    async def poll_status(
+        self,
+        campaign_id: str,
+        base_url: str = "http://127.0.0.1:5050",
+    ) -> BuildProgress:
+        """Poll SQX HTTP API for build status and return a ``BuildProgress``.
+
+        Args:
+            campaign_id: The campaign/project name to poll.
+            base_url: SQX HTTP API base URL (default ``http://127.0.0.1:5050``).
+
+        Returns:
+            A ``BuildProgress`` dataclass with current build state.
+
+        Raises:
+            httpx.HTTPError: If the HTTP request fails.
+        """
+        encoded = urllib.parse.quote(
+            f"-project action=status name={campaign_id}", safe="=",
+        )
+        url = f"{base_url}/call?cmd={encoded}"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            text = resp.text
+        return self._parse_status(text)
+
+    @staticmethod
+    def _parse_status(text: str) -> BuildProgress:
+        """Parse a text/plain status response into ``BuildProgress``.
+
+        Expected response format (line by line)::
+
+            Strategies generated: 1234
+            Strategies accepted: 56
+            Generation: 3/10
+            Status: running
+            ETA: 45s
+        """
+        bp = BuildProgress()
+        for line in text.splitlines():
+            line = line.strip()
+            if not line or ":" not in line:
+                continue
+            key, _, value = line.partition(":")
+            key = key.strip().lower().replace(" ", "_")
+            value = value.strip()
+
+            if key == "strategies_generated":
+                bp.strategies_generated = _try_int(value, 0)
+            elif key in ("strategies_accepted", "accepted"):
+                bp.strategies_accepted = _try_int(value, 0)
+            elif key == "generation":
+                if "/" in value:
+                    parts = value.split("/")
+                    bp.generation = _try_int(parts[0], 0)
+                    bp.total_generations = _try_int(parts[1], 0)
+                else:
+                    bp.generation = _try_int(value, 0)
+            elif key == "status":
+                bp.status = value.lower()
+            elif key == "eta":
+                bp.eta_seconds = _try_float(value.rstrip("s"), None)
+        return bp
+
+    async def _ensure_data(self, config: Any) -> None:
+        """Ensure market data exists for the symbol used in this campaign.
+
+        Calls ``DataManager.ensure_symbol()`` to register the symbol via
+        sqcli and download data if needed. This is a best-effort pre-flight
+        check — failures are logged but do not block dispatch.
+        """
+        try:
+            from quantlab.data import DataManager
+
+            # Extract symbol from ResearchConfig
+            symbol = (
+                config.get("market", "EURUSD")
+                if isinstance(config, dict)
+                else getattr(config, "market", None)
+            )
+            if symbol is None:
+                logger.info("No market symbol in config — skipping data check")
+                return
+
+            # Convert Market enum to string if needed
+            if hasattr(symbol, "value"):
+                symbol = symbol.value
+
+            mgr = DataManager()
+            result = await mgr.ensure_symbol(symbol, datasource="dukascopy")
+            status = result.get("status", "error")
+            if status == "ok":
+                logger.info("Data pre-flight: symbol '%s' ready", symbol)
+            else:
+                logger.warning(
+                    "Data pre-flight for '%s': %s — %s",
+                    symbol,
+                    status,
+                    result.get("error", "unknown"),
+                )
+        except ImportError:
+            logger.debug("DataManager not available — skipping data pre-flight")
+        except Exception as e:
+            logger.warning("Data pre-flight failed (non-blocking): %s", e)
+
     async def _dispatch_single(
         self,
         cfx_bytes: bytes,
         config: Any,
+        skip_data_check: bool = False,
     ) -> DispatchResult:
         """Execute a single SQX dispatch attempt.
 
@@ -404,6 +571,8 @@ class BuilderAgent:
         Args:
             cfx_bytes: CFX archive bytes.
             config: ``ResearchConfig`` for campaign metadata.
+            skip_data_check: If ``True``, skip the pre-flight data check.
+                Default ``False`` ensures data exists before real dispatches.
 
         Returns:
             ``DispatchResult`` with dispatch results.
@@ -412,6 +581,10 @@ class BuilderAgent:
 
         campaign_id = f"sqx_{uuid.uuid4().hex[:12]}"
         result = DispatchResult(campaign_id=campaign_id, cfx_bytes=cfx_bytes)
+
+        # Pre-flight: ensure market data exists for this symbol
+        if not skip_data_check:
+            await self._ensure_data(config)
 
         try:
             # Try sqx_cli_wrapper if available
@@ -578,21 +751,24 @@ class BuilderAgent:
                 "description": f"Multi-agent research pipeline for {config.campaign}",
                 "version": "2.0.0",
                 "stages": stages,
-            },
+            },\n            "guardian_enabled": True,
+            "guardian_enabled": True,
             "gates": gates,
             "memory": {
                 "enabled": True,
                 "topic_prefix": "quantlab/agent",
                 "retention_days": 365,
                 "cross_agent_sharing": True,
-            },
+            },\n            "guardian_enabled": True,
+            "guardian_enabled": True,
             "risk": {
                 "max_portfolio_drawdown": 0.20,
                 "max_strategy_correlation": 0.7,
                 "max_single_strategy_weight": 0.4,
                 "kelly_fraction_cap": 0.25,
                 "var_confidence": 0.95,
-            },
+            },\n            "guardian_enabled": True,
+            "guardian_enabled": True,
         }
 
         return pipeline_config

@@ -225,6 +225,15 @@ class PipelineRunner:
             else:
                 stage_name = str(stage_config)
             
+            # If this is the builder stage and guardian is enabled, insert guardian_evaluate first
+            if stage_name == "builder" and getattr(config, "guardian_enabled", False):
+                guardian_stage_class = self._registry.get_stage_class("guardian_evaluate")
+                if guardian_stage_class is not None:
+                    guardian_stage = guardian_stage_class()
+                    pipeline.stages.append(guardian_stage)
+                else:
+                    logger.warning("Guardian evaluation stage not found in registry")
+            
             stage_class = self._registry.get_stage_class(stage_name)
             
             if stage_class is None:
@@ -451,7 +460,17 @@ class PipelineRunner:
                         _notify(f"pipeline/{stage.name}", PhaseStatus.SUCCESS)
                     last_error = None
                     break  # success
-                    
+
+                except GateTimeoutError:
+                    stage_duration = time.monotonic() - stage_start
+                    stage_result.status = StageStatus.FAILED
+                    stage_result.duration = stage_duration
+                    stage_result.error = "Gate timed out and aborted pipeline"
+                    stage_result.completed_at = datetime.now()
+                    ctx.error = GateTimeoutError("Gate aborted pipeline")
+                    last_error = ctx.error
+                    break  # gate abort is immediate, no retry
+
                 except Exception as e:
                     last_error = e
                     if attempt < self.max_retries:
