@@ -28,10 +28,11 @@ import tempfile
 import time
 import urllib.parse
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 
+from quantlab.sqx.campaign_monitor import CampaignMonitor, WatcherEvent, compute_baseline
 from quantlab.sqx.mock_sqx_server import MockSQXServer
 from quantlab.sqx.project_builder import create_project, remove_project
 
@@ -68,6 +69,7 @@ async def dispatch_campaign(
     poll_interval: float = _DEFAULT_POLL_INTERVAL,
     timeout: float = _DEFAULT_TIMEOUT,
     force_mock: bool = False,
+    on_watcher_event: Callable[[WatcherEvent], None] | None = None,
 ) -> dict[str, Any]:
     """Dispatch a campaign to SQX via the daemon-based HTTP API.
 
@@ -85,10 +87,14 @@ async def dispatch_campaign(
         poll_interval: Seconds between status polls (default 10).
         timeout: Max seconds for strategy generation (default 1800).
         force_mock: Force mock server even if sqcli is available.
+        on_watcher_event: Optional callback invoked for every WatcherEvent
+            emitted by the background CampaignMonitor. When ``None``,
+            WARNING/CRITICAL events trigger a ``rich.prompt.Confirm`` prompt.
 
     Returns:
         Dict with ``status`` (``"completed"``, ``"timeout"``,
-        ``"failed"``), ``export_paths``, and optionally ``error``.
+        ``"failed"``), ``export_paths``, ``watcher_events``, and
+        optionally ``error``.
     """
     if sqx_install_path is None:
         sqx_install_path = _resolve_sqx_install_path(config)
@@ -109,6 +115,7 @@ async def dispatch_campaign(
                 config=config,
                 poll_interval=poll_interval,
                 timeout=timeout,
+                on_watcher_event=on_watcher_event,
             )
         else:
             # Write CFX to temp file for mock path
@@ -122,6 +129,7 @@ async def dispatch_campaign(
                     temp_cfx=temp_cfx,
                     poll_interval=poll_interval,
                     timeout=timeout,
+                    on_watcher_event=on_watcher_event,
                 )
             finally:
                 if os.path.exists(temp_cfx):
@@ -150,6 +158,8 @@ async def _dispatch_real(
     config: Any,
     poll_interval: float,
     timeout: float,
+    *,
+    on_watcher_event: Callable[[WatcherEvent], None] | None = None,
 ) -> dict[str, Any]:
     """Dispatch using the real SQX daemon (sqcli without arguments).
 
@@ -158,10 +168,12 @@ async def _dispatch_real(
         2. Stop any existing daemon, start fresh (daemon scans projects
            at startup).
         3. Start campaign via HTTP API.
-        4. Poll status until completion or timeout.
+        4. Poll status until completion or timeout, with a concurrent
+           CampaignMonitor watching for stall/error patterns.
         5. Stop project.
         6. Export databanks.
         7. Stop daemon.
+        8. Collect and return watcher events.
 
     Args:
         sqx_install_path: Path to SQX installation.
@@ -170,6 +182,8 @@ async def _dispatch_real(
             strategies, criteria, building_blocks, etc.).
         poll_interval: Seconds between status polls.
         timeout: Max seconds for strategy generation.
+        on_watcher_event: Optional callback for WatcherEvents. When
+            ``None``, the monitor uses ``rich.prompt.Confirm`` prompts.
     """
     base_url = _SQX_BASE_URL
 
@@ -181,6 +195,10 @@ async def _dispatch_real(
     symbol = _get_config_value(cfg_dict, "market", "EURUSD")
     timeframe = _get_config_value(cfg_dict, "timeframe", "H1")
     campaign_name = _get_config_value(cfg_dict, "campaign", campaign_id)
+
+    # Extract WF/MC flags for project builder and baseline computation
+    walk_forward = bool(_get_config_value(cfg_dict, "walk_forward", True))
+    monte_carlo = bool(_get_config_value(cfg_dict, "monte_carlo", True))
 
     # Extract genetic settings from strategies list if available
     generations = 80
@@ -198,9 +216,8 @@ async def _dispatch_real(
     # Extract ranking criteria if available
     criteria = _get_config_value(cfg_dict, "criteria", [])
     pf = 1.3
-    sharpe = 0.8
-    dd = 0.25
-    wr = 0.3
+    return_dd = 4.0
+    avg_trades = 2
     for c in criteria:
         c_dict = c if isinstance(c, dict) else vars(c) if hasattr(c, "__dict__") else {}
         metric = c_dict.get("metric", "")
@@ -208,12 +225,10 @@ async def _dispatch_real(
         val = float(c_dict.get("value", 0))
         if "profit" in metric.lower():
             pf = val
-        elif "sharpe" in metric.lower():
-            sharpe = val
-        elif "drawdown" in metric.lower():
-            dd = val
-        elif "win" in metric.lower() or "rate" in metric.lower():
-            wr = val
+        elif "sharpe" in metric.lower() or "return" in metric.lower() or "dd" in metric.lower():
+            return_dd = val
+        elif "avg" in metric.lower() or "trades" in metric.lower():
+            avg_trades = val
 
     try:
         create_project(
@@ -226,13 +241,14 @@ async def _dispatch_real(
             generations=generations,
             population=population,
             rankings_min_profit_factor=pf,
-            rankings_min_sharpe=sharpe,
-            rankings_max_drawdown=dd,
-            rankings_min_win_rate=wr,
+            rankings_min_return_dd=return_dd,
+            rankings_min_avg_trades=avg_trades,
+            walk_forward=walk_forward,
+            monte_carlo=monte_carlo,
         )
     except Exception as e:
         logger.error("Failed to create project: %s", e)
-        return {"status": "failed", "export_paths": [], "error": f"project creation failed: {e}"}
+        return {"status": "failed", "export_paths": [], "error": f"project creation failed: {e}", "watcher_events": []}
 
     # ── Phase 0.5: Daemon lifecycle ──
     logger.info("Phase 0.5/6: Starting SQX daemon ...")
@@ -240,10 +256,10 @@ async def _dispatch_real(
     try:
         daemon_ready = await daemon.start(base_url)
         if not daemon_ready:
-            return {"status": "failed", "export_paths": [], "error": "daemon start failed"}
+            return {"status": "failed", "export_paths": [], "error": "daemon start failed", "watcher_events": []}
     except Exception as e:
         logger.error("Daemon start failed: %s", e)
-        return {"status": "failed", "export_paths": [], "error": f"daemon start failed: {e}"}
+        return {"status": "failed", "export_paths": [], "error": f"daemon start failed: {e}", "watcher_events": []}
 
     # ── Phase 1: Start campaign via HTTP API ──
     logger.info("Phase 1/6: Starting campaign '%s' ...", campaign_id)
@@ -251,24 +267,44 @@ async def _dispatch_real(
     if "Error" in start_resp[:100] or "does not exist" in start_resp:
         logger.error("Start failed: %s", start_resp[:300])
         await daemon.stop()
-        return {"status": "failed", "export_paths": [], "error": f"start failed: {start_resp}"}
+        return {"status": "failed", "export_paths": [], "error": f"start failed: {start_resp}", "watcher_events": []}
+
+    # ── CampaignMonitor setup ──
+    baseline = compute_baseline(cfg_dict, poll_interval=5.0)
+    monitor = CampaignMonitor(
+        campaign_id=campaign_id,
+        base_url=base_url,
+        baseline=baseline,
+        on_watcher_event=on_watcher_event,
+    )
+    monitor_task = asyncio.create_task(monitor.run())
 
     # ── Phase 2: Poll status ──
     logger.info("Phase 2/6: Polling status for '%s' ...", campaign_id)
     deadline = time.monotonic() + timeout
     is_completed = False
-    while time.monotonic() < deadline:
-        status_text = await _send_http(base_url, f"-project action=status name={campaign_id}")
-        # Check if still running — if the "In databank" line shows strategies
-        if "Project execution stopped" in status_text:
-            is_completed = True
-            logger.info("Campaign '%s' completed (project stopped)!", campaign_id)
-            break
-        if _is_completed(status_text):
-            is_completed = True
-            logger.info("Campaign '%s' completed!", campaign_id)
-            break
-        await asyncio.sleep(poll_interval)
+    try:
+        while time.monotonic() < deadline:
+            status_text = await _send_http(base_url, f"-project action=status name={campaign_id}")
+            # Check if still running — if the "In databank" line shows strategies
+            if "Project execution stopped" in status_text:
+                is_completed = True
+                logger.info("Campaign '%s' completed (project stopped)!", campaign_id)
+                break
+            if _is_completed(status_text):
+                is_completed = True
+                logger.info("Campaign '%s' completed!", campaign_id)
+                break
+            await asyncio.sleep(poll_interval)
+    finally:
+        # Always cancel the monitor when the poll loop exits
+        await monitor.cancel()
+        watcher_events: list[dict[str, Any]] = []
+        try:
+            collected = await asyncio.wait_for(monitor_task, timeout=5.0)
+            watcher_events = [e.to_dict() for e in collected]
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            watcher_events = [e.to_dict() for e in monitor._events]
 
     if not is_completed:
         logger.warning("Campaign '%s' timed out after %.0fs", campaign_id, timeout)
@@ -307,7 +343,7 @@ async def _dispatch_real(
         logger.warning("Daemon stop failed: %s", e)
 
     status = "completed" if is_completed else "timeout"
-    return {"status": status, "export_paths": export_paths}
+    return {"status": status, "export_paths": export_paths, "watcher_events": watcher_events}
 
 
 # ── Lightweight daemon handle for cli_wrapper ──
@@ -404,8 +440,13 @@ async def _dispatch_mock(
     temp_cfx: str,
     poll_interval: float,
     timeout: float,
+    *,
+    on_watcher_event: Callable[[WatcherEvent], None] | None = None,
 ) -> dict[str, Any]:
-    """Dispatch using the mock HTTP server (no real sqcli required)."""
+    """Dispatch using the mock HTTP server (no real sqcli required).
+
+    Also spawns a CampaignMonitor for E2E integration testing.
+    """
     base_url = await _ensure_mock_server()
 
     # Load config
@@ -414,17 +455,39 @@ async def _dispatch_mock(
     # Start project
     await _send_http(base_url, f"-project action=start name={campaign_id}")
 
+    # ── CampaignMonitor setup — poll faster than dispatch loop ──
+    monitor_poll = max(0.5, poll_interval / 2)
+    baseline = compute_baseline({"timeframe": "H1"}, poll_interval=monitor_poll)
+    monitor = CampaignMonitor(
+        campaign_id=campaign_id,
+        base_url=base_url,
+        baseline=baseline,
+        poll_interval=monitor_poll,
+        on_watcher_event=on_watcher_event,
+    )
+    monitor_task = asyncio.create_task(monitor.run())
+
     # Poll status
     deadline = time.monotonic() + timeout
     is_completed = False
-    while time.monotonic() < deadline:
-        status_text = await _send_http(
-            base_url, f"-project action=status name={campaign_id}"
-        )
-        if _is_completed(status_text):
-            is_completed = True
-            break
-        await asyncio.sleep(poll_interval)
+    try:
+        while time.monotonic() < deadline:
+            status_text = await _send_http(
+                base_url, f"-project action=status name={campaign_id}"
+            )
+            if _is_completed(status_text):
+                is_completed = True
+                break
+            await asyncio.sleep(poll_interval)
+    finally:
+        # Always cancel the monitor when the poll loop exits
+        await monitor.cancel()
+        watcher_events: list[dict[str, Any]] = []
+        try:
+            collected = await asyncio.wait_for(monitor_task, timeout=5.0)
+            watcher_events = [e.to_dict() for e in collected]
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            watcher_events = [e.to_dict() for e in monitor._events]
 
     # Stop
     try:
@@ -439,7 +502,11 @@ async def _dispatch_mock(
         pass
 
     export_paths = _collect_exports(sqx_install_path, campaign_id)
-    return {"status": "completed" if is_completed else "timeout", "export_paths": export_paths}
+    return {
+        "status": "completed" if is_completed else "timeout",
+        "export_paths": export_paths,
+        "watcher_events": watcher_events,
+    }
 
 
 # ---------------------------------------------------------------------------

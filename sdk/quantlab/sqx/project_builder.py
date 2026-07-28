@@ -839,9 +839,8 @@ def create_project(
     spread: int = _JFOREX_SPREAD,
     commission: float = _JFOREX_COMMISSION,
     rankings_min_profit_factor: float = 1.3,
-    rankings_min_sharpe: float = 0.8,
-    rankings_max_drawdown: float = 0.25,
-    rankings_min_win_rate: float = 0.3,
+    rankings_min_return_dd: float = 4.0,
+    rankings_min_avg_trades: int = 2,
     walk_forward: bool = True,
     monte_carlo: bool = True,
     build_config: BuildConfig | None = None,
@@ -977,18 +976,13 @@ def create_project(
             task_xml,
         )
         task_xml = re.sub(
-            r'(<Column-Value column="SharpeRatio"[^>]*minValue=")[^"]*(")',
-            f'\\g<1>{rankings_min_sharpe}\\2',
+            r'(<Column-Value column="AvgTradesPerMonth"[^>]*minValue=")[^"]*(")',
+            f'\\g<1>{rankings_min_avg_trades}\\2',
             task_xml,
         )
         task_xml = re.sub(
-            r'(<Column-Value column="MaxDrawdown"[^>]*maxValue=")[^"]*(")',
-            f'\\g<1>{rankings_max_drawdown}\\2',
-            task_xml,
-        )
-        task_xml = re.sub(
-            r'(<Column-Value column="WinRate"[^>]*minValue=")[^"]*(")',
-            f'\\g<1>{rankings_min_win_rate}\\2',
+            r'(<Column-Value column="ReturnDDRatio"[^>]*minValue=")[^"]*(")',
+            f'\\g<1>{rankings_min_return_dd}\\2',
             task_xml,
         )
     else:
