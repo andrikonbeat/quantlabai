@@ -31,6 +31,7 @@ from quantlab.readers.databank import DatabankCSVReader
 from quantlab.stats.engine import StatisticsEngine
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.phase4.checkpoint import CampaignCheckpoint, CheckpointManager
+from quantlab.sqx.campaign_monitor import WatcherEvent
 
 # Import pipeline framework
 from quantlab.pipeline import (
@@ -71,6 +72,7 @@ class CampaignResult:
     summary: dict = field(default_factory=dict)
     statistics: dict = field(default_factory=dict)
     artifact_paths: dict[str, Path] = field(default_factory=dict)
+    watcher_events: list[WatcherEvent] = field(default_factory=list)
     total_duration: float = 0.0
     error: Optional[str] = None
 
@@ -112,6 +114,7 @@ class CampaignConfig:
 
     # Callbacks
     progress_callback: Optional[Callable[[CampaignPhase, PhaseStatus, Optional[str]], Any]] = None
+    on_watcher_event: Optional[Callable] = None
 
 
 class CampaignOrchestrator:
@@ -221,6 +224,7 @@ class CampaignOrchestrator:
             "knowledge_root": self.config.knowledge_root,
             "dry_run": self.config.dry_run,
             "progress_callback": self.config.progress_callback,
+            "on_watcher_event": self.config.on_watcher_event,
         }
         return PipelineContext(config=config_dict)
 
@@ -263,6 +267,7 @@ class CampaignOrchestrator:
         self._result.cfx_bytes = artifacts.get("cfx_bytes")
         self._result.campaign_status = artifacts.get("campaign_status")
         self._result.export_paths = artifacts.get("export_paths", {})
+        self._result.watcher_events = artifacts.get("watcher_events", [])
         parsed = artifacts.get("parsed_results", {})
         self._result.trades = parsed.get("trades", [])
         self._result.equity = parsed.get("equity", [])
@@ -412,6 +417,7 @@ async def run_campaign(
     poll_interval: float = 30.0,
     poll_timeout: float = 3600.0,
     progress_callback: Optional[Callable] = None,
+    on_watcher_event: Optional[Callable] = None,
 ) -> CampaignResult:
     """High-level function to run a complete campaign.
 
@@ -424,6 +430,8 @@ async def run_campaign(
         poll_interval: Status polling interval (seconds).
         poll_timeout: Maximum time to wait for completion.
         progress_callback: Optional callback(phase, status, detail).
+        on_watcher_event: Optional callback for WatcherEvents. When
+            ``None``, the CampaignMonitor uses CLI prompts.
 
     Returns:
         CampaignResult with all results and artifacts.
@@ -437,6 +445,7 @@ async def run_campaign(
         poll_interval=poll_interval,
         poll_timeout=poll_timeout,
         progress_callback=progress_callback,
+        on_watcher_event=on_watcher_event,
     )
 
     orchestrator = CampaignOrchestrator(config)
