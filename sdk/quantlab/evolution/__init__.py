@@ -20,6 +20,7 @@ from quantlab.evolution.models import (
 )
 from quantlab.evolution.novelty import NoveltyGenerator
 from quantlab.evolution.pool import CandidatePool
+from quantlab.evolution.seg import StrategyGenerator
 from quantlab.evolution.validator import CandidateValidator
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "FitnessFunction",
     "GeneticOptimizer",
     "NoveltyGenerator",
+    "StrategyGenerator",
 ]

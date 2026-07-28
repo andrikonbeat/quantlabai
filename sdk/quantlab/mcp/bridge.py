@@ -149,14 +149,16 @@ class QuantLabMCPServer:
         from quantlab.mcp import evolution_tools
         from quantlab.mcp import fundamental_tools
         from quantlab.mcp import health_tools
+        from quantlab.mcp import seg_tools
 
         pipeline_tools.register(self)
         evolution_tools.register(self)
         health_tools.register(self)
         fundamental_tools.register(self)
+        seg_tools.register(self)
 
         logger.info(
-            "Registered tool modules: pipeline, evolution, health, fundamental"
+            "Registered tool modules: pipeline, evolution, health, fundamental, seg"
         )
 
     # ── Lifecycle ───────────────────────────────────────────────────────────
