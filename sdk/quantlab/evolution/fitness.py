@@ -44,7 +44,7 @@ class FitnessFunction:
             Fitness score (0–100) where higher is better.
         """
         health = self._calculator.compute(stats)
-        return health.overall
+        return health.overall_score
 
     def evaluate_with_profile(
         self, stats: StatsResult, profile: WeightProfile
@@ -61,4 +61,4 @@ class FitnessFunction:
         weights = profile.as_dict()
         calc = HealthScoreCalculator(weights=weights)
         health = calc.compute(stats)
-        return health.overall
+        return health.overall_score

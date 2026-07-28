@@ -20,6 +20,7 @@ from quantlab.evolution.models import (
 from quantlab.evolution.novelty import NoveltyGenerator
 from quantlab.evolution.pool import CandidatePool
 from quantlab.evolution.validator import CandidateValidator
+from quantlab.pipeline.runner import PipelineRunner
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ class EvolutionOrchestrator:
         genetic: Optional[GeneticOptimizer] = None,
         novelty: Optional[NoveltyGenerator] = None,
         validator: Optional[CandidateValidator] = None,
+        runner: Optional[PipelineRunner] = None,
     ) -> None:
         """Initialize the orchestrator.
 
@@ -53,15 +55,28 @@ class EvolutionOrchestrator:
             genetic: Genetic optimizer instance.
             novelty: Novelty generator instance.
             validator: Candidate validator instance.
+            runner: Optional PipelineRunner (shared across components).
         """
         self.config = config
         self.pool = pool or CandidatePool(
             pool_directory=config.pool_directory
         )
         self.fitness = fitness or FitnessFunction()
-        self._genetic = genetic
-        self._novelty = novelty
-        self._validator = validator
+        self._runner = runner or PipelineRunner()
+
+        # Wire PipelineRunner into sub-components when they aren't
+        # injected — ensures they all share the same runner.
+        self._genetic = genetic or GeneticOptimizer(
+            config=config, fitness=self.fitness, runner=self._runner,
+        )
+        self._novelty = novelty or NoveltyGenerator(
+            config=config, fitness=self.fitness, runner=self._runner,
+        )
+        self._validator = validator or CandidateValidator(
+            config=config, fitness=self.fitness, pool=self.pool,
+            runner=self._runner,
+        )
+
         self._active_cycles: Dict[str, EvolutionResult] = {}
         self._cycle_count: int = 0
         self._last_cycle_time: float = 0.0
@@ -140,7 +155,10 @@ class EvolutionOrchestrator:
         results: List[EvolutionResult] = []
         for signal in sorted_signals:
             if self.active_cycle_count >= self.config.concurrency.max_concurrent_evolutions:
-                logger.warning("Concurrency limit reached — deferring signal %s", signal.strategy_id)
+                logger.warning(
+                    "Concurrency limit reached — deferring signal %s",
+                    signal.strategy_id,
+                )
                 break
 
             result = await self._execute_signal(signal)
@@ -150,6 +168,10 @@ class EvolutionOrchestrator:
 
     async def _execute_signal(self, signal: EvolutionSignal) -> EvolutionResult:
         """Execute an evolution cycle for a single signal.
+
+        Loads the strategy's CFX content from the CandidatePool (if
+        previously persisted) and passes it through the real generators
+        and validator.
 
         Args:
             signal: The triggering signal.
@@ -175,11 +197,14 @@ class EvolutionOrchestrator:
         try:
             candidates: List[EvolutionCandidate] = []
 
+            # Load existing CFX from pool if available
+            cfx_content = self._load_strategy_cfx(signal.strategy_id)
+
             if self.config.mode in (EvolutionMode.FULL, EvolutionMode.GENETIC_ONLY):
                 if self._genetic is not None:
                     genetic_candidates = await self._genetic.optimize(
                         strategy_id=signal.strategy_id,
-                        cfx_content="",  # Would load from strategy store
+                        cfx_content=cfx_content,
                     )
                     candidates.extend(genetic_candidates)
 
@@ -216,9 +241,21 @@ class EvolutionOrchestrator:
             result.errors.append("Cycle failed with exception")
 
         result.completed_at = datetime.now()
-        # Remove from active set when done so concurrency limit works correctly
         self._active_cycles.pop(cycle_id, None)
         return result
+
+    def _load_strategy_cfx(self, strategy_id: str) -> str:
+        """Attempt to load CFX content for a strategy from the pool.
+
+        Looks for an existing candidate with this strategy_id and reads
+        its cfx_content.  Returns empty string if none found (signals
+        the generator to use defaults or skip genetic).
+        """
+        candidates = self.pool.load_all()
+        for c in candidates:
+            if c.strategy_id == strategy_id and c.cfx_content:
+                return c.cfx_content
+        return ""
 
     async def _run_cycle(
         self, signals: Optional[List[EvolutionSignal]] = None
@@ -258,16 +295,32 @@ class EvolutionOrchestrator:
         self._active_cycles[cycle_id] = result
 
         try:
+            # Load strategy IDs from pool as potential parents
+            pool_candidates = self.pool.load_all()
+            strategy_ids = list({c.strategy_id for c in pool_candidates})
+
             # Genetic optimization for existing strategies
             if self.config.mode in (EvolutionMode.FULL, EvolutionMode.GENETIC_ONLY):
                 if self._genetic is not None:
-                    candidates = await self._genetic.optimize(
-                        strategy_id="default",
-                        cfx_content="",
-                    )
-                    for c in candidates:
-                        self.pool.add(c)
-                    result.candidates_generated += len(candidates)
+                    if strategy_ids:
+                        for sid in strategy_ids[:3]:  # limit per cycle
+                            cfx_content = self._load_strategy_cfx(sid)
+                            candidates = await self._genetic.optimize(
+                                strategy_id=sid,
+                                cfx_content=cfx_content,
+                            )
+                            for c in candidates:
+                                self.pool.add(c)
+                            result.candidates_generated += len(candidates)
+                    else:
+                        # Fallback: no strategies in pool — generate fresh
+                        candidates = await self._genetic.optimize(
+                            strategy_id="default",
+                            cfx_content="",
+                        )
+                        for c in candidates:
+                            self.pool.add(c)
+                        result.candidates_generated += len(candidates)
 
             # Novelty generation
             if self.config.mode in (EvolutionMode.FULL, EvolutionMode.GENERATIVE_ONLY):
@@ -278,6 +331,22 @@ class EvolutionOrchestrator:
                     for c in candidates:
                         self.pool.add(c)
                     result.candidates_generated += len(candidates)
+
+            # Validate after all generation
+            all_pending = self.pool.get_by_status(CandidateStatus.PENDING)
+            if self._validator is not None and all_pending:
+                validated = await self._validator.validate_batch(all_pending)
+                result.candidates_passed = sum(
+                    1 for c in validated if c.status == CandidateStatus.PASSED
+                )
+
+                # Promote
+                ready = self.pool.get_ready_for_promotion(
+                    threshold=self.config.concurrency.pool_promotion_threshold
+                )
+                for rc in ready:
+                    self.pool.promote(rc.candidate_id)
+                result.candidates_promoted = len(ready)
 
         except Exception:
             logger.exception("Scheduled cycle %s failed", cycle_id)
