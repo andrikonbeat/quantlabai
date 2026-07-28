@@ -22,6 +22,7 @@ from quantlab.pipeline.stages.agent_stages import (
     StatisticsStage,
 )
 from quantlab.pipeline.stages.gate_interceptor import GateInterceptorStage
+from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +174,8 @@ class StageRegistry:
             "monitor": MonitoringAgent,
             # Guardian evaluation
             "guardian_evaluate": GuardianEvaluationStage,
+            # Monte Carlo simulation
+            "monte_carlo": MonteCarloStage,
             # Gate interceptor
             "gate": GateInterceptorStage,
             # Aliases for gate names

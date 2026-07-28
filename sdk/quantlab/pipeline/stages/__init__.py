@@ -49,6 +49,7 @@ from quantlab.pipeline.stages.gate_interceptor import (
     GateInterceptorStage,
     HUMAN_GATE_IDS,
 )
+from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
 
 __all__ = [
     # Original SQX stages
@@ -81,4 +82,6 @@ __all__ = [
     "GateAction",
     "FallbackPolicy",
     "HUMAN_GATE_IDS",
+    # Monte Carlo
+    "MonteCarloStage",
 ]
