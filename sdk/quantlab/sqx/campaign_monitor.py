@@ -589,11 +589,12 @@ class CampaignMonitor:
 
     @staticmethod
     def _is_campaign_done(status_text: str) -> bool:
-        """Check if the status text indicates campaign completion."""
+        """Check if the status text indicates campaign completion or failure."""
+        text = status_text.lower()
         return (
             "Project execution stopped" in status_text
             or any(
-                term in status_text.lower()
-                for term in ("completed", "finished", "done", "success")
+                term in text
+                for term in ("completed", "finished", "done", "success", "failed")
             )
         )

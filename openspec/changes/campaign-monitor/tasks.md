@@ -39,12 +39,12 @@ Decision needed before apply: Yes — resolved: stacked-to-main, PR 1 contains w
 
 ## Phase 3: Integration Wiring
 
-- [ ] 3.1 Add `walk_forward`, `monte_carlo` params to `create_project` in `project_builder.py`
-- [ ] 3.2 Modify `_dispatch_real` in `cli_wrapper.py` — spawn CampaignMonitor at Phase 2
-- [ ] 3.3 Modify `dispatch_campaign` — add `on_watcher_event` kwarg, collect watcher_events
-- [ ] 3.4 Add `watcher_events: list[WatcherEvent]` field to `CampaignResult` in orchestrator
-- [ ] 3.5 Add `on_watcher_event` param to `CampaignConfig` and `run_campaign`
-- [ ] 3.6 Export `CampaignMonitor`, `WatcherEvent` in `sdk/quantlab/sqx/__init__.py`
+- [x] 3.1 Add `walk_forward`, `monte_carlo` params to `create_project` in `project_builder.py`
+- [x] 3.2 Modify `_dispatch_real` in `cli_wrapper.py` — spawn CampaignMonitor at Phase 2
+- [x] 3.3 Modify `dispatch_campaign` — add `on_watcher_event` kwarg, collect watcher_events
+- [x] 3.4 Add `watcher_events: list[WatcherEvent]` field to `CampaignResult` in orchestrator
+- [x] 3.5 Add `on_watcher_event` param to `CampaignConfig` and `run_campaign`
+- [x] 3.6 Export `CampaignMonitor`, `WatcherEvent` in `sdk/quantlab/sqx/__init__.py`
 
 ## Phase 4: Testing
 
@@ -53,4 +53,4 @@ Decision needed before apply: Yes — resolved: stacked-to-main, PR 1 contains w
 - [x] 4.3 Unit tests: `compute_baseline` (M1→60s, H1→15s, WF+MC→2x, no WF→1x)
 - [x] 4.4 Unit tests: `WatcherEvent` JSON round-trip, all event types
 - [x] 4.5 Integration: monitor with mock SQX (healthy, config-error, cancels-on-done)
-- [ ] 4.6 E2E: `dispatch_campaign` with watcher_callback, verify events in result
+- [x] 4.6 E2E: `dispatch_campaign` with watcher_callback, verify events in result
