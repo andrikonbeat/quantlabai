@@ -112,18 +112,30 @@ def base_rankings_xml() -> str:
   <Conditions>
     <Condition use="true">
       <Left-Side valueType="column">
-        <Column-Value column="AvgTradesPerMonth" columnType="0" format="Integer" resultType="main" minValue="2" />
+        <Column-Value column="AvgTradesPerMonth" columnType="0" format="Integer" resultType="main" direction="0" sampleType="127" plType="10" confidenceLevel="50" market="1" subresult="30" pctRatio="0" class="AvgTradesPerMonth" />
       </Left-Side>
+      <Comparator value="&gt;" />
+      <Right-Side valueType="numeric">
+        <Numeric-Value value="2" />
+      </Right-Side>
     </Condition>
     <Condition use="true">
       <Left-Side valueType="column">
-        <Column-Value column="ProfitFactor" columnType="0" format="Decimal2" resultType="main" minValue="1.3" />
+        <Column-Value column="ProfitFactor" columnType="0" format="Decimal2" resultType="main" direction="0" sampleType="127" plType="10" confidenceLevel="50" market="1" subresult="30" pctRatio="0" class="ProfitFactor" />
       </Left-Side>
+      <Comparator value="&gt;" />
+      <Right-Side valueType="numeric">
+        <Numeric-Value value="1.3" />
+      </Right-Side>
     </Condition>
     <Condition use="true">
       <Left-Side valueType="column">
-        <Column-Value column="ReturnDDRatio" columnType="0" format="Decimal2" resultType="main" minValue="4" />
+        <Column-Value column="ReturnDDRatio" columnType="0" format="Decimal2" resultType="main" direction="0" sampleType="127" plType="10" confidenceLevel="50" market="1" subresult="30" pctRatio="0" class="ReturnDDRatio" />
       </Left-Side>
+      <Comparator value="&gt;" />
+      <Right-Side valueType="numeric">
+        <Numeric-Value value="4" />
+      </Right-Side>
     </Condition>
   </Conditions>
 </Rankings>"""
@@ -478,28 +490,28 @@ class TestRankingsBugFixes:
         assert '<Ranking type="Fitness" />' in result
 
     def test_ranking_pf_min_uses_correct_column(self, base_rankings_xml: str) -> None:
-        """ranking_pf_min should modify ProfitFactor column (not SharpeRatio)."""
+        """ranking_pf_min should modify ProfitFactor threshold (not SharpeRatio)."""
         config = BuildConfig(ranking_pf_min=2.0)
         result = _apply_build_config(base_rankings_xml, config)
-        # ProfitFactor column should have minValue="2.00"
+        # ProfitFactor Numeric-Value should be updated
         assert 'column="ProfitFactor"' in result
-        assert 'minValue="2.00"' in result
+        assert '<Numeric-Value value="2.00" />' in result
 
     def test_ranking_return_dd_min_uses_correct_column(self, base_rankings_xml: str) -> None:
-        """ranking_return_dd_min should modify ReturnDDRatio column (not SharpeRatio)."""
+        """ranking_return_dd_min should modify ReturnDDRatio threshold (not SharpeRatio)."""
         config = BuildConfig(ranking_return_dd_min=5.0)
         result = _apply_build_config(base_rankings_xml, config)
-        # ReturnDDRatio column should have minValue="5.00"
+        # ReturnDDRatio Numeric-Value should be updated
         assert 'column="ReturnDDRatio"' in result
-        assert 'minValue="5.00"' in result
+        assert '<Numeric-Value value="5.00" />' in result
 
     def test_ranking_avg_trades_min_uses_correct_column(self, base_rankings_xml: str) -> None:
-        """ranking_avg_trades_min should modify AvgTradesPerMonth column (not MaxDrawdown)."""
+        """ranking_avg_trades_min should modify AvgTradesPerMonth threshold (not MaxDrawdown)."""
         config = BuildConfig(ranking_avg_trades_min=5)
         result = _apply_build_config(base_rankings_xml, config)
         # AvgTradesPerMonth column should have minValue="5"
         assert 'column="AvgTradesPerMonth"' in result
-        assert 'minValue="5"' in result
+        assert '<Numeric-Value value="5" />' in result
 
     def test_max_strategies(self, base_rankings_xml: str) -> None:
         """max_strategies should update the MaxStrategies element."""

@@ -39,6 +39,23 @@ _SYMBOL_MAX_DATES: dict[str, str] = {
 _MAX_DATE_DEFAULT = "2024.6.30"  # conservative default with margin
 
 
+def _clamp_date_to(symbol: str, requested: str) -> str:
+    """Clamp date_to to the known max date for the symbol."""
+    max_date = _SYMBOL_MAX_DATES.get(symbol.upper(), _MAX_DATE_DEFAULT)
+
+    def _date_tuple(d: str) -> tuple[int, int, int]:
+        parts = d.split(".")
+        return int(parts[0]), int(parts[1]), int(parts[2])
+
+    if _date_tuple(requested) > _date_tuple(max_date):
+        return max_date
+    return requested
+
+
+def _template_path() -> Path:
+    return _DEFAULT_TEMPLATE
+
+
 @dataclass
 class BuildConfig:
     """Configuration overrides for the SQX build template.
@@ -578,17 +595,17 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "string",
     ),
     "ranking_avg_trades_min": (
-        r'(<Column-Value column="AvgTradesPerMonth"[^>]*minValue=")[^"]*(")',
+        r'(<Column-Value column="AvgTradesPerMonth"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
         r'\g<1>{value}\2',
         "int",
     ),
     "ranking_pf_min": (
-        r'(<Column-Value column="ProfitFactor"[^>]*minValue=")[^"]*(")',
+        r'(<Column-Value column="ProfitFactor"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
         r'\g<1>{value}\2',
         "float",
     ),
     "ranking_return_dd_min": (
-        r'(<Column-Value column="ReturnDDRatio"[^>]*minValue=")[^"]*(")',
+        r'(<Column-Value column="ReturnDDRatio"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
         r'\g<1>{value}\2',
         "float",
     ),
@@ -969,19 +986,19 @@ def create_project(
         )
 
         # Modify Conditions in Rankings
-        # Find ProfitFactor condition and set minValue
+        # Find ProfitFactor condition and set threshold
         task_xml = re.sub(
-            r'(<Column-Value column="ProfitFactor"[^>]*minValue=")[^"]*(")',
+            r'(<Column-Value column="ProfitFactor"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
             f'\\g<1>{rankings_min_profit_factor}\\2',
             task_xml,
         )
         task_xml = re.sub(
-            r'(<Column-Value column="AvgTradesPerMonth"[^>]*minValue=")[^"]*(")',
+            r'(<Column-Value column="AvgTradesPerMonth"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
             f'\\g<1>{rankings_min_avg_trades}\\2',
             task_xml,
         )
         task_xml = re.sub(
-            r'(<Column-Value column="ReturnDDRatio"[^>]*minValue=")[^"]*(")',
+            r'(<Column-Value column="ReturnDDRatio"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
             f'\\g<1>{rankings_min_return_dd}\\2',
             task_xml,
         )
