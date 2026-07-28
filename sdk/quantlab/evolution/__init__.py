@@ -10,18 +10,28 @@ strategy improvement or replacement. It supports two evolution modes:
 from __future__ import annotations
 
 from quantlab.evolution.config import EvolutionConfig, EvolutionMode
+from quantlab.evolution.fitness import FitnessFunction
+from quantlab.evolution.genetic import GeneticOptimizer
 from quantlab.evolution.models import (
     CandidateStatus,
     EvolutionCandidate,
     EvolutionResult,
     EvolutionSignal,
 )
+from quantlab.evolution.novelty import NoveltyGenerator
+from quantlab.evolution.pool import CandidatePool
+from quantlab.evolution.validator import CandidateValidator
 
 __all__ = [
+    "CandidatePool",
+    "CandidateStatus",
+    "CandidateValidator",
     "EvolutionCandidate",
     "EvolutionConfig",
     "EvolutionMode",
     "EvolutionResult",
     "EvolutionSignal",
-    "CandidateStatus",
+    "FitnessFunction",
+    "GeneticOptimizer",
+    "NoveltyGenerator",
 ]
