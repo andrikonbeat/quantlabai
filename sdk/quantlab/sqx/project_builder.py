@@ -85,6 +85,12 @@ def create_project(
     # ── Build-Task1.xml modifications ──
 
     # 1. Data section: symbol, timeframe, date range
+    # SQX symbol naming: {SYMBOL}_{TIMEFRAME}_dukas for Dukascopy engine
+    if engine.lower() == "dukascopy":
+        chart_symbol = f"{symbol}_{timeframe.upper()}_dukas"
+    else:
+        chart_symbol = f"{symbol}_{timeframe.lower()}"
+
     chart_old = re.search(
         r'<Chart symbol="[^"]*" timeframe="[^"]*" spread="\d+"',
         task_xml,
@@ -92,7 +98,7 @@ def create_project(
     if chart_old:
         task_xml = task_xml.replace(
             chart_old.group(),
-            f'<Chart symbol="{symbol}_{timeframe.lower()}" timeframe="{timeframe}" spread="{spread}"',
+            f'<Chart symbol="{chart_symbol}" timeframe="{timeframe}" spread="{spread}"',
         )
 
     # 2. Setup: date range, slippage, engine
