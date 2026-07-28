@@ -6,7 +6,9 @@ import logging
 import re
 import shutil
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +20,7 @@ _JFOREX_COMMISSION = 3.5       # USD per lot (standard Dukascopy)
 _JFOREX_SLIPPAGE = 1           # pips
 _JFOREX_SPREAD = 3             # pips base
 _JFOREX_ENGINE = "MetaTrader4"  # Engine handles backtesting/generation, NOT data source.
-                                 # Dukascopy data works fine with MetaTrader4 engine.
+                                  # Dukascopy data works fine with MetaTrader4 engine.
 
 # Known max dates per symbol (from Dukascopy data availability as of 2024-10).
 # date_to values beyond these cause silent generator failure.
@@ -37,20 +39,788 @@ _SYMBOL_MAX_DATES: dict[str, str] = {
 _MAX_DATE_DEFAULT = "2024.6.30"  # conservative default with margin
 
 
-def _template_path() -> Path:
-    return _DEFAULT_TEMPLATE
+@dataclass
+class BuildConfig:
+    """Configuration overrides for the SQX build template.
+
+    Only specified (non-None) fields override the template defaults.
+    Unspecified fields keep their template values.
+    """
+
+    # ── Trading Session (BuildTradingOptions) ──
+    exit_at_end_of_day: bool | None = None
+    eod_exit_time: int | None = None
+    exit_on_friday: bool | None = None
+    friday_exit_time: int | None = None
+    limit_time_range: bool | None = None
+    signal_time_range_from: int | None = None
+    signal_time_range_to: int | None = None
+    exit_at_end_of_range: bool | None = None
+    max_trades_per_day: int | None = None
+    session: str | None = None
+    reserved_bars: int | None = None
+    store_chart_data: bool | None = None
+
+    # ── Rules Complexity ──
+    min_conditions: int | None = None
+    max_conditions: int | None = None
+    min_exit_conditions: int | None = None
+    max_exit_conditions: int | None = None
+    min_period: int | None = None
+    max_period: int | None = None
+    min_shift: int | None = None
+    max_shift: int | None = None
+
+    # ── Market Sides ──
+    market_sides: str | None = None  # "both", "long", "short"
+    entry_symmetry: bool | None = None
+    exit_symmetry: bool | None = None
+
+    # ── SL/PT Options ──
+    sl_required: bool | None = None
+    sl_fixed_pips: bool | None = None
+    min_sl_pips: int | None = None
+    max_sl_pips: int | None = None
+    min_sl_money: int | None = None
+    max_sl_money: int | None = None
+    sl_atr: bool | None = None
+    min_sl_atr_multiple: float | None = None
+    max_sl_atr_multiple: float | None = None
+    min_sl_atr_period: int | None = None
+    max_sl_atr_period: int | None = None
+    pt_required: bool | None = None
+    pt_fixed_pips: bool | None = None
+    min_pt_pips: int | None = None
+    max_pt_pips: int | None = None
+    min_pt_money: int | None = None
+    max_pt_money: int | None = None
+    pt_atr: bool | None = None
+    min_pt_atr_multiple: float | None = None
+    max_pt_atr_multiple: float | None = None
+    min_pt_atr_period: int | None = None
+    max_pt_atr_period: int | None = None
+    limit_slpt_rrr: bool | None = None
+    limit_slpt_rrr_from: int | None = None
+    limit_slpt_rrr_to: int | None = None
+    sl_value_type: str | None = None
+    pt_value_type: str | None = None
+    sl_indicator_based: bool | None = None
+    pt_indicator_based: bool | None = None
+    sl_percent: bool | None = None
+    min_sl_percent: float | None = None
+    max_sl_percent: float | None = None
+    pt_percent: bool | None = None
+    min_pt_percent: float | None = None
+    max_pt_percent: float | None = None
+
+    # ── BuildMode (Genetic) ──
+    islands: int | None = None
+    migration_modulo: int | None = None
+    migration_rate: int | None = None
+    init_generation_type: int | None = None
+    decimation_coef: int | None = None
+    evo_restart_on_finish: bool | None = None
+    evo_restart_on_stagnation: bool | None = None
+    evo_restart_stagnation_fitness_type: int | None = None
+    evo_restart_stagnation_generations: int | None = None
+    evo_in_sample_period_ratio: int | None = None
+    fresh_blood_replace_similar: bool | None = None
+    fresh_blood_replace_weakest: bool | None = None
+    fresh_blood_weakest_pct: int | None = None
+    fresh_blood_weakest_generations: int | None = None
+    filter_initial_population: bool | None = None
+    evo_fitness_restart_type: int | None = None
+    evo_stagnation_restart_generations: int | None = None
+
+    # ── Rankings ──
+    max_strategies: int | None = None
+    ranking_type: str | None = None  # "ReturnDDRatio", "Fitness"
+    ranking_avg_trades_min: int | None = None
+    ranking_pf_min: float | None = None
+    ranking_return_dd_min: float | None = None
+    ranking_conditions_type: int | None = None
+
+    # ── MoneyManagement ──
+    mm_method: str | None = None  # "FixedSize", "RiskFixedBalancePct", etc.
+    mm_lot_size: float | None = None
+    initial_capital: int | None = None
+    mm_risk_pct: float | None = None
+    mm_max_drawdown: int | None = None
+
+    # ── ATMs ──
+    atms_enable: bool | None = None
+    atms_scale_out_type: int | None = None
+    atms_size_decimals: int | None = None
+    atms_min_size: float | None = None
+
+    # ── PartsToImprove ──
+    entry_rules_symmetry: bool | None = None
+    entry_long_improvement: bool | None = None
+    entry_short_improvement: bool | None = None
+    exit_rules_symmetry: bool | None = None
+    exit_long_improvement: bool | None = None
+    exit_short_improvement: bool | None = None
+
+    # ── CrossChecks internals ──
+    wf_period: int | None = None
+    wf_optimization: int | None = None
+    wf_param1: int | None = None
+    wf_param2: int | None = None
+    wf_optimize_periods: bool | None = None
+    wf_optimize_exit_types: bool | None = None
+    wf_max_tests: int | None = None
+    wf_acceptance_threshold_pct: int | None = None
+    wf_acceptance_min_conditions: int | None = None
+    wf_acceptance_min_markets: int | None = None
+    wf_acceptance_pf_min: float | None = None
+    rc_spread: int | None = None
+    rc_pf_min: float | None = None
+    rc_min_conditions: int | None = None
+    rc_min_markets: int | None = None
+    main_test_values: dict[str, bool] | None = None  # which cross-check validations to run
 
 
-def _clamp_date_to(symbol: str, requested: str) -> str:
-    """Clamp date_to to the known max date for the symbol."""
-    max_date = _SYMBOL_MAX_DATES.get(symbol.upper(), _MAX_DATE_DEFAULT)
-    # Simple tuple compare: both are "YYYY.M.D" format
-    def _date_tuple(d: str) -> tuple[int, int, int]:
-        parts = d.split(".")
-        return int(parts[0]), int(parts[1]), int(parts[2])
-    if _date_tuple(requested) > _date_tuple(max_date):
-        return max_date
-    return requested
+_BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
+    # ── Trading Session (BuildTradingOptions) ──
+    "exit_at_end_of_day": (
+        r'<Param key="ExitAtEndOfDay"[^>]*>[^<]*</Param>',
+        r'<Param key="ExitAtEndOfDay" className="ExitAtEndOfDay">{value}</Param>',
+        "boolean",
+    ),
+    "eod_exit_time": (
+        r'<Param key="EODExitTime"[^>]*>[^<]*</Param>',
+        r'<Param key="EODExitTime" className="ExitAtEndOfDay">{value}</Param>',
+        "int",
+    ),
+    "exit_on_friday": (
+        r'<Param key="ExitOnFriday"[^>]*>[^<]*</Param>',
+        r'<Param key="ExitOnFriday" className="ExitOnFriday">{value}</Param>',
+        "boolean",
+    ),
+    "friday_exit_time": (
+        r'<Param key="FridayExitTime"[^>]*>[^<]*</Param>',
+        r'<Param key="FridayExitTime" className="ExitOnFriday">{value}</Param>',
+        "int",
+    ),
+    "limit_time_range": (
+        r'<Param key="LimitTimeRange"[^>]*>[^<]*</Param>',
+        r'<Param key="LimitTimeRange" className="LimitTimeRange">{value}</Param>',
+        "boolean",
+    ),
+    "signal_time_range_from": (
+        r'<Param key="SignalTimeRangeFrom"[^>]*>[^<]*</Param>',
+        r'<Param key="SignalTimeRangeFrom" className="LimitTimeRange">{value}</Param>',
+        "int",
+    ),
+    "signal_time_range_to": (
+        r'<Param key="SignalTimeRangeTo"[^>]*>[^<]*</Param>',
+        r'<Param key="SignalTimeRangeTo" className="LimitTimeRange">{value}</Param>',
+        "int",
+    ),
+    "exit_at_end_of_range": (
+        r'<Param key="ExitAtEndOfRange"[^>]*>[^<]*</Param>',
+        r'<Param key="ExitAtEndOfRange" className="LimitTimeRange">{value}</Param>',
+        "boolean",
+    ),
+    "max_trades_per_day": (
+        r'<Param key="MaxTradesPerDay"[^>]*>[^<]*</Param>',
+        r'<Param key="MaxTradesPerDay" className="MaxTradesPerDay">{value}</Param>',
+        "int",
+    ),
+    "session": (
+        r'<Param key="Session"[^>]*>[^<]*</Param>',
+        r'<Param key="Session" className="SessionOption">{value}</Param>',
+        "string",
+    ),
+    "reserved_bars": (
+        r'<Param key="ReservedBars"[^>]*>[^<]*</Param>',
+        r'<Param key="ReservedBars" className="ReservedBars">{value}</Param>',
+        "int",
+    ),
+    "store_chart_data": (
+        r'<Param key="StoreChartData"[^>]*>[^<]*</Param>',
+        r'<Param key="StoreChartData" className="StoreChartData">{value}</Param>',
+        "boolean",
+    ),
+
+    # ── Rules Complexity ──
+    "min_conditions": (
+        r'(minConditions=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "max_conditions": (
+        r'(maxConditions=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "min_exit_conditions": (
+        r'(minExitConditions=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "max_exit_conditions": (
+        r'(maxExitConditions=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "min_period": (
+        r'(minPeriod=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "max_period": (
+        r'(maxPeriod=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "min_shift": (
+        r'(minShift=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "max_shift": (
+        r'(maxShift=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+
+    # ── Market Sides ──
+    "market_sides": (
+        r'<MarketSides type="[^"]*">',
+        r'<MarketSides type="{value}">',
+        "string",
+    ),
+    "entry_symmetry": (
+        r'<EntrySymmetry>[^<]*</EntrySymmetry>',
+        r'<EntrySymmetry>{value}</EntrySymmetry>',
+        "boolean",
+    ),
+    "exit_symmetry": (
+        r'<ExitSymmetry>[^<]*</ExitSymmetry>',
+        r'<ExitSymmetry>{value}</ExitSymmetry>',
+        "boolean",
+    ),
+
+    # ── SL/PT Options ──
+    "sl_required": (
+        r'<SLRequired>[^<]*</SLRequired>',
+        r'<SLRequired>{value}</SLRequired>',
+        "boolean",
+    ),
+    "sl_fixed_pips": (
+        r'<SLFixedPips>[^<]*</SLFixedPips>',
+        r'<SLFixedPips>{value}</SLFixedPips>',
+        "boolean",
+    ),
+    "min_sl_pips": (
+        r'<MinSLInPips>[^<]*</MinSLInPips>',
+        r'<MinSLInPips>{value}</MinSLInPips>',
+        "int",
+    ),
+    "max_sl_pips": (
+        r'<MaxSLInPips>[^<]*</MaxSLInPips>',
+        r'<MaxSLInPips>{value}</MaxSLInPips>',
+        "int",
+    ),
+    "min_sl_money": (
+        r'<MinSLInMoney>[^<]*</MinSLInMoney>',
+        r'<MinSLInMoney>{value}</MinSLInMoney>',
+        "int",
+    ),
+    "max_sl_money": (
+        r'<MaxSLInMoney>[^<]*</MaxSLInMoney>',
+        r'<MaxSLInMoney>{value}</MaxSLInMoney>',
+        "int",
+    ),
+    "sl_atr": (
+        r'<SLATR>[^<]*</SLATR>',
+        r'<SLATR>{value}</SLATR>',
+        "boolean",
+    ),
+    "min_sl_atr_multiple": (
+        r'<MinSLATRMultiple>[^<]*</MinSLATRMultiple>',
+        r'<MinSLATRMultiple>{value}</MinSLATRMultiple>',
+        "float",
+    ),
+    "max_sl_atr_multiple": (
+        r'<MaxSLATRMultiple>[^<]*</MaxSLATRMultiple>',
+        r'<MaxSLATRMultiple>{value}</MaxSLATRMultiple>',
+        "float",
+    ),
+    "min_sl_atr_period": (
+        r'<MinSLATRPeriod>[^<]*</MinSLATRPeriod>',
+        r'<MinSLATRPeriod>{value}</MinSLATRPeriod>',
+        "int",
+    ),
+    "max_sl_atr_period": (
+        r'<MaxSLATRPeriod>[^<]*</MaxSLATRPeriod>',
+        r'<MaxSLATRPeriod>{value}</MaxSLATRPeriod>',
+        "int",
+    ),
+    "pt_required": (
+        r'<PTRequired>[^<]*</PTRequired>',
+        r'<PTRequired>{value}</PTRequired>',
+        "boolean",
+    ),
+    "pt_fixed_pips": (
+        r'<PTFixedPips>[^<]*</PTFixedPips>',
+        r'<PTFixedPips>{value}</PTFixedPips>',
+        "boolean",
+    ),
+    "min_pt_pips": (
+        r'<MinPTInPips>[^<]*</MinPTInPips>',
+        r'<MinPTInPips>{value}</MinPTInPips>',
+        "int",
+    ),
+    "max_pt_pips": (
+        r'<MaxPTInPips>[^<]*</MaxPTInPips>',
+        r'<MaxPTInPips>{value}</MaxPTInPips>',
+        "int",
+    ),
+    "min_pt_money": (
+        r'<MinPTInMoney>[^<]*</MinPTInMoney>',
+        r'<MinPTInMoney>{value}</MinPTInMoney>',
+        "int",
+    ),
+    "max_pt_money": (
+        r'<MaxPTInMoney>[^<]*</MaxPTInMoney>',
+        r'<MaxPTInMoney>{value}</MaxPTInMoney>',
+        "int",
+    ),
+    "pt_atr": (
+        r'<PTATR>[^<]*</PTATR>',
+        r'<PTATR>{value}</PTATR>',
+        "boolean",
+    ),
+    "min_pt_atr_multiple": (
+        r'<MinPTATRMultiple>[^<]*</MinPTATRMultiple>',
+        r'<MinPTATRMultiple>{value}</MinPTATRMultiple>',
+        "float",
+    ),
+    "max_pt_atr_multiple": (
+        r'<MaxPTATRMultiple>[^<]*</MaxPTATRMultiple>',
+        r'<MaxPTATRMultiple>{value}</MaxPTATRMultiple>',
+        "float",
+    ),
+    "min_pt_atr_period": (
+        r'<MinPTATRPeriod>[^<]*</MinPTATRPeriod>',
+        r'<MinPTATRPeriod>{value}</MinPTATRPeriod>',
+        "int",
+    ),
+    "max_pt_atr_period": (
+        r'<MaxPTATRPeriod>[^<]*</MaxPTATRPeriod>',
+        r'<MaxPTATRPeriod>{value}</MaxPTATRPeriod>',
+        "int",
+    ),
+    "limit_slpt_rrr": (
+        r'<LimitSLPTRRR>[^<]*</LimitSLPTRRR>',
+        r'<LimitSLPTRRR>{value}</LimitSLPTRRR>',
+        "boolean",
+    ),
+    "limit_slpt_rrr_from": (
+        r'<LimitSLPTRRRFrom>[^<]*</LimitSLPTRRRFrom>',
+        r'<LimitSLPTRRRFrom>{value}</LimitSLPTRRRFrom>',
+        "int",
+    ),
+    "limit_slpt_rrr_to": (
+        r'<LimitSLPTRRRTo>[^<]*</LimitSLPTRRRTo>',
+        r'<LimitSLPTRRRTo>{value}</LimitSLPTRRRTo>',
+        "int",
+    ),
+    "sl_value_type": (
+        r'<SLValueType>[^<]*</SLValueType>',
+        r'<SLValueType>{value}</SLValueType>',
+        "string",
+    ),
+    "pt_value_type": (
+        r'<PTValueType>[^<]*</PTValueType>',
+        r'<PTValueType>{value}</PTValueType>',
+        "string",
+    ),
+    "sl_indicator_based": (
+        r'<SLIndicatorBased>[^<]*</SLIndicatorBased>',
+        r'<SLIndicatorBased>{value}</SLIndicatorBased>',
+        "boolean",
+    ),
+    "pt_indicator_based": (
+        r'<PTIndicatorBased>[^<]*</PTIndicatorBased>',
+        r'<PTIndicatorBased>{value}</PTIndicatorBased>',
+        "boolean",
+    ),
+    "sl_percent": (
+        r'<SLPercent>[^<]*</SLPercent>',
+        r'<SLPercent>{value}</SLPercent>',
+        "boolean",
+    ),
+    "min_sl_percent": (
+        r'<MinSLInPercent>[^<]*</MinSLInPercent>',
+        r'<MinSLInPercent>{value}</MinSLInPercent>',
+        "float",
+    ),
+    "max_sl_percent": (
+        r'<MaxSLInPercent>[^<]*</MaxSLInPercent>',
+        r'<MaxSLInPercent>{value}</MaxSLInPercent>',
+        "float",
+    ),
+    "pt_percent": (
+        r'<PTPercent>[^<]*</PTPercent>',
+        r'<PTPercent>{value}</PTPercent>',
+        "boolean",
+    ),
+    "min_pt_percent": (
+        r'<MinPTInPercent>[^<]*</MinPTInPercent>',
+        r'<MinPTInPercent>{value}</MinPTInPercent>',
+        "float",
+    ),
+    "max_pt_percent": (
+        r'<MaxPTInPercent>[^<]*</MaxPTInPercent>',
+        r'<MaxPTInPercent>{value}</MaxPTInPercent>',
+        "float",
+    ),
+
+    # ── BuildMode (Genetic) ──
+    "islands": (
+        r'<Islands>\d+</Islands>',
+        r'<Islands>{value}</Islands>',
+        "int",
+    ),
+    "migration_modulo": (
+        r'<MigrationModulo>\d+</MigrationModulo>',
+        r'<MigrationModulo>{value}</MigrationModulo>',
+        "int",
+    ),
+    "migration_rate": (
+        r'<MigrationRate>\d+</MigrationRate>',
+        r'<MigrationRate>{value}</MigrationRate>',
+        "int",
+    ),
+    "init_generation_type": (
+        r'<InitGenerationType>\d+</InitGenerationType>',
+        r'<InitGenerationType>{value}</InitGenerationType>',
+        "int",
+    ),
+    "decimation_coef": (
+        r'<DecimationCoef>\d+</DecimationCoef>',
+        r'<DecimationCoef>{value}</DecimationCoef>',
+        "int",
+    ),
+    "evo_restart_on_finish": (
+        r'<EvoRestartOnFinish status="[^"]*"',
+        r'<EvoRestartOnFinish status="{value}"',
+        "boolean",
+    ),
+    "evo_restart_on_stagnation": (
+        r'<EvoRestartOnStagnation status="[^"]*"',
+        r'<EvoRestartOnStagnation status="{value}"',
+        "boolean",
+    ),
+    "evo_restart_stagnation_fitness_type": (
+        r'<EvoRestartOnStagnation[^>]*fitnessType="\d+"',
+        r'<EvoRestartOnStagnation status="{evo_restart_on_stagnation}" fitnessType="{value}" generations="{evo_restart_stagnation_generations}">',
+        "int",
+    ),
+    "evo_restart_stagnation_generations": (
+        r'<EvoRestartOnStagnation[^>]*generations="\d+"',
+        r'<EvoRestartOnStagnation status="{evo_restart_on_stagnation}" fitnessType="{evo_restart_stagnation_fitness_type}" generations="{value}">',
+        "int",
+    ),
+    "evo_in_sample_period_ratio": (
+        r'<EvoInSamplePeriod ratio="\d+"',
+        r'<EvoInSamplePeriod ratio="{value}">',
+        "int",
+    ),
+    "fresh_blood_replace_similar": (
+        r'<FreshBloodReplaceSimilar>[^<]*</FreshBloodReplaceSimilar>',
+        r'<FreshBloodReplaceSimilar>{value}</FreshBloodReplaceSimilar>',
+        "boolean",
+    ),
+    "fresh_blood_replace_weakest": (
+        r'<FreshBloodReplaceWeakest>[^<]*</FreshBloodReplaceWeakest>',
+        r'<FreshBloodReplaceWeakest>{value}</FreshBloodReplaceWeakest>',
+        "boolean",
+    ),
+    "fresh_blood_weakest_pct": (
+        r'<FreshBloodWeakestPct>\d+</FreshBloodWeakestPct>',
+        r'<FreshBloodWeakestPct>{value}</FreshBloodWeakestPct>',
+        "int",
+    ),
+    "fresh_blood_weakest_generations": (
+        r'<FreshBloodWeakestGenerations>\d+</FreshBloodWeakestGenerations>',
+        r'<FreshBloodWeakestGenerations>{value}</FreshBloodWeakestGenerations>',
+        "int",
+    ),
+    "filter_initial_population": (
+        r'<FilterInitialPopulation>[^<]*</FilterInitialPopulation>',
+        r'<FilterInitialPopulation>{value}</FilterInitialPopulation>',
+        "boolean",
+    ),
+    "evo_fitness_restart_type": (
+        r'<EvoFitnessRestartType>\d+</EvoFitnessRestartType>',
+        r'<EvoFitnessRestartType>{value}</EvoFitnessRestartType>',
+        "int",
+    ),
+    "evo_stagnation_restart_generations": (
+        r'<EvoStagnationRestartGenerations>\d+</EvoStagnationRestartGenerations>',
+        r'<EvoStagnationRestartGenerations>{value}</EvoStagnationRestartGenerations>',
+        "int",
+    ),
+
+    # ── Rankings ──
+    "max_strategies": (
+        r'<MaxStrategies>\d+</MaxStrategies>',
+        r'<MaxStrategies>{value}</MaxStrategies>',
+        "int",
+    ),
+    "ranking_type": (
+        r'<Ranking type="[^"]*"',
+        r'<Ranking type="{value}"',
+        "string",
+    ),
+    "ranking_avg_trades_min": (
+        r'(<Column-Value column="AvgTradesPerMonth"[^>]*minValue=")[^"]*(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "ranking_pf_min": (
+        r'(<Column-Value column="ProfitFactor"[^>]*minValue=")[^"]*(")',
+        r'\g<1>{value}\2',
+        "float",
+    ),
+    "ranking_return_dd_min": (
+        r'(<Column-Value column="ReturnDDRatio"[^>]*minValue=")[^"]*(")',
+        r'\g<1>{value}\2',
+        "float",
+    ),
+    "ranking_conditions_type": (
+        r'<ConditionsType>\d+</ConditionsType>',
+        r'<ConditionsType>{value}</ConditionsType>',
+        "int",
+    ),
+
+    # ── MoneyManagement ──
+    "mm_method": (
+        r'<Method type="[^"]*" use="[^"]*"',
+        r'<Method type="{value}" use="true"',
+        "string",
+    ),
+    "mm_lot_size": (
+        r'<Param key="Size" className="FixedSize">[^<]*</Param>',
+        r'<Param key="Size" className="FixedSize">{value}</Param>',
+        "float",
+    ),
+    "initial_capital": (
+        r'<InitialCapital>\d+</InitialCapital>',
+        r'<InitialCapital>{value}</InitialCapital>',
+        "int",
+    ),
+    "mm_risk_pct": (
+        r'<Param key="Risk" className="RiskFixedBalancePct">[^<]*</Param>',
+        r'<Param key="Risk" className="RiskFixedBalancePct">{value}</Param>',
+        "float",
+    ),
+    "mm_max_drawdown": (
+        r'<RiskManagement maxDrawdown="\d+">',
+        r'<RiskManagement maxDrawdown="{value}">',
+        "int",
+    ),
+
+    # ── ATMs ──
+    "atms_enable": (
+        r'(<ATMs enable=")[^"]*(")',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+    "atms_scale_out_type": (
+        r'(<ATMs[^>]*scaleOutType=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "atms_size_decimals": (
+        r'(<ATMs[^>]*sizeDecimals=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "atms_min_size": (
+        r'(<ATMs[^>]*minSize=")[^"]*(")',
+        r'\g<1>{value}\2',
+        "float",
+    ),
+
+    # ── PartsToImprove ──
+    "entry_rules_symmetry": (
+        r'(<EntryRules symmetry=")[^"]*(")',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+    "entry_long_improvement": (
+        r'(<LongImprovement use=")[^"]*(")',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+    "entry_short_improvement": (
+        r'(<ShortImprovement use=")[^"]*(")',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+    "exit_rules_symmetry": (
+        r'(<ExitRules symmetry=")[^"]*(")',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+    "exit_long_improvement": (
+        r'(<LongImprovement use=")[^"]*(")',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+    "exit_short_improvement": (
+        r'(<ShortImprovement use=")[^"]*(")',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+
+    # ── CrossChecks internals ──
+    "wf_period": (
+        r'(<WalkForward type="1" period=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "wf_optimization": (
+        r'(<WalkForward type="1" period="\d+" optimization=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "wf_param1": (
+        r'(<Param1 value=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "wf_param2": (
+        r'(<Param2 value=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "wf_optimize_periods": (
+        r'(<OptimizePeriods>)[^<]*(</OptimizePeriods>)',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+    "wf_optimize_exit_types": (
+        r'(<OptimizeExitTypes>)[^<]*(</OptimizeExitTypes>)',
+        r'\g<1>{value}\g<2>',
+        "boolean",
+    ),
+    "wf_max_tests": (
+        r'(<MaxTests>)\d+(</MaxTests>)',
+        r'\g<1>{value}\g<2>',
+        "int",
+    ),
+    "wf_acceptance_threshold_pct": (
+        r'(<Conditions thresholdPct=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "wf_acceptance_min_conditions": (
+        r'(<MinConditions>)\d+(</MinConditions>)',
+        r'\g<1>{value}\g<2>',
+        "int",
+    ),
+    "wf_acceptance_min_markets": (
+        r'(<MinMarkets>)\d+(</MinMarkets>)',
+        r'\g<1>{value}\g<2>',
+        "int",
+    ),
+    "wf_acceptance_pf_min": (
+        r'(<Column-Value column="NetProfit"[^>]*resultType="WalkForwardOptimization"[^>]*minValue=")[^"]*(")',
+        r'\g<1>{value}\2',
+        "float",
+    ),
+    "rc_spread": (
+        r'(<Chart symbol="[^"]*" timeframe="[^"]*" spread=")\d+(")',
+        r'\g<1>{value}\2',
+        "int",
+    ),
+    "rc_pf_min": (
+        r'(<Column-Value column="ProfitFactor"[^>]*resultType="RetestOnAdditionalMarkets"[^>]*minValue=")[^"]*(")',
+        r'\g<1>{value}\2',
+        "float",
+    ),
+    "rc_min_conditions": (
+        r'(<MinConditions>)\d+(</MinConditions>)',
+        r'\g<1>{value}\g<2>',
+        "int",
+    ),
+    "rc_min_markets": (
+        r'(<MinMarkets>)\d+(</MinMarkets>)',
+        r'\g<1>{value}\g<2>',
+        "int",
+    ),
+    "main_test_values": (
+        r'<MainTestValues[^>]*/>',
+        r'<MainTestValues {main_test_values_xml} />',
+        "dict",
+    ),
+}
+
+
+def _format_build_config_value(value: Any, format_type: str) -> str:
+    """Format a BuildConfig field value for XML output."""
+    if format_type == "boolean":
+        return "true" if value else "false"
+    elif format_type == "int":
+        return str(value)
+    elif format_type == "float":
+        return f"{value:.2f}"
+    elif format_type == "string":
+        return str(value)
+    elif format_type == "dict":
+        return str(value)
+    else:
+        return str(value)
+
+
+def _build_main_test_values_xml(values: dict[str, bool]) -> str:
+    """Build the MainTestValues attribute string from a dict."""
+    parts = []
+    for key, val in values.items():
+        parts.append(f'{key}="{"true" if val else "false"}"')
+    return " ".join(parts)
+
+
+def _apply_build_config(template_xml: str, config: BuildConfig) -> str:
+    """Apply BuildConfig overrides to the template XML.
+
+    For each field in BuildConfig that is not None, applies the appropriate
+    XML modification using the mapping defined in _BUILD_CONFIG_MAP.
+
+    Args:
+        template_xml: The raw template XML string.
+        config: BuildConfig instance with override values.
+
+    Returns:
+        The modified XML string.
+    """
+    xml = template_xml
+
+    for field_name, (pattern, replacement, format_type) in _BUILD_CONFIG_MAP.items():
+        value = getattr(config, field_name, None)
+        if value is None:
+            continue
+
+        if format_type == "dict" and field_name == "main_test_values":
+            # Special handling for MainTestValues dict
+            values_xml = _build_main_test_values_xml(value)
+            xml = re.sub(pattern, f'<MainTestValues {values_xml} />', xml)
+            continue
+
+        formatted = _format_build_config_value(value, format_type)
+
+        try:
+            xml = re.sub(pattern, replacement.format(value=formatted), xml)
+        except (re.error, KeyError, IndexError) as e:
+            logger.warning("Failed to apply build config field '%s': %s", field_name, e)
+
+    return xml
 
 
 def create_project(
@@ -72,6 +842,9 @@ def create_project(
     rankings_min_sharpe: float = 0.8,
     rankings_max_drawdown: float = 0.25,
     rankings_min_win_rate: float = 0.3,
+    walk_forward: bool = True,
+    monte_carlo: bool = True,
+    build_config: BuildConfig | None = None,
 ) -> str:
     """Create a campaign project directory from the template.
 
@@ -80,6 +853,10 @@ def create_project(
 
     date_to defaults to the symbol's known max data date with margin.
     If the requested date_to exceeds available data, it is clamped silently.
+
+    When build_config is provided, its fields override the template values.
+    When build_config is None, the function behaves exactly as before
+    (same re.sub calls for the fields that were previously supported).
 
     Returns the path to the created project.cfx.
     """
@@ -184,47 +961,53 @@ def create_project(
     )
 
     # 5. Rankings: enable and set acceptance criteria
-    # Change type="never" to something that applies
-    task_xml = re.sub(
-        r'<Rankings type="never">',
-        '<Rankings type="always">',
-        task_xml,
-    )
+    if build_config is None:
+        # Backward-compatible: use existing re.sub calls
+        task_xml = re.sub(
+            r'<Rankings type="never">',
+            '<Rankings type="always">',
+            task_xml,
+        )
 
-    # Modify Conditions in Rankings
-    # Find ProfitFactor condition and set minValue
-    task_xml = re.sub(
-        r'(<Column-Value column="ProfitFactor"[^>]*minValue=")[^"]*(")',
-        f'\\g<1>{rankings_min_profit_factor}\\2',
-        task_xml,
-    )
-    task_xml = re.sub(
-        r'(<Column-Value column="SharpeRatio"[^>]*minValue=")[^"]*(")',
-        f'\\g<1>{rankings_min_sharpe}\\2',
-        task_xml,
-    )
-    task_xml = re.sub(
-        r'(<Column-Value column="MaxDrawdown"[^>]*maxValue=")[^"]*(")',
-        f'\\g<1>{rankings_max_drawdown}\\2',
-        task_xml,
-    )
-    task_xml = re.sub(
-        r'(<Column-Value column="WinRate"[^>]*minValue=")[^"]*(")',
-        f'\\g<1>{rankings_min_win_rate}\\2',
-        task_xml,
-    )
+        # Modify Conditions in Rankings
+        # Find ProfitFactor condition and set minValue
+        task_xml = re.sub(
+            r'(<Column-Value column="ProfitFactor"[^>]*minValue=")[^"]*(")',
+            f'\\g<1>{rankings_min_profit_factor}\\2',
+            task_xml,
+        )
+        task_xml = re.sub(
+            r'(<Column-Value column="SharpeRatio"[^>]*minValue=")[^"]*(")',
+            f'\\g<1>{rankings_min_sharpe}\\2',
+            task_xml,
+        )
+        task_xml = re.sub(
+            r'(<Column-Value column="MaxDrawdown"[^>]*maxValue=")[^"]*(")',
+            f'\\g<1>{rankings_max_drawdown}\\2',
+            task_xml,
+        )
+        task_xml = re.sub(
+            r'(<Column-Value column="WinRate"[^>]*minValue=")[^"]*(")',
+            f'\\g<1>{rankings_min_win_rate}\\2',
+            task_xml,
+        )
+    else:
+        # Config-driven: apply BuildConfig overrides
+        task_xml = _apply_build_config(task_xml, build_config)
 
-    # 6. CrossChecks: enable Walk-Forward + Monte Carlo
-    task_xml = re.sub(
-        r'<WalkForwardOptimization use="false">',
-        '<WalkForwardOptimization use="true">',
-        task_xml,
-    )
-    task_xml = re.sub(
-        r'<MonteCarloRetest use="false">',
-        '<MonteCarloRetest use="true">',
-        task_xml,
-    )
+    # 6. CrossChecks: enable Walk-Forward + Monte Carlo (configurable)
+    if walk_forward:
+        task_xml = re.sub(
+            r'<WalkForwardOptimization use="false">',
+            '<WalkForwardOptimization use="true">',
+            task_xml,
+        )
+    if monte_carlo:
+        task_xml = re.sub(
+            r'<MonteCarloRetest use="false">',
+            '<MonteCarloRetest use="true">',
+            task_xml,
+        )
     # Set realistic walk-forward params
     task_xml = re.sub(
         r'<WalkForward type="1" period="\d+" optimization="\d+">',
