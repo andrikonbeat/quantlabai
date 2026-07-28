@@ -28,7 +28,8 @@ rules:
     - Keep tasks completable in one session
     - Separate SQX research tasks from SDK/code tasks
   apply:
-    - Follow existing code patterns
+    rules:
+      - Follow existing code patterns
     tdd: false
     test_command: ""
   verify:
@@ -37,6 +38,39 @@ rules:
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas
+
+agents:
+  quantlab-orchestrator:
+    routing:
+      sdd: gentle-orchestrator
+      cli: sqcli
+      dashboard: phase2-queue
+      knowledge: codegraph-read
+    permission:
+      question: allow
+      destructive_patterns:
+        - rm
+        - rm -rf
+        - git push --force
+      sensitive_file_patterns:
+        - "**/.env*"
+        - "**/*.pem"
+        - "**/.ssh/**"
+      auto_approve:
+        - read
+        - edit
+        - write
+        - task
+        - sdk/pipeline/*
+    sqcli:
+      path: assets/SQX_144_2953_linux_20260601/sqcli
+      env_fallback: SQCLI_PATH
+      timeout_seconds: 300
+      result_format:
+        - exit_code
+        - stdout
+        - stderr
+        - duration_ms
 
 testing:
   strict_tdd: false
