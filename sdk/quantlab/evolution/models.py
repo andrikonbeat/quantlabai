@@ -52,7 +52,7 @@ class EvolutionCandidate(BaseModel):
 
 class EvolutionResult(BaseModel):
     """Result of a single evolution cycle."""
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=False)
 
     cycle_id: str
     mode: EvolutionMode

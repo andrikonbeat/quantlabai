@@ -28,6 +28,7 @@ from quantlab.pipeline.stages import (
     ReportStage,
 )
 from quantlab.pipeline.registry import PipelineRegistry, StageRegistry
+from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
 from quantlab.pipeline.config import PipelineConfig, PipelineSummary, StageConfig
 
 # New agent stage exports
@@ -84,6 +85,8 @@ __all__ = [
     "PortfolioStage",
     "DeployStage",
     "MonitorStage",
+    # Monte Carlo
+    "MonteCarloStage",
     # Gate interceptor
     "GateInterceptorStage",
     "GateDecision",
