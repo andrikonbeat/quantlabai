@@ -17,11 +17,40 @@ _DEFAULT_TEMPLATE = _TEMPLATE_DIR / "default-project.sqx-template"
 _JFOREX_COMMISSION = 3.5       # USD per lot (standard Dukascopy)
 _JFOREX_SLIPPAGE = 1           # pips
 _JFOREX_SPREAD = 3             # pips base
-_JFOREX_ENGINE = "Dukascopy"
+_JFOREX_ENGINE = "MetaTrader4"  # Engine handles backtesting/generation, NOT data source.
+                                 # Dukascopy data works fine with MetaTrader4 engine.
+
+# Known max dates per symbol (from Dukascopy data availability as of 2024-10).
+# date_to values beyond these cause silent generator failure.
+_SYMBOL_MAX_DATES: dict[str, str] = {
+    "EURUSD": "2024.10.30",
+    "GBPUSD": "2024.10.30",
+    "AUDUSD": "2024.10.30",
+    "NZDUSD": "2024.10.30",
+    "USDCAD": "2024.10.30",
+    "USDCHF": "2024.10.30",
+    "USDJPY": "2024.10.30",
+    "XAUUSD": "2024.10.30",
+    "XAGUSD": "2024.10.30",
+}
+
+_MAX_DATE_DEFAULT = "2024.6.30"  # conservative default with margin
 
 
 def _template_path() -> Path:
     return _DEFAULT_TEMPLATE
+
+
+def _clamp_date_to(symbol: str, requested: str) -> str:
+    """Clamp date_to to the known max date for the symbol."""
+    max_date = _SYMBOL_MAX_DATES.get(symbol.upper(), _MAX_DATE_DEFAULT)
+    # Simple tuple compare: both are "YYYY.M.D" format
+    def _date_tuple(d: str) -> tuple[int, int, int]:
+        parts = d.split(".")
+        return int(parts[0]), int(parts[1]), int(parts[2])
+    if _date_tuple(requested) > _date_tuple(max_date):
+        return max_date
+    return requested
 
 
 def create_project(
@@ -31,7 +60,7 @@ def create_project(
     symbol: str = "EURUSD",
     timeframe: str = "H1",
     date_from: str = "2020.1.1",
-    date_to: str = "2024.12.31",
+    date_to: str | None = None,
     generations: int = 80,
     population: int = 200,
     crossover: float = 0.8,
@@ -39,7 +68,6 @@ def create_project(
     slippage: int = _JFOREX_SLIPPAGE,
     spread: int = _JFOREX_SPREAD,
     commission: float = _JFOREX_COMMISSION,
-    engine: str = _JFOREX_ENGINE,
     rankings_min_profit_factor: float = 1.3,
     rankings_min_sharpe: float = 0.8,
     rankings_max_drawdown: float = 0.25,
@@ -47,11 +75,20 @@ def create_project(
 ) -> str:
     """Create a campaign project directory from the template.
 
+    NOTE: engine is always MetaTrader4 (the generation/backtesting engine).
+    Dukascopy data works fine with it — the engine is NOT the data source.
+
+    date_to defaults to the symbol's known max data date with margin.
+    If the requested date_to exceeds available data, it is clamped silently.
+
     Returns the path to the created project.cfx.
     """
     sqx_path = Path(sqx_install_path).resolve()
     project_dir = sqx_path / "user" / "projects" / campaign_id
     dest_cfx = project_dir / "project.cfx"
+
+    # Clamp date_to to available data for the symbol
+    effective_date_to = _clamp_date_to(symbol, date_to) if date_to else _MAX_DATE_DEFAULT
 
     # Remove if exists
     if project_dir.exists():
@@ -85,11 +122,8 @@ def create_project(
     # ── Build-Task1.xml modifications ──
 
     # 1. Data section: symbol, timeframe, date range
-    # SQX symbol naming: {SYMBOL}_{TIMEFRAME}_dukas for Dukascopy engine
-    if engine.lower() == "dukascopy":
-        chart_symbol = f"{symbol}_{timeframe.upper()}_dukas"
-    else:
-        chart_symbol = f"{symbol}_{timeframe.lower()}"
+    # Symbol naming: {SYMBOL}_{TIMEFRAME}_dukas for Dukascopy data
+    chart_symbol = f"{symbol}_{timeframe.upper()}_dukas"
 
     chart_old = re.search(
         r'<Chart symbol="[^"]*" timeframe="[^"]*" spread="\d+"',
@@ -102,6 +136,8 @@ def create_project(
         )
 
     # 2. Setup: date range, slippage, engine
+    # NOTE: engine is ALWAYS MetaTrader4. "Dukascopy" is an invalid engine string.
+    engine_val = _JFOREX_ENGINE
     setup_old = re.search(
         r'dateFrom="[^"]*" dateTo="[^"]*"[^>]*slippage="\d+"[^>]*engine="[^"]*"',
         task_xml,
@@ -109,9 +145,9 @@ def create_project(
     if setup_old:
         task_xml = task_xml.replace(
             setup_old.group(),
-            f'dateFrom="{date_from}" dateTo="{date_to}" '
+            f'dateFrom="{date_from}" dateTo="{effective_date_to}" '
             f'testPrecision="1" session="No Session" '
-            f'slippage="{slippage}" minDist="0" engine="{engine}"',
+            f'slippage="{slippage}" minDist="0" engine="{engine_val}"',
         )
 
     # 3. Commissions: switch to Money-based for Dukascopy
@@ -218,9 +254,9 @@ def create_project(
         zf.writestr("Build-Task1.xml", task_xml.encode("utf-8"))
 
     logger.info(
-        "Created project '%s' at %s (%s %s, %d gen, %d pop, %s engine)",
+        "Created project '%s' at %s (%s %s, %d gen, %d pop, date %s..%s)",
         campaign_id, dest_cfx, symbol, timeframe,
-        generations, population, engine,
+        generations, population, date_from, effective_date_to,
     )
     return str(dest_cfx)
 
