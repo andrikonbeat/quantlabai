@@ -111,6 +111,11 @@ def create_project(
         config_xml = z.read("config.xml").decode("utf-8")
         task_xml = z.read("Build-Task1.xml").decode("utf-8")
 
+    # Normalize line endings — template comes from Windows with \r\n,
+    # mixing with \n replacements confuses SQX's XML parser.
+    config_xml = config_xml.replace("\r\n", "\n")
+    task_xml = task_xml.replace("\r\n", "\n")
+
     # ── config.xml: replace project name ──
     config_xml = re.sub(
         r'name="[^"]*"',
@@ -150,25 +155,11 @@ def create_project(
             f'slippage="{slippage}" minDist="0" engine="{engine_val}"',
         )
 
-    # 3. Commissions: switch to Money-based for Dukascopy
-    commission_block = (
-        "<Commissions>\n"
-        '          <Method type="Money" use="true">\n'
-        "            <Params>\n"
-        '              <Param name="CommissionType" value="PerLot"/>\n'
-        f'              <Param name="Commission" value="{commission}"/>\n'
-        '              <Param name="CommissionCurrency" value="USD"/>\n'
-        '              <Param name="CommissionPerSide" value="true"/>\n'
-        "            </Params>\n"
-        "          </Method>\n"
-        "        </Commissions>"
-    )
-    task_xml = re.sub(
-        r'<Commissions>\s*<Method[^>]*>\s*<Params\s*/>\s*</Method>\s*</Commissions>',
-        commission_block,
-        task_xml,
-        flags=re.DOTALL,
-    )
+    # 3. Commissions: kept as type="None" — this SQX version does NOT support
+    # type="Money" in the Commissions XML element. The template default (None)
+    # is preserved. Slippage and spread are already set on the Setup element.
+    # Commission handling ($3.5/lot JForex Dukascopy) requires further research
+    # into SQX's internal format or plugin-based commission models.
 
     # 4. Genetic settings
     task_xml = re.sub(
