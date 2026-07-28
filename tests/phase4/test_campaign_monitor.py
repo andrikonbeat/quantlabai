@@ -916,3 +916,122 @@ class TestBaselineConfig:
         assert restored["early_gen_count"] == 3
         assert restored["stall_polls_threshold"] == 21
         assert restored["rejection_warn_gens"] == 3
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4.6: E2E — dispatch_campaign + monitor
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestDispatchWithMonitorE2E:
+    """E2E tests for dispatch_campaign with CampaignMonitor integration.
+
+    These tests use the mock SQX server (force_mock=True) so they do NOT
+    require a real SQX installation. The mock simulates a full campaign
+    lifecycle (~2s), and the CampaignMonitor polls concurrently.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _cleanup_mock(self) -> Any:
+        """Reset the mock server before each test."""
+        from quantlab.sqx.mock_sqx_server import MockSQXServer
+        MockSQXServer.reset()
+        yield
+        MockSQXServer.reset()
+
+    @pytest.mark.asyncio
+    async def test_e2e_dispatch_with_monitor_returns_watcher_events(
+        self,
+    ) -> None:
+        """dispatch_campaign(force_mock=True, on_watcher_event=cb) returns
+        watcher_events in the result dict."""
+        from unittest.mock import MagicMock
+        from quantlab.sqx.cli_wrapper import dispatch_campaign
+
+        callback = MagicMock()
+
+        config = {
+            "market": "EURUSD",
+            "timeframe": "H1",
+            "walk_forward": True,
+            "monte_carlo": True,
+        }
+
+        cfx_bytes = b"dummy-cfx-content"
+
+        result = await dispatch_campaign(
+            cfx_bytes=cfx_bytes,
+            campaign_id="e2e-test-monitor",
+            config=config,
+            poll_interval=0.2,
+            timeout=30.0,
+            force_mock=True,
+            on_watcher_event=callback,
+        )
+
+        # The result dict MUST contain a watcher_events key
+        assert "watcher_events" in result, (
+            f"Result missing 'watcher_events'. Keys: {list(result.keys())}"
+        )
+        assert isinstance(result["watcher_events"], list)
+
+        # The mock campaign ran to completion, so the monitor should have
+        # collected at least a campaign_complete event.
+        event_types = {e["event_type"] for e in result["watcher_events"]}
+        assert "campaign_complete" in event_types, (
+            f"Expected campaign_complete event. Got: {event_types}"
+        )
+
+        # Callback must have been invoked at least once (campaign_complete)
+        assert callback.call_count >= 1, (
+            f"Expected callback to be called >= 1 time, got {callback.call_count}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_e2e_dispatch_no_callback_still_returns_events(self) -> None:
+        """dispatch_campaign without on_watcher_event still returns
+        watcher_events (monitor runs in CLI-prompt mode)."""
+        from quantlab.sqx.cli_wrapper import dispatch_campaign
+
+        config = {
+            "market": "EURUSD",
+            "timeframe": "H1",
+        }
+
+        cfx_bytes = b"dummy-cfx-content"
+
+        result = await dispatch_campaign(
+            cfx_bytes=cfx_bytes,
+            campaign_id="e2e-test-no-cb",
+            config=config,
+            poll_interval=0.2,
+            timeout=30.0,
+            force_mock=True,
+        )
+
+        assert "watcher_events" in result
+        assert isinstance(result["watcher_events"], list)
+
+    @pytest.mark.asyncio
+    async def test_e2e_dispatch_with_wf_mc_params(self) -> None:
+        """walk_forward and monte_carlo params flow through to project_builder
+        and baseline computation without error."""
+        from quantlab.sqx.cli_wrapper import dispatch_campaign
+
+        for wf, mc in [(True, True), (True, False), (False, True), (False, False)]:
+            config = {
+                "market": "EURUSD",
+                "timeframe": "M1",
+                "walk_forward": wf,
+                "monte_carlo": mc,
+            }
+            result = await dispatch_campaign(
+                cfx_bytes=b"dummy",
+                campaign_id=f"e2e-wf-{wf}-mc-{mc}",
+                config=config,
+                poll_interval=0.2,
+                timeout=30.0,
+                force_mock=True,
+            )
+            assert result["status"] in ("completed", "timeout")
+            assert "watcher_events" in result
