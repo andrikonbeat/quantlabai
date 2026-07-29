@@ -904,6 +904,106 @@ class TestAutonomousMonitorDaemon:
     # ── Stall / reconnect (2.2) ─────────────────────────────────────────────
 
     @pytest.mark.asyncio
+    async def test_reconnect_after_transient_drop(
+        self,
+        config: MonitorConfig,
+        mock_agent: MagicMock,
+        mock_store: MagicMock,
+        mock_dispatcher: MagicMock,
+        mock_executor: MagicMock,
+    ) -> None:
+        """After a transient stream failure, daemon reconnects and continues."""
+        config = MonitorConfig(
+            strategy_id="recon_test",
+            compute_interval=999,
+            heartbeat_interval=999,
+            stream_timeout=999,
+            max_retries=2,
+        )
+
+        daemon = AutonomousMonitorDaemon(
+            config,
+            agent=mock_agent,
+            store=mock_store,
+            dispatcher=mock_dispatcher,
+            executor=mock_executor,
+        )
+        daemon._reconnect_base = 0.01
+
+        # Counter that fails on first call then works
+        call_count: int = 0
+        now = datetime.now(timezone.utc)
+
+        async def flip_flop_stream():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise ConnectionError("transient")
+            yield EquityPoint(timestamp=now, equity=100.0)  # noqa: PIE781
+
+        daemon._get_stream = lambda: flip_flop_stream()  # type: ignore[method-assign]
+
+        await daemon.start()
+        await asyncio.sleep(0.5)
+        await daemon.stop()
+
+        # Not in error state — reconnected successfully
+        assert daemon.status()["state"] == "stopped"
+        # At least one point was processed (flip_flop yielded on 2nd call)
+        assert len(daemon._equity_buffer) >= 1
+
+    @pytest.mark.asyncio
+    async def test_health_check_daemon_failure(
+        self,
+        mock_agent: MagicMock,
+        mock_store: MagicMock,
+        mock_dispatcher: AsyncMock,
+        mock_executor: MagicMock,
+    ) -> None:
+        """3 consecutive missed heartbeats dispatch DAEMON_FAILURE CRITICAL."""
+        config = MonitorConfig(
+            strategy_id="health_dead",
+            compute_interval=999,
+            heartbeat_interval=0.1,  # 3 misses = 0.3s threshold
+            stream_timeout=999,
+        )
+
+        daemon = AutonomousMonitorDaemon(
+            config,
+            agent=mock_agent,
+            store=mock_store,
+            dispatcher=mock_dispatcher,
+            executor=mock_executor,
+        )
+
+        # Suppress heartbeat so _last_heartbeat stays at 0
+        daemon._maybe_heartbeat = AsyncMock()  # type: ignore[method-assign]
+
+        async def yield_once():
+            now = datetime.now(timezone.utc)
+            yield EquityPoint(timestamp=now, equity=100.0)
+
+        daemon._get_stream = lambda: yield_once()  # type: ignore[method-assign]
+
+        await daemon.start()
+        await asyncio.sleep(1.5)  # enough for 3+ health check iterations
+        await daemon.stop()
+
+        critical_calls = [
+            c for c in mock_dispatcher.dispatch.call_args_list
+            if c[0][0].get("type") == "DAEMON_FAILURE"
+        ]
+        assert len(critical_calls) >= 1, (
+            "Expected DAEMON_FAILURE CRITICAL dispatch for 3 missed heartbeats"
+        )
+        # Also persisted via store
+        append_alerts = [
+            c for c in mock_store.append_alert.call_args_list
+            if isinstance(c[0][0], dict) and c[0][0].get("type") == "DAEMON_FAILURE"
+        ]
+        assert len(append_alerts) >= 1
+
+    @pytest.mark.asyncio
     async def test_max_retries_enters_error_state(
         self,
         config: MonitorConfig,

@@ -42,9 +42,9 @@ Chain strategy: stacked-to-main
 
 ## Phase 3: CLI Integration
 
-- [ ] 3.1 Create `monitor_commands.py` — `add_monitor_subparser()`, `cmd_monitor_start/stop/status`
-- [ ] 3.2 Modify `main.py` — import + register `add_monitor_subparser` in `build_parser()`
-- [ ] 3.3 Integration test: CLI commands via CliRunner
+- [x] 3.1 Create `monitor_commands.py` — `add_monitor_subparser()`, `cmd_monitor_start/stop/status`
+- [x] 3.2 Modify `main.py` — import + register `add_monitor_subparser` in `build_parser()`
+- [x] 3.3 Integration test: CLI commands via CliRunner
 
 ## Phase 4: Tests
 

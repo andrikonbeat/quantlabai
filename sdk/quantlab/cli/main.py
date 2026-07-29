@@ -55,6 +55,8 @@ from quantlab.cli.pipeline_commands import (
 from quantlab.cli.knowledge_commands import add_knowledge_subparser
 from quantlab.cli.agent_commands import add_agent_subparser
 from quantlab.cli.campaign_commands import add_campaign_subparser
+from quantlab.cli.dashboard_commands import add_dashboard_subparser
+from quantlab.cli.monitor_commands import add_monitor_subparser
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Constants & Defaults
@@ -1080,6 +1082,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ── campaign ───────────────────────────────────────────────────────────────
     add_campaign_subparser(subparsers)
+
+    # ── dashboard ──────────────────────────────────────────────────────────────
+    add_dashboard_subparser(subparsers)
+
+    # ── monitor ────────────────────────────────────────────────────────────────
+    add_monitor_subparser(subparsers)
 
     # ── pipeline ───────────────────────────────────────────────────────────────
     p_pipeline = subparsers.add_parser("pipeline", help="Pipeline execution and management")
