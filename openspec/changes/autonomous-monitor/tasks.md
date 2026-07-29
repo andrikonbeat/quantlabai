@@ -33,12 +33,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 2: Core Daemon
 
-- [ ] 2.1 Implement `AutonomousMonitorDaemon` asyncio loop consuming `ResultReader.stream_live()`
-- [ ] 2.2 Implement stall→reconnect with exponential backoff, max_retries → error state
-- [ ] 2.3 Implement `NotifierDispatcher` — severity→channel map, failure skip logging
-- [ ] 2.4 Implement `AutoActionExecutor` — stop_strategy, reduce_position, re_optimize
-- [ ] 2.5 Wire rolling metrics, regime detection, alert check into compute cycle
-- [ ] 2.6 Implement heartbeat health check — configurable interval, 3-miss stale detection
+- [x] 2.1 Implement `AutonomousMonitorDaemon` asyncio loop consuming `ResultReader.stream_live()`
+- [x] 2.2 Implement stall→reconnect with exponential backoff, max_retries → error state
+- [x] 2.3 Implement `NotifierDispatcher` — severity→channel map, failure skip logging
+- [x] 2.4 Implement `AutoActionExecutor` — stop_strategy, reduce_position, re_optimize
+- [x] 2.5 Wire rolling metrics, regime detection, alert check into compute cycle
+- [x] 2.6 Implement heartbeat health check — configurable interval, 3-miss stale detection
 
 ## Phase 3: CLI Integration
 
@@ -48,6 +48,6 @@ Chain strategy: stacked-to-main
 
 ## Phase 4: Tests
 
-- [ ] 4.1 Unit test: NotifierDispatcher severity→channel routing + failure skip
-- [ ] 4.2 Unit test: AutoActionExecutor dispatch per threshold breach
-- [ ] 4.3 E2E test: mock stream 3 equity points, verify alerts fired + persisted to SQLite
+- [x] 4.1 Unit test: NotifierDispatcher severity→channel routing + failure skip
+- [x] 4.2 Unit test: AutoActionExecutor dispatch per threshold breach
+- [x] 4.3 E2E test: mock stream 3 equity points, verify alerts fired + persisted to SQLite
