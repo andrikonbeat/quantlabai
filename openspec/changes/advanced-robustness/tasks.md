@@ -35,8 +35,10 @@ Chain strategy: stacked-to-main
 
 ## Phase 2: Notification & Health
 
-- [ ] 2.1 Create `sdk/quantlab/robustness/resilient_notifier.py` — `ResilientNotifier` wrapping any `Notifier`, retry via `RetryPolicy`, bounded JSONL queue (max 1000), `flush()`
-- [ ] 2.2 Create `sdk/quantlab/robustness/knowledge_health.py` — `KnowledgeStoreHealthCheck` async `check()`, TTL-cached status (60s), probe record cleanup
+- [x] 2.1 Create `sdk/quantlab/robustness/resilient_notifier.py` — `ResilientNotifier` wrapping any `Notifier`, retry via `RetryPolicy`, bounded JSONL queue (max 1000), `flush()`
+- [x] 2.2 Create `sdk/quantlab/robustness/knowledge_health.py` — `KnowledgeStoreHealthCheck` async `check()`, TTL-cached status (60s), probe record cleanup
+- [x] 2.3 Unit test: ResilientNotifier retry + queue eviction
+- [x] 2.4 Unit test: KnowledgeStoreHealthCheck probe + result
 
 ## Phase 3: LLM Integration & Agent Wiring
 
