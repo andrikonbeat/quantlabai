@@ -859,3 +859,149 @@ class KnowledgeStore:
             pass
         return []
 
+
+# ── Time-Series Store ─────────────────────────────────────────────────────────
+
+
+class TimeSeriesStore:
+    """Append-only SQLite time-series store for metrics, alerts, and heartbeats.
+
+    Used by the autonomous monitor daemon to persist rolling metrics, alert
+    events, and heartbeat health-check records.
+
+    Uses stdlib ``sqlite3`` — zero additional dependencies.
+
+    Usage::
+
+        store = TimeSeriesStore("knowledge/timeseries/monitor.db")
+        store.append_metrics("strat_a", 100.0, {"sharpe": 1.5, "drawdown": 0.05})
+        rows = store.query_metrics("strat_a", 0.0, 999.0)
+    """
+
+    def __init__(self, db_path: str) -> None:
+        import sqlite3
+
+        self._conn = sqlite3.connect(db_path)
+        self._conn.row_factory = sqlite3.Row
+        self._init_schema()
+
+    # ── Schema ──────────────────────────────────────────────────────────────────
+
+    def _init_schema(self) -> None:
+        """Create tables if they do not exist."""
+        self._conn.executescript("""
+            CREATE TABLE IF NOT EXISTS metrics (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                strategy_id TEXT    NOT NULL,
+                timestamp   REAL    NOT NULL,
+                metric_name TEXT    NOT NULL,
+                value       REAL    NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS alerts (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp   TEXT    NOT NULL,
+                type        TEXT    NOT NULL,
+                severity    TEXT    NOT NULL,
+                strategy_id TEXT,
+                message     TEXT,
+                details     TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS heartbeats (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp    REAL    NOT NULL,
+                strategy_id  TEXT    NOT NULL,
+                equity_count INTEGER DEFAULT 0,
+                alert_count  INTEGER DEFAULT 0
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_metrics_strat_time
+                ON metrics(strategy_id, timestamp);
+
+            CREATE INDEX IF NOT EXISTS idx_alerts_strat
+                ON alerts(strategy_id);
+
+            CREATE INDEX IF NOT EXISTS idx_heartbeats_strat_time
+                ON heartbeats(strategy_id, timestamp);
+        """)
+        self._conn.commit()
+
+    # ── Append ──────────────────────────────────────────────────────────────────
+
+    def append_metrics(
+        self, strategy_id: str, timestamp: float, metrics: dict[str, float]
+    ) -> None:
+        """Append a batch of metric values as individual rows.
+
+        Args:
+            strategy_id: Strategy identifier.
+            timestamp: Unix timestamp (float) for this batch.
+            metrics: Dict mapping metric name → value.
+        """
+        for name, value in metrics.items():
+            self._conn.execute(
+                "INSERT INTO metrics (strategy_id, timestamp, metric_name, value) "
+                "VALUES (?, ?, ?, ?)",
+                (strategy_id, timestamp, name, value),
+            )
+        self._conn.commit()
+
+    def append_alert(self, alert: dict) -> None:
+        """Append an alert event.
+
+        Args:
+            alert: Dict with keys ``timestamp``, ``type``, ``severity``,
+                ``strategy_id``, ``message``, ``details``.
+        """
+        self._conn.execute(
+            "INSERT INTO alerts (timestamp, type, severity, strategy_id, message, details) "
+            "VALUES (:timestamp, :type, :severity, :strategy_id, :message, :details)",
+            alert,
+        )
+        self._conn.commit()
+
+    def append_heartbeat(self, heartbeat: dict) -> None:
+        """Append a heartbeat record.
+
+        Args:
+            heartbeat: Dict with keys ``timestamp``, ``strategy_id``,
+                optionally ``equity_count`` and ``alert_count``.
+        """
+        self._conn.execute(
+            "INSERT INTO heartbeats (timestamp, strategy_id, equity_count, alert_count) "
+            "VALUES (:timestamp, :strategy_id, :equity_count, :alert_count)",
+            {
+                "timestamp": heartbeat["timestamp"],
+                "strategy_id": heartbeat["strategy_id"],
+                "equity_count": heartbeat.get("equity_count", 0),
+                "alert_count": heartbeat.get("alert_count", 0),
+            },
+        )
+        self._conn.commit()
+
+    # ── Query ───────────────────────────────────────────────────────────────────
+
+    def query_metrics(
+        self, strategy_id: str, since: float, until: float
+    ) -> list[dict]:
+        """Query metric rows for a strategy within a time range.
+
+        Args:
+            strategy_id: Strategy identifier to filter.
+            since: Start timestamp (inclusive).
+            until: End timestamp (exclusive).
+
+        Returns:
+            List of dicts with keys ``strategy_id``, ``timestamp``,
+            ``metric_name``, ``value``.
+        """
+        cursor = self._conn.execute(
+            "SELECT strategy_id, timestamp, metric_name, value "
+            "FROM metrics "
+            "WHERE strategy_id = ? AND timestamp >= ? AND timestamp < ? "
+            "ORDER BY timestamp, metric_name",
+            (strategy_id, since, until),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+
