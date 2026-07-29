@@ -13,8 +13,10 @@ class TestStageRegistry:
     def test_registry_initializes_with_all_stages(self):
         """Registry should contain all SQX + multi-agent stage types."""
         registry = StageRegistry()
-        # 11 SQX builtin + 7 agent + 1 gate + 5 gate aliases + campaign
-        assert len(registry._stage_map) == 25
+        # Registry contains all SQX builtin + agent stages + gate + gate aliases + ...
+        assert len(registry._stage_map) >= 25
+        assert "research" in registry._stage_map
+        assert "refutation" in registry._stage_map
         expected_stages = {
             "validate",
             "translate",
@@ -41,6 +43,12 @@ class TestStageRegistry:
             "gate_human_approve_deploy",
             "gate_human_review_performance",
             "campaign",
+            "hypothesis_builder",
+            "refutation",
+            "research_llm",
+            "guardian_evaluate",
+            "monte_carlo",
+            "cost_injection",
         }
         assert set(registry._stage_map.keys()) == expected_stages
 

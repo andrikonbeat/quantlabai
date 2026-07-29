@@ -218,6 +218,33 @@ class HypothesisBuilderStage(Stage, ABC):
         )
 
 
+class RefutationStage(Stage, ABC):
+    """Stage that annotates hypotheses with falsification scores.
+
+    Sits between hypothesis_builder and builder. Runs RefutationLayer to
+    proactively assess hypotheses against regime mismatch, historical
+    counter-examples, and LLM adversarial analysis.
+
+    **Requires**: research_config, hypotheses, building_blocks, strategies
+    **Provides**: falsation_results (annotations, no filtering)
+    """
+    name: str = "refutation"
+    requires: list[str] = [
+        "research_config",
+        "hypotheses",
+        "building_blocks",
+        "strategies",
+    ]
+    provides: list[str] = [
+        "falsation_results",
+    ]
+
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
+        raise NotImplementedError(
+            "RefutationStage must be implemented by a concrete agent subclass"
+        )
+
+
 class GuardianEvaluationStage(Stage, ABC):
     """Evaluates all guardians before builder stage.
 

@@ -138,7 +138,7 @@ class StageRegistry:
         from quantlab.pipeline.stages.agent_stages import (
             LLMResearchStage, ResearchStage, BuilderStage, StatisticsStage,
             ReviewStage, PortfolioStage, DeployStage, MonitorStage,
-            HypothesisBuilderStage, GuardianEvaluationStage,
+            HypothesisBuilderStage, RefutationStage, GuardianEvaluationStage,
         )
 
         class ResearchAgentStage(ResearchStage):
@@ -262,11 +262,34 @@ class StageRegistry:
                     "gate_policies": gate_policies_dict,
                 }
 
+        class RefutationAgentStage(RefutationStage):
+            """Wrapper: adapts RefutationLayer.refute() to Stage.execute()."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                from quantlab.agents.refutation import RefutationLayer
+                self._layer = RefutationLayer()
+                super().__init__(**kwargs)
+
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+                hypotheses = ctx.artifacts.get("hypotheses", [])
+                building_blocks = ctx.artifacts.get("building_blocks", [])
+                strategies = ctx.artifacts.get("strategies", [])
+                market_context = ctx.artifacts.get("market_context")
+
+                result = await self._layer.refute(
+                    hypotheses=hypotheses,
+                    building_blocks=building_blocks,
+                    market_context=market_context,
+                )
+                ctx.artifacts["falsation_results"] = result
+                return {"falsation_results": result}
+
         self._stage_map.update({
             # Agent stages — concrete implementations
             "research_llm": LLMResearchAgentStage,
             "research": ResearchAgentStage,
             "hypothesis_builder": HypothesisBuilderAgentStage,
+            "refutation": RefutationAgentStage,
             "builder": BuilderAgentStage,
             "statistics": StatisticsAgent,
             "review": ReviewerAgent,
