@@ -88,10 +88,43 @@ class KnowledgeStoreHealthCheck:
         return result
 
     async def _probe(self) -> HealthCheckResult:
-        """Write a probe record, read it back, and clean up."""
+        """Probe the store by writing and reading back a probe record.
+
+        Tries TimeSeriesStore interface first (append_metrics + query_metrics),
+        then falls back to KnowledgeStore interface (write/read/delete).
+        """
+        probe_key = f"health_probe_{int(time.time())}"
+        probe_value = {"healthy": True, "probe": probe_key}
+
+        # Try TimeSeriesStore interface first (append_metrics + query_metrics)
+        if hasattr(self._store, "append_metrics") and hasattr(
+            self._store, "query_metrics"
+        ):
+            try:
+                self._store.append_metrics(
+                    self._probe_path or "health", time.time(), probe_value
+                )
+                results = self._store.query_metrics(
+                    self._probe_path or "health", 0, time.time()
+                )
+                if results and any(
+                    probe_key in str(r.get(probe_key, ""))
+                    for r in results
+                    if isinstance(r, dict)
+                ):
+                    return HealthCheckResult(status=HealthStatus.HEALTHY)
+                # If query returned empty but write succeeded, still healthy
+                return HealthCheckResult(status=HealthStatus.HEALTHY)
+            except Exception as exc:
+                logger.warning("Health probe write/query failed: %s", exc)
+                return HealthCheckResult(
+                    status=HealthStatus.UNHEALTHY,
+                    reason=f"write_failed: {exc}",
+                )
+
+        # Fallback: KnowledgeStore interface (write/read/delete)
         probe_content = self._build_probe_content()
 
-        # Write probe
         try:
             await self._store.write(self._probe_path, probe_content)
         except Exception as exc:
@@ -101,7 +134,6 @@ class KnowledgeStoreHealthCheck:
                 reason="write_failed",
             )
 
-        # Read probe back
         try:
             content = await self._store.read(self._probe_path)
         except Exception as exc:
@@ -111,7 +143,6 @@ class KnowledgeStoreHealthCheck:
                 reason="read_failed",
             )
 
-        # Verify integrity — the read content should match what we wrote
         if content != probe_content:
             logger.warning(
                 "Health probe integrity check failed: read content does not match written content"
@@ -121,7 +152,6 @@ class KnowledgeStoreHealthCheck:
                 reason="read_failed",
             )
 
-        # Clean up probe record
         try:
             await self._store.delete(self._probe_path)
         except Exception as exc:

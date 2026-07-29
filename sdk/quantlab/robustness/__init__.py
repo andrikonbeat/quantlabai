@@ -6,6 +6,7 @@ from quantlab.robustness.knowledge_health import (
     HealthStatus,
     KnowledgeStoreHealthCheck,
 )
+from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 from quantlab.robustness.resilient_notifier import ResilientNotifier
 from quantlab.robustness.retry_policy import RetryPolicy
 
@@ -15,6 +16,7 @@ __all__ = [
     "HealthCheckResult",
     "HealthStatus",
     "KnowledgeStoreHealthCheck",
+    "LLMCircuitBreaker",
     "RetryPolicy",
     "ResilientNotifier",
 ]

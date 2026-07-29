@@ -454,6 +454,17 @@ class AutonomousMonitorDaemon:
 
         self._executor = executor or AutoActionExecutor(config, self._store)
 
+        # Store health tracking
+        self._store_unhealthy = False
+
+        # Health check for store
+        from quantlab.robustness.knowledge_health import (
+            HealthStatus,
+            KnowledgeStoreHealthCheck,
+        )
+
+        self._health_check = KnowledgeStoreHealthCheck(self._store)
+
     # ── Lifecycle ───────────────────────────────────────────────────────────
 
     async def start(self) -> None:
@@ -504,6 +515,8 @@ class AutonomousMonitorDaemon:
             "last_heartbeat": round(self._last_heartbeat, 2),
             "metrics_count": len(self._latest_metrics),
             "error": str(self._loop_exception) if self._loop_exception else None,
+            "store_healthy": not self._store_unhealthy,
+            "store_health": "healthy" if not self._store_unhealthy else "unhealthy",
         }
 
     # ── Internal: stream factory (injectable for testing) ───────────────────
@@ -572,6 +585,9 @@ class AutonomousMonitorDaemon:
         if now - self._last_compute < self._config.compute_interval:
             return
         await self._compute_cycle(now)
+
+        # Check store health after compute cycle
+        await self._check_store_health()
 
     async def _compute_cycle(self, now: float) -> None:
         """Execute one computation cycle: metrics → regime → alerts → dispatch."""
@@ -668,6 +684,27 @@ class AutonomousMonitorDaemon:
                 self._store.append_alert(alert)
                 await self._dispatcher.dispatch(alert)
                 logger.critical("Health check: %s", alert["message"])
+
+    # ── Internal: store health check ──────────────────────────────────
+
+    async def _check_store_health(self) -> None:
+        """Check TimeSeriesStore health and dispatch alert if unhealthy."""
+        result = await self._health_check.check()
+        if result.status == HealthStatus.UNHEALTHY:
+            self._store_unhealthy = True
+            alert: dict[str, Any] = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "type": "STORE_UNHEALTHY",
+                "severity": "CRITICAL",
+                "strategy_id": self._config.strategy_id,
+                "message": f"TimeSeriesStore unhealthy: {result.reason}",
+                "details": {"reason": result.reason},
+            }
+            await self._dispatcher.dispatch(alert)
+            self._store.append_alert(alert)
+            logger.critical("Store health check failed: %s", result.reason)
+        else:
+            self._store_unhealthy = False
 
     # ── Internal: heartbeat ─────────────────────────────────────────────────
 
