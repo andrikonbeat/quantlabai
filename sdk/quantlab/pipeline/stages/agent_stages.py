@@ -167,6 +167,30 @@ class MonitorStage(Stage, ABC):
         raise NotImplementedError("MonitorStage must be implemented by a concrete agent subclass")
 
 
+class LLMResearchStage(Stage, ABC):
+    """LLM-powered research stage using LLMResearchAgent.
+
+    Same requires/provides as ResearchStage but routes to the LLM-powered
+    agent instead of the classic keyword-based agent.
+
+    **Provides**: research_config, objectives, hypotheses, iteration_config, gate_policies
+    """
+    name: str = "research_llm"
+    requires: list[str] = []
+    provides: list[str] = [
+        "research_config",
+        "objectives",
+        "hypotheses",
+        "iteration_config",
+        "gate_policies",
+    ]
+
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
+        raise NotImplementedError(
+            "LLMResearchStage must be implemented by a concrete agent subclass"
+        )
+
+
 class GuardianEvaluationStage(Stage, ABC):
     """Evaluates all guardians before builder stage.
 

@@ -135,14 +135,85 @@ class Strategy(BaseModel):
 # ── Extended configs for multi-agent pipeline ──────────────────────────────────
 
 
+class LLMConfig(BaseModel):
+    """Configuration for an LLM provider used in research agent.
+
+    Provider validation ensures only known vendors are accepted.
+    ``api_key_env`` is auto-derived from the provider name when not explicitly set.
+
+    Attributes:
+        provider: LLM provider name (``"openai"`` or ``"anthropic"``).
+        model: Model identifier (e.g. ``"gpt-4"``, ``"claude-3-opus-20240229"``).
+        api_key_env: Environment variable holding the API key.
+        temperature: Sampling temperature 0.0–2.0 (default 0.7).
+        max_tokens: Maximum output tokens (default 2048, must be >= 1).
+        web_sources: Enabled web/news sources for context enrichment.
+    """
+
+    VALID_PROVIDERS: set[str] = {"openai", "anthropic"}
+    _PROVIDER_ENV_MAP: dict[str, str] = {
+        "openai": "OPENAI_API_KEY",
+        "anthropic": "ANTHROPIC_API_KEY",
+    }
+
+    provider: str = Field(
+        default="openai",
+        description="LLM provider name",
+    )
+    model: str = Field(default="gpt-4", description="Model identifier")
+    api_key_env: str = Field(default="OPENAI_API_KEY", description="Env var for the API key")
+    temperature: float = Field(
+        default=0.7, ge=0.0, le=2.0, description="Sampling temperature 0.0–2.0"
+    )
+    max_tokens: int = Field(
+        default=2048, ge=1, description="Maximum output tokens"
+    )
+    web_sources: list[str] = Field(
+        default_factory=list,
+        description="Enabled web/news sources for context enrichment",
+    )
+
+    @model_validator(mode="after")
+    def _validate_provider_and_derive_env(self) -> LLMConfig:
+        """Validate provider is known and derive default api_key_env."""
+        if self.provider not in self.VALID_PROVIDERS:
+            from quantlab.tools.exceptions import ValidationError
+
+            raise ValidationError(
+                f"Unknown LLM provider '{self.provider}'. "
+                f"Valid providers: {', '.join(sorted(self.VALID_PROVIDERS))}"
+            )
+        # Auto-derive api_key_env from provider if not explicitly overridden
+        derived = self._PROVIDER_ENV_MAP.get(self.provider, f"{self.provider.upper()}_API_KEY")
+        # If api_key_env is the default string, derive it; otherwise respect explicit value
+        if self.api_key_env == "OPENAI_API_KEY" and self.provider != "openai":
+            self.api_key_env = derived
+        return self
+
+
 class HypothesisConfig(BaseModel):
-    """A research hypothesis with testable parameters."""
+    """A research hypothesis with testable parameters.
+
+    Extended for LLM agent integration with audit fields:
+    ``llm_rationale``, ``source_urls``, and ``data_sources``.
+    """
 
     name: str = Field(..., description="Hypothesis identifier")
     description: str = Field(..., description="What this hypothesis tests")
     parameters: dict[str, Any] = Field(default_factory=dict, description="Hypothesis parameters")
     expected_outcome: str = Field(default="", description="Expected result if hypothesis holds")
     confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Prior confidence 0-1")
+
+    # LLM audit trail fields
+    llm_rationale: str | None = Field(
+        default=None, description="LLM reasoning that generated this hypothesis"
+    )
+    source_urls: list[str] = Field(
+        default_factory=list, description="URLs used as evidence for this hypothesis"
+    )
+    data_sources: list[str] = Field(
+        default_factory=list, description="Provider names that supplied the data"
+    )
 
 
 class IterationConfig(BaseModel):
@@ -224,6 +295,12 @@ class ResearchConfig(BaseModel):
     memory: MemoryConfig = Field(default_factory=MemoryConfig, description="Agent memory configuration")
     risk: RiskConfig = Field(default_factory=RiskConfig, description="Portfolio risk limits")
     
+    # LLM configuration (optional)
+    llm_config: Optional[LLMConfig] = Field(
+        default=None,
+        description="Optional LLM configuration for AI-powered research agents",
+    )
+
     # Cost configuration (broker-aware cost modelling)
     costs: Optional[CostsConfig] = Field(
         default=None,

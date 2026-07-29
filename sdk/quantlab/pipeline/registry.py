@@ -136,7 +136,7 @@ class StageRegistry:
 
         # Stage wrappers for agents that don't inherit from Stage ABC
         from quantlab.pipeline.stages.agent_stages import (
-            ResearchStage, BuilderStage, StatisticsStage,
+            LLMResearchStage, ResearchStage, BuilderStage, StatisticsStage,
             ReviewStage, PortfolioStage, DeployStage, MonitorStage,
             GuardianEvaluationStage,
         )
@@ -171,8 +171,67 @@ class StageRegistry:
             async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
                 return await self._agent.run(ctx)
 
+        class LLMResearchAgentStage(LLMResearchStage):
+            """Wrapper: adapts LLMResearchAgent.generate_config() to Stage.execute()."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                from quantlab.agents.llm_research_agent import LLMResearchAgent
+                self._agent = LLMResearchAgent()
+                super().__init__(**kwargs)
+
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+                config = ctx.config or {}
+                objectives: list[str] = config.get("objectives", ["Research"])
+                if isinstance(objectives, str):
+                    objectives = [objectives]
+                market_context: dict[str, Any] | None = config.get("market_context")
+
+                # Build LLMConfig from config dict if present
+                raw_llm_config = config.get("llm_config")
+                llm_config = None
+                if raw_llm_config is not None and not isinstance(raw_llm_config, dict):
+                    llm_config = raw_llm_config
+                elif isinstance(raw_llm_config, dict):
+                    from quantlab.dsl.models import LLMConfig
+                    llm_config = LLMConfig(**raw_llm_config)
+
+                # Generate config with optional LLM (falls back to classic on failure)
+                research_config = await self._agent.generate_config(
+                    objectives=objectives,
+                    market_context=market_context,
+                    llm_config=llm_config,
+                )
+
+                # Serialize for context artifacts
+                research_config_dict = research_config.model_dump(mode="json")
+                hypotheses_dict = [
+                    h.model_dump(mode="json") for h in research_config.hypotheses
+                ]
+                iteration_config_dict = (
+                    research_config.iteration_config.model_dump(mode="json")
+                )
+                gate_policies_dict = [
+                    g.model_dump(mode="json") for g in research_config.gate_policies
+                ]
+
+                # Write to context artifacts
+                ctx.artifacts["research_config"] = research_config_dict
+                ctx.artifacts["objectives"] = objectives
+                ctx.artifacts["hypotheses"] = hypotheses_dict
+                ctx.artifacts["iteration_config"] = iteration_config_dict
+                ctx.artifacts["gate_policies"] = gate_policies_dict
+
+                return {
+                    "research_config": research_config_dict,
+                    "objectives": objectives,
+                    "hypotheses": hypotheses_dict,
+                    "iteration_config": iteration_config_dict,
+                    "gate_policies": gate_policies_dict,
+                }
+
         self._stage_map.update({
             # Agent stages — concrete implementations
+            "research_llm": LLMResearchAgentStage,
             "research": ResearchAgentStage,
             "builder": BuilderAgentStage,
             "statistics": StatisticsAgent,
@@ -241,7 +300,7 @@ class StageRegistry:
             "read", "compute_stats", "knowledge_store", "report",
         }
         agent_names = {
-            "research", "builder", "statistics", "review",
+            "research", "research_llm", "builder", "statistics", "review",
             "portfolio", "deploy", "monitor",
         }
         gate_names = {

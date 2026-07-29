@@ -126,18 +126,25 @@ class ResearchDirector:
     def build_pipeline(
         self,
         config: ResearchConfig,
+        agent_config: Any = None,
     ) -> Any:
         """Build the full 8-agent pipeline with 5 gate stages from a config.
 
         Constructs a Pipeline with concrete agent stages in the correct order
         and injects gate interceptor stages at configured positions.
 
-        Stage order: research → [gate1] → builder → statistics → review →
-        [gate2] → portfolio → [gate3] → deploy → [gate4] → monitor → [gate5]
+        Stage order: research_llm|research → [gate1] → builder → statistics →
+        review → [gate2] → portfolio → [gate3] → deploy → [gate4] → monitor → [gate5]
+
+        The research stage is selected based on ``agent_config``:
+        - If ``agent_config.model`` is non-empty → ``research_llm`` (LLM-powered)
+        - Otherwise → ``research`` (classic keyword-based)
 
         Args:
             config: Validated ``ResearchConfig`` with hypotheses, iteration_config,
                     and gate_policies.
+            agent_config: Optional ``AgentConfig`` for LLM routing. When provided
+                and ``model != ""``, uses the LLM-powered research stage.
 
         Returns:
             A ``Pipeline`` instance with all stages in correct order.
@@ -148,6 +155,13 @@ class ResearchDirector:
         runner = self._get_runner()
         registry = self._get_registry()
 
+        # Resolve research stage name based on AgentConfig.model
+        research_stage = "research"
+        if agent_config is not None:
+            model = getattr(agent_config, "model", "")
+            if model and isinstance(model, str) and model.strip():
+                research_stage = "research_llm"
+
         # Build the stage config list (agent stages only — gates are injected)
         from quantlab.pipeline.config.models import (
             GateConfig,
@@ -156,7 +170,7 @@ class ResearchDirector:
         )
 
         stages: list[dict[str, Any]] = [
-            {"name": "research", "type": "agent"},
+            {"name": research_stage, "type": "agent"},
             {"name": "builder", "type": "agent"},
             {"name": "statistics", "type": "agent"},
             {"name": "review", "type": "agent"},
@@ -170,7 +184,7 @@ class ResearchDirector:
             GateConfig(
                 gate_id="HUMAN_REVIEW_OBJECTIVES",
                 name="HUMAN_REVIEW_OBJECTIVES",
-                after_stage="research",
+                after_stage=research_stage,
                 timeout_hours=24,
                 fallback="ESCALATE",
             ),
