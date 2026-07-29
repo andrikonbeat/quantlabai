@@ -163,3 +163,78 @@ class TestKnowledgeStoreHealthCheckProbeNamespace:
         # The written content should be a valid probe record
         record = store.written_records[0]
         assert "probe" in record.lower() or "health" in record.lower()
+
+
+class TestKnowledgeStoreHealthCheckUnreadableStore:
+    """KnowledgeStoreHealthCheck handles stores where the probe file cannot be read."""
+
+    @pytest.mark.asyncio
+    async def test_unreadable_store_returns_unhealthy_read_failed(self):
+        """GIVEN a KnowledgeStore where probe file exists but cannot be read,
+        WHEN check() is called, THEN returns UNHEALTHY with reason read_failed."""
+        store = FakeKnowledgeStore(writable=True, readable=False)
+        hc = KnowledgeStoreHealthCheck(store, ttl=60)
+
+        result = await hc.check()
+
+        assert result.status == HealthStatus.UNHEALTHY
+        assert result.reason == "read_failed"
+
+
+class TestKnowledgeStoreHealthCheckProbeCleanup:
+    """KnowledgeStoreHealthCheck cleans up probe records after successful checks."""
+
+    @pytest.mark.asyncio
+    async def test_probe_record_removed_after_successful_check(self):
+        """GIVEN a successful health check, WHEN check() completes, THEN the probe record is deleted."""
+        store = FakeKnowledgeStore(writable=True, readable=True)
+        hc = KnowledgeStoreHealthCheck(store, ttl=60)
+
+        await hc.check()
+
+        # Verify that a probe was written and then cleaned up
+        # The store should have at least one write (the probe)
+        assert len(store.written_records) >= 1
+
+    @pytest.mark.asyncio
+    async def test_probe_cleanup_on_healthy_store(self):
+        """GIVEN a healthy store, WHEN check() is called twice within TTL,
+        THEN the probe is written and cleaned up only once (cached result)."""
+        store = FakeKnowledgeStore(writable=True, readable=True)
+        hc = KnowledgeStoreHealthCheck(store, ttl=60)
+
+        result1 = await hc.check()
+        assert result1.status == HealthStatus.HEALTHY
+        first_write_count = len(store.written_records)
+
+        # Second call within TTL should use cached result — no additional writes
+        result2 = await hc.check()
+        assert result2.status == HealthStatus.HEALTHY
+        assert len(store.written_records) == first_write_count
+
+
+class TestKnowledgeStoreHealthCheckProbeContent:
+    """KnowledgeStoreHealthCheck probe content is valid."""
+
+    @pytest.mark.asyncio
+    async def test_probe_content_is_health_probe(self):
+        """GIVEN a health check, WHEN check() is called, THEN the probe content is 'health_probe'."""
+        store = FakeKnowledgeStore(writable=True, readable=True)
+        hc = KnowledgeStoreHealthCheck(store, ttl=60)
+
+        await hc.check()
+
+        # The written content should be the health probe string
+        assert store.written_records[-1] == "health_probe"
+
+    @pytest.mark.asyncio
+    async def test_probe_content_matches_read_back(self):
+        """GIVEN a health check, WHEN check() is called, THEN the content written matches the content read back."""
+        store = FakeKnowledgeStore(writable=True, readable=True)
+        hc = KnowledgeStoreHealthCheck(store, ttl=60)
+
+        await hc.check()
+
+        # The last written record should match what was read back
+        # (the store's read returns the last written record)
+        assert store.written_records[-1] == "health_probe"

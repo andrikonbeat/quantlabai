@@ -260,3 +260,105 @@ class TestLLMCircuitBreakerFallbackIntegration:
         assert lb.state == "OPEN"
         await asyncio.sleep(0.12)
         assert lb.state == "HALF_OPEN"
+
+
+class TestLLMCircuitBreakerFallbackChainPreservation:
+    """LLMCircuitBreaker preserves the existing fallback chain."""
+
+    @pytest.mark.asyncio
+    async def test_closed_circuit_llm_parse_error_triggers_fallback(self):
+        """GIVEN a CLOSED circuit breaker, WHEN the LLM call raises a parse error,
+        THEN the circuit breaker records a failure AND the exception propagates
+        for the fallback chain to handle."""
+        lb = LLMCircuitBreaker(failure_threshold=3)
+
+        async def llm_parse_error():
+            raise ValueError("parse error: invalid JSON")
+
+        with pytest.raises(ValueError, match="parse error"):
+            await lb.call(llm_parse_error())
+
+        # Circuit breaker recorded the failure
+        assert lb._circuit_breaker._failure_count == 1
+        assert lb.state == "CLOSED"  # Not yet at threshold
+
+    @pytest.mark.asyncio
+    async def test_closed_circuit_rate_limit_error_records_failure(self):
+        """GIVEN a CLOSED circuit breaker, WHEN the LLM call raises a rate-limit error,
+        THEN the circuit breaker records the failure toward the threshold."""
+        lb = LLMCircuitBreaker(failure_threshold=2)
+
+        async def llm_rate_limit():
+            raise RuntimeError("rate limit exceeded")
+
+        with pytest.raises(RuntimeError, match="rate limit"):
+            await lb.call(llm_rate_limit())
+
+        assert lb._circuit_breaker._failure_count == 1
+        assert lb.state == "CLOSED"
+
+    @pytest.mark.asyncio
+    async def test_open_circuit_skips_llm_immediately(self):
+        """GIVEN an OPEN circuit breaker, WHEN call() is invoked,
+        THEN CircuitOpenError is raised immediately without calling the LLM."""
+        lb = LLMCircuitBreaker(failure_threshold=1, recovery_timeout=0.5)
+
+        async def fail_llm():
+            raise RuntimeError("LLM timeout")
+
+        # Open the circuit
+        with pytest.raises(RuntimeError):
+            await lb.call(fail_llm())
+        assert lb.state == "OPEN"
+
+        # Subsequent calls should raise CircuitOpenError immediately
+        # without ever reaching the LLM
+        with pytest.raises(CircuitOpenError):
+            await lb.call(fail_llm())
+
+    @pytest.mark.asyncio
+    async def test_half_open_probe_success_closes_circuit(self):
+        """GIVEN a HALF_OPEN circuit breaker, WHEN the probe LLM call succeeds,
+        THEN the circuit closes and the result is returned."""
+        lb = LLMCircuitBreaker(failure_threshold=1, recovery_timeout=0.05)
+
+        async def fail_llm():
+            raise RuntimeError("LLM timeout")
+
+        async def succeed_llm():
+            return "research result"
+
+        # Open the circuit
+        with pytest.raises(RuntimeError):
+            await lb.call(fail_llm())
+        assert lb.state == "OPEN"
+
+        # Wait for recovery timeout
+        await asyncio.sleep(0.06)
+
+        # Probe succeeds — circuit closes
+        result = await lb.call(succeed_llm())
+        assert result == "research result"
+        assert lb.state == "CLOSED"
+
+    @pytest.mark.asyncio
+    async def test_half_open_probe_failure_reopens_circuit(self):
+        """GIVEN a HALF_OPEN circuit breaker, WHEN the probe LLM call fails,
+        THEN the circuit reopens and the fallback chain is triggered."""
+        lb = LLMCircuitBreaker(failure_threshold=1, recovery_timeout=0.05)
+
+        async def fail_llm():
+            raise RuntimeError("LLM timeout")
+
+        # Open the circuit
+        with pytest.raises(RuntimeError):
+            await lb.call(fail_llm())
+        assert lb.state == "OPEN"
+
+        # Wait for recovery timeout
+        await asyncio.sleep(0.06)
+
+        # Probe fails — circuit reopens
+        with pytest.raises(RuntimeError):
+            await lb.call(fail_llm())
+        assert lb.state == "OPEN"

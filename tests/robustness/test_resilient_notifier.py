@@ -242,3 +242,137 @@ class TestResilientNotifierQueueFullEvictionOrder:
             assert len(rn._queue) == 2
             assert rn._queue[0]["message"] == "msg-2"
             assert rn._queue[1]["message"] == "msg-3"
+
+
+class TestResilientNotifierMixedSuccessQueue:
+    """ResilientNotifier handles mixed success/failure patterns in the queue."""
+
+    @pytest.mark.asyncio
+    async def test_queue_with_some_already_succeeded(self):
+        """GIVEN a queue where some notifications were previously flushed
+        successfully, WHEN flush() is called, THEN only queued notifications are retried."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            queue_file = os.path.join(tmpdir, "notifications.jsonl")
+            notifier = FakeNotifier(fail_count=0)
+            policy = RetryPolicy(max_retries=1, base_delay=0.01, max_delay=0.1, jitter=False)
+
+            # Queue 2 notifications using a failing notifier
+            failing_notifier = FakeNotifier(fail_count=999)
+            rn = ResilientNotifier(
+                failing_notifier,
+                retry_policy=policy,
+                queue_max_size=100,
+                queue_file=queue_file,
+            )
+
+            for i in range(2):
+                with pytest.raises(RuntimeError):
+                    await rn.send(f"queued-{i}")
+
+            # Flush with working notifier
+            rn2 = ResilientNotifier(
+                notifier,
+                retry_policy=policy,
+                queue_max_size=100,
+                queue_file=queue_file,
+            )
+
+            await rn2.flush()
+
+            assert notifier.send_count == 2
+            assert len(rn2._queue) == 0
+
+    @pytest.mark.asyncio
+    async def test_flush_with_partial_failures(self):
+        """GIVEN a queue where some notifications fail during flush,
+        WHEN flush() completes, THEN successful ones are removed and failed ones remain."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            queue_file = os.path.join(tmpdir, "notifications.jsonl")
+            policy = RetryPolicy(max_retries=1, base_delay=0.01, max_delay=0.1, jitter=False)
+
+            # Queue 3 notifications using a failing notifier
+            failing_notifier = FakeNotifier(fail_count=999)
+            rn = ResilientNotifier(
+                failing_notifier,
+                retry_policy=policy,
+                queue_max_size=100,
+                queue_file=queue_file,
+            )
+
+            for i in range(3):
+                with pytest.raises(RuntimeError):
+                    await rn.send(f"queued-{i}")
+
+            # Flush with a notifier that always fails — nothing gets delivered
+            always_failing_notifier = FakeNotifier(fail_count=999)
+            rn2 = ResilientNotifier(
+                always_failing_notifier,
+                retry_policy=policy,
+                queue_max_size=100,
+                queue_file=queue_file,
+            )
+
+            await rn2.flush()
+
+            # All 3 should remain in the queue since delivery always fails
+            assert len(rn2._queue) == 3
+
+
+class TestResilientNotifierQueueSize:
+    """ResilientNotifier queue_size property reflects actual queue state."""
+
+    @pytest.mark.asyncio
+    async def test_queue_size_tracks_failures(self):
+        """GIVEN a failing notifier, WHEN notifications are queued,
+        THEN queue_size increases accordingly."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            queue_file = os.path.join(tmpdir, "notifications.jsonl")
+            notifier = FakeNotifier(fail_count=999)
+            policy = RetryPolicy(max_retries=1, base_delay=0.01, max_delay=0.1, jitter=False)
+            rn = ResilientNotifier(
+                notifier,
+                retry_policy=policy,
+                queue_max_size=100,
+                queue_file=queue_file,
+            )
+
+            assert rn.queue_size == 0
+
+            for i in range(3):
+                with pytest.raises(RuntimeError):
+                    await rn.send(f"msg-{i}")
+
+            assert rn.queue_size == 3
+
+    @pytest.mark.asyncio
+    async def test_queue_size_decreases_after_successful_flush(self):
+        """GIVEN queued notifications, WHEN flush() succeeds,
+        THEN queue_size returns to 0."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            queue_file = os.path.join(tmpdir, "notifications.jsonl")
+            failing_notifier = FakeNotifier(fail_count=999)
+            working_notifier = FakeNotifier(fail_count=0)
+            policy = RetryPolicy(max_retries=1, base_delay=0.01, max_delay=0.1, jitter=False)
+
+            rn = ResilientNotifier(
+                failing_notifier,
+                retry_policy=policy,
+                queue_max_size=100,
+                queue_file=queue_file,
+            )
+
+            for i in range(3):
+                with pytest.raises(RuntimeError):
+                    await rn.send(f"msg-{i}")
+
+            assert rn.queue_size == 3
+
+            rn2 = ResilientNotifier(
+                working_notifier,
+                retry_policy=policy,
+                queue_max_size=100,
+                queue_file=queue_file,
+            )
+
+            await rn2.flush()
+            assert rn2.queue_size == 0

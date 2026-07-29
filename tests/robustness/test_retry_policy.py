@@ -169,3 +169,103 @@ class TestRetryPolicyAsyncRetry:
 
         with pytest.raises(ValueError, match="specific error"):
             await rp.retry(fails)
+
+
+class TestRetryPolicyJitterEdgeCases:
+    """Additional jitter edge cases and statistical distribution checks."""
+
+    @pytest.mark.asyncio
+    async def test_jitter_produces_different_delays(self):
+        """GIVEN jitter enabled, WHEN computing delays for the same attempt
+        multiple times, THEN the delays vary (not all identical)."""
+        rp = RetryPolicy(base_delay=2.0, max_delay=60.0, jitter=True)
+        delays = [rp._compute_delay(0) for _ in range(50)]
+        # With jitter, not all delays should be identical
+        assert len(set(delays)) > 1
+        # All delays should be in the valid range [2.0, 2.6]
+        for d in delays:
+            assert 2.0 <= d <= 2.6
+
+    @pytest.mark.asyncio
+    async def test_jitter_disabled_produces_identical_delays(self):
+        """GIVEN jitter disabled, WHEN computing delays for the same attempt
+        multiple times, THEN all delays are identical."""
+        rp = RetryPolicy(base_delay=2.0, max_delay=60.0, jitter=False)
+        delays = [rp._compute_delay(1) for _ in range(20)]
+        assert len(set(delays)) == 1
+        assert delays[0] == 4.0
+
+    @pytest.mark.asyncio
+    async def test_jitter_range_starts_at_base_delay(self):
+        """GIVEN jitter enabled, WHEN computing delay for attempt 0,
+        THEN the delay is in [base_delay, base_delay * 1.3]."""
+        rp = RetryPolicy(base_delay=3.0, max_delay=60.0, jitter=True)
+        delays = [rp._compute_delay(0) for _ in range(30)]
+        for d in delays:
+            assert 3.0 <= d <= 3.9  # [3.0, 3.0 * 1.3]
+
+
+class TestRetryPolicyMaxDelayEdgeCases:
+    """Max delay cap edge cases."""
+
+    @pytest.mark.asyncio
+    async def test_max_delay_cap_with_large_attempt(self):
+        """GIVEN base_delay=1 and max_delay=5, WHEN attempt 100 fails,
+        THEN delay is capped at 5.0 (not 2^100)."""
+        rp = RetryPolicy(base_delay=1.0, max_delay=5.0, jitter=False)
+        delay = rp._compute_delay(100)
+        assert delay == 5.0
+
+    @pytest.mark.asyncio
+    async def test_max_delay_cap_with_zero_base(self):
+        """GIVEN base_delay=0 and max_delay=10, WHEN attempt 5 fails,
+        THEN delay is 0 (capped by base, not max)."""
+        rp = RetryPolicy(base_delay=0.0, max_delay=10.0, jitter=False)
+        delay = rp._compute_delay(5)
+        assert delay == 0.0
+
+
+class TestRetryPolicyAsyncRetryEdgeCases:
+    """async retry() edge cases."""
+
+    @pytest.mark.asyncio
+    async def test_retry_with_custom_max_retries_overrides_policy(self):
+        """GIVEN a policy with max_retries=1, WHEN retry() is called with
+        max_retries=5, THEN up to 5 attempts are made."""
+        rp = RetryPolicy(max_retries=1, base_delay=0.01, max_delay=1.0, jitter=False)
+        attempts = 0
+
+        async def flaky():
+            nonlocal attempts
+            attempts += 1
+            if attempts < 4:
+                raise RuntimeError("transient")
+            return "success"
+
+        result = await rp.retry(flaky, max_retries=5)
+        assert result == "success"
+        assert attempts == 4
+
+    @pytest.mark.asyncio
+    async def test_retry_preserves_original_exception_type(self):
+        """GIVEN a ValueError, WHEN all retries are exhausted,
+        THEN the original ValueError is raised (not a generic Exception)."""
+        rp = RetryPolicy(max_retries=2, base_delay=0.01, max_delay=1.0, jitter=False)
+
+        async def fails_with_value_error():
+            raise ValueError("original error")
+
+        with pytest.raises(ValueError, match="original error"):
+            await rp.retry(fails_with_value_error)
+
+    @pytest.mark.asyncio
+    async def test_retry_zero_max_retries(self):
+        """GIVEN max_retries=0, WHEN a call fails, THEN no retries are attempted
+        and the exception is raised immediately."""
+        rp = RetryPolicy(max_retries=0, base_delay=0.01, max_delay=1.0, jitter=False)
+
+        async def always_fails():
+            raise RuntimeError("immediate failure")
+
+        with pytest.raises(RuntimeError, match="immediate failure"):
+            await rp.retry(always_fails)

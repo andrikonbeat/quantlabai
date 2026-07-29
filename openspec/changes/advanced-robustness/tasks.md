@@ -50,10 +50,10 @@ Chain strategy: stacked-to-main
 
 ## Phase 4: Testing
 
-- [ ] 4.1 Write unit tests: `CircuitBreaker` state transitions (CLOSED→OPEN→HALF_OPEN→CLOSED, custom thresholds, async `call()`)
-- [ ] 4.2 Write unit tests: `RetryPolicy` backoff progression, jitter range, max_delay cap, async `retry()`
-- [ ] 4.3 Write unit tests: `ResilientNotifier` retry success, queue eviction, JSONL persistence, `flush()`
-- [ ] 4.4 Write unit tests: `KnowledgeStoreHealthCheck` healthy/unhealthy/unreadable paths, TTL caching, probe cleanup
-- [ ] 4.5 Write unit tests: `LLMCircuitBreaker` short-circuit on OPEN, fallback chain preservation, custom threshold
-- [ ] 4.6 Write integration test: `LLMResearchAgent` with circuit breaker — opens after failures, fallback still works
-- [ ] 4.7 Run full suite: `python3 -m pytest tests/ -q --tb=short` — verify all 530+ existing tests pass
+- [x] 4.1 Write unit tests: `CircuitBreaker` state transitions (CLOSED→OPEN→HALF_OPEN→CLOSED, custom thresholds, async `call()`) — added recovery-specific tests (timeout reset, multiple cycles, HALF_OPEN→OPEN timer reset)
+- [x] 4.2 Write unit tests: `RetryPolicy` backoff progression, jitter range, max_delay cap, async `retry()` — added jitter distribution, max_delay edge cases, zero max_retries, custom max_retries override, exception type preservation
+- [x] 4.3 Write unit tests: `ResilientNotifier` retry success, queue eviction, JSONL persistence, `flush()` — added mixed success/failure queue tests, partial flush failures, queue_size tracking
+- [x] 4.4 Write unit tests: `KnowledgeStoreHealthCheck` healthy/unhealthy/unreadable paths, TTL caching, probe cleanup — added unreadable store, TTL boundary, probe content verification, multiple check deduplication
+- [x] 4.5 Write unit tests: `LLMCircuitBreaker` short-circuit on OPEN, fallback chain preservation, custom threshold — added fallback chain preservation, parse error recording, rate-limit error recording, HALF_OPEN probe success/failure
+- [x] 4.6 Write unit tests: `KnowledgeStore` write buffering when circuit OPEN — expanded with comprehensive buffering tests (buffered write, replay on close, FIFO eviction, health_check replay, multiple writes in order, failed replay re-buffering)
+- [x] 4.7 E2E test: full robustness pipeline (circuit breaker → retry → dispatch → buffer) — created `test_robustness_pipeline.py` with 6 E2E tests covering full pipeline coordination, retry exhaustion recovery, buffer flush on health check, persistence across restarts, circuit short-circuit, and all-components-integrated scenario

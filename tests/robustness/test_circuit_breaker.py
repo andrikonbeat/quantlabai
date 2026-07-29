@@ -256,3 +256,121 @@ class TestCircuitBreakerAsyncCall:
         result1 = await cb.call(succeed())
         assert result1 == "ok"
         assert cb.state == "CLOSED"
+
+
+class TestCircuitBreakerRecovery:
+    """Recovery-specific tests: timeout reset, multiple cycles."""
+
+    @pytest.mark.asyncio
+    async def test_recovery_timeout_resets_when_reopened_from_half_open(self):
+        """GIVEN a circuit that reopens from HALF_OPEN, WHEN the recovery timeout
+        elapses again, THEN the circuit transitions to HALF_OPEN a second time."""
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05)
+
+        async def fail():
+            raise RuntimeError("boom")
+
+        async def succeed():
+            return "ok"
+
+        # Open the circuit
+        with pytest.raises(RuntimeError):
+            await cb.call(fail())
+        assert cb.state == "OPEN"
+
+        # First recovery: HALF_OPEN → CLOSED on success
+        await asyncio.sleep(0.06)
+        result = await cb.call(succeed())
+        assert result == "ok"
+        assert cb.state == "CLOSED"
+
+        # Re-open the circuit
+        with pytest.raises(RuntimeError):
+            await cb.call(fail())
+        assert cb.state == "OPEN"
+
+        # Second recovery: should transition to HALF_OPEN again after timeout
+        await asyncio.sleep(0.06)
+        assert cb.state == "HALF_OPEN"
+
+    @pytest.mark.asyncio
+    async def test_multiple_recovery_cycles(self):
+        """GIVEN a circuit that cycles OPEN→HALF_OPEN→CLOSED→OPEN→HALF_OPEN,
+        WHEN each recovery timeout elapses, THEN the circuit transitions correctly."""
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05)
+
+        async def fail():
+            raise RuntimeError("boom")
+
+        async def succeed():
+            return "ok"
+
+        # Cycle 1: CLOSED → OPEN → HALF_OPEN → CLOSED
+        with pytest.raises(RuntimeError):
+            await cb.call(fail())
+        assert cb.state == "OPEN"
+
+        await asyncio.sleep(0.06)
+        assert cb.state == "HALF_OPEN"
+
+        result = await cb.call(succeed())
+        assert result == "ok"
+        assert cb.state == "CLOSED"
+
+        # Cycle 2: CLOSED → OPEN → HALF_OPEN → CLOSED
+        with pytest.raises(RuntimeError):
+            await cb.call(fail())
+        assert cb.state == "OPEN"
+
+        await asyncio.sleep(0.06)
+        assert cb.state == "HALF_OPEN"
+
+        result = await cb.call(succeed())
+        assert result == "ok"
+        assert cb.state == "CLOSED"
+
+    @pytest.mark.asyncio
+    async def test_half_open_failure_resets_recovery_timer(self):
+        """GIVEN a circuit in HALF_OPEN, WHEN the probe fails, THEN the circuit
+        reopens and the recovery timeout resets."""
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05)
+
+        async def fail():
+            raise RuntimeError("boom")
+
+        # Open the circuit
+        with pytest.raises(RuntimeError):
+            await cb.call(fail())
+        assert cb.state == "OPEN"
+
+        # First recovery attempt: HALF_OPEN → OPEN on failure
+        await asyncio.sleep(0.06)
+        assert cb.state == "HALF_OPEN"
+        with pytest.raises(RuntimeError):
+            await cb.call(fail())
+        assert cb.state == "OPEN"
+
+        # The recovery timeout should have reset — circuit should still be OPEN
+        # before the new timeout elapses
+        await asyncio.sleep(0.03)
+        assert cb.state == "OPEN"
+
+        # After the new timeout elapses, circuit should transition to HALF_OPEN
+        await asyncio.sleep(0.03)
+        assert cb.state == "HALF_OPEN"
+
+    @pytest.mark.asyncio
+    async def test_state_property_reflects_half_open_after_timeout(self):
+        """GIVEN an OPEN circuit breaker, WHEN recovery timeout elapses,
+        THEN the state property returns HALF_OPEN."""
+        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05)
+
+        async def fail():
+            raise RuntimeError("boom")
+
+        with pytest.raises(RuntimeError):
+            await cb.call(fail())
+        assert cb.state == "OPEN"
+
+        await asyncio.sleep(0.06)
+        assert cb.state == "HALF_OPEN"
