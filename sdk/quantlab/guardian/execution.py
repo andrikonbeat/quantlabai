@@ -223,26 +223,17 @@ class ExecutionGuardian(BaseGuardian):
         return max(0.0, min(1.0, 1.0 - (latency_ms / 250.0)))
 
     def _check_slippage(self) -> float:
-        """Check slippage from recent trades and return score (0-1).
-        
+        """Check slippage from cost collector and return score (0-1).
+
+        When a ``cost_collector`` is available, uses its data for
+        slippage scoring. Otherwise returns a conservative default.
+
         Returns:
             Score from 0.0 (high slippage) to 1.0 (low slippage)
         """
         if not self.cost_collector:
-            # Try to get slippage from broker directly
-            try:
-                if hasattr(self.broker, 'get_recent_slippage'):
-                    slippage = self.broker.get_recent_slippage()
-                    if isinstance(slippage, (int, float)) and slippage >= 0:
-                        # Slippage in bps (basis points): 0-10 bps excellent, 50+ bps poor
-                        return max(0.0, min(1.0, 1.0 - (slippage / 50.0)))
-            except Exception:
-                pass  # Fall back to default
-            
-            # No cost collector and no broker slippage data
             return 0.7  # Reasonable default
-        
-        # Try to get slippage data from cost collector
+
         try:
             if hasattr(self.cost_collector, 'get_recent_slippage'):
                 slippage_data = self.cost_collector.get_recent_slippage()
@@ -254,9 +245,8 @@ class ExecutionGuardian(BaseGuardian):
                 if isinstance(slippage_attr, (int, float)) and slippage_attr >= 0:
                     return max(0.0, min(1.0, 1.0 - (slippage_attr / 15.0)))
         except Exception:
-            pass  # Fall back to default
-        
-        # Default slippage assumption
+            pass
+
         return 0.8  # Good execution quality
 
     def _check_broker_health(self) -> float:

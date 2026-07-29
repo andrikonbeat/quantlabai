@@ -13,6 +13,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+from quantlab.costs.models import CostsConfig
+
 
 # ── Enums ──────────────────────────────────────────────────────────────────────
 
@@ -222,6 +224,12 @@ class ResearchConfig(BaseModel):
     memory: MemoryConfig = Field(default_factory=MemoryConfig, description="Agent memory configuration")
     risk: RiskConfig = Field(default_factory=RiskConfig, description="Portfolio risk limits")
     
+    # Cost configuration (broker-aware cost modelling)
+    costs: Optional[CostsConfig] = Field(
+        default=None,
+        description="Optional cost configuration for broker-aware cost modelling",
+    )
+
     # MetaGuardian integration
     guardian_state: Optional[dict] = Field(default=None, description="Current MetaGuardian state for DSL translation")
 

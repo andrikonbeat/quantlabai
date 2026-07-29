@@ -38,6 +38,7 @@ from quantlab.cfx.models import (
     SetRankingsInstruction,
     SetRetesterDataInstruction,
     SetWalkForwardInstruction,
+    SettingsSection,
     WalkForwardConfig,
 )
 
@@ -682,6 +683,51 @@ class CfxPatcher:
                 )
             ]
         )
+
+    # ── Commission / Spread convenience methods ──────────────────────
+
+    def set_commission_settings(
+        self,
+        commission_type: str,
+        value: float,
+        currency: str,
+        tiers: list[tuple[int, int, float]] | None = None,
+    ) -> CfxPatcher:
+        """Set commission cost settings on the primary task."""
+        settings: dict[str, str] = {
+            "CommissionType@value": commission_type,
+            "CommissionValue@value": str(value),
+            "CommissionCurrency@value": currency,
+        }
+        if tiers:
+            tier_strs = [f"{vm}-{vx}:{r}" for vm, vx, r in tiers]
+            settings["CommissionTiers@value"] = ",".join(tier_strs)
+        self._task.commission_costs = SettingsSection(
+            name="CommissionCosts", settings=settings
+        )
+        return self
+
+    def set_spread_settings(
+        self,
+        base_spread: float,
+        slippage_pips: float,
+        session_multipliers: dict[str, float] | None = None,
+    ) -> CfxPatcher:
+        """Set spread and slippage settings on the primary task."""
+        settings: dict[str, str] = {
+            "BaseSpread@value": str(base_spread),
+            "SlippagePips@value": str(slippage_pips),
+        }
+        if session_multipliers:
+            for name, multiplier in session_multipliers.items():
+                settings[f"Session{name}@multiplier"] = str(multiplier)
+        if self._task.commission_costs is None:
+            self._task.commission_costs = SettingsSection(
+                name="CommissionCosts", settings=settings
+            )
+        else:
+            self._task.commission_costs.settings.update(settings)
+        return self
 
 
 # ── Domain module facade ─────────────────────────────────────────────

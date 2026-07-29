@@ -135,6 +135,9 @@ class BuildTask(BaseModel):
     databanks: DataBankConfig | None = None
     resources: ResourceConfig | None = None
 
+    # Commission / spread metadata (for post-backtest processing)
+    commission_costs: SettingsSection | None = None
+
     # Phase 4 sections
     automatic_portfolio_builder: AutomaticPortfolioBuilderConfig | None = None
     portfolio_settings: PortfolioSettingsConfig | None = None

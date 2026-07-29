@@ -9,9 +9,21 @@ from typing import Any
 class PipelineContext:
     """Shared state flowing through pipeline stages.
     
+    Config keys:
+        broker_profile (str, optional): Broker identifier (``dukascopy``, ``ib``,
+            ``oanda``) for cost-aware pipeline execution. Read by
+            ``CostInjectionStage`` to initialise CostEngine and CostCollector.
+    
+    Artifact keys (set by stages):
+        cost_config (dict, optional): Artifact written by ``CostInjectionStage``
+            containing initialised ``CostEngine`` and ``CostCollector`` instances
+            for downstream stages.
+    
     Attributes:
         config: Immutable input configuration (e.g., from CampaignConfig or YAML).
+            May include ``broker_profile`` for cost-aware pipelines.
         artifacts: Mutable dict; stages read from `requires`, write to `provides`.
+            Includes ``cost_config`` after CostInjectionStage executes.
         metadata: Timestamps, run IDs, stage durations.
         error: Set by runner on first failure; subsequent stages skipped.
     """

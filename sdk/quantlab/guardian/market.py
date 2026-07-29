@@ -111,16 +111,18 @@ class MarketGuardian(BaseGuardian):
             return 0.8  # Normal volatility = good score
 
     def _score_liquidity(self, cost_data: dict) -> float:
-        """Score based on liquidity (inverse of spreads)."""
+        """Score based on liquidity (inverse of spreads).
+
+        Expects ``cost_data`` as returned by ``CostCollector.collect_all()``
+        — a dict of ``{symbol: {"spread_pips": float, ...}}``.
+        """
         if not cost_data:
             return 0.5  # Unknown liquidity
 
         # Average spread across pairs (lower spread = better liquidity)
         spreads = []
         for pair_data in cost_data.values():
-            if hasattr(pair_data, 'spread_pips'):
-                spreads.append(pair_data.spread_pips)
-            elif isinstance(pair_data, dict) and 'spread_pips' in pair_data:
+            if isinstance(pair_data, dict) and 'spread_pips' in pair_data:
                 spreads.append(pair_data['spread_pips'])
 
         if not spreads:

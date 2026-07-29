@@ -15,7 +15,7 @@ Each method validates inputs and applies the corresponding patch instruction.
 
 from __future__ import annotations
 
-from quantlab.cfx.models import CfxArchive
+from quantlab.cfx.models import CfxArchive, SettingsSection
 from quantlab.cfx.patcher import CfxPatcher
 
 
@@ -172,6 +172,70 @@ def enable_crosscheck(
     return archive
 
 
+# ── Commission / Spread Methods ───────────────────────────────────────
+
+
+def set_commission_settings(
+    archive: CfxArchive,
+    commission_type: str,
+    value: float,
+    currency: str,
+    tiers: list[tuple[int, int, float]] | None = None,
+) -> CfxArchive:
+    """Set commission cost settings on the archive's BuildTask.
+
+    Stores commission metadata in a ``CommissionCosts`` SettingsSection
+    for post-backtest processing. SQX does not support native commission
+    injection — this metadata flows into the final artifact.
+
+    Args:
+        archive: The CFX archive to modify.
+        commission_type: "fixed", "percent", or "tiered".
+        value: Commission value (for fixed/percent types).
+        currency: Currency code (e.g., "USD").
+        tiers: List of (volume_min, volume_max, rate) tuples for tiered pricing.
+
+    Returns:
+        The same archive instance (mutated in place).
+    """
+    CfxPatcher(archive).set_commission_settings(
+        commission_type=commission_type,
+        value=value,
+        currency=currency,
+        tiers=tiers,
+    )
+    return archive
+
+
+def set_spread_settings(
+    archive: CfxArchive,
+    base_spread: float,
+    slippage_pips: float,
+    session_multipliers: dict[str, float] | None = None,
+) -> CfxArchive:
+    """Set spread and slippage settings on the archive's BuildTask.
+
+    Spread and slippage are injected directly into CFX via Data section
+    attributes. This metadata section records the values used for
+    audit/artifact purposes.
+
+    Args:
+        archive: The CFX archive to modify.
+        base_spread: Base spread in pips.
+        slippage_pips: Slippage in pips.
+        session_multipliers: Optional dict of session name -> spread multiplier.
+
+    Returns:
+        The same archive instance (mutated in place).
+    """
+    CfxPatcher(archive).set_spread_settings(
+        base_spread=base_spread,
+        slippage_pips=slippage_pips,
+        session_multipliers=session_multipliers,
+    )
+    return archive
+
+
 # ── Public API ────────────────────────────────────────────────────────
 
 __all__ = [
@@ -183,4 +247,6 @@ __all__ = [
     "set_date_range",
     "add_ranking_condition",
     "enable_crosscheck",
+    "set_commission_settings",
+    "set_spread_settings",
 ]

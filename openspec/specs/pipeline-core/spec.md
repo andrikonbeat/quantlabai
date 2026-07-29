@@ -72,6 +72,23 @@ The system MUST provide `StageResult(stage_name, status, duration, error, output
 - THEN stages list contains all StageResults
 - AND error contains the StageExecutionError
 
+### Requirement: CostInjectionStage
+
+The system MUST provide CostInjectionStage as a built-in abstract Stage subclass. It SHALL read `config.broker_profile` from PipelineContext and write `cost_config` to artifacts.
+
+#### Scenario: CostInjectionStage contract
+
+- GIVEN CostInjectionStage
+- WHEN inspecting requires/provides
+- THEN requires includes "config.broker_profile"
+- AND provides includes "cost_config"
+
+#### Scenario: CostInjectionStage in full chain
+
+- GIVEN CostInjectionStage inserted before TranslateStage
+- WHEN the pipeline executes
+- THEN downstream translation stages can read cost_config from artifacts
+
 ### Requirement: PipelineError Exceptions
 
 The system MUST define `PipelineError(QuantLabError)` and `StageExecutionError(PipelineError)` with `stage_name: str`.
@@ -85,7 +102,8 @@ The system MUST define `PipelineError(QuantLabError)` and `StageExecutionError(P
 
 ### Requirement: Built-in Abstract Stages
 
-The system MUST provide 9 abstract Stage subclasses: ValidateStage, TranslateStage, DaemonStartStage, CampaignStage, ExportStage, ReadStage, ComputeStatsStage, KnowledgeStoreStage, ReportStage. Each SHALL declare requires/provides context keys for its I/O contract.
+The system MUST provide 10 abstract Stage subclasses: ValidateStage, TranslateStage, DaemonStartStage, CampaignStage, ExportStage, ReadStage, ComputeStatsStage, KnowledgeStoreStage, ReportStage, and CostInjectionStage. Each SHALL declare requires/provides context keys for its I/O contract.
+(Previously: 9 stages, no CostInjectionStage)
 
 | Stage | requires | provides |
 |-------|----------|----------|
@@ -98,6 +116,7 @@ The system MUST provide 9 abstract Stage subclasses: ValidateStage, TranslateSta
 | ComputeStatsStage | trades, equity | statistics |
 | KnowledgeStoreStage | statistics, export_paths, cfx_bytes | artifact_paths |
 | ReportStage | statistics | report_data |
+| **CostInjectionStage** | **config.broker_profile** | **cost_config** |
 
 #### Scenario: ValidateStage I/O contract
 
@@ -108,7 +127,7 @@ The system MUST provide 9 abstract Stage subclasses: ValidateStage, TranslateSta
 
 #### Scenario: Full stage chain contract
 
-- GIVEN all 9 stages in pipeline order
+- GIVEN all 10 stages in pipeline order (CostInjectionStage before TranslateStage)
 - WHEN each stage executes sequentially
 - THEN each stage's requires are satisfied by previous stages' provides
-- AND no stage depends on external state outside PipelineContext
+- AND CostInjectionStage injects cost_config before translation needs it

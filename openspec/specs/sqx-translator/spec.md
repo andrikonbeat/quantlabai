@@ -8,7 +8,8 @@ Translates Research DSL configuration models into StrategyQuant `.cfx` format �
 
 ### Requirement: DSL-to-CFX Translation
 
-The system MUST translate a valid research DSL model into a CFX archive using cfx-editor typed Pydantic models. The translation MUST encode market, timeframe, strategy parameters, and entry/exit rules via cfx-editor domain methods (`set_market()`, `add_timeframe()`, etc.), then produce the final archive through CfxWriter.
+The system MUST translate a valid research DSL model into a CFX archive using cfx-editor typed Pydantic models. The translation MUST encode market, timeframe, strategy parameters, entry/exit rules, AND cost configuration (broker profile, commission, slippage) via cfx-editor domain methods, then produce the final archive through CfxWriter.
+(Previously: Did not encode cost configuration)
 
 #### Scenario: Complete translation produces multi-file CFX
 
@@ -21,6 +22,18 @@ The system MUST translate a valid research DSL model into a CFX archive using cf
 - GIVEN a research model with no building blocks (empty strategies section)
 - WHEN the system translates it via cfx-editor
 - THEN a minimal CFX archive is produced with config.xml, Build-Task1.xml with empty Blocks section, and no enabled blocks
+
+#### Scenario: Complete translation with costs
+
+- GIVEN a research model with market EURUSD, timeframe H1, one strategy, and a costs section (broker: ib)
+- WHEN the system translates it
+- THEN the CFX archive contains commission and spread settings matching IB profile
+
+#### Scenario: Translation without costs (backward compatible)
+
+- GIVEN a research model without a costs section
+- WHEN translated
+- THEN CFX output is identical to pre-change — no cost sections present
 
 ### Requirement: CFX Packaging
 
@@ -40,7 +53,7 @@ The system MUST produce a CFX archive containing multiple XML files — `config.
 
 ### Requirement: Translation Validation
 
-The system MUST validate that the input DSL model contains all required fields for CFX generation (market, timeframe, at least one strategy). Missing required fields MUST produce a TranslationError.
+The system MUST validate that the input DSL model contains all required fields for CFX generation (market, timeframe, at least one strategy). If a costs section is present, it MUST reference a known broker profile. Missing required fields MUST produce a TranslationError.
 
 #### Scenario: Missing market raises TranslationError
 
@@ -53,3 +66,9 @@ The system MUST validate that the input DSL model contains all required fields f
 - GIVEN a research model with a timeframe not supported by SQX (e.g., M1 on a 4-hour-only strategy)
 - WHEN the system validates the translation
 - THEN a ValidationError is raised listing supported timeframes
+
+#### Scenario: Unknown broker profile rejected
+
+- GIVEN a research model with costs referencing an unknown broker
+- WHEN translating
+- THEN a TranslationError is raised specifying the unknown broker profile

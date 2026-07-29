@@ -8,12 +8,13 @@ Read, modify, and write StrategyQuant `.cfx` files — Config CFX (`<Task>` root
 
 ### Requirement: CFX Archive Read/Write
 
-The system MUST read valid `.cfx` files (ZIP/DEFLATE archives) and produce typed Pydantic models for both Config and Project types. Written output MUST match SQX format: UTF-8 without XML declaration, ZIP/DEFLATE compression, no extraneous files.
+The system MUST read valid `.cfx` files (ZIP/DEFLATE archives) and produce typed Pydantic models for both Config and Project types. For BuildTask models, the expected sections include an optional CommissionCosts section alongside the existing 12 main sections. Written output MUST match SQX format: UTF-8 without XML declaration, ZIP/DEFLATE compression, no extraneous files.
+(Previously: No commission/cost sections existed in BuildTask)
 
 #### Scenario: Read config CFX produces typed models
-- GIVEN a valid config `.cfx` file with a Build task containing all 12 settings sections
+- GIVEN a valid config `.cfx` file with a Build task containing commission settings
 - WHEN CfxReader reads it
-- THEN typed Pydantic models are returned with Options, WhatToBuild, RiskMoneyManagement, Data, Rankings, PartsToImprove, CrossChecks, Notes, Blocks, ATMs, Databanks, and Resources populated
+- THEN typed Pydantic models are returned with Options, WhatToBuild, RiskMoneyManagement, Data, Rankings, PartsToImprove, CrossChecks, Notes, Blocks, ATMs, Databanks, Resources, and optionally CommissionCosts populated
 
 #### Scenario: Read project CFX separates task files
 - GIVEN a valid project `.cfx` with config.xml and Build-Task1.xml
@@ -24,6 +25,22 @@ The system MUST read valid `.cfx` files (ZIP/DEFLATE archives) and produce typed
 - GIVEN a valid CFX read into models
 - WHEN only `set_market()` is called and CfxWriter produces the archive
 - THEN all untouched sections (WhatToBuild, Rankings, Blocks, ATMs) are byte-identical to the original
+
+### Requirement: Commission/Cost Sections
+
+The BuildTask model MUST include optional commission and cost configuration sections corresponding to broker profile parameters in the CFX XML.
+
+#### Scenario: Read CFX with commission settings
+
+- GIVEN a CFX file containing commission and spread XML elements
+- WHEN CfxReader reads it into BuildTask
+- THEN the commission section is populated with commission type, value, and tier data
+
+#### Scenario: Write CFX preserves commission fields
+
+- GIVEN a BuildTask with populated commission section
+- WHEN CfxWriter produces the archive
+- THEN the output XML contains the commission elements with correct values
 
 ### Requirement: Domain Modification Methods
 

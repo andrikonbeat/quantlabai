@@ -14,6 +14,9 @@ import yaml
 from quantlab.dsl.models import ResearchConfig
 from quantlab.tools.exceptions import ParseError, ValidationError
 
+#: Known broker profile identifiers for cost configuration validation.
+KNOWN_BROKERS: set[str] = {"dukascopy", "ib", "oanda"}
+
 #: Known market identifiers for semantic validation.
 KNOWN_MARKETS: set[str] = {
     # FX
@@ -103,6 +106,15 @@ def _build_config(data: dict[str, Any]) -> ResearchConfig:
             f"Unknown timeframe '{timeframe}'. "
             f"Recognised timeframes: {', '.join(sorted(KNOWN_TIMEFRAMES))}"
         )
+
+    costs = data.get("costs")
+    if costs is not None and isinstance(costs, dict):
+        broker = costs.get("broker")
+        if broker is not None and broker not in KNOWN_BROKERS:
+            raise ValidationError(
+                f"Unknown broker profile '{broker}' in costs section. "
+                f"Known brokers: {', '.join(sorted(KNOWN_BROKERS))}"
+            )
 
     try:
         return ResearchConfig.model_validate(data)

@@ -68,9 +68,15 @@ class StageRegistry:
             # Also import SQXCampaignStage — the combined stage
             from quantlab.phase4.stages import SQXCampaignStage  # type: ignore[no-redef]
 
+            try:
+                from quantlab.phase4.stages import SQXCostInjectionStage
+            except ImportError:
+                from quantlab.pipeline._stages import CostInjectionStage as SQXCostInjectionStage
+
             self._stage_map.update({
                 "validate": SQXValidateStage,
                 "translate": SQXTranslateStage,
+                "cost_injection": SQXCostInjectionStage,
                 "daemon_start": SQXDaemonStartStage,
                 "load_config": SQXLoadConfigStage,
                 "run_campaign": SQXRunCampaignStage,
@@ -87,6 +93,7 @@ class StageRegistry:
             from quantlab.pipeline.stages import (
                 ValidateStage,
                 TranslateStage,
+                CostInjectionStage,
                 DaemonStartStage,
                 LoadConfigStage,
                 RunCampaignStage,
@@ -102,6 +109,7 @@ class StageRegistry:
             self._stage_map.update({
                 "validate": ValidateStage,
                 "translate": TranslateStage,
+                "cost_injection": CostInjectionStage,
                 "daemon_start": DaemonStartStage,
                 "load_config": LoadConfigStage,
                 "run_campaign": RunCampaignStage,
@@ -228,7 +236,7 @@ class StageRegistry:
             List of matching stage names.
         """
         builtin_names = {
-            "validate", "translate", "daemon_start", "load_config",
+            "validate", "translate", "cost_injection", "daemon_start", "load_config",
             "run_campaign", "poll_campaign", "campaign", "export",
             "read", "compute_stats", "knowledge_store", "report",
         }

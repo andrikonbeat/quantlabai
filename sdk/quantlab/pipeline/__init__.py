@@ -16,6 +16,7 @@ from quantlab.pipeline.runner import PipelineRunner
 from quantlab.pipeline.stages import (
     ValidateStage,
     TranslateStage,
+    CostInjectionStage,
     DaemonStartStage,
     LoadConfigStage,
     RunCampaignStage,
@@ -64,9 +65,10 @@ __all__ = [
     "StageRun",
     "PipelineRun",
     "PipelineRunner",
-    # SQX stages (original 9/12)
+    # SQX stages (original 9/12 plus CostInjectionStage)
     "ValidateStage",
     "TranslateStage",
+    "CostInjectionStage",
     "DaemonStartStage",
     "LoadConfigStage",
     "RunCampaignStage",

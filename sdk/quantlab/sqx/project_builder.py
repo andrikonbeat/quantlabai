@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from quantlab.costs.profiles import BrokerProfile
+
 logger = logging.getLogger(__name__)
 
 _TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
@@ -861,6 +863,7 @@ def create_project(
     walk_forward: bool = True,
     monte_carlo: bool = True,
     build_config: BuildConfig | None = None,
+    broker_profile: BrokerProfile | None = None,
 ) -> str:
     """Create a campaign project directory from the template.
 
@@ -882,6 +885,13 @@ def create_project(
 
     # Clamp date_to to available data for the symbol
     effective_date_to = _clamp_date_to(symbol, date_to) if date_to else _MAX_DATE_DEFAULT
+
+    # Use broker_profile to override slippage/spread/commission defaults
+    if broker_profile is not None:
+        slippage = max(1, int(broker_profile.slippage.fixed_pips))
+        spread = max(1, int(broker_profile.spread_config.base_spread))
+        comm_type = broker_profile.commission.type.value if hasattr(broker_profile.commission.type, 'value') else broker_profile.commission.type
+        commission = float(broker_profile.commission.value) if comm_type in ("fixed", "percent") else 0.0
 
     # Remove if exists
     if project_dir.exists():

@@ -8,7 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from quantlab.cfx import CfxWriter, CfxArchive, BuildTask
+from quantlab.cfx import CfxArchive, BuildTask, CfxWriter
+from quantlab.cfx.dom import set_commission_settings, set_spread_settings
 from quantlab.cfx.models import (
     CfxConfig,
     CfxProject,
@@ -164,8 +165,9 @@ class CfxTemplateBuilder:
             CfxWriter.write(archive, out_path)
             return out_path.read_bytes()
 
-    @staticmethod
-    def build_retester_cfx(
+    @classmethod
+    def _build_retester_task(
+        cls,
         strategy_id: str,
         *,
         databanks: list[str],
@@ -174,20 +176,12 @@ class CfxTemplateBuilder:
         walkforward_cycles: int = 5,
         min_trades: int = 30,
         confidence_level: float = 0.95,
-    ) -> bytes:
-        """Build Retester CFX.
+        broker_profile: dict | None = None,
+    ) -> BuildTask:
+        """Build the underlying BuildTask for a Retester CFX.
 
-        Args:
-            strategy_id: Strategy to retest
-            databanks: List of databank symbols (e.g., ["EURUSD_H1"])
-            mc_runs: Monte Carlo runs
-            mc_percentile: MC percentile for bands
-            walkforward_cycles: WF cycles
-            min_trades: Minimum trades for acceptance
-            confidence_level: Confidence level
-
-        Returns:
-            CFX archive as bytes
+        Split out from ``build_retester_cfx`` so tests can verify the
+        model without serialization.
         """
         task = BuildTask()
         task.rankings_section = RankingsConfig(
@@ -203,11 +197,8 @@ class CfxTemplateBuilder:
   <ConfidenceLevel value="{confidence_level}"/>
 </CrossChecks>"""
         )
-        data_xml = "<Data>"
-        for db in databanks:
-            data_xml += f'<Setting key="{db}" value="true"/>'
-        data_xml += "</Data>"
-        task.data = SettingsSection(name="Data", settings={db: "true" for db in databanks})
+        data_settings: dict[str, str] = {db: "true" for db in databanks}
+        task.data = SettingsSection(name="Data", settings=data_settings)
 
         # Also add RetesterData section for proper serialization
         retester_data_xml = f"""<RetesterData>
@@ -224,6 +215,64 @@ class CfxTemplateBuilder:
   </Databanks>
 </RetesterData>"""
         task.retester_data = RetesterDataConfig(raw_xml=retester_data_xml)
+
+        # Inject broker cost profile if provided
+        if broker_profile is not None:
+            comm_value = float(broker_profile.get("commission", 0))
+            spread_val = float(broker_profile.get("spread", 1.0))
+            slippage_val = float(broker_profile.get("slippage", 0.5))
+            task.commission_costs = SettingsSection(
+                name="CommissionCosts",
+                settings={
+                    "BaseSpread@value": str(spread_val),
+                    "SlippagePips@value": str(slippage_val),
+                    "CommissionValue@value": str(comm_value),
+                    "CommissionCurrency@value": "USD",
+                },
+            )
+            if task.data is not None:
+                task.data.settings["BaseSpread@value"] = str(spread_val)
+                task.data.settings["SlippagePips@value"] = str(slippage_val)
+
+        return task
+
+    @classmethod
+    def build_retester_cfx(
+        cls,
+        strategy_id: str,
+        *,
+        databanks: list[str],
+        mc_runs: int = 100,
+        mc_percentile: int = 95,
+        walkforward_cycles: int = 5,
+        min_trades: int = 30,
+        confidence_level: float = 0.95,
+        broker_profile: dict | None = None,
+    ) -> bytes:
+        """Build Retester CFX.
+
+        Args:
+            strategy_id: Strategy to retest
+            databanks: List of databank symbols (e.g., ["EURUSD_H1"])
+            mc_runs: Monte Carlo runs
+            mc_percentile: MC percentile for bands
+            walkforward_cycles: WF cycles
+            min_trades: Minimum trades for acceptance
+            confidence_level: Confidence level
+
+        Returns:
+            CFX archive as bytes
+        """
+        task = cls._build_retester_task(
+            strategy_id=strategy_id,
+            databanks=databanks,
+            mc_runs=mc_runs,
+            mc_percentile=mc_percentile,
+            walkforward_cycles=walkforward_cycles,
+            min_trades=min_trades,
+            confidence_level=confidence_level,
+            broker_profile=broker_profile,
+        )
 
         archive = CfxArchive(
             config=CfxConfig(

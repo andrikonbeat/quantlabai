@@ -120,6 +120,21 @@ class KnowledgeStoreStage(Stage):
         raise NotImplementedError("KnowledgeStoreStage must be implemented by SQX-specific subclass")
 
 
+class CostInjectionStage(Stage):
+    """Inject cost configuration from broker_profile into pipeline artifacts.
+
+    Reads ``config.broker_profile`` from PipelineContext and writes
+    ``cost_config`` to artifacts, containing CostEngine + CostCollector
+    for downstream stages (BuilderStage, GuardianEvaluationStage).
+    """
+    name = "cost_injection"
+    requires = ["config.broker_profile"]
+    provides = ["cost_config"]
+
+    async def execute(self, ctx: PipelineContext) -> dict:
+        raise NotImplementedError("CostInjectionStage must be implemented by SQX-specific subclass")
+
+
 class ReportStage(Stage):
     """Generate HTML/JSON report."""
     name = "report"

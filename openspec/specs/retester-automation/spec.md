@@ -8,7 +8,8 @@ Automates StrategyQuant's Retester workflow via CFX template and `sqcli` with da
 
 ### Requirement: Retester Configuration Model
 
-The system MUST provide a configuration class encapsulating all retester parameters.
+The system MUST provide a configuration class encapsulating all retester parameters including optional cost-related parameters.
+(Previously: No cost parameters existed in RetesterConfig)
 
 #### Scenario: RetesterConfig accepts all required parameters
 
@@ -26,9 +27,24 @@ The system MUST provide a configuration class encapsulating all retester paramet
 - WHEN instantiated with minimal args
 - THEN defaults: monte_carlo_runs=100, walkforward_cycles=5, confidence_level=0.95, min_trades=30
 
+#### Scenario: RetesterConfig with cost params
+
+- GIVEN `RetesterConfig(strategy_id="s1", databanks=["EURUSD_H1"], broker_profile="ib")`
+- WHEN instantiated
+- THEN broker_profile is stored
+- AND cost_config defaults to None
+
+#### Scenario: RetesterConfig without cost params (backward compatible)
+
+- GIVEN `RetesterConfig(strategy_id="s1", databanks=["EURUSD_H1"])`
+- WHEN instantiated
+- THEN broker_profile is None
+- AND cost_config is None
+- AND existing params (monte_carlo_runs, walkforward_cycles, etc.) are unchanged
+
 ### Requirement: Generate Retester CFX
 
-The system MUST generate a CFX file configuring the Retester with Monte Carlo and Walk-Forward sections.
+The system MUST generate a CFX file configuring the Retester with Monte Carlo and Walk-Forward sections, optionally including commission/cost parameters when a broker profile is provided.
 
 #### Scenario: CFX contains Rankings section with acceptance criteria
 
@@ -53,6 +69,18 @@ The system MUST generate a CFX file configuring the Retester with Monte Carlo an
 - GIVEN databanks=["EURUSD_H1", "GBPUSD_H1"]
 - WHEN CFX is generated
 - THEN `Data` section lists both databanks with correct paths
+
+#### Scenario: CFX with cost injection
+
+- GIVEN `RetesterConfig(..., broker_profile="ib")`
+- WHEN generating CFX
+- THEN the CFX includes commission and spread settings matching the broker profile
+
+#### Scenario: CFX without costs (backward compatible)
+
+- GIVEN `RetesterConfig(..., broker_profile=None)`
+- WHEN generating CFX
+- THEN CFX has no commission/cost sections — identical to pre-change output
 
 ### Requirement: Run Retester via sqcli with Databank Export
 

@@ -11,7 +11,7 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from quantlab.phase4.templates import CfxTemplateBuilder
 from quantlab.phase4.command_dispatcher import CommandDispatcher
@@ -86,8 +86,14 @@ class RetesterConfig:
         walkforward_cycles: int = 5,
         min_trades: int = 30,
         confidence_level: float = 0.95,
+        broker_profile: Any | None = None,
+        cost_config: Any | None = None,
     ):
         self.strategy_id = strategy_id
+
+        # Broker cost profile (from BrokerProfile or dict)
+        self.broker_profile = broker_profile
+        self.cost_config = cost_config
 
         # Validate databank names
         for db in databanks:

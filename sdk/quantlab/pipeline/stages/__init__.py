@@ -15,6 +15,7 @@ import source::
 from quantlab.pipeline._stages import (
     CampaignStage,
     ComputeStatsStage,
+    CostInjectionStage,
     DaemonStartStage,
     ExportStage,
     KnowledgeStoreStage,
@@ -55,6 +56,7 @@ __all__ = [
     # Original SQX stages
     "ValidateStage",
     "TranslateStage",
+    "CostInjectionStage",
     "DaemonStartStage",
     "LoadConfigStage",
     "RunCampaignStage",
