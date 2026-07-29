@@ -191,6 +191,33 @@ class LLMResearchStage(Stage, ABC):
         )
 
 
+class HypothesisBuilderStage(Stage, ABC):
+    """Stage that transforms hypotheses into building blocks + strategies.
+
+    Sits between the research stage (classic or LLM) and the builder stage.
+    Uses ``HypothesisBuilder`` to convert qualitative ``HypothesisConfig``
+    instances into structured ``BuildingBlock`` and ``Strategy`` objects.
+
+    **Requires**: research_config, hypotheses, objectives
+    **Provides**: building_blocks, strategies
+    """
+    name: str = "hypothesis_builder"
+    requires: list[str] = [
+        "research_config",
+        "hypotheses",
+        "objectives",
+    ]
+    provides: list[str] = [
+        "building_blocks",
+        "strategies",
+    ]
+
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
+        raise NotImplementedError(
+            "HypothesisBuilderStage must be implemented by a concrete agent subclass"
+        )
+
+
 class GuardianEvaluationStage(Stage, ABC):
     """Evaluates all guardians before builder stage.
 

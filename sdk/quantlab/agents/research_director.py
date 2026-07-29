@@ -133,7 +133,7 @@ class ResearchDirector:
         Constructs a Pipeline with concrete agent stages in the correct order
         and injects gate interceptor stages at configured positions.
 
-        Stage order: research_llm|research → [gate1] → builder → statistics →
+        Stage order: research_llm|research → hypothesis_builder → [gate1] → builder → statistics →
         review → [gate2] → portfolio → [gate3] → deploy → [gate4] → monitor → [gate5]
 
         The research stage is selected based on ``agent_config``:
@@ -171,6 +171,7 @@ class ResearchDirector:
 
         stages: list[dict[str, Any]] = [
             {"name": research_stage, "type": "agent"},
+            {"name": "hypothesis_builder", "type": "agent"},
             {"name": "builder", "type": "agent"},
             {"name": "statistics", "type": "agent"},
             {"name": "review", "type": "agent"},

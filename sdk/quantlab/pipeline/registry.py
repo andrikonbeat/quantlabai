@@ -138,7 +138,7 @@ class StageRegistry:
         from quantlab.pipeline.stages.agent_stages import (
             LLMResearchStage, ResearchStage, BuilderStage, StatisticsStage,
             ReviewStage, PortfolioStage, DeployStage, MonitorStage,
-            GuardianEvaluationStage,
+            HypothesisBuilderStage, GuardianEvaluationStage,
         )
 
         class ResearchAgentStage(ResearchStage):
@@ -170,6 +170,39 @@ class StageRegistry:
 
             async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
                 return await self._agent.run(ctx)
+
+        class HypothesisBuilderAgentStage(HypothesisBuilderStage):
+            """Wrapper: adapts HypothesisBuilder.build() to Stage.execute()."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                from quantlab.agents.hypothesis_builder import HypothesisBuilder
+                self._builder = HypothesisBuilder()
+                super().__init__(**kwargs)
+
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+                hypotheses = ctx.artifacts.get("hypotheses", [])
+                market_context = ctx.artifacts.get("market_context")
+                mode = None
+                if ctx.config:
+                    mode = ctx.config.get("hypothesis_builder_mode")
+
+                building_blocks, strategies = await self._builder.build(
+                    hypotheses=hypotheses,
+                    market_context=market_context,
+                    mode=mode,
+                )
+
+                # Convert to serialisable dicts for context
+                bb_dicts = [b.model_dump(mode="json") for b in building_blocks]
+                strat_dicts = [s.model_dump(mode="json") for s in strategies]
+
+                ctx.artifacts["building_blocks"] = bb_dicts
+                ctx.artifacts["strategies"] = strat_dicts
+
+                return {
+                    "building_blocks": bb_dicts,
+                    "strategies": strat_dicts,
+                }
 
         class LLMResearchAgentStage(LLMResearchStage):
             """Wrapper: adapts LLMResearchAgent.generate_config() to Stage.execute()."""
@@ -233,6 +266,7 @@ class StageRegistry:
             # Agent stages — concrete implementations
             "research_llm": LLMResearchAgentStage,
             "research": ResearchAgentStage,
+            "hypothesis_builder": HypothesisBuilderAgentStage,
             "builder": BuilderAgentStage,
             "statistics": StatisticsAgent,
             "review": ReviewerAgent,
