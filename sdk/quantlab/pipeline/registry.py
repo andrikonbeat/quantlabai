@@ -180,7 +180,13 @@ class StageRegistry:
                 super().__init__(**kwargs)
 
             async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
-                hypotheses = ctx.artifacts.get("hypotheses", [])
+                from quantlab.dsl.models import HypothesisConfig
+
+                raw_hypotheses = ctx.artifacts.get("hypotheses", [])
+                hypotheses: list[HypothesisConfig] = [
+                    HypothesisConfig(**h) if isinstance(h, dict) else h
+                    for h in raw_hypotheses
+                ]
                 market_context = ctx.artifacts.get("market_context")
                 mode = None
                 if ctx.config:
@@ -271,7 +277,13 @@ class StageRegistry:
                 super().__init__(**kwargs)
 
             async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
-                hypotheses = ctx.artifacts.get("hypotheses", [])
+                from quantlab.dsl.models import HypothesisConfig
+
+                raw_hypotheses = ctx.artifacts.get("hypotheses", [])
+                hypotheses: list[HypothesisConfig] = [
+                    HypothesisConfig(**h) if isinstance(h, dict) else h
+                    for h in raw_hypotheses
+                ]
                 building_blocks = ctx.artifacts.get("building_blocks", [])
                 strategies = ctx.artifacts.get("strategies", [])
                 market_context = ctx.artifacts.get("market_context")
