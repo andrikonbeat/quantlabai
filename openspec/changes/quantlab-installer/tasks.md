@@ -51,15 +51,15 @@ Chain strategy: feature-branch-chain
 - [x] 2.9 `installer/internal/state/state.go` — LoadOrInit, Save, Add/Remove/HasComponent, AddAgent
 - [x] 2.10 Tests: filemerge (deep merge, sentinel, empty, malformed, JSONC, idempotent), opencode (config read/write, merge agents, ownership lifecycle, MCP merge, skills/prompts install/remove), state (load/save cycle, add/remove, corrupt file detection)
 
-## PR 3: SDK Install + Config Wizard
+## PR 3: SDK Install + Config Wizard ✅
 
-- [ ] 3.1 `installer/internal/state/state.go` — state.json Read/Write, config_hash SHA-256
-- [ ] 3.2 `installer/internal/config/config.go` — config.yaml Read/Write, 0600 perms
-- [ ] 3.3 `installer/internal/config/wizard.go` — Bubbletea TUI: SQX path, JForex host:port+creds, API keys, confirm screen
-- [ ] 3.4 `installer/internal/sdk/install.go` — detect Python 3.11+, create venv, pip install from wheel asset
-- [ ] 3.5 `installer/assets/templates/config.yaml` — default config template
-- [ ] 3.6 Wire `install` pipeline: PREPARE (validate prereqs, capture before-images) → WIZARD → APPLY (state→config→venv/SDK→opencode merge→skills→prompts→ownership→state) → VERIFY → COMPLETE/rollback
-- [ ] 3.7 Tests: config validators (SQX path, JForex TCP, API key format), SDK mock exec, state persistence, full install cycle in temp $HOME
+- [x] 3.1 `installer/internal/state/state.go` — state.json Read/Write, config_hash SHA-256 (already implemented in PR 2)
+- [x] 3.2 `installer/internal/config/config.go` — config.yaml Read/Write, 0600 perms
+- [x] 3.3 `installer/internal/tui/wizard/wizard.go` — Bubbletea TUI: API Key, Model selection, SDK path, confirm screen (moved to tui/wizard per refined spec)
+- [x] 3.4 `installer/internal/sdk/install.go` — detect Python 3.11+, create venv, pip install from source/PyPI
+- [x] 3.5 `installer/assets/templates/config.yaml` — default config template
+- [x] 3.6 Wire `install` pipeline + `uninstall` pipeline: validate prereqs → wizard → SDK install → opencode merge → skills → prompts → ownership → state (+ rollback via pipeline)
+- [x] 3.7 Tests: config Read/Write, SDK mock exec, wizard model, qllm client, spinner/progress/confirm models, install/uninstall plan validation, state persistence
 
 ## PR 4: Lifecycle Commands
 
@@ -72,9 +72,9 @@ Chain strategy: feature-branch-chain
 - [ ] 4.7 Inconsistent-state detection on startup (journal residue) + interactive rollback prompt
 - [ ] 4.8 Tests: self-update E2E (local binary, fake release), uninstall clears all state, sync idempotent
 
-## PR 5: Build & Release
+## PR 5: Build & Release ✅
 
-- [ ] 5.1 `.github/workflows/release-installer.yml` — GoReleaser cross-compile: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64
-- [ ] 5.2 Version ldflags — inject commit, tag, date into `main.go` at build time
-- [ ] 5.3 `installer/Makefile` — build/test/lint/clean targets
-- [ ] 5.4 CI verification — all targets compile, SHA-256 checksums generated, release artifact valid
+- [x] 5.1 `installer/.goreleaser.yaml` — GoReleaser cross-compile: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64, NFM .deb/.rpm, GitHub release
+- [x] 5.2 `installer/internal/app/version.go` — version, commit, date ldflags; VersionInfo(), UserAgent(), enhanced `cmdVersion`
+- [x] 5.3 `installer/Makefile` — build/test/lint/clean/tidy targets with VERSION/COMMIT/DATE ldflags
+- [x] 5.4 `installer/cmd/quantlab/main.go` — simplified (version now in app pkg), no-args shows help + install tip

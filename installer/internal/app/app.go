@@ -15,7 +15,11 @@ var Version = "dev"
 // for fatal failures (help and unknown command errors are not fatal).
 func RunArgs(args []string, stdout io.Writer) error {
 	if len(args) == 0 {
-		return cmdHelp(stdout, "")
+		if err := cmdHelp(stdout, ""); err != nil {
+			return err
+		}
+		fmt.Fprintf(stdout, "\nTip: run 'quantlab install' to get started.\n")
+		return nil
 	}
 
 	cmd := args[0]
@@ -49,7 +53,8 @@ func RunArgs(args []string, stdout io.Writer) error {
 }
 
 func cmdVersion(w io.Writer) error {
-	_, err := fmt.Fprintf(w, "quantlab version %s\n", Version)
+	info := GetVersionInfo()
+	_, err := fmt.Fprintf(w, "quantlab %s\n  commit:  %s\n  date:    %s\n", info.Version, info.Commit, info.Date)
 	return err
 }
 

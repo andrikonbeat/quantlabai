@@ -1,0 +1,95 @@
+# QuantLab Installer — GoReleaser Configuration
+#
+# Builds for linux/amd64, linux/arm64, darwin/amd64, darwin/arm64.
+# Creates GitHub releases with archive and optional Linux packages.
+---
+project_name: quantlab
+
+version: 2
+
+env:
+  - GO111MODULE=on
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: quantlab
+    main: ./cmd/quantlab
+    binary: quantlab
+    ldflags:
+      - -X github.com/ogzuz/quantlab/internal/app.version={{ .Version }}
+      - -X github.com/ogzuz/quantlab/internal/app.commit={{ .Commit }}
+      - -X github.com/ogzuz/quantlab/internal/app.date={{ .Date }}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: quantlab
+    formats:
+      - tar.gz
+    name_template: >-
+      quantlab_{{ .Version }}_{{ if eq .Os "darwin" }}macOS{{ else }}{{ .Os }}{{ end }}_{{ .Arch }}
+    files:
+      - LICENSE*
+      - README*
+
+nfpms:
+  - id: quantlab
+    package_name: quantlab
+    file_name_template: >-
+      quantlab_{{ .Version }}_{{ .Arch }}
+    vendor: QuantLab AI
+    homepage: https://github.com/ogzuz/quantlab
+    description: QuantLab AI — Installer & Lifecycle Manager
+    maintainer: QuantLab Team
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/local/bin
+    contents:
+      - src: "{{ .Binary }}"
+        dst: /usr/local/bin/quantlab
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-snapshot"
+
+release:
+  github:
+    owner: ogzuz
+    name: quantlab
+  draft: false
+  prerelease: auto
+  header: |
+    ## QuantLab AI {{ .Version }}
+
+    Build {{ .Commit }}
+  footer: |
+    ### Installation
+
+    Download the archive for your platform and run:
+
+        tar -xzf quantlab_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz
+        ./quantlab install
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"

@@ -16,8 +16,14 @@ func TestRunArgs_VersionCommand(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "quantlab version") {
-		t.Errorf("output = %q, want it to contain 'quantlab version'", output)
+	if !strings.Contains(output, "quantlab") {
+		t.Errorf("output = %q, want it to contain 'quantlab'", output)
+	}
+	if !strings.Contains(output, "commit:") {
+		t.Errorf("output = %q, want it to contain 'commit:'", output)
+	}
+	if !strings.Contains(output, "date:") {
+		t.Errorf("output = %q, want it to contain 'date:'", output)
 	}
 }
 
@@ -71,7 +77,7 @@ func TestRunArgs_HelpCommand(t *testing.T) {
 	}
 }
 
-func TestRunArgs_NoArgsShowsHelp(t *testing.T) {
+func TestRunArgs_NoArgsShowsHelpWithTip(t *testing.T) {
 	var buf bytes.Buffer
 	err := app.RunArgs([]string{}, &buf)
 	if err != nil {
@@ -81,6 +87,9 @@ func TestRunArgs_NoArgsShowsHelp(t *testing.T) {
 	output := buf.String()
 	if !strings.Contains(output, "Usage:") {
 		t.Errorf("no args should show help, got = %q", output)
+	}
+	if !strings.Contains(output, "quantlab install") {
+		t.Errorf("no args should show install tip, got = %q", output)
 	}
 }
 
