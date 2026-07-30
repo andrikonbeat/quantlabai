@@ -1,8 +1,5 @@
 # QuantLab Installer — GoReleaser Configuration
-#
 # Builds for linux/amd64, linux/arm64, darwin/amd64, darwin/arm64.
-# Creates GitHub releases with archive and optional Linux packages.
----
 project_name: quantlab
 
 version: 2

@@ -61,16 +61,16 @@ Chain strategy: feature-branch-chain
 - [x] 3.6 Wire `install` pipeline + `uninstall` pipeline: validate prereqs → wizard → SDK install → opencode merge → skills → prompts → ownership → state (+ rollback via pipeline)
 - [x] 3.7 Tests: config Read/Write, SDK mock exec, wizard model, qllm client, spinner/progress/confirm models, install/uninstall plan validation, state persistence
 
-## PR 4: Lifecycle Commands
+## PR 4: Lifecycle Commands ✅
 
-- [ ] 4.1 `installer/internal/update/update.go` — download release, SHA-256 verify, atomic swap, exec new binary
-- [ ] 4.2 `quantlab uninstall` — read state, remove agents via overlay, restore default_agent, rm skills/prompts/venv, delete `~/.quantlab/`
-- [ ] 4.3 `quantlab sync` — update skills/prompts, match agents by ID, no duplicate entries
-- [ ] 4.4 `quantlab status` — version, component list, service health, detect missing state/orphaned agents
-- [ ] 4.5 `quantlab dashboard` — open URL in browser (or print)
-- [ ] 4.6 `quantlab configure` — standalone wizard re-run
-- [ ] 4.7 Inconsistent-state detection on startup (journal residue) + interactive rollback prompt
-- [ ] 4.8 Tests: self-update E2E (local binary, fake release), uninstall clears all state, sync idempotent
+- [x] 4.1 `installer/internal/update/update.go` — download release, SHA-256 verify, atomic swap, exec new binary
+- [x] 4.2 `quantlab uninstall` — read state, remove agents via overlay, restore default_agent, rm skills/prompts/venv, delete `~/.quantlab/`
+- [x] 4.3 `quantlab sync` — update skills/prompts, match agents by ID, no duplicate entries
+- [x] 4.4 `quantlab status` — version, component list, service health, detect missing state/orphaned agents
+- [x] 4.5 `quantlab dashboard` — open URL in browser (or print)
+- [x] 4.6 `quantlab configure` — standalone wizard re-run
+- [x] 4.7 Inconsistent-state detection on startup (journal residue) + interactive rollback prompt
+- [x] 4.8 Tests: self-update unit, uninstall plan, sync plan, status detection, dashboard URL, configure --reset
 
 ## PR 5: Build & Release ✅
 

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ogzuz/quantlab/internal/journal"
 	"github.com/ogzuz/quantlab/internal/pipeline"
 	"github.com/ogzuz/quantlab/internal/state"
 )
@@ -25,7 +26,8 @@ func TestBuildInstallPlan_Stages(t *testing.T) {
 
 	st := testState(home)
 
-	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", "auto", st)
+	j := journal.New(qlDir, filepath.Dir(opencodePath))
+	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", "auto", st, j)
 
 	if len(plan.Apply) == 0 {
 		t.Fatal("plan has no apply steps")
@@ -78,7 +80,8 @@ func TestBuildInstallPlan_RunCreateDir(t *testing.T) {
 	}
 
 	st := testState(home)
-	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", "auto", st)
+	j := journal.New(qlDir, filepath.Dir(opencodePath))
+	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", "auto", st, j)
 
 	// Run with progress
 	err := pipeline.Run(plan, func(ev pipeline.ProgressEvent) {

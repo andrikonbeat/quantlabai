@@ -188,6 +188,54 @@ func TestSaveWithoutPath(t *testing.T) {
 	}
 }
 
+func TestHasAnyComponent(t *testing.T) {
+	tests := []struct {
+		name string
+		comp []model.Component
+		want bool
+	}{
+		{"empty", nil, false},
+		{"one component", []model.Component{{ID: model.ComponentSDK, Status: "installed"}}, true},
+		{"multiple components", []model.Component{
+			{ID: model.ComponentSDK, Status: "installed"},
+			{ID: model.ComponentSkills, Status: "installed"},
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &State{Components: tt.comp}
+			if got := s.HasAnyComponent(); got != tt.want {
+				t.Errorf("HasAnyComponent() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStateFileExists(t *testing.T) {
+	dir := t.TempDir()
+	statePath := filepath.Join(dir, "state.json")
+
+	// File does not exist
+	s := &State{statePath: statePath}
+	if s.StateFileExists() {
+		t.Error("StateFileExists() = true before file is created")
+	}
+
+	// Create the file
+	if err := os.WriteFile(statePath, []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !s.StateFileExists() {
+		t.Error("StateFileExists() = false after file is created")
+	}
+
+	// Empty statePath
+	s2 := &State{}
+	if s2.StateFileExists() {
+		t.Error("StateFileExists() = true with empty statePath")
+	}
+}
+
 func TestRoundTripJSON(t *testing.T) {
 	// Verify the JSON serialization matches the state schema
 	s := &State{

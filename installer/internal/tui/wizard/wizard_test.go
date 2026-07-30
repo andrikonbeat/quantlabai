@@ -282,3 +282,26 @@ func TestModel_UnknownMsg(t *testing.T) {
 		t.Fatal("unknown message should not break model")
 	}
 }
+
+func TestValidOpenCodeAPIKey(t *testing.T) {
+	tests := []struct {
+		key   string
+		valid bool
+	}{
+		{"", false},
+		{"sk-test-key-12345", true},
+		{"sk-abc", false},           // too short
+		{"not-a-key", false},        // no sk- prefix
+		{"sk-" + string(make([]byte, 100)), true}, // long valid key
+		{"sk-", false},              // too short
+	}
+	for _, tt := range tests {
+		err := ValidOpenCodeAPIKey(tt.key)
+		if tt.valid && err != nil {
+			t.Errorf("ValidOpenCodeAPIKey(%q) = %v, want nil", tt.key, err)
+		}
+		if !tt.valid && err == nil {
+			t.Errorf("ValidOpenCodeAPIKey(%q) = nil, want error", tt.key)
+		}
+	}
+}

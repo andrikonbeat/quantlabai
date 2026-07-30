@@ -170,6 +170,20 @@ func (s *State) RemoveAgent(name string) {
 	s.Agents = filtered
 }
 
+// StateFileExists returns true if the state file exists on disk.
+func (s *State) StateFileExists() bool {
+	if s.statePath == "" {
+		return false
+	}
+	_, err := os.Stat(s.statePath)
+	return err == nil
+}
+
+// HasAnyComponent returns true if the state has at least one component.
+func (s *State) HasAnyComponent() bool {
+	return len(s.Components) > 0
+}
+
 // MarkInstalled sets the InstallID, InstalledAt, and QLVersion fields to
 // indicate a completed installation.
 func (s *State) MarkInstalled(installID, qlVersion string) {

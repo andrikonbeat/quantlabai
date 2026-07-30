@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/ogzuz/quantlab/internal/config"
+	"github.com/ogzuz/quantlab/internal/journal"
 	"github.com/ogzuz/quantlab/internal/model"
 	"github.com/ogzuz/quantlab/internal/opencode"
 	"github.com/ogzuz/quantlab/internal/pipeline"
@@ -37,6 +38,20 @@ func cmdInstall(w io.Writer) error {
 	if st.HasComponent(model.ComponentSDK) {
 		fmt.Fprintf(w, "QuantLab is already installed. Run 'quantlab sync' to update components.\n")
 		return nil
+	}
+
+	// Check for journal residue: state exists but has no components (interrupted install)
+	if st.StateFileExists() && !st.HasAnyComponent() {
+		fmt.Fprintf(w, "⚠ Detected incomplete installation from a previous run.\n")
+		fmt.Fprintf(w, "  Running 'quantlab uninstall' first to clean up...\n")
+		if err := cmdUninstall(w); err != nil {
+			return fmt.Errorf("cleanup failed: %w", err)
+		}
+		// Reload state after uninstall
+		st, err = state.LoadOrInit(qlDir)
+		if err != nil {
+			return fmt.Errorf("reload state: %w", err)
+		}
 	}
 
 	// --- Step 1: Validate prerequisites ---
@@ -71,7 +86,8 @@ func cmdInstall(w io.Writer) error {
 	// --- Step 3: Build and run pipeline ---
 	fmt.Fprintf(w, "\n🚀 Installing QuantLab AI...\n\n")
 
-	plan := buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath, st)
+	j := journal.New(qlDir, filepath.Dir(opencodePath))
+	plan := buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath, st, j)
 
 	progress := func(ev pipeline.ProgressEvent) {
 		status := "⋯"
@@ -113,7 +129,7 @@ func runWizard() (*wizard.Model, error) {
 }
 
 // buildInstallPlan constructs the pipeline plan for installation.
-func buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath string, st *state.State) pipeline.StagePlan {
+func buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath string, st *state.State, j *journal.Journal) pipeline.StagePlan {
 	steps := []pipeline.Step{
 		// Step 1: Create ~/.quantlab/ directory
 		&simpleStep{
@@ -121,12 +137,17 @@ func buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath string, 
 			fn: func() error {
 				return os.MkdirAll(qlDir, 0o755)
 			},
+			rollback: func() error {
+				os.RemoveAll(qlDir)
+				return nil
+			},
 		},
 
-		// Step 2: Write SDK config
+		// Step 2: Write SDK config (journal captures before-image for rollback)
 		&writeStep{
-			id:   "Write SDK config",
-			path: filepath.Join(qlDir, "sdk-config.yaml"),
+			id:      "Write SDK config",
+			path:    filepath.Join(qlDir, "sdk-config.yaml"),
+			journal: j,
 			fn: func() ([]byte, os.FileMode, error) {
 				cfg := sdk.DefaultSDKConfig()
 				cfg.APIKey = apiKey
@@ -152,35 +173,60 @@ func buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath string, 
 			},
 		},
 
-		// Step 4: Merge opencode.json overlay
+		// Step 4: Merge opencode.json overlay (journal captures before-image)
 		&simpleStep{
 			id: "Merge OpenCode agents",
 			fn: func() error {
+				// Capture before modifying opencode.json
+				j.Capture(opencodePath)
 				return mergeOpenCodeAgents(opencodePath)
+			},
+			rollback: func() error {
+				return j.Restore()
 			},
 		},
 
-		// Step 5: Install skills
+		// Step 5: Install skills — track installed files for rollback
 		&simpleStep{
 			id: "Install skills",
 			fn: func() error {
 				skillsDir := opencode.DefaultSkillsDir()
-				_, err := opencode.InstallSkills(assetFS(), skillsDir)
-				return err
+				installed, err := opencode.InstallSkills(assetFS(), skillsDir)
+				if err != nil {
+					return err
+				}
+				// Capture installed files for rollback
+				for _, f := range installed {
+					j.Capture(f)
+				}
+				return nil
+			},
+			rollback: func() error {
+				return j.Restore()
 			},
 		},
 
-		// Step 6: Install prompts
+		// Step 6: Install prompts — track installed files for rollback
 		&simpleStep{
 			id: "Install prompts",
 			fn: func() error {
 				promptsDir := opencode.DefaultPromptsDir()
-				_, err := opencode.InstallPrompts(assetFS(), promptsDir)
-				return err
+				installed, err := opencode.InstallPrompts(assetFS(), promptsDir)
+				if err != nil {
+					return err
+				}
+				// Capture installed files for rollback
+				for _, f := range installed {
+					j.Capture(f)
+				}
+				return nil
+			},
+			rollback: func() error {
+				return j.Restore()
 			},
 		},
 
-		// Step 7: Write ownership marker
+		// Step 7: Write ownership marker (journal captures before-image)
 		&simpleStep{
 			id: "Set ownership marker",
 			fn: func() error {
@@ -193,10 +239,11 @@ func buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath string, 
 			},
 		},
 
-		// Step 8: Write state.json
+		// Step 8: Write state.json (journal captures before-image)
 		&writeStep{
-			id:   "Write state.json",
-			path: filepath.Join(qlDir, "state.json"),
+			id:      "Write state.json",
+			path:    filepath.Join(qlDir, "state.json"),
+			journal: j,
 			fn: func() ([]byte, os.FileMode, error) {
 				st.MarkInstalled("install-"+modelChoice, "0.1.0")
 				st.AddComponent(model.ComponentSDK, "installed", filepath.Join(qlDir, "venv"), 0)
@@ -242,20 +289,28 @@ func mergeOpenCodeAgents(opencodePath string) error {
 
 // ---- pipeline step types ----
 
-// simpleStep runs a function with no write output.
+// simpleStep runs a function with optional rollback support.
 type simpleStep struct {
-	id string
-	fn func() error
+	id       string
+	fn       func() error
+	rollback func() error
 }
 
-func (s *simpleStep) ID() string { return s.id }
-func (s *simpleStep) Run() error { return s.fn() }
+func (s *simpleStep) ID() string     { return s.id }
+func (s *simpleStep) Run() error     { return s.fn() }
+func (s *simpleStep) Rollback() error {
+	if s.rollback != nil {
+		return s.rollback()
+	}
+	return nil
+}
 
-// writeStep generates content and writes it to a file.
+// writeStep uses the journal to write a file atomically with rollback support.
 type writeStep struct {
-	id   string
-	path string
-	fn   func() ([]byte, os.FileMode, error)
+	id      string
+	path    string
+	fn      func() ([]byte, os.FileMode, error)
+	journal *journal.Journal
 }
 
 func (s *writeStep) ID() string { return s.id }
@@ -265,11 +320,16 @@ func (s *writeStep) Run() error {
 	if err != nil {
 		return err
 	}
-
-	dir := filepath.Dir(s.path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("create dir %s: %w", dir, err)
+	if s.journal == nil {
+		s.journal = journal.New()
 	}
+	_, err = s.journal.WriteWithMode(s.path, data, mode)
+	return err
+}
 
-	return os.WriteFile(s.path, data, mode)
+func (s *writeStep) Rollback() error {
+	if s.journal == nil {
+		return nil
+	}
+	return s.journal.Restore()
 }

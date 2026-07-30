@@ -12,6 +12,20 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// ValidOpenCodeAPIKey checks that the key is non-empty and starts with "sk-".
+func ValidOpenCodeAPIKey(key string) error {
+	if key == "" {
+		return fmt.Errorf("API key is required")
+	}
+	if !strings.HasPrefix(key, "sk-") {
+		return fmt.Errorf("API key should start with 'sk-' (expected OpenCode API key format)")
+	}
+	if len(key) < 10 {
+		return fmt.Errorf("API key is too short (expected at least 10 characters)")
+	}
+	return nil
+}
+
 // Step identifies the current wizard step.
 type Step int
 
@@ -191,8 +205,8 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 
 	case StepAPIKey:
 		m.apiKey = strings.TrimSpace(m.apiKeyInput.Value())
-		if m.apiKey == "" {
-			m.err = fmt.Errorf("API key is required to proceed")
+		if err := ValidOpenCodeAPIKey(m.apiKey); err != nil {
+			m.err = err
 			return m, nil
 		}
 		m.err = nil
