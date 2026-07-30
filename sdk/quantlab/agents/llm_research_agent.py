@@ -25,6 +25,7 @@ from quantlab.dsl.models import (
     ResearchConfig,
     Timeframe,
 )
+from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,10 @@ class LLMResearchAgent:
     def __init__(
         self,
         research_agent_cls: type[ResearchAgent] | None = None,
+        circuit_breaker: LLMCircuitBreaker | None = None,
     ) -> None:
         self._fallback_cls = research_agent_cls or ResearchAgent
+        self._circuit_breaker = circuit_breaker or LLMCircuitBreaker()
         self._yahoo: YahooFinanceProvider | None = None
         self._fred: FredProvider | None = None
 
@@ -301,7 +304,7 @@ class LLMResearchAgent:
         """
         provider = llm_config.provider
 
-        if provider == "openai":
+        if provider in ("openai", "opencode"):
             try:
                 import openai  # noqa: F811
             except ImportError:
@@ -313,10 +316,14 @@ class LLMResearchAgent:
             try:
                 from openai import AsyncOpenAI
 
-                client = AsyncOpenAI(
-                    max_retries=2,
-                    timeout=llm_config.max_tokens,
-                )
+                kwargs: dict[str, Any] = {
+                    "max_retries": 2,
+                    "timeout": llm_config.max_tokens,
+                }
+                if llm_config.base_url:
+                    kwargs["base_url"] = llm_config.base_url
+
+                client = AsyncOpenAI(**kwargs)
                 response = await client.chat.completions.create(
                     model=llm_config.model,
                     messages=[{"role": "user", "content": prompt}],
@@ -331,7 +338,7 @@ class LLMResearchAgent:
         elif provider == "anthropic":
             raise ValueError(
                 "Anthropic provider is not yet supported. "
-                "Use provider='openai' instead."
+                "Use provider='openai' or 'opencode' instead."
             )
         else:
             raise ValueError(
@@ -515,13 +522,15 @@ class LLMResearchAgent:
                 data,
             )
 
-            # Step 3: Call LLM
+            # Step 3: Call LLM through circuit breaker
             logger.debug(
                 "Calling LLM provider '%s' model '%s'",
                 llm_config.provider,
                 llm_config.model,
             )
-            response_text = await self.call_llm(prompt, llm_config)
+            response_text = await self._circuit_breaker.call(
+                self.call_llm(prompt, llm_config)
+            )
 
             # Step 4: Parse response
             config = self.parse_response(response_text)

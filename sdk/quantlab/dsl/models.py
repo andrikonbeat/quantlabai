@@ -142,18 +142,20 @@ class LLMConfig(BaseModel):
     ``api_key_env`` is auto-derived from the provider name when not explicitly set.
 
     Attributes:
-        provider: LLM provider name (``"openai"`` or ``"anthropic"``).
+        provider: LLM provider name (``"openai"``, ``"anthropic"``, or ``"opencode"``).
         model: Model identifier (e.g. ``"gpt-4"``, ``"claude-3-opus-20240229"``).
         api_key_env: Environment variable holding the API key.
+        base_url: Optional custom API base URL (e.g. for Ollama, OpenCode local).
         temperature: Sampling temperature 0.0–2.0 (default 0.7).
         max_tokens: Maximum output tokens (default 2048, must be >= 1).
         web_sources: Enabled web/news sources for context enrichment.
     """
 
-    VALID_PROVIDERS: set[str] = {"openai", "anthropic"}
+    VALID_PROVIDERS: set[str] = {"openai", "anthropic", "opencode"}
     _PROVIDER_ENV_MAP: dict[str, str] = {
         "openai": "OPENAI_API_KEY",
         "anthropic": "ANTHROPIC_API_KEY",
+        "opencode": "OPENCODE_API_KEY",
     }
 
     provider: str = Field(
@@ -162,6 +164,10 @@ class LLMConfig(BaseModel):
     )
     model: str = Field(default="gpt-4", description="Model identifier")
     api_key_env: str = Field(default="OPENAI_API_KEY", description="Env var for the API key")
+    base_url: str | None = Field(
+        default=None,
+        description="Custom API base URL (e.g. http://localhost:11434/v1 for Ollama)",
+    )
     temperature: float = Field(
         default=0.7, ge=0.0, le=2.0, description="Sampling temperature 0.0–2.0"
     )
@@ -188,6 +194,9 @@ class LLMConfig(BaseModel):
         # If api_key_env is the default string, derive it; otherwise respect explicit value
         if self.api_key_env == "OPENAI_API_KEY" and self.provider != "openai":
             self.api_key_env = derived
+        # OpenCode default: use any available key or empty for local models
+        if self.provider == "opencode" and self.base_url is None:
+            self.base_url = "http://localhost:11434/v1"
         return self
 
 
