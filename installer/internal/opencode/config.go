@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ogzuz/quantlab/installer/internal/filemerge"
+	"github.com/ogzuz/quantlab/internal/filemerge"
 )
 
 // Config represents the top-level structure of an opencode.json settings file.

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ogzuz/quantlab/installer/internal/filemerge"
+	"github.com/ogzuz/quantlab/internal/filemerge"
 )
 
 // InstallSkills copies embedded skill files from the given embed.FS to the

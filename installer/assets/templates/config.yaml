@@ -1,0 +1,21 @@
+# QuantLab AI Configuration
+# This file is managed by the QuantLab installer.
+# Permissions: 0600 (owner read/write only)
+
+quantlab_version: "0.1.0"
+
+# SQX CLI configuration
+sqx:
+  cli_path: "/opt/SQX/sqcli"
+
+# JForex DAS connection
+jforex:
+  host: "localhost"
+  port: 19790
+  username: ""
+  password: ""
+
+# External API keys
+api_keys:
+  openai: ""
+  anthropic: ""

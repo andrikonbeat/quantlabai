@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ogzuz/quantlab/installer/internal/model"
+	"github.com/ogzuz/quantlab/internal/model"
 )
 
 func TestLoadOrInit_NewState(t *testing.T) {

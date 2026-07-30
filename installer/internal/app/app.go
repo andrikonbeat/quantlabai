@@ -44,16 +44,6 @@ func RunArgs(args []string, stdout io.Writer) error {
 	}
 }
 
-func cmdInstall(w io.Writer) error {
-	_, err := fmt.Fprintln(w, "quantlab install: not yet implemented")
-	return err
-}
-
-func cmdUninstall(w io.Writer) error {
-	_, err := fmt.Fprintln(w, "quantlab uninstall: not yet implemented")
-	return err
-}
-
 func cmdSync(w io.Writer) error {
 	_, err := fmt.Fprintln(w, "quantlab sync: not yet implemented")
 	return err

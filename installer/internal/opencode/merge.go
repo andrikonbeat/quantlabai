@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ogzuz/quantlab/installer/internal/filemerge"
+	"github.com/ogzuz/quantlab/internal/filemerge"
 )
 
 //go:embed overlay.json

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ogzuz/quantlab/installer/internal/filemerge"
+	"github.com/ogzuz/quantlab/internal/filemerge"
 )
 
 // MergeMCPServers merges MCP server definitions from the overlay into the
