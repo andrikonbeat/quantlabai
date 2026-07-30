@@ -95,6 +95,9 @@ func TestRunArgs_UnknownCommand(t *testing.T) {
 	if !strings.Contains(output, "unknown command") {
 		t.Errorf("output = %q, want it to contain 'unknown command'", output)
 	}
+	if !strings.Contains(output, "help") {
+		t.Errorf("output = %q, want it to suggest 'help'", output)
+	}
 }
 
 func TestRunArgs_InstallCommand(t *testing.T) {
@@ -135,8 +138,8 @@ func TestRunArgs_StatusCommand(t *testing.T) {
 	}
 
 	output := buf.String()
-	if !strings.Contains(output, "status") {
-		t.Errorf("output = %q, want it to mention 'status'", output)
+	if !strings.Contains(output, "Status") {
+		t.Errorf("output = %q, want it to mention 'Status'", output)
 	}
 }
 

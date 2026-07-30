@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ogzuz/quantlab/internal/pipeline"
+	"github.com/ogzuz/quantlab/internal/state"
 )
 
 func TestBuildInstallPlan_Stages(t *testing.T) {
