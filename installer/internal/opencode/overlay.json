@@ -1,0 +1,63 @@
+{
+  "agent": {
+    "quantlab-orchestrator": {
+      "description": "QuantLab AI orchestrator — routes requests to SDD, CLI, or dashboard",
+      "mode": "primary",
+      "permission": {
+        "question": "allow",
+        "task": {
+          "*": "deny",
+          "sdd-*": "allow",
+          "quantlab-*": "allow"
+        },
+        "bash": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/orchestrator.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "read": true,
+        "task": true,
+        "write": true,
+        "question": true
+      }
+    },
+    "quantlab-campaign": {
+      "description": "QuantLab campaign runner — executes and monitors trading campaigns",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/campaign.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "read": true,
+        "write": true
+      }
+    },
+    "quantlab-deploy": {
+      "description": "QuantLab deployment agent — manages JForex strategy deployments",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/deploy.md}",
+      "tools": {
+        "bash": true,
+        "edit": true,
+        "read": true,
+        "write": true
+      }
+    },
+    "quantlab-monitor": {
+      "description": "QuantLab monitor — watches campaign and deployment status",
+      "hidden": true,
+      "mode": "subagent",
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/monitor.md}",
+      "tools": {
+        "bash": true,
+        "read": true
+      }
+    }
+  }
+}
