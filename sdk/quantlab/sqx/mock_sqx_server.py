@@ -148,10 +148,15 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                         text += "In databank                                      0\n"
                 elif MockSQXHandler._mode == "rejection":
                     # Stopped (or unknown) in rejection mode — keep the
-                    # last generated count visible for the monitor.
+                    # last generated count visible for the monitor, and
+                    # report the stop the way a real SQX daemon does so the
+                    # dispatch loop breaks promptly on an early stop (e.g.
+                    # an LLM-monitor-initiated stop).
                     text += f"Strategies generated                            {camp.get('generated', 0)}\n"
                     text += "Running time so far                          4 s.\n"
                     text += "In databank                                      0\n"
+                    if camp.get("status") == "stopped":
+                        text += "Project execution stopped\n"
                 else:
                     text += "Strategies generated                              0\n"
                     text += "Running time so far                          0 ms.\n"

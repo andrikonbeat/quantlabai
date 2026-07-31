@@ -27,6 +27,7 @@ from quantlab.sqx.campaign_monitor import (
     CampaignMonitor,
     parse_databank_counts,
 )
+from quantlab.sqx.cli_wrapper import dispatch_campaign
 from quantlab.sqx.llm_generation_monitor import (
     ActionExecutor,
     LLMGenerationMonitor,
@@ -750,3 +751,281 @@ class TestMockServerRejectionMode:
                 client, "-project action=status name=normal-camp"
             )
             assert "completed" in status.text.lower()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4.4: Integration — LLM monitor wired to a real (mock) SQX server
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestLLMMonitorIntegration:
+    """Task 4.4: fake llm_caller against the real mock server.
+
+    - Stop verdict + confirm True → HTTP stop dispatched (campaign stopped).
+    - Low confidence → no action, no confirm hook.
+    - LLM raising → no exception; heuristics keep polling (databank
+      observability still populated).
+    """
+
+    BASE_URL = "http://127.0.0.1:5050"
+
+    @pytest.fixture(autouse=True)
+    def _rejection_server(self) -> Any:
+        from quantlab.sqx.mock_sqx_server import MockSQXHandler, MockSQXServer
+
+        MockSQXServer.reset()
+        server = MockSQXServer.instance(port=5050, mode="rejection")
+        server.start()
+        yield
+        MockSQXServer.reset()
+        MockSQXHandler._mode = "normal"
+
+    @staticmethod
+    def _cmd(command: str) -> str:
+        return urllib.parse.quote(command, safe="=")
+
+    def _baseline(self) -> BaselineConfig:
+        return BaselineConfig(
+            startup_grace_s=60.0,
+            expected_gen_time_s=32.0,
+            early_gen_multiplier=2.0,
+            early_gen_count=3,
+            stall_polls_threshold=21,
+            rejection_warn_gens=3,
+        )
+
+    async def _start_campaign(self, name: str) -> None:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{self.BASE_URL}/call?cmd={self._cmd(f'-project action=start name={name}')}"
+            )
+            resp.raise_for_status()
+
+    @staticmethod
+    def _campaign_status(name: str) -> str:
+        from quantlab.sqx.mock_sqx_server import MockSQXHandler
+
+        return MockSQXHandler._campaigns.get(name, {}).get("status", "not found")
+
+    async def _monitor_pair(
+        self,
+        campaign_id: str,
+        llm_caller: Any,
+        confirm_stop: Any,
+    ) -> tuple[CampaignMonitor, LLMGenerationMonitor, asyncio.Task[Any]]:
+        """Start a CampaignMonitor task and wire an LLMGenerationMonitor that
+        reads its snapshot; returns (monitor, llm_monitor, monitor_task)."""
+        monitor = CampaignMonitor(
+            campaign_id=campaign_id,
+            base_url=self.BASE_URL,
+            baseline=self._baseline(),
+            poll_interval=0.05,
+            config={"timeframe": "M1", "generations": 80, "population": 200},
+        )
+        monitor_task = asyncio.create_task(monitor.run())
+        await asyncio.sleep(0.2)  # let the monitor populate snapshot state
+        llm_monitor = LLMGenerationMonitor(
+            campaign_id=campaign_id,
+            base_url=self.BASE_URL,
+            snapshot_provider=monitor.current_snapshot,
+            llm_config=LLMConfig(),
+            llm_caller=llm_caller,
+            confirm_stop=confirm_stop,
+            confidence_threshold=0.7,
+            poll_every_n=1,
+            monitor=monitor,
+        )
+        return monitor, llm_monitor, monitor_task
+
+    @pytest.mark.asyncio
+    async def test_stop_verdict_confirmed_dispatches_http_stop(self) -> None:
+        """GIVEN a stop verdict above the confidence threshold and a
+        confirming human hook
+        WHEN the monitor polls against the real mock server
+        THEN the HTTP stop is dispatched (campaign state 'stopped') and the
+        CampaignMonitor is cancelled (spec: stop uses the cancel path).
+        """
+        await self._start_campaign("rej-int-stop")
+        confirm = AsyncMock(return_value=True)
+        caller = AsyncMock(
+            return_value=json.dumps(verdict_payload(action="stop", confidence=0.9))
+        )
+        monitor, llm_monitor, monitor_task = await self._monitor_pair(
+            "rej-int-stop", caller, confirm
+        )
+
+        await llm_monitor._poll_once()
+
+        assert self._campaign_status("rej-int-stop") == "stopped"
+        confirm.assert_awaited_once()
+        confirm.assert_awaited_with(
+            Verdict(**verdict_payload(action="stop", confidence=0.9))
+        )
+        assert monitor._stopped is True
+
+        await monitor.cancel()
+        await asyncio.gather(monitor_task, return_exceptions=True)
+
+    @pytest.mark.asyncio
+    async def test_low_confidence_never_dispatches(self) -> None:
+        """GIVEN a stop verdict with confidence below the threshold
+        WHEN the monitor polls against the real mock server
+        THEN no HTTP stop is dispatched and the confirm hook never runs
+        (spec: low-confidence verdicts never dispatch).
+        """
+        await self._start_campaign("rej-int-lowconf")
+        confirm = AsyncMock(return_value=True)
+        caller = AsyncMock(
+            return_value=json.dumps(verdict_payload(action="stop", confidence=0.65))
+        )
+        monitor, llm_monitor, monitor_task = await self._monitor_pair(
+            "rej-int-lowconf", caller, confirm
+        )
+
+        await llm_monitor._poll_once()
+
+        assert self._campaign_status("rej-int-lowconf") == "running"
+        confirm.assert_not_awaited()
+
+        await monitor.cancel()
+        await asyncio.gather(monitor_task, return_exceptions=True)
+
+    @pytest.mark.asyncio
+    async def test_llm_raising_keeps_heuristics_running(self) -> None:
+        """GIVEN the LLM caller raises (API error / circuit open)
+        WHEN the monitor polls
+        THEN no exception propagates and the CampaignMonitor heuristics
+        continue polling normally — databank observability still updates
+        (spec: LLM failure leaves heuristics running).
+        """
+        await self._start_campaign("rej-int-raise")
+
+        async def failing_caller(prompt: str, cfg: LLMConfig) -> str:
+            raise RuntimeError("LLM API down")
+
+        monitor, llm_monitor, monitor_task = await self._monitor_pair(
+            "rej-int-raise", failing_caller, AsyncMock(return_value=True)
+        )
+
+        await llm_monitor._poll_once()  # must not raise
+
+        snapshot = monitor.current_snapshot()
+        assert "Strategies generated" in snapshot.status_text
+        assert snapshot.databank_counts == {
+            "Results": 0,
+            "Initial population": 0,
+            "Last generation": 0,
+        }
+
+        await monitor.cancel()
+        await asyncio.gather(monitor_task, return_exceptions=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 4.5: E2E — dispatch_campaign + LLM monitor
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestDispatchLLMMonitorE2E:
+    """Task 4.5: dispatch_campaign(force_mock=True, llm_config=...) E2E.
+
+    - Rejection-mode campaign + fake stop verdict + confirm True → the
+      campaign is stopped before completion and dispatch returns promptly
+      (not via timeout).
+    - Without llm_config → zero LLM calls and an identical result shape
+      (spec: "Hook not registered preserves behavior").
+    """
+
+    BASE_URL = "http://127.0.0.1:5050"
+    RESULT_KEYS = {"status", "export_paths", "watcher_events"}
+
+    @pytest.fixture(autouse=True)
+    def _mock_server(self) -> Any:
+        from quantlab.sqx.mock_sqx_server import MockSQXServer
+
+        MockSQXServer.reset()
+        yield
+        MockSQXServer.reset()
+
+    @staticmethod
+    def _config() -> dict[str, Any]:
+        return {
+            "market": "EURUSD",
+            "timeframe": "H1",
+            "walk_forward": True,
+            "monte_carlo": True,
+        }
+
+    @pytest.mark.asyncio
+    async def test_e2e_llm_stop_before_completion(self) -> None:
+        """GIVEN a rejection-mode campaign (never completes naturally), an
+        llm_config, and a fake LLM caller returning a high-confidence stop
+        verdict
+        WHEN dispatch_campaign runs with confirm_stop=True
+        THEN the campaign is stopped early, dispatch returns before the
+        timeout, the verdict hook fires, and the result shape is unchanged.
+        """
+        from quantlab.sqx.mock_sqx_server import MockSQXHandler, MockSQXServer
+
+        MockSQXServer.reset()
+        server = MockSQXServer.instance(port=5050, mode="rejection")
+        server.start()
+
+        hook = Mock()
+        confirm = AsyncMock(return_value=True)
+        caller = AsyncMock(
+            return_value=json.dumps(verdict_payload(action="stop", confidence=0.9))
+        )
+
+        result = await dispatch_campaign(
+            cfx_bytes=b"dummy-cfx",
+            campaign_id="e2e-llm-stop",
+            config=self._config(),
+            poll_interval=0.1,
+            timeout=30.0,
+            force_mock=True,
+            on_watcher_event=Mock(),
+            llm_config=LLMConfig(),
+            on_llm_verdict=hook,
+            llm_caller=caller,
+            confirm_stop=confirm,
+            poll_every_n=1,
+        )
+
+        # Prompt return, not timeout — the LLM stop path ended dispatch.
+        assert result["status"] == "completed"
+        assert set(result.keys()) == self.RESULT_KEYS
+        # The campaign was stopped on the server (zero-acceptance stop).
+        assert MockSQXHandler._campaigns["e2e-llm-stop"]["status"] == "stopped"
+        # The verdict hook received the stop verdict.
+        assert hook.call_count >= 1
+        verdict = hook.call_args.args[0]
+        assert isinstance(verdict, Verdict)
+        assert verdict.recommended_action == "stop"
+
+    @pytest.mark.asyncio
+    async def test_e2e_no_llm_config_zero_llm_calls(self, monkeypatch) -> None:
+        """Spec scenario "Hook not registered preserves behavior": dispatch
+        without llm_config makes ZERO LLM calls and returns the same result
+        shape as before this change."""
+        import quantlab.sqx.llm_generation_monitor as llm_mod
+
+        llm_call = Mock()
+        monkeypatch.setattr(llm_mod, "_call_llm", llm_call)
+
+        callback = Mock()
+        result = await dispatch_campaign(
+            cfx_bytes=b"dummy-cfx",
+            campaign_id="e2e-no-llm",
+            config=self._config(),
+            poll_interval=0.2,
+            timeout=30.0,
+            force_mock=True,
+            on_watcher_event=callback,
+        )
+
+        assert llm_call.call_count == 0
+        assert set(result.keys()) == self.RESULT_KEYS
+        assert result["status"] == "completed"
+        # Heuristic monitoring still ran (normal-mode campaign completes).
+        assert isinstance(result["watcher_events"], list)
