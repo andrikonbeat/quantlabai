@@ -388,6 +388,41 @@ class CampaignMonitor:
         logger.info("CampaignMonitor('%s') cancel requested", self._campaign_id)
         self._stopped = True
 
+    async def final_check(self) -> None:
+        """One last status poll after cancel: emit a missed campaign_complete.
+
+        The dispatch loop can observe campaign completion *before* the
+        monitor's own done-check poll runs, then cancel the monitor — the
+        ``campaign_complete`` event the loop saw is lost because the
+        monitor never got to poll again. This method fetches the status
+        once more after :meth:`cancel` and, when the campaign has already
+        reached a terminal state, emits the missed ``campaign_complete``
+        event (including the ``on_watcher_event`` callback).
+
+        No-op when no HTTP client is available (monitor already exited),
+        when the final fetch fails, or when the campaign has not reached a
+        terminal state. Never raises.
+        """
+        if self._client is None:
+            return
+        if any(ev.event_type == "campaign_complete" for ev in self._events):
+            return
+        status_text = await self._fetch_status(self._client)
+        if status_text is None:
+            return
+        if not self._is_campaign_done(status_text):
+            return
+        # Re-check after the await: the loop itself may have just emitted
+        # the event while we were fetching.
+        if any(ev.event_type == "campaign_complete" for ev in self._events):
+            return
+        ev = self._make_event(
+            "campaign_complete",
+            "INFO",
+            {"elapsed_s": round(self._elapsed_s(), 1)},
+        )
+        await self._dispatch_event(ev)
+
     def current_snapshot(self) -> MonitorSnapshot:
         """Return a point-in-time observability snapshot for the LLM monitor.
 

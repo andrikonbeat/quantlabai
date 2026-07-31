@@ -28,11 +28,13 @@ import tempfile
 import time
 import urllib.parse
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 import httpx
 
+from quantlab.dsl.models import LLMConfig
 from quantlab.sqx.campaign_monitor import CampaignMonitor, WatcherEvent, compute_baseline
+from quantlab.sqx.llm_generation_monitor import LLMGenerationMonitor, Verdict
 from quantlab.sqx.mock_sqx_server import MockSQXServer
 from quantlab.sqx.project_builder import create_project, remove_project
 
@@ -70,6 +72,12 @@ async def dispatch_campaign(
     timeout: float = _DEFAULT_TIMEOUT,
     force_mock: bool = False,
     on_watcher_event: Callable[[WatcherEvent], None] | None = None,
+    llm_config: LLMConfig | None = None,
+    on_llm_verdict: Callable[[Verdict], None] | None = None,
+    llm_caller: Callable[[str, LLMConfig], Awaitable[str]] | None = None,
+    confirm_stop: Callable[[Verdict], Awaitable[bool]] | None = None,
+    confidence_threshold: float = 0.7,
+    poll_every_n: int = 5,
 ) -> dict[str, Any]:
     """Dispatch a campaign to SQX via the daemon-based HTTP API.
 
@@ -90,6 +98,24 @@ async def dispatch_campaign(
         on_watcher_event: Optional callback invoked for every WatcherEvent
             emitted by the background CampaignMonitor. When ``None``,
             WARNING/CRITICAL events trigger a ``rich.prompt.Confirm`` prompt.
+        llm_config: Optional LLMConfig. When set, an
+            ``LLMGenerationMonitor`` runs as a sibling task to the
+            ``CampaignMonitor`` and LLM verdicts are produced on a slow
+            cadence. When ``None`` (default), no LLM monitor is created and
+            dispatch behaves exactly as before this change — zero LLM calls.
+        on_llm_verdict: Optional callback invoked with every validated
+            ``Verdict`` produced by the LLM monitor. Mirrors
+            ``on_watcher_event``. Ignored when ``llm_config`` is ``None``.
+        llm_caller: Optional async ``(prompt, llm_config) -> str`` caller
+            for the LLM monitor (defaults to the built-in LLM provider
+            call). Tests inject a fake caller here.
+        confirm_stop: Optional async ``(verdict) -> bool`` hook for the
+            human-confirmation step before a ``stop`` verdict is executed.
+            ``None`` uses the monitor's default ``rich.prompt.Confirm``
+            prompt (CLI mode).
+        confidence_threshold: Minimum verdict confidence required to
+            dispatch an action (default 0.7).
+        poll_every_n: Run the LLM poll every N-th monitor tick (default 5).
 
     Returns:
         Dict with ``status`` (``"completed"``, ``"timeout"``,
@@ -116,6 +142,12 @@ async def dispatch_campaign(
                 poll_interval=poll_interval,
                 timeout=timeout,
                 on_watcher_event=on_watcher_event,
+                llm_config=llm_config,
+                on_llm_verdict=on_llm_verdict,
+                llm_caller=llm_caller,
+                confirm_stop=confirm_stop,
+                confidence_threshold=confidence_threshold,
+                poll_every_n=poll_every_n,
             )
         else:
             # Write CFX to temp file for mock path
@@ -130,6 +162,12 @@ async def dispatch_campaign(
                     poll_interval=poll_interval,
                     timeout=timeout,
                     on_watcher_event=on_watcher_event,
+                    llm_config=llm_config,
+                    on_llm_verdict=on_llm_verdict,
+                    llm_caller=llm_caller,
+                    confirm_stop=confirm_stop,
+                    confidence_threshold=confidence_threshold,
+                    poll_every_n=poll_every_n,
                 )
             finally:
                 if os.path.exists(temp_cfx):
@@ -160,6 +198,12 @@ async def _dispatch_real(
     timeout: float,
     *,
     on_watcher_event: Callable[[WatcherEvent], None] | None = None,
+    llm_config: LLMConfig | None = None,
+    on_llm_verdict: Callable[[Verdict], None] | None = None,
+    llm_caller: Callable[[str, LLMConfig], Awaitable[str]] | None = None,
+    confirm_stop: Callable[[Verdict], Awaitable[bool]] | None = None,
+    confidence_threshold: float = 0.7,
+    poll_every_n: int = 5,
 ) -> dict[str, Any]:
     """Dispatch using the real SQX daemon (sqcli without arguments).
 
@@ -184,6 +228,13 @@ async def _dispatch_real(
         timeout: Max seconds for strategy generation.
         on_watcher_event: Optional callback for WatcherEvents. When
             ``None``, the monitor uses ``rich.prompt.Confirm`` prompts.
+        llm_config: Optional LLMConfig enabling the LLM monitor sibling
+            task (see :func:`dispatch_campaign`).
+        on_llm_verdict: Optional hook invoked with every validated verdict.
+        llm_caller: Optional injected LLM caller (tests).
+        confirm_stop: Optional human-confirmation hook for stop verdicts.
+        confidence_threshold: Minimum verdict confidence to dispatch.
+        poll_every_n: LLM poll cadence (every N-th monitor tick).
     """
     base_url = _SQX_BASE_URL
 
@@ -276,8 +327,22 @@ async def _dispatch_real(
         base_url=base_url,
         baseline=baseline,
         on_watcher_event=on_watcher_event,
+        config=cfg_dict,
     )
     monitor_task = asyncio.create_task(monitor.run())
+
+    # ── Optional LLM monitor (opt-in via llm_config) ──
+    llm_monitor_task = _spawn_llm_monitor(
+        campaign_id=campaign_id,
+        base_url=base_url,
+        monitor=monitor,
+        llm_config=llm_config,
+        on_llm_verdict=on_llm_verdict,
+        llm_caller=llm_caller,
+        confirm_stop=confirm_stop,
+        confidence_threshold=confidence_threshold,
+        poll_every_n=poll_every_n,
+    )
 
     # ── Phase 2: Poll status ──
     logger.info("Phase 2/6: Polling status for '%s' ...", campaign_id)
@@ -297,14 +362,19 @@ async def _dispatch_real(
                 break
             await asyncio.sleep(poll_interval)
     finally:
-        # Always cancel the monitor when the poll loop exits
+        # Always cancel the monitor when the poll loop exits; a final
+        # status check emits a missed campaign_complete when the loop saw
+        # completion before the monitor's own done-check poll ran.
         await monitor.cancel()
+        await monitor.final_check()
         watcher_events: list[dict[str, Any]] = []
         try:
             collected = await asyncio.wait_for(monitor_task, timeout=5.0)
             watcher_events = [e.to_dict() for e in collected]
         except (asyncio.TimeoutError, asyncio.CancelledError):
             watcher_events = [e.to_dict() for e in monitor._events]
+        if llm_monitor_task is not None:
+            await _stop_llm_monitor_task(llm_monitor_task)
 
     if not is_completed:
         logger.warning("Campaign '%s' timed out after %.0fs", campaign_id, timeout)
@@ -442,6 +512,12 @@ async def _dispatch_mock(
     timeout: float,
     *,
     on_watcher_event: Callable[[WatcherEvent], None] | None = None,
+    llm_config: LLMConfig | None = None,
+    on_llm_verdict: Callable[[Verdict], None] | None = None,
+    llm_caller: Callable[[str, LLMConfig], Awaitable[str]] | None = None,
+    confirm_stop: Callable[[Verdict], Awaitable[bool]] | None = None,
+    confidence_threshold: float = 0.7,
+    poll_every_n: int = 5,
 ) -> dict[str, Any]:
     """Dispatch using the mock HTTP server (no real sqcli required).
 
@@ -464,8 +540,22 @@ async def _dispatch_mock(
         baseline=baseline,
         poll_interval=monitor_poll,
         on_watcher_event=on_watcher_event,
+        config={"timeframe": "H1"},
     )
     monitor_task = asyncio.create_task(monitor.run())
+
+    # ── Optional LLM monitor (opt-in via llm_config) ──
+    llm_monitor_task = _spawn_llm_monitor(
+        campaign_id=campaign_id,
+        base_url=base_url,
+        monitor=monitor,
+        llm_config=llm_config,
+        on_llm_verdict=on_llm_verdict,
+        llm_caller=llm_caller,
+        confirm_stop=confirm_stop,
+        confidence_threshold=confidence_threshold,
+        poll_every_n=poll_every_n,
+    )
 
     # Poll status
     deadline = time.monotonic() + timeout
@@ -475,19 +565,30 @@ async def _dispatch_mock(
             status_text = await _send_http(
                 base_url, f"-project action=status name={campaign_id}"
             )
+            # Parity with _dispatch_real: an explicit stop (e.g. from the
+            # LLM monitor) shows as "Project execution stopped".
+            if "Project execution stopped" in status_text:
+                is_completed = True
+                logger.info("Campaign '%s' stopped — ending dispatch", campaign_id)
+                break
             if _is_completed(status_text):
                 is_completed = True
                 break
             await asyncio.sleep(poll_interval)
     finally:
-        # Always cancel the monitor when the poll loop exits
+        # Always cancel the monitor when the poll loop exits; a final
+        # status check emits a missed campaign_complete when the loop saw
+        # completion before the monitor's own done-check poll ran.
         await monitor.cancel()
+        await monitor.final_check()
         watcher_events: list[dict[str, Any]] = []
         try:
             collected = await asyncio.wait_for(monitor_task, timeout=5.0)
             watcher_events = [e.to_dict() for e in collected]
         except (asyncio.TimeoutError, asyncio.CancelledError):
             watcher_events = [e.to_dict() for e in monitor._events]
+        if llm_monitor_task is not None:
+            await _stop_llm_monitor_task(llm_monitor_task)
 
     # Stop
     try:
@@ -507,6 +608,59 @@ async def _dispatch_mock(
         "export_paths": export_paths,
         "watcher_events": watcher_events,
     }
+
+
+# ---------------------------------------------------------------------------
+# LLM monitor helpers
+# ---------------------------------------------------------------------------
+
+
+def _spawn_llm_monitor(
+    *,
+    campaign_id: str,
+    base_url: str,
+    monitor: CampaignMonitor,
+    llm_config: LLMConfig | None,
+    on_llm_verdict: Callable[[Verdict], None] | None,
+    llm_caller: Callable[[str, LLMConfig], Awaitable[str]] | None,
+    confirm_stop: Callable[[Verdict], Awaitable[bool]] | None,
+    confidence_threshold: float,
+    poll_every_n: int,
+) -> asyncio.Task[None] | None:
+    """Spawn the optional LLM monitor as a sibling task to CampaignMonitor.
+
+    Returns ``None`` when ``llm_config`` is ``None`` — the opt-in hook is
+    disabled and dispatch behaves exactly as before (spec: "Hook not
+    registered preserves behavior", zero LLM calls).
+    """
+    if llm_config is None:
+        return None
+
+    llm_monitor = LLMGenerationMonitor(
+        campaign_id=campaign_id,
+        base_url=base_url,
+        snapshot_provider=monitor.current_snapshot,
+        llm_config=llm_config,
+        llm_caller=llm_caller,
+        confirm_stop=confirm_stop,
+        confidence_threshold=confidence_threshold,
+        poll_every_n=poll_every_n,
+        on_verdict=on_llm_verdict,
+        monitor=monitor,
+    )
+    return asyncio.create_task(llm_monitor.run())
+
+
+async def _stop_llm_monitor_task(llm_monitor_task: asyncio.Task[None]) -> None:
+    """Cancel and reap the LLM monitor task when the dispatch loop exits.
+
+    The dispatch loop ending means the campaign is finished or stopped —
+    the LLM monitor has nothing left to do, so an immediate cancel is safe
+    (all its poll paths degrade to log-and-continue; none mutate campaign
+    state outside the already-handled stop action).
+    """
+    llm_monitor_task.cancel()
+    await asyncio.gather(llm_monitor_task, return_exceptions=True)
 
 
 # ---------------------------------------------------------------------------
