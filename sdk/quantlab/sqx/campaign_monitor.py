@@ -24,6 +24,8 @@ from typing import Any, Callable, Literal
 
 import httpx
 
+from quantlab.sqx.llm_generation_monitor import MonitorSnapshot
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ───────────────────────────────────────────────────────────────
@@ -104,6 +106,54 @@ def extract_results_count(status_text: str) -> int:
         except (ValueError, IndexError):
             return 0
     return 0
+
+
+_DATABANK_RECORDS_RE = re.compile(
+    r"^\s*(?P<name>.+?),\s*Records\s*:?\s*(?P<count>\d+)\s*$",
+    re.IGNORECASE,
+)
+
+
+def parse_databank_counts(text: str | None) -> dict[str, int] | None:
+    """Parse ``-databank action=list`` output into per-databank record counts.
+
+    Tolerates both ``Results, Records: 3`` and ``Results, Records 3``
+    (optional colon) line styles, any amount of surrounding whitespace, and
+    unrelated header/footer lines (e.g. the mock's "List of available
+    databanks" banner), which are skipped. When nothing parseable is found
+    the counts are treated as unknown: this function logs a warning and
+    returns ``None`` instead of raising.
+
+    Args:
+        text: Raw plain-text response from ``-databank action=list``.
+
+    Returns:
+        A mapping of databank name to record count, or ``None`` when the
+        output is missing or unparseable.
+    """
+    if not text or not text.strip():
+        logger.warning("Databank output missing/empty — counts treated as unknown")
+        return None
+
+    counts: dict[str, int] = {}
+    for line in text.splitlines():
+        m = _DATABANK_RECORDS_RE.match(line)
+        if not m:
+            continue
+        try:
+            counts[m.group("name").strip()] = int(m.group("count"))
+        except (ValueError, IndexError):
+            logger.warning(
+                "Databank line unparseable (%r) — skipped", line.strip()
+            )
+
+    if not counts:
+        logger.warning(
+            "No databank record counts found in output — "
+            "counts treated as unknown"
+        )
+        return None
+    return counts
 
 
 _KNOWN_ERROR_PATTERNS = [
@@ -259,6 +309,9 @@ class CampaignMonitor:
             When ``None``, WARNING/CRITICAL events trigger a
             ``rich.prompt.Confirm`` prompt in CLI mode.
         http_timeout: HTTP request timeout in seconds (default 10.0).
+        config: Optional raw campaign configuration (dict or object) used to
+            build the baseline context for :meth:`current_snapshot`. May be
+            ``None`` — the snapshot then carries only the derived baseline.
     """
 
     def __init__(
@@ -269,6 +322,7 @@ class CampaignMonitor:
         poll_interval: float = 5.0,
         on_watcher_event: Callable[[WatcherEvent], None] | None = None,
         http_timeout: float = 10.0,
+        config: Any | None = None,
     ) -> None:
         self._campaign_id = campaign_id
         self._base_url = base_url.rstrip("/")
@@ -276,6 +330,7 @@ class CampaignMonitor:
         self._poll_interval = poll_interval
         self._on_watcher_event = on_watcher_event
         self._http_timeout = http_timeout
+        self._config = config
 
         # Internal state
         self._start_time: float = 0.0
@@ -286,6 +341,9 @@ class CampaignMonitor:
         self._stopped: bool = False
         self._client: httpx.AsyncClient | None = None
         self._emitted_excessive_rejection: bool = False
+        # Databank observability state (surfaced via current_snapshot())
+        self._last_status_text: str = ""
+        self._databank_counts: dict[str, int] | None = None
 
     # ── Public API ──────────────────────────────────────────────────────
 
@@ -302,6 +360,8 @@ class CampaignMonitor:
         self._http_failures = 0
         self._stopped = False
         self._emitted_excessive_rejection = False
+        self._last_status_text = ""
+        self._databank_counts = None
 
         async with httpx.AsyncClient(timeout=self._http_timeout) as client:
             self._client = client
@@ -327,6 +387,24 @@ class CampaignMonitor:
         """Signal the monitor loop to stop at the next poll cycle."""
         logger.info("CampaignMonitor('%s') cancel requested", self._campaign_id)
         self._stopped = True
+
+    def current_snapshot(self) -> MonitorSnapshot:
+        """Return a point-in-time observability snapshot for the LLM monitor.
+
+        Provides the latest raw status text, the generated strategy count,
+        per-databank record counts (``None`` when unknown or parse-failed),
+        elapsed seconds, and the baseline context (raw config values merged
+        with the derived :class:`BaselineConfig`). This is the snapshot
+        provider consumed by
+        :class:`~quantlab.sqx.llm_generation_monitor.LLMGenerationMonitor`.
+        """
+        return MonitorSnapshot(
+            status_text=self._last_status_text or "",
+            generated_count=max(0, self._last_count),
+            databank_counts=self._databank_counts,
+            elapsed_s=self._elapsed_s(),
+            baseline=self._build_baseline_context(),
+        )
 
     # ── Internal: Run Loop ──────────────────────────────────────────────
 
@@ -382,9 +460,12 @@ class CampaignMonitor:
                 await self._dispatch_event(ev)
                 break
 
+            # ── Databank observability (fetch failure is tolerated) ──
+            databank_text = await self._fetch_databank(client)
+
             # ── Process one poll tick ──
             elapsed = time.monotonic() - self._start_time
-            events = self._poll_tick(status_text, elapsed)
+            events = self._poll_tick(status_text, elapsed, databank_text)
             for ev in events:
                 await self._dispatch_event(ev)
 
@@ -429,20 +510,77 @@ class CampaignMonitor:
             )
             return None
 
+    async def _fetch_databank(
+        self, client: httpx.AsyncClient
+    ) -> str | None:
+        """Fetch the databank record counts from the SQX daemon.
+
+        Returns the response text on success, or ``None`` on HTTP/connection
+        failure. Failures are logged and tolerated — the caller treats the
+        counts as unknown and heuristic polling is unaffected.
+
+        Args:
+            client: The shared ``httpx.AsyncClient`` from :meth:`run`.
+
+        Returns:
+            Raw ``-databank action=list`` response text, or ``None``.
+        """
+        try:
+            encoded = urllib.parse.quote("-databank action=list", safe="=")
+            url = f"{self._base_url}{_COMMAND_ENDPOINT}{encoded}"
+            resp = await client.get(url)
+            resp.raise_for_status()
+            return resp.text
+        except httpx.TimeoutException:
+            logger.debug(
+                "CampaignMonitor('%s') databank timeout", self._campaign_id,
+            )
+            return None
+        except httpx.RequestError as exc:
+            logger.debug(
+                "CampaignMonitor('%s') databank request failed: %s",
+                self._campaign_id,
+                exc,
+            )
+            return None
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "CampaignMonitor('%s') databank HTTP error: %s",
+                self._campaign_id,
+                exc,
+            )
+            return None
+
     # ── Internal: Poll Tick ─────────────────────────────────────────────
 
     def _poll_tick(
-        self, status_text: str, elapsed: float
+        self,
+        status_text: str,
+        elapsed: float,
+        databank_text: str | None = None,
     ) -> list[WatcherEvent]:
         """Analyse one status response and return any events it triggers.
+
+        Also records the raw status text and parses/stores the databank
+        record counts for :meth:`current_snapshot`. Databank parse failures
+        never raise: the counts are treated as unknown (``None``).
 
         Args:
             status_text: Raw status text from the SQX daemon.
             elapsed: Seconds since the monitor started.
+            databank_text: Optional raw ``-databank action=list`` output.
+                When ``None`` (fetch failed) the counts are treated as
+                unknown.
 
         Returns:
             A (possibly empty) list of WatcherEvent instances.
         """
+        self._last_status_text = status_text
+        if databank_text is None:
+            self._databank_counts = None
+        else:
+            self._databank_counts = parse_databank_counts(databank_text)
+
         events: list[WatcherEvent] = []
         count = extract_results_count(status_text)
         errors = extract_error_patterns(status_text)
@@ -571,6 +709,38 @@ class CampaignMonitor:
             )
 
     # ── Internal: Helpers ───────────────────────────────────────────────
+
+    def _elapsed_s(self) -> float:
+        """Seconds since monitoring started (0.0 before :meth:`run`)."""
+        if not self._start_time:
+            return 0.0
+        return round(max(0.0, time.monotonic() - self._start_time), 2)
+
+    def _build_baseline_context(self) -> dict[str, Any]:
+        """Assemble the baseline context for the LLM verdict prompt.
+
+        Merges raw campaign config values (timeframe, WF/MC flags,
+        generations, population, criteria, market) with the derived
+        ``BaselineConfig`` timing parameters. Config values are read
+        defensively via ``_get_config_value``; a missing raw config yields
+        the derived baseline alone.
+        """
+        context: dict[str, Any] = {}
+        if self._config is not None:
+            for key in (
+                "timeframe",
+                "walk_forward",
+                "monte_carlo",
+                "generations",
+                "population",
+                "criteria",
+                "market",
+            ):
+                value = _get_config_value(self._config, key, None)
+                if value is not None:
+                    context[key] = value
+        context.update(self._baseline.to_dict())
+        return context
 
     def _make_event(
         self,

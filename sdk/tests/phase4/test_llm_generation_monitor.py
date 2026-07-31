@@ -2,19 +2,31 @@
 
 Covers: ``parse_verdict`` (valid/fenced/invalid/missing/bad confidence),
 ``build_prompt`` (counts + baseline + JSON schema), confidence gate,
-``ActionExecutor`` (stop vs continue), circuit-open degradation, and
-constructor defaults.
+``ActionExecutor`` (stop vs continue), circuit-open degradation,
+constructor defaults, ``CampaignMonitor`` databank observability
+(``parse_databank_counts`` + ``current_snapshot``), and the mock SQX
+server rejection mode.
 """
 
 import asyncio
 import json
 import logging
+import re
+import time
+import urllib.parse
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
+import httpx
 import pytest
 
 from quantlab.dsl.models import LLMConfig
 from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
+from quantlab.sqx.campaign_monitor import (
+    BaselineConfig,
+    CampaignMonitor,
+    parse_databank_counts,
+)
 from quantlab.sqx.llm_generation_monitor import (
     ActionExecutor,
     LLMGenerationMonitor,
@@ -440,3 +452,301 @@ class TestLLMGenerationMonitor:
 
         dispatch.assert_not_awaited()
         assert any("continue" in r.message.lower() for r in caplog.records)
+
+
+class TestParseDatabankCounts:
+    """Task 2.1: parse_databank_counts tolerates formats; garbage → None."""
+
+    MOCK_LIST_OUTPUT = (
+        "List of available databanks\n"
+        "--------------------------------------------------\n"
+        "Results, Records: 3\n"
+        "Initial population, Records: 0\n"
+        "Last generation, Records: 0\n"
+    )
+
+    def test_mock_format_all_databanks(self) -> None:
+        """GIVEN mock -databank action=list output
+        WHEN parse_databank_counts is called
+        THEN per-databank record counts are returned (banner skipped).
+        """
+        assert parse_databank_counts(self.MOCK_LIST_OUTPUT) == {
+            "Results": 3,
+            "Initial population": 0,
+            "Last generation": 0,
+        }
+
+    def test_colonless_variant(self) -> None:
+        """GIVEN 'Results, Records 3' (no colon separator)
+        WHEN parse_databank_counts is called
+        THEN the count is still parsed (colon is optional).
+        """
+        assert parse_databank_counts(
+            "Results, Records 3\nStrategies, Records 5\n"
+        ) == {
+            "Results": 3,
+            "Strategies": 5,
+        }
+
+    def test_single_databank_line(self) -> None:
+        """GIVEN a single databank line
+        WHEN parse_databank_counts is called
+        THEN the single mapping is returned.
+        """
+        assert parse_databank_counts("Results, Records: 12\n") == {"Results": 12}
+
+    def test_case_insensitive_label(self) -> None:
+        """GIVEN an uppercase label
+        WHEN parse_databank_counts is called
+        THEN the count is still parsed.
+        """
+        assert parse_databank_counts("RESULTS, RECORDS: 3\n") == {"RESULTS": 3}
+
+    def test_partial_garbage_lines_skipped(self) -> None:
+        """GIVEN a mix of parseable and unexpected lines
+        WHEN parse_databank_counts is called
+        THEN the parseable databanks are returned and the rest are skipped.
+        """
+        assert parse_databank_counts(
+            "some unexpected output\nResults, Records: 7\n"
+        ) == {"Results": 7}
+
+    def test_garbage_returns_none_and_warns(self, caplog) -> None:
+        """GIVEN databank output that cannot be parsed
+        WHEN parse_databank_counts is called
+        THEN None is returned and a warning is logged (counts unknown).
+        """
+        with caplog.at_level(
+            logging.WARNING, logger="quantlab.sqx.campaign_monitor"
+        ):
+            result = parse_databank_counts("no databanks here\n")
+
+        assert result is None
+        assert any("unknown" in r.message.lower() for r in caplog.records)
+
+    def test_empty_returns_none(self) -> None:
+        """GIVEN empty or missing databank output
+        WHEN parse_databank_counts is called
+        THEN None is returned (counts treated as unknown).
+        """
+        assert parse_databank_counts("") is None
+        assert parse_databank_counts(None) is None
+
+
+class TestCurrentSnapshot:
+    """Task 2.3: current_snapshot exposes status, counts, elapsed, baseline."""
+
+    @staticmethod
+    def _monitor(**kwargs: Any) -> CampaignMonitor:
+        baseline = BaselineConfig(
+            startup_grace_s=60.0,
+            expected_gen_time_s=32.0,
+            early_gen_multiplier=2.0,
+            early_gen_count=3,
+            stall_polls_threshold=21,
+            rejection_warn_gens=3,
+        )
+        config = {
+            "timeframe": "M1",
+            "walk_forward": True,
+            "monte_carlo": True,
+            "generations": 80,
+            "population": 200,
+            "market": "EURUSD",
+            "criteria": [{"metric": "profit_factor", "operator": ">", "value": 1.3}],
+        }
+        return CampaignMonitor(
+            campaign_id="c1",
+            base_url="http://127.0.0.1:5050",
+            baseline=baseline,
+            config=config,
+            **kwargs,
+        )
+
+    def test_snapshot_fields(self) -> None:
+        """GIVEN a monitor with observed state
+        WHEN current_snapshot is called
+        THEN a MonitorSnapshot with status/counts/elapsed/baseline is returned.
+        """
+        monitor = self._monitor()
+        monitor._last_status_text = "Strategies generated  10\nGeneration: 3\n"
+        monitor._last_count = 10
+        monitor._databank_counts = {"Results": 2, "Strategies": 2}
+        monitor._start_time = time.monotonic() - 5.0
+
+        snap = monitor.current_snapshot()
+
+        assert isinstance(snap, MonitorSnapshot)
+        assert snap.status_text == "Strategies generated  10\nGeneration: 3\n"
+        assert snap.generated_count == 10
+        assert snap.databank_counts == {"Results": 2, "Strategies": 2}
+        assert snap.elapsed_s == pytest.approx(5.0, abs=0.2)
+        # Raw config values surface for the verdict prompt ...
+        assert snap.baseline["generations"] == 80
+        assert snap.baseline["population"] == 200
+        assert snap.baseline["walk_forward"] is True
+        assert snap.baseline["monte_carlo"] is True
+        assert snap.baseline["market"] == "EURUSD"
+        assert snap.baseline["timeframe"] == "M1"
+        assert snap.baseline["criteria"][0]["metric"] == "profit_factor"
+        # ... merged with the derived BaselineConfig timing parameters.
+        assert snap.baseline["stall_polls_threshold"] == 21
+        assert snap.baseline["startup_grace_s"] == 60.0
+
+    def test_snapshot_before_run_defaults(self) -> None:
+        """GIVEN a monitor that has not started polling
+        WHEN current_snapshot is called
+        THEN empty status, 0 generated, None counts, 0 elapsed are returned.
+        """
+        snap = self._monitor().current_snapshot()
+
+        assert snap.status_text == ""
+        assert snap.generated_count == 0
+        assert snap.databank_counts is None
+        assert snap.elapsed_s == 0.0
+
+    def test_snapshot_without_config_uses_derived_baseline_only(self) -> None:
+        """GIVEN a monitor constructed without a raw config
+        WHEN current_snapshot is called
+        THEN the baseline carries the derived BaselineConfig values alone.
+        """
+        baseline = BaselineConfig(
+            startup_grace_s=60.0,
+            expected_gen_time_s=32.0,
+            early_gen_multiplier=2.0,
+            early_gen_count=3,
+            stall_polls_threshold=21,
+            rejection_warn_gens=3,
+        )
+        monitor = CampaignMonitor(
+            "c1", "http://127.0.0.1:5050", baseline
+        )
+
+        snap = monitor.current_snapshot()
+
+        assert snap.baseline == baseline.to_dict()
+
+    def test_poll_tick_stores_databank_counts(self) -> None:
+        """GIVEN a poll tick with databank output
+        WHEN _poll_tick runs
+        THEN the parsed counts and status text are stored for the snapshot
+        and no heuristic events fire for a healthy tick.
+        """
+        monitor = self._monitor()
+        events = monitor._poll_tick(
+            "Strategies generated                           10\n",
+            elapsed=5.0,
+            databank_text="Results, Records: 2\nStrategies, Records: 2\n",
+        )
+
+        assert monitor._databank_counts == {"Results": 2, "Strategies": 2}
+        assert monitor._last_status_text.startswith("Strategies generated")
+        assert events == []
+
+    def test_poll_tick_failed_databank_sets_counts_unknown(self) -> None:
+        """GIVEN a poll tick without databank output
+        WHEN _poll_tick runs
+        THEN databank counts are treated as unknown and heuristics still run.
+        """
+        monitor = self._monitor()
+        events = monitor._poll_tick(
+            "Strategies generated                           10\n", elapsed=5.0
+        )
+
+        assert monitor._databank_counts is None
+        assert isinstance(events, list)
+
+
+class TestMockServerRejectionMode:
+    """Task 4.1: rejection mode — growing generation count, static databank
+    (0 records), campaign never completes until an explicit action=stop."""
+
+    BASE_URL = "http://127.0.0.1:5050"
+
+    @staticmethod
+    def _cmd(command: str) -> str:
+        return urllib.parse.quote(command, safe="=")
+
+    @pytest.fixture(autouse=True)
+    def _rejection_server(self) -> Any:
+        from quantlab.sqx.mock_sqx_server import MockSQXHandler, MockSQXServer
+
+        MockSQXServer.reset()
+        server = MockSQXServer.instance(port=5050, mode="rejection")
+        server.start()
+        yield
+        MockSQXServer.reset()
+        MockSQXHandler._mode = "normal"
+
+    async def _send(
+        self, client: httpx.AsyncClient, command: str
+    ) -> httpx.Response:
+        return await client.get(f"{self.BASE_URL}/call?cmd={self._cmd(command)}")
+
+    @pytest.mark.asyncio
+    async def test_rejection_mode_never_completes_and_counts_grow(self) -> None:
+        """GIVEN a rejection-mode campaign
+        WHEN status is polled repeatedly past the normal completion time
+        THEN the generated count grows, the databank stays at 0 records,
+        the campaign never completes, and action=stop finally stops it.
+        """
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await self._send(client, "-project action=start name=rej-camp")
+
+            counts: list[int] = []
+            for _ in range(3):
+                resp = await self._send(
+                    client, "-project action=status name=rej-camp"
+                )
+                match = re.search(
+                    r"Strategies generated\s+(\d+)", resp.text
+                )
+                assert match is not None, f"no count in: {resp.text!r}"
+                counts.append(int(match.group(1)))
+                assert "Status: completed" not in resp.text
+                await asyncio.sleep(0.05)
+
+            # Generated count grows across status polls.
+            assert counts == [10, 20, 30], counts
+
+            # Databank record count stays at 0 (static rejection signal).
+            db = await self._send(client, "-databank action=list")
+            assert "Results, Records: 0" in db.text
+
+            # Wait past the normal-mode completion duration (~2s) — in
+            # rejection mode the campaign must still be running.
+            await asyncio.sleep(2.5)
+            status = await self._send(
+                client, "-project action=status name=rej-camp"
+            )
+            assert "Status: completed" not in status.text
+            assert "Strategies generated" in status.text
+
+            # Explicit stop terminates the campaign.
+            stop = await self._send(client, "-project action=stop name=rej-camp")
+            assert "stopped" in stop.text.lower()
+            after = await self._send(
+                client, "-project action=status name=rej-camp"
+            )
+            assert "Strategies generated" in after.text
+
+    @pytest.mark.asyncio
+    async def test_normal_mode_still_completes(self) -> None:
+        """GIVEN the default (normal) mode
+        WHEN a campaign runs
+        THEN the full lifecycle completes as before (regression guard).
+        """
+        from quantlab.sqx.mock_sqx_server import MockSQXServer
+
+        MockSQXServer.reset()
+        server = MockSQXServer.instance(port=5050, mode="normal")
+        server.start()
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await self._send(client, "-project action=start name=normal-camp")
+            # Normal simulation completes in ~2s.
+            await asyncio.sleep(2.5)
+            status = await self._send(
+                client, "-project action=status name=normal-camp"
+            )
+            assert "completed" in status.text.lower()

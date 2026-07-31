@@ -18,10 +18,21 @@ _MOCK_HOST = "127.0.0.1"
 
 
 class MockSQXHandler(BaseHTTPRequestHandler):
-    """HTTP handler that simulates SQX CLI commands."""
+    """HTTP handler that simulates SQX CLI commands.
+
+    ``_mode`` is class-level so every per-request handler instance observes
+    the same configuration:
+
+    - ``normal`` (default): full campaign lifecycle — starts, makes progress,
+      and completes on its own.
+    - ``rejection``: simulates a zero-acceptance run — the generated count
+      grows on every status poll while the databank record count stays at 0,
+      and the campaign never completes until an explicit ``action=stop``.
+    """
 
     _campaigns: dict[str, dict[str, Any]] = {}
     _lock = threading.Lock()
+    _mode: str = "normal"
     _export_dir = Path("/tmp/sqx-mock-exports")
     _export_dir.mkdir(parents=True, exist_ok=True)
 
@@ -100,7 +111,11 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                 return self._send_text(f"Project loaded '{name}'.\n")
             if action == "action=start":
                 with MockSQXHandler._lock:
-                    MockSQXHandler._campaigns[name] = {"status": "running", "progress": 0}
+                    MockSQXHandler._campaigns[name] = {
+                        "status": "running",
+                        "progress": 0,
+                        "generated": 0,
+                    }
                 threading.Thread(
                     target=self._simulate_campaign, args=(name,), daemon=True
                 ).start()
@@ -110,6 +125,12 @@ class MockSQXHandler(BaseHTTPRequestHandler):
             if action == "action=status":
                 with MockSQXHandler._lock:
                     camp = MockSQXHandler._campaigns.get(name, {"status": "not found", "progress": 0})
+                    # Rejection mode: grow the generated count on each poll.
+                    if (
+                        MockSQXHandler._mode == "rejection"
+                        and camp.get("status") == "running"
+                    ):
+                        camp["generated"] = camp.get("generated", 0) + 10
                 text = f"Status of project {name}\n--------------------------------------------------\n"
                 if camp.get("status") == "completed":
                     text += "Status: completed\n"
@@ -117,8 +138,19 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                     text += "Running time so far                          4 s.\n"
                     text += "In databank                                      3\n"
                 elif camp.get("status") == "running":
-                    text += "Strategies generated                          12\n"
-                    text += "Running time so far                          2 s.\n"
+                    if MockSQXHandler._mode == "rejection":
+                        text += f"Strategies generated                            {camp.get('generated', 0)}\n"
+                        text += "Running time so far                          2 s.\n"
+                        text += "In databank                                      0\n"
+                    else:
+                        text += "Strategies generated                          12\n"
+                        text += "Running time so far                          2 s.\n"
+                        text += "In databank                                      0\n"
+                elif MockSQXHandler._mode == "rejection":
+                    # Stopped (or unknown) in rejection mode — keep the
+                    # last generated count visible for the monitor.
+                    text += f"Strategies generated                            {camp.get('generated', 0)}\n"
+                    text += "Running time so far                          4 s.\n"
                     text += "In databank                                      0\n"
                 else:
                     text += "Strategies generated                              0\n"
@@ -137,6 +169,10 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                 if p.startswith("project="):
                     project = p[8:]
             if action == "action=list":
+                if MockSQXHandler._mode == "rejection":
+                    return self._send_text(
+                        "List of available databanks\n--------------------------------------------------\nResults, Records: 0\nInitial population, Records: 0\nLast generation, Records: 0\n"
+                    )
                 return self._send_text(
                     f"List of available databanks\n--------------------------------------------------\nResults, Records: 3\nInitial population, Records: 0\nLast generation, Records: 0\n"
                 )
@@ -147,7 +183,14 @@ class MockSQXHandler(BaseHTTPRequestHandler):
         return self._send_text(f"Unrecognized command {cmd}.", status=400)
 
     def _simulate_campaign(self, name: str):
-        """Simulate campaign progress and completion."""
+        """Simulate campaign progress and completion.
+
+        In rejection mode the campaign never completes on its own: the thread
+        exits immediately and the campaign stays ``running`` (with a growing
+        generated count) until an explicit ``-project action=stop``.
+        """
+        if MockSQXHandler._mode == "rejection":
+            return
         for i in range(1, 5):
             with MockSQXHandler._lock:
                 camp = MockSQXHandler._campaigns.get(name)
@@ -211,20 +254,48 @@ class MockSQXHandler(BaseHTTPRequestHandler):
 
 
 class MockSQXServer:
-    """Lightweight HTTP server that mocks sqcli behavior for demos."""
+    """Lightweight HTTP server that mocks sqcli behavior for demos.
+
+    ``mode`` selects the simulated campaign behavior:
+
+    - ``normal`` (default): campaigns run the full lifecycle and complete.
+    - ``rejection``: zero-acceptance simulation — generated count grows,
+      databank record count stays at 0, campaign never completes until
+      ``action=stop``.
+
+    The mode is applied to ``MockSQXHandler`` at construction and start time
+    so every per-request handler instance observes it.
+    """
 
     _instance: "MockSQXServer | None" = None
 
-    def __init__(self, host: str = _MOCK_HOST, port: int = _MOCK_PORT):
+    def __init__(
+        self,
+        host: str = _MOCK_HOST,
+        port: int = _MOCK_PORT,
+        mode: str = "normal",
+    ):
         self.host = host
         self.port = port
+        self.mode = mode
         self._server: HTTPServer | None = None
         self._thread: threading.Thread | None = None
+        MockSQXHandler._mode = mode
 
     @classmethod
-    def instance(cls, host: str = _MOCK_HOST, port: int = _MOCK_PORT) -> "MockSQXServer":
+    def instance(
+        cls,
+        host: str = _MOCK_HOST,
+        port: int = _MOCK_PORT,
+        mode: str = "normal",
+    ) -> "MockSQXServer":
         if cls._instance is None:
-            cls._instance = cls(host=host, port=port)
+            cls._instance = cls(host=host, port=port, mode=mode)
+        else:
+            # Keep the singleton and handler in sync so callers can opt into
+            # rejection mode without restarting the server.
+            cls._instance.mode = mode
+            MockSQXHandler._mode = mode
         return cls._instance
 
     @classmethod
@@ -233,8 +304,10 @@ class MockSQXServer:
         if inst is not None:
             inst.stop()
             cls._instance = None
+        MockSQXHandler._mode = "normal"
 
     def start(self):
+        MockSQXHandler._mode = self.mode
         if self._server is not None:
             try:
                 import httpx
