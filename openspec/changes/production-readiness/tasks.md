@@ -42,7 +42,7 @@ Chain strategy pre-resolved by user (stacked-to-main). If feature-branch-chain i
 - [x] **T10 (S1)** junk removal: `git rm` `=5.18`, `Save location: /`, installer skeleton (go.sum + binary), dup test files (root `test_refutation_layer.py`); delete untracked `=3.0` (HGN-01) · verify: `git ls-files` shows none · ~25
 - [x] **T11 (S1)** `git rm --cached assets/SQX_144_2953_linux_20260601.zip` + `.gitignore` `assets/SQX_*.zip` (HGN-02) · verify: zip absent from `git ls-files` · ~2
 - [x] **T12 (S1)** triage commits: `sdd/`+`openspec/` own commit; refutation (`sdk/quantlab/agents/refutation/`, tests) own commit; deletions own commits (HGN-03) · verify: `git log` shows clean groups · ~5
-- [ ] **T13 (S1)** refresh `STATE.md`: current workflow, measured pass count (decision b), drop poetry/630 claims (HGN-04) · dep: T4–T6 · verify: no stale claims · ~30
+- [x] **T13 (S1)** refresh `STATE.md`: current workflow, measured pass count (decision b), drop poetry/630 claims (HGN-04) · dep: T4–T6 · verify: no stale claims · ~30
 
 ## Phase 3 — Slice 2: Guards (RED-first)
 
