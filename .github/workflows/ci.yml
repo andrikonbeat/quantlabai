@@ -12,7 +12,6 @@ on:
 
 env:
   PYTHON_VERSION: '3.11'
-  POETRY_VERSION: '1.8.2'
 
 jobs:
   # ============================================================
@@ -29,29 +28,21 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'poetry'
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: false
 
       - name: Install dependencies
-        working-directory: ./sdk
-        run: poetry install --no-interaction --no-ansi --with dev
+        run: pip install -e "sdk[dev]"
 
       - name: Run Ruff
         working-directory: ./sdk
-        run: poetry run ruff check .
+        run: ruff check .
 
       - name: Run Ruff Format
         working-directory: ./sdk
-        run: poetry run ruff format --check .
+        run: ruff format --check .
 
       - name: Run MyPy
         working-directory: ./sdk
-        run: poetry run mypy quantlab --strict
+        run: mypy quantlab --strict
 
   # ============================================================
   # Unit & Integration Tests
@@ -69,21 +60,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'poetry'
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: false
 
       - name: Install dependencies
-        working-directory: ./sdk
-        run: poetry install --no-interaction --no-ansi --with dev
+        run: pip install -e "sdk[dev]"
 
       - name: Run Tests
         working-directory: ./sdk
-        run: poetry run pytest tests/ -q --tb=short --maxfail=5 -x
+        run: pytest -q --tb=short --maxfail=5 --cov=quantlab --cov-report=xml:coverage.xml
 
       - name: Upload Coverage
         uses: codecov/codecov-action@v4
@@ -110,17 +93,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'poetry'
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: false
 
       - name: Install dependencies
-        working-directory: ./sdk
-        run: poetry install --no-interaction --no-ansi --with dev
+        run: pip install -e "sdk[dev]"
 
       - name: Start SQX Daemon
         run: |
@@ -134,7 +109,7 @@ jobs:
         env:
           QUANTLAB_KNOWLEDGE_ROOT: ${{ github.workspace }}/knowledge
         run: |
-          poetry run pytest tests/phase4/ -q --tb=short -k "not slow"
+          pytest tests/phase4/ -q --tb=short -k "not slow"
 
       - name: Stop SQX Daemon
         if: always()
@@ -209,54 +184,13 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: false
-
-      - name: Build & Publish
+      - name: Build
         working-directory: ./sdk
         run: |
-          poetry build
-          poetry publish --username __token__ --password ${{ secrets.PYPI_API_TOKEN }}
+          pip install build
+          python -m build
 
-  # ============================================================
-  # Build Documentation
-  # ============================================================
-  docs:
-    name: Build Documentation
-    runs-on: ubuntu-latest
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: ${{ env.POETRY_VERSION }}
-          virtualenvs-create: false
-
-      - name: Install docs dependencies
-        working-directory: ./sdk
-        run: poetry install --no-interaction --no-ansi --with docs
-
-      - name: Build docs
-        working-directory: ./sdk
-        run: |
-          poetry run mkdocs build --site-dir ../../docs/html --strict
-
-      - name: Deploy to GitHub Pages
-        if: github.ref == 'refs/heads/main'
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/html
-          force_orphan: true
+          packages-dir: sdk/dist
