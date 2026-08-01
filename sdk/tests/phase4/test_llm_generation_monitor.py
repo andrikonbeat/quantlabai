@@ -36,6 +36,7 @@ from quantlab.sqx.llm_generation_monitor import (
     build_prompt,
     parse_verdict,
 )
+from quantlab.sqx.campaign_monitor import extract_results_count
 
 
 def make_snapshot(**overrides: object) -> MonitorSnapshot:
@@ -495,6 +496,28 @@ class TestParseDatabankCounts:
         THEN the single mapping is returned.
         """
         assert parse_databank_counts("Results, Records: 12\n") == {"Results": 12}
+
+    def test_extract_results_count_space_variant(self) -> None:
+        """GIVEN status text with 'Strategies generated  58' (space separator)
+        WHEN extract_results_count is called
+        THEN 58 is returned.
+        """
+        assert extract_results_count("Strategies generated  58\nAccepted: 0\n") == 58
+
+    def test_extract_results_count_colon_variant(self) -> None:
+        """GIVEN status text with 'Strategies generated: 58' (colon separator)
+        WHEN extract_results_count is called
+        THEN 58 is returned (spec: both variants accepted).
+        """
+        assert extract_results_count("Strategies generated: 58\nAccepted: 0\n") == 58
+
+    def test_extract_results_count_unparseable_returns_zero(self) -> None:
+        """GIVEN status text with no parseable count
+        WHEN extract_results_count is called
+        THEN 0 is returned without raising.
+        """
+        assert extract_results_count("Generation in progress\n") == 0
+        assert extract_results_count("") == 0
 
     def test_case_insensitive_label(self) -> None:
         """GIVEN an uppercase label

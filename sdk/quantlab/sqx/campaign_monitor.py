@@ -99,7 +99,7 @@ def extract_results_count(status_text: str) -> int:
     if not status_text:
         return 0
 
-    m = re.search(r"Strategies\s+generated\s+(\d+)", status_text, re.IGNORECASE)
+    m = re.search(r"Strategies\s+generated\s*:?\s*(\d+)", status_text, re.IGNORECASE)
     if m:
         try:
             return int(m.group(1))

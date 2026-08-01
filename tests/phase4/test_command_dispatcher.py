@@ -329,6 +329,56 @@ class TestCommandDispatcherOperations:
             assert "23:45:22" not in projects  # Should strip timestamps
             assert len(projects) == 4
 
+    # ── list_databanks ─────────────────────────────────────────────────────
+
+    @pytest.mark.asyncio
+    async def test_list_databanks(self):
+        databank_text = (
+            "23:45:22 List of available databanks\n"
+            "-------------------------------------------\n"
+            "Results, Records: 3\n"
+            "Initial population, Records: 0\n"
+            "Last generation, Records: 0\n"
+        )
+
+        with patch.object(self.client, "send_command", new_callable=AsyncMock) as mock_send:
+            mock_send.return_value = databank_text
+
+            counts = await self.dispatcher.list_databanks()
+
+            assert counts == {
+                "Results": 3,
+                "Initial population": 0,
+                "Last generation": 0,
+            }
+            mock_send.assert_awaited_once_with("-databank action=list")
+
+    @pytest.mark.asyncio
+    async def test_list_databanks_colonless_and_banner_skipped(self):
+        databank_text = (
+            "List of available databanks\n"
+            "-------------------------------------------\n"
+            "Results, Records 5\n"  # colon optional
+            "Strategies, Records: 2\n"
+            "garbage line\n"  # unparseable → skipped
+        )
+
+        with patch.object(self.client, "send_command", new_callable=AsyncMock) as mock_send:
+            mock_send.return_value = databank_text
+
+            counts = await self.dispatcher.list_databanks()
+
+            assert counts == {"Results": 5, "Strategies": 2}
+
+    @pytest.mark.asyncio
+    async def test_list_databanks_unparseable_returns_empty(self):
+        with patch.object(self.client, "send_command", new_callable=AsyncMock) as mock_send:
+            mock_send.return_value = "no databank lines here\n"
+
+            counts = await self.dispatcher.list_databanks()
+
+            assert counts == {}
+
     # ── export_results ─────────────────────────────────────────────────────
 
     @pytest.mark.asyncio

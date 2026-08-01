@@ -319,6 +319,30 @@ class CommandDispatcher:
 
         return await self._run_with_lock(_op())
 
+    async def list_databanks(self) -> dict[str, int]:
+        """List per-databank record counts via ``-databank action=list``.
+
+        Returns a mapping of databank name → record count, parsed
+        defensively. Any unparseable line is skipped; if the entire
+        output is unparseable the result is an empty dict (never raises).
+        """
+        async def _op() -> dict[str, int]:
+            text = await self._send("-databank action=list")
+            counts: dict[str, int] = {}
+            for line in text.splitlines():
+                # Expect: "Results, Records: 3" (colon and comma optional,
+                # case-insensitive). Banner/separator lines are skipped.
+                m = re.search(
+                    r"^([^,]+),?\s+Records\s*:?\s*(\d+)$",
+                    line.strip(),
+                    re.IGNORECASE,
+                )
+                if m:
+                    counts[m.group(1).strip()] = int(m.group(2))
+            return counts
+
+        return await self._run_with_lock(_op())
+
     async def list_projects(self) -> list[str]:
         """List all available projects via ``-project action=list``.
 
