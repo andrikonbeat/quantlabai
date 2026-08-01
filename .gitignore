@@ -42,3 +42,26 @@ databanks/
 # Generated output files
 _output/
 reports/
+
+# Local tooling / caches
+.codegraph/
+.evolution_pool/
+sdk/.evolution_pool/
+.atl/.skill-registry.cache.json
+
+# SQX runtime artifacts (generated data, temp/lock DBs, wizard state)
+assets/**/internal/testfiles/
+assets/**/user/data/*.h2.db
+assets/**/user/data/*.temp.db
+assets/**/user/data/*.lock.db
+assets/**/user/data/*.version
+assets/**/user/settings/wizard.txt
+
+# Deployment scratch / run artifacts
+deploy/
+notifications.jsonl
+analysis/
+
+# Stray junk
+=3.0
+_run_campaign.py
