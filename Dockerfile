@@ -83,9 +83,7 @@ FROM python:3.11-slim AS base
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    POETRY_VERSION=1.8.3 \
-    POETRY_VIRTUALENVS_CREATE=false
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -93,22 +91,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
-
 WORKDIR /app
 
-# Install dependencies first (for caching)
-COPY sdk/pyproject.toml sdk/poetry.lock* ./
-RUN poetry install --only=main --no-interaction --no-ansi
-
-# Copy source code
+# Install the package via setuptools build-system (sdk/pyproject.toml)
+COPY sdk/pyproject.toml ./
 COPY sdk/quantlab ./quantlab
+RUN pip install --no-cache-dir -e .
+
+# Copy source data
 COPY pipelines ./pipelines
 COPY knowledge ./knowledge
 COPY reports ./reports
-
-# Install the package
-RUN pip install --no-cache-dir -e .
 
 # Create non-root user
 RUN groupadd -r quantlab && useradd -r -g quantlab -d /app -s /bin/bash quantlab
@@ -119,7 +112,7 @@ ENV PATH="/home/quantlab/.local/bin:$PATH"
 
 EXPOSE 8080
 
-CMD ["python", "-m", "quantlab.cli", "api"]
+CMD ["quantlab", "api"]
 
 
 # ============================================================
@@ -154,4 +147,4 @@ ENV QUANTLAB_ENV=production
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD python -c "import quantlab; print('OK')" || exit 1
 
-CMD ["python", "-m", "quantlab.cli", "api"]
+CMD ["quantlab", "api"]
