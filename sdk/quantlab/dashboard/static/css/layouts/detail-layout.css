@@ -1,0 +1,59 @@
+/* ==========================================================================
+   Detail Layout — variant for detail pages (campaign detail, etc.)
+   Layer: layouts
+   ========================================================================== */
+
+@layer layouts {
+  .detail-layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    min-height: 100vh;
+  }
+
+  .detail-layout__sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--color-bg-secondary);
+    border-right: 1px solid var(--color-border);
+  }
+
+  .detail-layout__content {
+    overflow-y: auto;
+    padding: var(--space-lg);
+    min-width: 0;
+  }
+
+  .detail-layout__header {
+    margin-bottom: var(--space-lg);
+  }
+
+  .detail-layout__header h1 {
+    margin-bottom: var(--space-xs);
+  }
+
+  .detail-layout__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  /* ── Responsive: ≤1200px ─────────────────────────────────────────── */
+  @media (max-width: 1200px) {
+    .detail-layout {
+      grid-template-columns: 48px 1fr;
+    }
+  }
+
+  /* ── Responsive: ≤768px ──────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .detail-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .detail-layout__sidebar {
+      display: none;
+    }
+  }
+}

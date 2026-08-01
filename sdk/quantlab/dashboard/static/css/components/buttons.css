@@ -1,0 +1,118 @@
+/* ==========================================================================
+   Buttons — BEM component
+   Layer: components
+   ========================================================================== */
+
+@layer components {
+  /* ── Base ─────────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-500);
+    line-height: 1;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+    user-select: none;
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ── Variants ─────────────────────────────────────────────────────── */
+  .btn--primary {
+    background: var(--color-primary);
+    color: hsl(0, 0%, 100%);
+    border-color: var(--color-primary);
+  }
+
+  .btn--primary:hover {
+    background: var(--color-text);
+    border-color: var(--color-text);
+    color: var(--color-bg);
+  }
+
+  .btn--secondary {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text);
+    border-color: var(--color-border);
+  }
+
+  .btn--secondary:hover {
+    background: var(--color-border-hover);
+    border-color: var(--color-border-hover);
+  }
+
+  .btn--danger {
+    background: var(--color-danger);
+    color: hsl(0, 0%, 100%);
+    border-color: var(--color-danger);
+  }
+
+  .btn--danger:hover {
+    background: hsl(0, 75%, 45%);
+    border-color: hsl(0, 75%, 45%);
+  }
+
+  .btn--ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border-color: transparent;
+  }
+
+  .btn--ghost:hover {
+    background: var(--color-bg-tertiary);
+    color: var(--color-text);
+  }
+
+  /* ── Size modifiers ───────────────────────────────────────────────── */
+  .btn--sm {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: var(--text-xs);
+    border-radius: var(--radius-sm);
+  }
+
+  .btn--icon {
+    padding: var(--space-xs);
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* ── prefers-reduced-motion ───────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .btn {
+      transition: none;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}

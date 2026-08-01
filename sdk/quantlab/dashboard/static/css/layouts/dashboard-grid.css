@@ -1,0 +1,77 @@
+/* ==========================================================================
+   Dashboard Grid — sidebar + main content layout
+   Layer: layouts
+   ========================================================================== */
+
+@layer layouts {
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr;
+    min-height: 100vh;
+  }
+
+  .dashboard-grid__sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--color-bg-secondary);
+    border-right: 1px solid var(--color-border);
+  }
+
+  .dashboard-grid__main {
+    overflow-y: auto;
+    padding: var(--space-lg);
+    min-width: 0;
+  }
+
+  /* ── Sidebar toggle (hidden by default, shown on collapse) ────────── */
+  .dashboard-grid__toggle {
+    display: none;
+  }
+
+  /* ── Responsive: ≤1200px — collapse sidebar to icon-only ──────────── */
+  @media (max-width: 1200px) {
+    .dashboard-grid {
+      grid-template-columns: 48px 1fr;
+    }
+
+    .dashboard-grid__sidebar {
+      width: 48px;
+      overflow: hidden;
+    }
+  }
+
+  /* ── Responsive: ≤768px — full collapse, sidebar overlay ──────────── */
+  @media (max-width: 768px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .dashboard-grid__sidebar {
+      position: fixed;
+      top: var(--header-height);
+      left: 0;
+      width: var(--sidebar-width);
+      height: calc(100vh - var(--header-height));
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform var(--duration-normal) var(--ease-out);
+    }
+
+    .dashboard-grid__sidebar--open {
+      transform: translateX(0);
+    }
+
+    .dashboard-grid__toggle {
+      display: flex;
+    }
+  }
+
+  /* ── prefers-reduced-motion ────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .dashboard-grid__sidebar {
+      transition: none;
+    }
+  }
+}

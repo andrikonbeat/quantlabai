@@ -1,0 +1,255 @@
+/* ==========================================================================
+   Data Table — BEM component with sort, pagination, states
+   Layer: components
+   ========================================================================== */
+
+@layer components {
+  /* ── Container ─────────────────────────────────────────────────────── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+
+  /* ── Header ────────────────────────────────────────────────────────── */
+  .data-table__header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .data-table__header th {
+    background: var(--color-bg-tertiary);
+    padding: var(--space-sm) var(--space-md);
+    text-align: left;
+    font-weight: var(--weight-600);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  /* ── Sort ──────────────────────────────────────────────────────────── */
+  .data-table__sort {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  .data-table__sort:hover {
+    color: var(--color-text);
+  }
+
+  .data-table__sort:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+
+  .data-table__sort::after {
+    content: "";
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: var(--space-xs);
+    vertical-align: middle;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid var(--color-text-muted);
+    opacity: 0.3;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .data-table__sort:hover::after {
+    opacity: 0.7;
+  }
+
+  .data-table__sort--asc::after {
+    border-top: none;
+    border-bottom: 4px solid var(--color-primary);
+    opacity: 1;
+  }
+
+  .data-table__sort--desc::after {
+    border-top: 4px solid var(--color-primary);
+    opacity: 1;
+  }
+
+  /* ── Cells ─────────────────────────────────────────────────────────── */
+  .data-table__cell {
+    padding: var(--space-sm) var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+    vertical-align: middle;
+  }
+
+  .data-table__cell--number {
+    font-family: var(--font-mono);
+    text-align: right;
+  }
+
+  .data-table__cell--positive {
+    color: var(--color-success);
+  }
+
+  .data-table__cell--negative {
+    color: var(--color-danger);
+  }
+
+  /* ── Rows ──────────────────────────────────────────────────────────── */
+  .data-table__row {
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .data-table__row:hover {
+    background: var(--color-bg-tertiary);
+  }
+
+  .data-table__row:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+
+  .data-table__row--selected {
+    background: rgba(88, 166, 255, 0.08);
+  }
+
+  .data-table__row--selected:hover {
+    background: rgba(88, 166, 255, 0.12);
+  }
+
+  .data-table__row--clickable {
+    cursor: pointer;
+  }
+
+  /* ── Pagination ────────────────────────────────────────────────────── */
+  .data-table__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: var(--space-md);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .data-table__pagination button {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 var(--space-xs);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
+  }
+
+  .data-table__pagination button:hover:not(:disabled) {
+    background: var(--color-bg-tertiary);
+    border-color: var(--color-border-hover);
+  }
+
+  .data-table__pagination button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .data-table__pagination button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .data-table__pagination button.active {
+    background: var(--color-primary);
+    color: hsl(0, 0%, 100%);
+    border-color: var(--color-primary);
+  }
+
+  .data-table__pagination-info {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    padding: 0 var(--space-sm);
+  }
+
+  /* ── States ────────────────────────────────────────────────────────── */
+  .data-table__empty {
+    text-align: center;
+    padding: var(--space-2xl) var(--space-md);
+    color: var(--color-text-muted);
+    font-size: var(--text-base);
+  }
+
+  .data-table__error {
+    text-align: center;
+    padding: var(--space-xl) var(--space-md);
+    color: var(--color-danger);
+    background: rgba(248, 81, 73, 0.08);
+    border: 1px solid rgba(248, 81, 73, 0.2);
+    border-radius: var(--radius-md);
+    margin: var(--space-md) 0;
+  }
+
+  .data-table__error button {
+    margin-top: var(--space-sm);
+  }
+
+  /* ── Responsive: ≤768px — card layout ──────────────────────────────── */
+  @media (max-width: 768px) {
+    .data-table thead {
+      display: none;
+    }
+
+    .data-table,
+    .data-table tbody,
+    .data-table tr,
+    .data-table td {
+      display: block;
+    }
+
+    .data-table__row {
+      padding: var(--space-md);
+      margin-bottom: var(--space-sm);
+      background: var(--color-bg-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+    }
+
+    .data-table__cell {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-xs) 0;
+      border-bottom: none;
+      border-bottom: 1px solid var(--color-border-subtle);
+    }
+
+    .data-table__cell:last-child {
+      border-bottom: none;
+    }
+
+    .data-table__cell::before {
+      content: attr(data-label);
+      font-size: var(--text-xs);
+      font-weight: var(--weight-600);
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+    }
+
+    .data-table__pagination {
+      flex-wrap: wrap;
+    }
+  }
+
+  /* ── prefers-reduced-motion ────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .data-table__row,
+    .data-table__sort,
+    .data-table__pagination button {
+      transition: none;
+    }
+  }
+}

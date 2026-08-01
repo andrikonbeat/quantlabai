@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Campaigns — QuantLab Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <aside class="dashboard-grid__sidebar" aria-label="Campaigns">
+        <div id="campaign-list-sidebar"></div>
+    </aside>
+
+    <section class="dashboard-grid__main" aria-label="Campaign list">
+        <div class="panel-header">
+            <h1>Campaign Overview</h1>
+            <div class="summary-stats">
+                <div class="stat-card">
+                    <span class="stat-value" id="total-campaigns">0</span>
+                    <span class="stat-label">Total</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="running-campaigns">0</span>
+                    <span class="stat-label">Running</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="completed-campaigns">0</span>
+                    <span class="stat-label">Completed</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search & Filters -->
+        <div class="filter-bar">
+            <div class="form-search">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="campaign-search" class="form-input" placeholder="Search campaigns..." aria-label="Search campaigns">
+            </div>
+            <select id="status-filter" class="form-select" aria-label="Filter by status">
+                <option value="">All Status</option>
+                <option value="running">Running</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="pending">Pending</option>
+            </select>
+            <select id="market-filter" class="form-select" aria-label="Filter by market">
+                <option value="">All Markets</option>
+            </select>
+        </div>
+
+        <!-- Skeleton container (shown during loading) -->
+        <div id="skeleton-container" style="display:none"></div>
+
+        <!-- Error state container (hidden by default) -->
+        <div id="error-container" style="display:none"></div>
+
+        <!-- Empty state container (hidden by default) -->
+        <div id="empty-container" style="display:none"></div>
+
+        <!-- Table container -->
+        <div id="table-container" class="table-container" style="display:none">
+            <table class="data-table" role="table">
+                <thead class="data-table__header">
+                    <tr>
+                        <th><span class="data-table__sort" data-column="name" aria-sort="none">Campaign</span></th>
+                        <th><span class="data-table__sort" data-column="market" aria-sort="none">Market</span></th>
+                        <th><span class="data-table__sort" data-column="timeframe" aria-sort="none">Timeframe</span></th>
+                        <th><span class="data-table__sort" data-column="status" aria-sort="none">Status</span></th>
+                        <th><span class="data-table__sort" data-column="sharpe" aria-sort="none">Sharpe</span></th>
+                        <th><span class="data-table__sort" data-column="profit_factor" aria-sort="none">Profit Factor</span></th>
+                        <th><span class="data-table__sort" data-column="win_rate" aria-sort="none">Win Rate</span></th>
+                        <th><span class="data-table__sort" data-column="total_return" aria-sort="none">Total Return</span></th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="campaign-table-body"></tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div class="data-table__pagination" id="pagination">
+                <button class="btn btn--sm btn--secondary" id="prev-page" disabled aria-label="Previous page">←</button>
+                <span class="data-table__pagination-info" id="page-info">Page 1 of 1</span>
+                <button class="btn btn--sm btn--secondary" id="next-page" disabled aria-label="Next page">→</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Notification container for toast messages -->
+<div id="toast-container" role="alert" aria-live="polite" style="position:fixed;top:var(--space-md);right:var(--space-md);z-index:10000"></div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

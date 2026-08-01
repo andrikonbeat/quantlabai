@@ -1,0 +1,114 @@
+/* ==========================================================================
+   Tabs — BEM component with full ARIA support
+   Layer: components
+   ========================================================================== */
+
+@layer components {
+  /* ── Tab List ──────────────────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .tabs__list {
+    display: flex;
+    gap: var(--space-xs);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* ── Tab Button ────────────────────────────────────────────────────── */
+  .tabs__tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-500);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .tabs__tab::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--color-primary);
+    transform: scaleX(0);
+    transition: transform var(--duration-normal) var(--ease-out);
+  }
+
+  .tabs__tab:hover {
+    color: var(--color-text-secondary);
+    background: var(--color-bg-tertiary);
+  }
+
+  .tabs__tab:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+  }
+
+  /* ── Active Tab ────────────────────────────────────────────────────── */
+  .tabs__tab--active,
+  [role="tab"][aria-selected="true"] {
+    color: var(--color-primary);
+  }
+
+  .tabs__tab--active::after,
+  [role="tab"][aria-selected="true"]::after {
+    transform: scaleX(1);
+  }
+
+  /* ── Tab Panel ────────────────────────────────────────────────────── */
+  .tabs__panel {
+    display: none;
+    padding: var(--space-md) 0;
+    animation: tabs-fade-in var(--duration-normal) var(--ease-out);
+  }
+
+  .tabs__panel--active,
+  [role="tabpanel"]:not([hidden]) {
+    display: block;
+  }
+
+  /* ── Fade In Animation ─────────────────────────────────────────────── */
+  @keyframes tabs-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ── prefers-reduced-motion ────────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .tabs__tab {
+      transition: none;
+    }
+
+    .tabs__tab::after {
+      transition: none;
+    }
+
+    .tabs__panel {
+      animation: none;
+    }
+  }
+}

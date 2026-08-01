@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Statistics Dashboard — QuantLab Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid detail-layout">
+    <aside class="sidebar" role="complementary" aria-label="Statistics filters">
+        <div class="sidebar__header">
+            <h2 class="sidebar__title">Statistics</h2>
+        </div>
+        <div class="sidebar__section">
+            <div class="filter-bar">
+                <label for="stats-market-filter" class="sr-only">Market filter</label>
+                <select id="stats-market-filter" class="form-select" aria-label="Filter by market">
+                    <option value="">All Markets</option>
+                </select>
+                <label for="stats-timeframe-filter" class="sr-only">Timeframe filter</label>
+                <select id="stats-timeframe-filter" class="form-select" aria-label="Filter by timeframe">
+                    <option value="">All Timeframes</option>
+                </select>
+                <label for="stats-start-date" class="sr-only">Start date</label>
+                <input type="date" id="stats-start-date" class="form-input" aria-label="Start date">
+                <label for="stats-end-date" class="sr-only">End date</label>
+                <input type="date" id="stats-end-date" class="form-input" aria-label="End date">
+            </div>
+            <div class="filter-bar">
+                <label for="stats-chart-type" class="sr-only">Chart type</label>
+                <select id="stats-chart-type" class="form-select" aria-label="Select chart type">
+                    <option value="sharpe">Sharpe Distribution</option>
+                    <option value="drawdown">Max Drawdown</option>
+                    <option value="winrate">Win Rate</option>
+                    <option value="return">Total Return</option>
+                    <option value="benchmark">Benchmark Comparison</option>
+                </select>
+                <label class="checkbox-label" for="stats-show-benchmark">
+                    <input type="checkbox" id="stats-show-benchmark" aria-label="Show benchmark overlay">
+                    <span>Show Benchmark</span>
+                </label>
+            </div>
+        </div>
+    </aside>
+
+    <section class="main-panel detail-panel" role="region" aria-label="Statistics dashboard content">
+        <div class="detail-header">
+            <h1>Statistics Dashboard</h1>
+        </div>
+
+        <!-- Error state -->
+        <div id="stats-error" class="data-table__error" role="alert" style="display:none;"></div>
+
+        <!-- Empty state -->
+        <div id="stats-empty" style="display:none;"></div>
+
+        <!-- KPI Cards -->
+        <div class="metrics-cards" id="stats-summary" aria-label="Summary statistics">
+            <div id="stats-kpi-skeleton" style="display:none;" aria-hidden="true"></div>
+            <div id="mc-sharpe" class="metric-card-wrapper"></div>
+            <div id="mc-drawdown" class="metric-card-wrapper"></div>
+            <div id="mc-winrate" class="metric-card-wrapper"></div>
+            <div id="mc-return" class="metric-card-wrapper"></div>
+        </div>
+
+        <!-- Main Chart -->
+        <div class="chart-container chart-container--large" id="main-chart-container" aria-label="Main distribution chart">
+            <div class="chart-container__header">
+                <h2 id="chart-title" class="chart-container__title">Sharpe Ratio Distribution</h2>
+            </div>
+            <div class="chart-container__body" aria-busy="true">
+                <div id="main-chart" class="plotly-chart plotly-chart--large"></div>
+                <div id="stats-main-chart-skeleton" class="skeleton skeleton--chart" aria-hidden="true" style="display:none;"></div>
+            </div>
+        </div>
+
+        <!-- Chart Grid: 4 distribution charts -->
+        <div class="charts-grid" id="charts-grid" aria-label="Distribution charts grid">
+            <div id="stats-grid-skeleton" aria-hidden="true" style="display:none;"></div>
+
+            <div class="chart-container" id="drawdown-chart-container">
+                <div class="chart-container__header">
+                    <h3 class="chart-container__title">Drawdown Distribution</h3>
+                </div>
+                <div class="chart-container__body">
+                    <div id="drawdown-chart" class="plotly-chart"></div>
+                </div>
+            </div>
+            <div class="chart-container" id="winrate-chart-container">
+                <div class="chart-container__header">
+                    <h3 class="chart-container__title">Win Rate Distribution</h3>
+                </div>
+                <div class="chart-container__body">
+                    <div id="winrate-chart" class="plotly-chart"></div>
+                </div>
+            </div>
+            <div class="chart-container" id="return-chart-container">
+                <div class="chart-container__header">
+                    <h3 class="chart-container__title">Return Distribution</h3>
+                </div>
+                <div class="chart-container__body">
+                    <div id="return-chart" class="plotly-chart"></div>
+                </div>
+            </div>
+            <div class="chart-container" id="benchmark-chart-container">
+                <div class="chart-container__header">
+                    <h3 class="chart-container__title">Benchmark Comparison</h3>
+                </div>
+                <div class="chart-container__body">
+                    <div id="benchmark-chart" class="plotly-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Table -->
+        <div class="table-container" id="stats-table-container">
+            <h2 class="chart-container__title" style="margin-bottom:var(--space-md);">Campaign Statistics</h2>
+            <div style="overflow-x:auto;">
+                <table class="data-table" id="stats-table" role="table">
+                    <thead class="data-table__header">
+                        <tr>
+                            <th class="data-table__sort" role="columnheader" aria-sort="none" data-sort="name">Campaign</th>
+                            <th class="data-table__sort" role="columnheader" aria-sort="none" data-sort="market">Market</th>
+                            <th class="data-table__sort" role="columnheader" aria-sort="none" data-sort="timeframe">Timeframe</th>
+                            <th class="data-table__sort data-table__cell--number" role="columnheader" aria-sort="none" data-sort="sharpe">Sharpe</th>
+                            <th class="data-table__sort data-table__cell--number" role="columnheader" aria-sort="none" data-sort="max_drawdown">Max DD</th>
+                            <th class="data-table__sort data-table__cell--number" role="columnheader" aria-sort="none" data-sort="win_rate">Win Rate</th>
+                            <th class="data-table__sort data-table__cell--number" role="columnheader" aria-sort="none" data-sort="profit_factor">Profit Factor</th>
+                            <th class="data-table__sort data-table__cell--number" role="columnheader" aria-sort="none" data-sort="total_return">Total Return</th>
+                            <th class="data-table__sort data-table__cell--number" role="columnheader" aria-sort="none" data-sort="trade_count">Trades</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stats-table-body" aria-live="polite">
+                        <tr><td colspan="9" class="data-table__empty">Loading campaign statistics...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination -->
+            <div id="stats-pagination" class="data-table__pagination" style="display:none;"></div>
+        </div>
+    </section>
+</div>
+
+<div class="toast-container" id="stats-toast" aria-live="polite" aria-relevant="additions"></div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Scripts loaded via base.html module system -->
+{% endblock %}

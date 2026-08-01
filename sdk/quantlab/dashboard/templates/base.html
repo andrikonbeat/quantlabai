@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <title>{% block title %}QuantLab Dashboard{% endblock %}</title>
+    {% block head_scripts %}{% endblock %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Layered CSS architecture: @layer reset, tokens, base, components, layouts, utilities -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/buttons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/badges.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/forms.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/metric-card.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/chart-container.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/tabs.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/sidebar.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/skeleton.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/empty-state.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/data-table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components/modal-toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layouts/dashboard-grid.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layouts/detail-layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
+
+    <header class="top-bar" role="banner">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M18 20V10M12 20V4M6 20V16"/>
+            </svg>
+            <span>QuantLab</span>
+        </div>
+        <nav class="nav-tabs" role="navigation" aria-label="Main navigation">
+            <a href="/" class="{% if request.path == '/' %}active{% endif %}">Campaigns</a>
+            <a href="/pipeline" class="{% if request.path == '/pipeline' %}active{% endif %}">Pipeline</a>
+            <a href="/stats" class="{% if request.path == '/stats' %}active{% endif %}">Statistics</a>
+        </nav>
+        <div class="status-indicator">
+            <span class="dot" id="health-dot"></span>
+            <span id="health-text">Connected</span>
+        </div>
+    </header>
+
+    <main id="main-content" class="main-content" role="main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer" role="contentinfo">
+        <span>QuantLab Dashboard v0.1.0</span>
+        <span id="last-update"></span>
+    </footer>
+
+    <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

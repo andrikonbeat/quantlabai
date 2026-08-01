@@ -1,0 +1,138 @@
+/* ==========================================================================
+   Forms — BEM component for input, select, checkbox, search
+   Layer: components
+   ========================================================================== */
+
+@layer components {
+  /* ── Shared input styles ──────────────────────────────────────────── */
+  .form-input,
+  .form-select,
+  .form-date {
+    display: block;
+    width: 100%;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-family: var(--font-family);
+    line-height: 1.5;
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  .form-input::placeholder,
+  .form-select::placeholder,
+  .form-date::placeholder {
+    color: var(--color-text-disabled);
+  }
+
+  .form-input:hover:not(:disabled),
+  .form-select:hover:not(:disabled),
+  .form-date:hover:not(:disabled) {
+    border-color: var(--color-border-hover);
+  }
+
+  .form-input:focus,
+  .form-select:focus,
+  .form-date:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+  }
+
+  .form-input:disabled,
+  .form-select:disabled,
+  .form-date:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ── Select ───────────────────────────────────────────────────────── */
+  .form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-sm) center;
+    padding-right: var(--space-xl);
+    cursor: pointer;
+  }
+
+  /* ── Checkbox ─────────────────────────────────────────────────────── */
+  .form-checkbox {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .form-checkbox:hover {
+    border-color: var(--color-border-hover);
+  }
+
+  .form-checkbox:checked {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+
+  .form-checkbox:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .form-checkbox:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* ── Search (with icon) ───────────────────────────────────────────── */
+  .form-search {
+    position: relative;
+  }
+
+  .form-search .form-input {
+    padding-left: var(--space-xl);
+  }
+
+  .form-search__icon {
+    position: absolute;
+    left: var(--space-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    pointer-events: none;
+    width: 16px;
+    height: 16px;
+  }
+
+  /* ── Label ────────────────────────────────────────────────────────── */
+  .form-label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-500);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-xs);
+  }
+
+  /* ── prefers-reduced-motion ───────────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    .form-input,
+    .form-select,
+    .form-date,
+    .form-checkbox {
+      transition: none;
+    }
+  }
+}

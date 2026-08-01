@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Pipeline Monitor — QuantLab Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid detail-layout">
+    <aside class="sidebar" role="complementary" aria-label="Pipeline filters">
+        <div class="sidebar__header">
+            <h2>Pipeline Runs</h2>
+            <button class="btn btn--primary btn--sm" id="refresh-pipeline-btn" aria-label="Refresh pipeline runs">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+                Refresh
+            </button>
+        </div>
+        <div class="sidebar__search">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="pipeline-search" class="sidebar__search-input" placeholder="Search runs...">
+        </div>
+        <div class="sidebar__filters">
+            <select id="pipeline-status-filter" class="form-select" aria-label="Filter by status">
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="running">Running</option>
+                <option value="success">Success</option>
+                <option value="failed">Failed</option>
+            </select>
+        </div>
+        <ul class="sidebar__list" id="pipeline-list" aria-live="polite">
+            <li class="sidebar__list-item">
+                <div class="skeleton skeleton--row" aria-hidden="true"></div>
+            </li>
+            <li class="sidebar__list-item">
+                <div class="skeleton skeleton--row" aria-hidden="true"></div>
+            </li>
+        </ul>
+    </aside>
+
+    <section class="main-panel detail-panel" role="region" aria-label="Pipeline monitor">
+        <div class="detail-header">
+            <h1>Pipeline Monitor</h1>
+        </div>
+
+        <!-- Overview Stats -->
+        <div id="pipeline-overview" aria-busy="true">
+            <div class="overview-stats">
+                <div class="skeleton skeleton--metric"></div>
+                <div class="skeleton skeleton--metric"></div>
+                <div class="skeleton skeleton--metric"></div>
+                <div class="skeleton skeleton--metric"></div>
+            </div>
+        </div>
+
+        <!-- Pipeline Table -->
+        <div class="table-container">
+            <table class="data-table" id="pipeline-table" aria-label="Pipeline runs">
+                <thead class="data-table__header">
+                    <tr>
+                        <th scope="col">Run ID</th>
+                        <th scope="col">Pipeline</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Started</th>
+                        <th scope="col">Duration</th>
+                        <th scope="col">Stages</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pipeline-table-body">
+                    <tr>
+                        <td colspan="7">
+                            <div class="skeleton skeleton--row"></div>
+                            <div class="skeleton skeleton--row"></div>
+                            <div class="skeleton skeleton--row"></div>
+                            <div class="skeleton skeleton--row"></div>
+                            <div class="skeleton skeleton--row"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Stage Detail -->
+        <div id="stage-detail" class="hidden" role="region" aria-label="Stage details">
+            <div class="stage-detail__header">
+                <h2 id="stage-run-title">Stage Details</h2>
+                <button class="btn btn--secondary btn--sm" id="close-stage-detail">Close</button>
+            </div>
+            <div class="stage-detail__progress" id="stage-progress">
+                <!-- Stages rendered here -->
+            </div>
+            <div class="log-panel">
+                <div class="log-header">
+                    <h3>Stage Log</h3>
+                    <button class="btn btn--secondary btn--sm" id="clear-log">Clear</button>
+                </div>
+                <pre class="log-content" id="stage-log" aria-live="polite"></pre>
+            </div>
+        </div>
+
+        <!-- Toast container for notifications -->
+        <div class="toast-container" aria-live="polite" role="alert"></div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+    import initPipelineMonitor from "{{ url_for('static', filename='js/pages/PipelineMonitor.js') }}";
+    initPipelineMonitor();
+</script>
+{% endblock %}

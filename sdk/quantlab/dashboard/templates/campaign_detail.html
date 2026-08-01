@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}{{ campaign.name if campaign is defined else 'Campaign Detail' }} — QuantLab Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid detail-layout">
+    <aside class="sidebar detail-layout__sidebar">
+        <div class="sidebar__header">
+            <h2>Campaigns</h2>
+            <a href="/" class="btn btn--secondary btn--sm">← Back</a>
+        </div>
+        <div class="sidebar__search">
+            <svg class="sidebar__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="campaign-search" placeholder="Search campaigns..." aria-label="Search campaigns">
+        </div>
+        <div id="campaign-list" class="sidebar__items" role="navigation" aria-label="Campaign list"></div>
+    </aside>
+
+    <section class="detail-layout__content main-panel">
+        <!-- Error Container -->
+        <div id="error-container" class="detail-error-container" style="display:none;" role="alert"></div>
+
+        <!-- Toast Container -->
+        <div id="toast-container" class="toast-container" aria-live="polite" aria-relevant="additions"></div>
+
+        <!-- Detail Header -->
+        <div class="detail-layout__header" id="detail-header">
+            <div class="campaign-meta">
+                <h1 id="campaign-name">Loading...</h1>
+                <div class="meta-tags">
+                    <span id="status-badge"><span class="badge badge--pending">Loading</span></span>
+                    <span class="meta-item" id="market-tag">Market: —</span>
+                    <span class="meta-item" id="timeframe-tag">Timeframe: —</span>
+                    <span class="meta-item" id="date-range-tag">Date Range: —</span>
+                </div>
+            </div>
+            <div class="detail-actions">
+                <button class="btn btn--primary" id="generate-report-btn" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Generate Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="metrics-cards detail" id="metrics-cards" aria-label="Key performance indicators" aria-busy="true">
+            <div class="skeleton skeleton--metric"></div>
+            <div class="skeleton skeleton--metric"></div>
+            <div class="skeleton skeleton--metric"></div>
+            <div class="skeleton skeleton--metric"></div>
+        </div>
+
+        <!-- Tabs (FIXED: tab-pane → tabs__panel, added ARIA) -->
+        <div class="tabs" id="detail-tabs">
+            <div class="tabs__list" role="tablist" aria-orientation="horizontal">
+                <button class="tabs__tab tabs__tab--active" role="tab" aria-selected="true" aria-controls="tab-equity" id="tab-btn-equity" data-tab="equity" tabindex="0">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Equity Curve
+                </button>
+                <button class="tabs__tab" role="tab" aria-selected="false" aria-controls="tab-trades" id="tab-btn-trades" data-tab="trades" tabindex="-1">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                    </svg>
+                    Trades
+                </button>
+                <button class="tabs__tab" role="tab" aria-selected="false" aria-controls="tab-stages" id="tab-btn-stages" data-tab="stages" tabindex="-1">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    Stages
+                </button>
+                <button class="tabs__tab" role="tab" aria-selected="false" aria-controls="tab-reports" id="tab-btn-reports" data-tab="reports" tabindex="-1">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    Reports
+                </button>
+            </div>
+
+            <!-- Tab Panels (FIXED: class="tab-pane" → class="tabs__panel") -->
+            <div class="tabs__panel tabs__panel--active" role="tabpanel" id="tab-equity" aria-labelledby="tab-btn-equity">
+                <div class="chart-container" id="equity-container">
+                    <div class="chart-container__header">
+                        <h3 class="chart-container__title">Equity Curve</h3>
+                    </div>
+                    <div class="chart-container__body">
+                        <div id="equity-chart" class="plotly-chart plotly-chart--normal"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tabs__panel" role="tabpanel" id="tab-trades" aria-labelledby="tab-btn-trades">
+                <div class="table-container">
+                    <table class="trades-table" id="trades-table" role="table">
+                        <thead>
+                            <tr>
+                                <th>Entry Time</th>
+                                <th>Exit Time</th>
+                                <th>Direction</th>
+                                <th>Entry Price</th>
+                                <th>Exit Price</th>
+                                <th>P&amp;L</th>
+                                <th>P&amp;L %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trades-table-body">
+                            <tr class="loading-row"><td colspan="7">Loading trades...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tabs__panel" role="tabpanel" id="tab-stages" aria-labelledby="tab-btn-stages">
+                <div class="stages-list" id="stages-list">
+                    <div class="loading">Loading stages...</div>
+                </div>
+            </div>
+
+            <div class="tabs__panel" role="tabpanel" id="tab-reports" aria-labelledby="tab-btn-reports">
+                <div class="reports-list" id="reports-list">
+                    <div class="loading">Loading reports...</div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module">
+    import init from "{{ url_for('static', filename='js/pages/CampaignDetail.js') }}";
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+{% endblock %}

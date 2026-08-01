@@ -1,0 +1,144 @@
+/* ==========================================================================
+   Base — element defaults, typography, scrollbar
+   Layer: base
+   ========================================================================== */
+
+@layer base {
+  body {
+    font-family: var(--font-family);
+    font-size: var(--text-base);
+    font-weight: var(--weight-400);
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  /* ── Headings ─────────────────────────────────────────────────────── */
+  h1 {
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-700);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-600);
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-600);
+    line-height: 1.4;
+  }
+
+  h4 {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-500);
+    line-height: 1.4;
+  }
+
+  h5 {
+    font-size: var(--text-base);
+    font-weight: var(--weight-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  h6 {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-500);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ── Links ────────────────────────────────────────────────────────── */
+  a {
+    color: var(--color-primary);
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  a:hover {
+    color: var(--color-text);
+  }
+
+  a:visited {
+    color: var(--color-accent);
+  }
+
+  /* ── Selection ────────────────────────────────────────────────────── */
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-text);
+  }
+
+  /* ── Focus visible ────────────────────────────────────────────────── */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* ── Scrollbar (WebKit) ──────────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-bg);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-border-hover);
+  }
+
+  /* ── Scrollbar (Firefox) ─────────────────────────────────────────── */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) var(--color-bg);
+  }
+
+  /* ── Skip link ────────────────────────────────────────────────────── */
+  .skip-link {
+    position: absolute;
+    top: -100%;
+    left: 0;
+    z-index: 10000;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-600);
+    text-decoration: none;
+    border: 2px solid var(--color-primary);
+    border-radius: var(--radius-sm);
+    transition: top var(--duration-fast) var(--ease-out);
+  }
+
+  .skip-link:focus-visible {
+    top: var(--space-sm);
+    left: var(--space-sm);
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  /* ── Global prefers-reduced-motion anchor ─────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+
+    .skip-link {
+      transition: none !important;
+    }
+  }
+}
