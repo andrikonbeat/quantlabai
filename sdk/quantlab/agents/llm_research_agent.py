@@ -27,6 +27,16 @@ from quantlab.dsl.models import (
 )
 from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 
+try:
+    from quantlab.data.news.web_search import WebSearchProvider
+except ImportError:  # pragma: no cover
+    WebSearchProvider = None  # type: ignore[assignment]
+
+try:
+    from quantlab.data.news.rss import RSSNewsProvider
+except ImportError:  # pragma: no cover
+    RSSNewsProvider = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,6 +65,8 @@ class LLMResearchAgent:
         self._circuit_breaker = circuit_breaker or LLMCircuitBreaker()
         self._yahoo: YahooFinanceProvider | None = None
         self._fred: FredProvider | None = None
+        self._web_search: Any = None
+        self._rss_news: Any = None
 
     # ── Provider lazy init ─────────────────────────────────────────────────────
 
@@ -67,6 +79,36 @@ class LLMResearchAgent:
         if self._fred is None:
             self._fred = FredProvider()
         return self._fred
+
+    def _get_web_search(self) -> Any | None:
+        """Lazily initialize the WebSearchProvider singleton.
+
+        Returns ``None`` when the provider is unavailable (missing
+        dependency), matching the guarded-provider contract (NWS-01).
+        """
+        if self._web_search is None:
+            try:
+                if WebSearchProvider is None:  # type: ignore[truthy-function]
+                    return None
+                self._web_search = WebSearchProvider()
+            except ImportError:  # pragma: no cover
+                self._web_search = None
+        return self._web_search
+
+    def _get_rss_news(self) -> Any | None:
+        """Lazily initialize the RSSNewsProvider singleton.
+
+        Returns ``None`` when the provider is unavailable (missing
+        dependency), matching the guarded-provider contract (NWS-01).
+        """
+        if self._rss_news is None:
+            try:
+                if RSSNewsProvider is None:  # type: ignore[truthy-function]
+                    return None
+                self._rss_news = RSSNewsProvider()
+            except ImportError:  # pragma: no cover
+                self._rss_news = None
+        return self._rss_news
 
     # ── Task 2.5: fetch_data ────────────────────────────────────────────────────
 
@@ -161,6 +203,41 @@ class LLMResearchAgent:
             else:
                 macro_formatted[key] = "N/A"
 
+        # News: web search (query = market or objective) + RSS (ticker-scoped)
+        market_query: str = context.get("market") or objective
+        web_provider = self._get_web_search()
+        if web_provider is not None:
+            try:
+                web_results = await web_provider.search_web(market_query)
+                for result in web_results:
+                    news_data.append(
+                        {
+                            "title": getattr(result, "title", ""),
+                            "url": getattr(result, "url", ""),
+                            "summary": getattr(result, "snippet", ""),
+                            "source": getattr(result, "source", ""),
+                        }
+                    )
+            except Exception as exc:
+                logger.warning("Web search fetch failed: %s", exc)
+
+        if ticker:
+            rss_provider = self._get_rss_news()
+            if rss_provider is not None:
+                try:
+                    rss_items = await rss_provider.fetch_news(ticker)
+                    for item in rss_items:
+                        news_data.append(
+                            {
+                                "title": getattr(item, "title", ""),
+                                "url": getattr(item, "url", ""),
+                                "summary": getattr(item, "summary", ""),
+                                "source": getattr(item, "source", ""),
+                            }
+                        )
+                except Exception as exc:
+                    logger.warning("RSS news fetch failed: %s", exc)
+
         return {
             "ticker": ticker,
             "fundamental": fundamental_data,
@@ -236,14 +313,18 @@ class LLMResearchAgent:
         # News section
         news = data.get("news", [])
         if news:
-            articles_text = "\n".join(
-                f"- {a.get('title', '')}: {a.get('summary', '')}"
-                for a in news[:10]
-            )
+            article_lines: list[str] = []
+            for a in news[:10]:
+                line = f"- {a.get('title', '')}: {a.get('summary', '')}"
+                url = a.get("url", "")
+                if url:
+                    line += f" ({url})"
+                article_lines.append(line)
+            articles_text = "\n".join(article_lines) or "No news articles available."
             sections.append(
                 PROMPT_TEMPLATES["news"].format(
                     query=objective,
-                    articles=articles_text or "No news articles available.",
+                    articles=articles_text,
                 )
             )
 

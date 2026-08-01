@@ -57,7 +57,9 @@ PROMPT_TEMPLATES: dict[str, str] = {
         "query '{query}' and generate trading hypotheses.\n\n"
         "News Articles:\n"
         "{articles}\n\n"
-        "Based on news sentiment and content, identify market-moving events, "
-        "catalysts, and potential trading opportunities."
+        "Each article may include its source URL in parentheses. When you "
+        "base a hypothesis on an article, cite that URL in the hypothesis "
+        "source_urls. Based on news sentiment and content, identify "
+        "market-moving events, catalysts, and potential trading opportunities."
     ),
 }

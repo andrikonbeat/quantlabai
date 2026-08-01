@@ -13,9 +13,13 @@ class TestRSSNewsProvider:
         with pytest.raises(ValueError, match="query must not be empty"):
             await provider.fetch_news("")
 
-    async def test_fetch_news_no_feedparser_returns_empty(self) -> None:
+    async def test_fetch_news_no_feedparser_returns_empty(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Simulate missing feedparser: the provider guards the import
+        # (feedparser = None) and returns an empty list without networking.
+        monkeypatch.setattr("quantlab.data.news.rss.feedparser", None)
         provider = RSSNewsProvider()
-        # feedparser not installed → returns empty list
         result = await provider.fetch_news("EURUSD")
         assert result == []
 
@@ -24,8 +28,11 @@ class TestRSSNewsProvider:
         with pytest.raises(NotImplementedError):
             await provider.search_web("test")
 
-    async def test_fetch_delegates_to_fetch_news(self) -> None:
+    async def test_fetch_delegates_to_fetch_news(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         provider = RSSNewsProvider()
+        monkeypatch.setattr("quantlab.data.news.rss.feedparser", None)
         result = await provider.fetch("EURUSD")
         assert "articles" in result
         assert result["query"] == "EURUSD"

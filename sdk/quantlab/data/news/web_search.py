@@ -6,6 +6,7 @@ rate limiting from ``quantlab.data.fundamental``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -121,16 +122,16 @@ class WebSearchProvider(NewsProvider):
                     details={"query": query},
                 ) from exc2
 
-    async def _search_ddgs(self, query: str) -> list[dict[str, Any]]:
-        """Run the duckduckgo-search text query."""
+    def _search_sync(self, query: str) -> list[dict[str, Any]]:
+        """Run the duckduckgo-search text query (sync API)."""
         if DDGS is None:
             return []
+        with DDGS() as ddgs:
+            return list(ddgs.text(query, max_results=10))
 
-        async def _search() -> list[dict[str, Any]]:
-            async with DDGS() as ddgs:
-                return [r async for r in ddgs.text(query, max_results=10)]
-
-        return await _search()
+    async def _search_ddgs(self, query: str) -> list[dict[str, Any]]:
+        """Run the duckduckgo-search text query, off the event loop."""
+        return await asyncio.to_thread(self._search_sync, query)
 
     async def fetch_news(self, query: str, **params: Any) -> list:
         """News fetching is not supported by WebSearchProvider.
