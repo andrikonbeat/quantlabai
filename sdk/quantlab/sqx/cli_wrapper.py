@@ -78,6 +78,7 @@ async def dispatch_campaign(
     confirm_stop: Callable[[Verdict], Awaitable[bool]] | None = None,
     confidence_threshold: float = 0.7,
     poll_every_n: int = 5,
+    build_config: Any = None,
 ) -> dict[str, Any]:
     """Dispatch a campaign to SQX via the daemon-based HTTP API.
 
@@ -148,6 +149,7 @@ async def dispatch_campaign(
                 confirm_stop=confirm_stop,
                 confidence_threshold=confidence_threshold,
                 poll_every_n=poll_every_n,
+                build_config=build_config,
             )
         else:
             # Write CFX to temp file for mock path
@@ -168,6 +170,7 @@ async def dispatch_campaign(
                     confirm_stop=confirm_stop,
                     confidence_threshold=confidence_threshold,
                     poll_every_n=poll_every_n,
+                    build_config=build_config,
                 )
             finally:
                 if os.path.exists(temp_cfx):
@@ -204,6 +207,7 @@ async def _dispatch_real(
     confirm_stop: Callable[[Verdict], Awaitable[bool]] | None = None,
     confidence_threshold: float = 0.7,
     poll_every_n: int = 5,
+    build_config: Any = None,
 ) -> dict[str, Any]:
     """Dispatch using the real SQX daemon (sqcli without arguments).
 
@@ -296,6 +300,7 @@ async def _dispatch_real(
             rankings_min_avg_trades=avg_trades,
             walk_forward=walk_forward,
             monte_carlo=monte_carlo,
+            build_config=build_config,
         )
     except Exception as e:
         logger.error("Failed to create project: %s", e)
@@ -518,12 +523,23 @@ async def _dispatch_mock(
     confirm_stop: Callable[[Verdict], Awaitable[bool]] | None = None,
     confidence_threshold: float = 0.7,
     poll_every_n: int = 5,
+    build_config: Any = None,
 ) -> dict[str, Any]:
     """Dispatch using the mock HTTP server (no real sqcli required).
 
     Also spawns a CampaignMonitor for E2E integration testing.
     """
     base_url = await _ensure_mock_server()
+
+    # Create project directory (versioned dirs must exist for E2E assertions)
+    try:
+        create_project(
+            sqx_install_path=sqx_install_path,
+            campaign_id=campaign_id,
+            build_config=build_config,
+        )
+    except Exception as exc:
+        logger.warning("Mock project creation failed: %s", exc)
 
     # Load config
     await _send_http(base_url, f"-project action=loadconfig name={campaign_id} file={temp_cfx}")

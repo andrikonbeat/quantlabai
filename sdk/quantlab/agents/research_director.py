@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from quantlab.dsl.models import HypothesisConfig, IterationConfig, ResearchConfig
+from quantlab.sqx.project_builder import BuildConfig
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,10 @@ class CampaignRecord:
     result: Any = None
     error: str | None = None
     previous_sharpes: list[float] = field(default_factory=list)
+    best_result_score: float = 0.0
+    best_result_iteration: int = 0
+    best_result_config: Any = None
+    consecutive_worse_count: int = 0
 
 
 class ResearchDirector:
@@ -175,6 +180,7 @@ class ResearchDirector:
             {"name": "refutation", "type": "agent"},
             {"name": "builder", "type": "agent"},
             {"name": "statistics", "type": "agent"},
+            {"name": "analysis", "type": "agent"},
             {"name": "review", "type": "agent"},
             {"name": "portfolio", "type": "agent"},
             {"name": "deploy", "type": "agent"},
@@ -279,6 +285,110 @@ class ResearchDirector:
 
         return pipeline
 
+    # ── Reconfiguration Loop ───────────────────────────────────────────────────
+
+    @staticmethod
+    def apply_iteration_proposal(
+        parameter_changes: dict[str, Any],
+        build_config: BuildConfig,
+    ) -> BuildConfig:
+        """Map ReviewerAgent semantic parameter_changes to BuildConfig fields.
+
+        Returns a new BuildConfig instance with known fields applied.
+        Unknown keys are skipped with a warning. Empty input returns
+        the input config unchanged.
+
+        Args:
+            parameter_changes: Dict of semantic change keys from the reviewer.
+            build_config: Current BuildConfig to mutate.
+
+        Returns:
+            New BuildConfig with applied overrides.
+        """
+        updated = BuildConfig(
+            **{k: v for k, v in build_config.__dict__.items() if v is not None}
+        )
+
+        for key, value in parameter_changes.items():
+            try:
+                if key == "position_size":
+                    factor = float(str(value).replace("x", ""))
+                    updated.population = int(updated.population * factor) if updated.population else None
+
+                elif key == "generations":
+                    val = str(value)
+                    if val.lower() in ("increase",):
+                        updated.generations = (updated.generations or 0) + 20
+                    elif val.lower() in ("decrease",):
+                        updated.generations = (updated.generations or 0) - 20
+                    else:
+                        updated.generations = int(val)
+
+                elif key == "ranking_type":
+                    updated.ranking_type = str(value)
+
+                elif key == "ranking_conditions_type":
+                    updated.ranking_conditions_type = int(value)
+
+                elif key == "min_conditions":
+                    updated.min_conditions = int(value)
+
+                elif key == "max_conditions":
+                    updated.max_conditions = int(value)
+
+                elif key == "sl_required":
+                    if str(value).lower() == "tighter":
+                        updated.sl_required = True
+                        updated.sl_fixed_pips = True
+                        updated.min_sl_pips = 10
+                        updated.max_sl_pips = 30
+
+                elif key == "pt_required":
+                    updated.pt_required = True
+                    updated.pt_fixed_pips = True
+                    updated.min_pt_pips = 20
+
+                elif key == "parameter_space":
+                    if str(value).lower() == "reduce":
+                        updated.islands = 1
+                        updated.decimation_coef = 2
+
+                elif key == "wf_optimization":
+                    delta = 2 if str(value).lower() == "increase" else -2
+                    updated.wf_optimization = max(1, (updated.wf_optimization or 1) + delta)
+
+                else:
+                    logger.warning("Unknown parameter_change key: %s", key)
+
+            except (ValueError, TypeError) as exc:
+                logger.warning("Invalid value for parameter_change '%s': %s (%s)", key, value, exc)
+
+        return updated
+
+    def _evaluate_iteration_score(self, ctx: Any) -> float:
+        """Extract a scalar score for the current iteration result.
+
+        Uses selected_strategies count as primary metric, falling back
+        to aggregate_stats mean when the strategy list is empty.
+
+        Args:
+            ctx: PipelineContext from the most recent run.
+
+        Returns:
+            Numeric score (higher is better).
+        """
+        selected = ctx.artifacts.get("selected_strategies", [])
+        if isinstance(selected, list) and len(selected) > 0:
+            return float(len(selected))
+
+        aggregate = ctx.artifacts.get("aggregate_stats", {})
+        if isinstance(aggregate, dict) and aggregate:
+            values = [v for v in aggregate.values() if isinstance(v, (int, float))]
+            if values:
+                return sum(values) / len(values)
+
+        return 0.0
+
     # ── Task 2.2: Campaign execution ───────────────────────────────────────────
 
     async def execute_campaign(
@@ -307,6 +417,8 @@ class ResearchDirector:
         # Iteration loop
         current_config = config.model_copy(deep=True) if hasattr(config, "model_copy") else config
         max_iterations = config.iteration_config.max_iterations
+        auto_iterate = getattr(config.iteration_config, "auto_iterate", True)
+        current_build_config = BuildConfig()
 
         for iteration in range(max_iterations):
             record.current_iteration = iteration + 1
@@ -316,6 +428,9 @@ class ResearchDirector:
                 cid, iteration + 1, max_iterations,
             )
 
+            # Versioned campaign ID for iterations after the first
+            iter_cid = cid if iteration == 0 else f"{cid}_iter{iteration:02d}"
+
             # Build pipeline with current config
             pipeline = self.build_pipeline(current_config)
 
@@ -324,10 +439,11 @@ class ResearchDirector:
 
             ctx = PipelineContext(
                 config={
-                    "campaign_id": cid,
+                    "campaign_id": iter_cid,
                     "campaign_name": config.campaign,
                     "iteration": iteration,
                     "max_iterations": max_iterations,
+                    "build_config": current_build_config,
                 },
                 metadata={
                     "pipeline_name": f"campaign-{config.campaign}",
@@ -368,7 +484,6 @@ class ResearchDirector:
             try:
                 # External inputs passed as pre-satisfied for contract validation
                 EXTERNAL_INPUTS = {
-                    "selected_strategies",
                     "live_equity",
                     "gate_decision_HUMAN_APPROVE_PORTFOLIO",
                     "gate_decision_HUMAN_APPROVE_DEPLOY",
@@ -407,7 +522,75 @@ class ResearchDirector:
                 record.completed_at = datetime.now(timezone.utc)
                 return record
 
-            # Propose next cycle modifications (task 2.4)
+            # Evaluate iteration score and track best result
+            current_score = self._evaluate_iteration_score(ctx)
+            if current_score > record.best_result_score:
+                record.best_result_score = current_score
+                record.best_result_iteration = iteration + 1
+                record.best_result_config = current_config
+                record.consecutive_worse_count = 0
+            else:
+                record.consecutive_worse_count += 1
+                if record.consecutive_worse_count >= 2:
+                    record.state = CampaignState.CONVERGED
+                    logger.info(
+                        "Campaign '%s' aborted due to consecutive degradation at iteration %d",
+                        cid, iteration + 1,
+                    )
+                    record.completed_at = datetime.now(timezone.utc)
+                    if record.best_result_config is not None:
+                        current_config = record.best_result_config
+                    return record
+
+            # Branch on review decision
+            review_decision = ctx.artifacts.get("review_decision", "")
+            if auto_iterate and review_decision == "ITERATE":
+                iteration_proposal = ctx.artifacts.get("iteration_proposal", {})
+                parameter_changes = (
+                    iteration_proposal.get("parameter_changes", {})
+                    if isinstance(iteration_proposal, dict)
+                    else {}
+                )
+                current_build_config = self.apply_iteration_proposal(
+                    parameter_changes,
+                    current_build_config,
+                )
+
+                # Apply new hypotheses from proposal
+                if isinstance(iteration_proposal, dict):
+                    new_hypotheses = iteration_proposal.get("new_hypotheses", [])
+                    if new_hypotheses:
+                        updated = current_config.model_copy(deep=True) if hasattr(current_config, "model_copy") else current_config
+                        if hasattr(updated, "hypotheses"):
+                            updated.hypotheses = list(updated.hypotheses) + [
+                                HypothesisConfig(
+                                    name=f"reconfig_{iteration}_{i}",
+                                    description=h,
+                                    confidence=0.4,
+                                )
+                                for i, h in enumerate(new_hypotheses)
+                            ]
+                            current_config = updated
+
+                # Continue to next iteration with updated config
+                continue
+
+            elif review_decision == "REJECT":
+                record.state = CampaignState.FAILED
+                record.error = f"Rejected by reviewer at iteration {iteration + 1}"
+                record.completed_at = datetime.now(timezone.utc)
+                return record
+
+            elif review_decision == "APPROVE":
+                record.state = CampaignState.COMPLETED
+                record.completed_at = datetime.now(timezone.utc)
+                return record
+
+            # If auto-iteration is disabled, stop after the current iteration
+            if not auto_iterate:
+                break
+
+            # Propose next cycle modifications (task 2.4) for non-ITERATE paths
             if iteration < max_iterations - 1:
                 current_config = self.propose_next_cycle(ctx, current_config)
 

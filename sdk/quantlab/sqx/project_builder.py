@@ -133,6 +133,8 @@ class BuildConfig:
     max_pt_percent: float | None = None
 
     # ── BuildMode (Genetic) ──
+    generations: int | None = None
+    population: int | None = None
     islands: int | None = None
     migration_modulo: int | None = None
     migration_rate: int | None = None
@@ -499,6 +501,16 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
     ),
 
     # ── BuildMode (Genetic) ──
+    "generations": (
+        r'<MaxGenerations>\d+</MaxGenerations>',
+        r'<MaxGenerations>{value}</MaxGenerations>',
+        "int",
+    ),
+    "population": (
+        r'<PopulationSize>\d+</PopulationSize>',
+        r'<PopulationSize>{value}</PopulationSize>',
+        "int",
+    ),
     "islands": (
         r'<Islands>\d+</Islands>',
         r'<Islands>{value}</Islands>',

@@ -186,12 +186,12 @@ class TestGeneratePipelineConfig:
         assert "version" in pipeline_config
         assert "pipeline" in pipeline_config
         assert "stages" in pipeline_config["pipeline"]
-        assert len(pipeline_config["pipeline"]["stages"]) == 7
+        assert len(pipeline_config["pipeline"]["stages"]) == 8
 
-        # Check all 7 agent stages are present
+        # Check all 8 agent stages are present
         stage_names = [s["name"] for s in pipeline_config["pipeline"]["stages"]]
-        expected = ["research", "builder", "statistics", "review",
-                     "portfolio", "deploy", "monitor"]
+        expected = ["research", "builder", "statistics", "analysis",
+                     "review", "portfolio", "deploy", "monitor"]
         assert stage_names == expected
 
     def test_generates_all_5_gates(self) -> None:

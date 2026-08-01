@@ -41,8 +41,8 @@ class TestBuildPipeline:
         pipeline = director.build_pipeline(config)
 
         stage_names = [s.name for s in pipeline.stages]
-        # 7 agent stages + 5 gate interceptors = 12 total
-        assert len(stage_names) == 12, f"Expected 12 stages, got {len(stage_names)}: {stage_names}"
+        # 10 agent stages + 5 gate interceptors = 15 total
+        assert len(stage_names) == 15, f"Expected 15 stages, got {len(stage_names)}: {stage_names}"
 
     def test_pipeline_stage_order_correct(self) -> None:
         """GIVEN a ResearchConfig
@@ -58,12 +58,23 @@ class TestBuildPipeline:
         assert stage_names[0] == "research"  # research first
         assert stage_names[1].startswith("gate_")  # gate1
         assert stage_names[1].endswith("HUMAN_REVIEW_OBJECTIVES")
-        assert stage_names[2] == "builder"
-        assert stage_names[3] == "statistics"
-        assert stage_names[4] == "review"
-        assert stage_names[6] == "portfolio"
-        assert stage_names[8] == "deploy"
-        assert stage_names[10] == "monitor"
+        assert stage_names[2] == "hypothesis_builder"
+        assert stage_names[3] == "refutation"
+        assert stage_names[4] == "builder"
+        assert stage_names[5] == "statistics"
+        assert stage_names[6] == "analysis"
+        assert stage_names[7] == "review"
+        assert stage_names[8].startswith("gate_")
+        assert stage_names[8].endswith("HUMAN_APPROVE_ITERATION")
+        assert stage_names[9] == "portfolio"
+        assert stage_names[10].startswith("gate_")
+        assert stage_names[10].endswith("HUMAN_APPROVE_PORTFOLIO")
+        assert stage_names[11] == "deploy"
+        assert stage_names[12].startswith("gate_")
+        assert stage_names[12].endswith("HUMAN_APPROVE_DEPLOY")
+        assert stage_names[13] == "monitor"
+        assert stage_names[14].startswith("gate_")
+        assert stage_names[14].endswith("HUMAN_REVIEW_PERFORMANCE")
 
     def test_pipeline_contracts_validate_with_external_inputs(self) -> None:
         """GIVEN a correctly built pipeline with external inputs pre-populated
@@ -88,7 +99,7 @@ class TestBuildPipeline:
         # method handles this by checking context artifacts + stage provides.
         # For now we just verify the pipeline structure is correct.
         stage_names = [s.name for s in pipeline.stages]
-        assert len(stage_names) == 12
+        assert len(stage_names) == 15
 
     def test_internal_stage_contracts_are_satisfied(self) -> None:
         """GIVEN the full pipeline
@@ -101,7 +112,6 @@ class TestBuildPipeline:
 
         # External inputs that are provided via context, not by stages
         EXTERNAL_INPUTS = {
-            "selected_strategies",
             "live_equity",
             "gate_decision_HUMAN_APPROVE_PORTFOLIO",
             "gate_decision_HUMAN_APPROVE_DEPLOY",

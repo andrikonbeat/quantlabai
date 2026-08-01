@@ -8,17 +8,20 @@ End-to-end pipeline runner that orchestrates the full campaign lifecycle: transl
 
 ### Requirement: Campaign Lifecycle
 
-The system MUST execute the full sequential campaign flow: translate ResearchConfig to CFX, start sqcli daemon, load CFX into a project, run the project, poll for completion, export results, read exports, compute statistics, and store artifacts.
+The system MUST execute the campaign flow with optional reconfiguration. When auto_iterate=True and review_decision=ITERATE, the system SHALL apply parameter changes and rebuild in a versioned directory. When REJECT, it SHALL abort. When APPROVE, it SHALL proceed to portfolio. When auto_iterate=False, it SHALL execute a single iteration.
+
+(Previously: Sequential execution without reconfiguration loop)
 
 #### Scenario: Full campaign completes successfully
 
 - GIVEN a valid ResearchConfig and a licensed SQX environment
+- AND auto_iterate is True
 - WHEN the orchestrator runs a campaign
-- THEN the standard 9-phase flow executes as before
+- THEN the standard flow executes with optional reconfiguration between iterations
 - AND a CampaignMonitor asyncio task runs concurrently during the run/poll phases
 - AND the monitor is cancelled when the campaign reaches a terminal state
 
-#### Scenario: Campaign fails at translation phase — no monitor spawned
+#### Scenario: Campaign fails at translation — no monitor spawned
 
 - GIVEN a ResearchConfig that fails DSL-to-CFX translation
 - WHEN the orchestrator runs the campaign

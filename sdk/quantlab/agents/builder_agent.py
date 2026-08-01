@@ -151,7 +151,13 @@ class BuilderAgent:
             )
 
         # Phase 4: Dispatch with retry
-        dispatch_result = await self._dispatch_with_retry(cfx_bytes, research_config)
+        versioned_campaign_id = context.config.get("campaign_id")
+        build_config = context.config.get("build_config")
+        dispatch_result = await self._dispatch_with_retry(
+            cfx_bytes, research_config,
+            campaign_id=versioned_campaign_id,
+            build_config=build_config,
+        )
 
         # Write results to context artifacts
         context.artifacts["cfx_bytes"] = dispatch_result.cfx_bytes
@@ -336,6 +342,8 @@ class BuilderAgent:
         self,
         cfx_bytes: bytes,
         config: Any,
+        campaign_id: str | None = None,
+        build_config: Any = None,
     ) -> DispatchResult:
         """Dispatch CFX to SQX with configurable retry logic (task 2.13).
 
@@ -361,7 +369,7 @@ class BuilderAgent:
 
             try:
                 result = await asyncio.wait_for(
-                    self._dispatch_single(cfx_bytes, config),
+                    self._dispatch_single(cfx_bytes, config, campaign_id=campaign_id, build_config=build_config),
                     timeout=self._timeout_minutes * 60,
                 )
                 result.dispatch_log = dispatch_log
@@ -441,7 +449,7 @@ class BuilderAgent:
             if fixture_path.exists():
                 fallback_cfx = fixture_path.read_bytes()
                 logger.info("Trying Builder fixture fallback after failed attempts")
-                fallback_result = await self._dispatch_single(fallback_cfx, config)
+                fallback_result = await self._dispatch_single(fallback_cfx, config, campaign_id=campaign_id, build_config=build_config)
                 fallback_result.dispatch_log = dispatch_log
                 return fallback_result
         except Exception as e:
@@ -562,6 +570,8 @@ class BuilderAgent:
         cfx_bytes: bytes,
         config: Any,
         skip_data_check: bool = False,
+        campaign_id: str | None = None,
+        build_config: Any = None,
     ) -> DispatchResult:
         """Execute a single SQX dispatch attempt.
 
@@ -579,7 +589,7 @@ class BuilderAgent:
         """
         import uuid
 
-        campaign_id = f"sqx_{uuid.uuid4().hex[:12]}"
+        campaign_id = campaign_id or f"sqx_{uuid.uuid4().hex[:12]}"
         result = DispatchResult(campaign_id=campaign_id, cfx_bytes=cfx_bytes)
 
         # Pre-flight: ensure market data exists for this symbol
@@ -600,6 +610,7 @@ class BuilderAgent:
                     campaign_id=campaign_id,
                     config=config,
                     force_mock=force_mock,
+                    build_config=build_config,
                 )
                 result.sqcli_status = sqcli_result.get("status", "completed")
                 result.export_paths = sqcli_result.get("export_paths", [])
@@ -618,6 +629,7 @@ class BuilderAgent:
                                 cfx_bytes=fallback_cfx,
                                 campaign_id=f"{campaign_id}_fixture",
                                 config=config,
+                                build_config=build_config,
                             )
                             result.sqcli_status = sqcli_result.get("status", "completed")
                             result.export_paths = sqcli_result.get("export_paths", [])
@@ -682,7 +694,7 @@ class BuilderAgent:
         if isinstance(config, dict):
             config = ResearchConfig.model_validate(config)
 
-        # Build stage list — the correct 7 agent stages + 5 gates = 12 stage entries
+        # Build stage list — the correct 8 agent stages + 5 gates = 13 stage entries
         # Note: gates are listed separately in the gates section and injected
         # by PipelineRunner at configured positions
         stages = [
@@ -703,9 +715,14 @@ class BuilderAgent:
              "requires": ["export_paths"],
              "provides": ["statistics", "aggregate_stats", "monte_carlo_bands",
                           "rolling_metrics", "regime_alerts"]},
+            {"name": "analysis", "type": "agent",
+             "agent": "analysis-agent",
+             "requires": ["export_paths", "statistics"],
+             "provides": ["strategy_analysis", "selected_strategies",
+                          "strategy_verdicts", "wf_cycles"]},
             {"name": "review", "type": "agent",
              "agent": "reviewer-agent",
-             "requires": ["statistics", "aggregate_stats", "monte_carlo_bands"],
+             "requires": ["statistics", "aggregate_stats", "monte_carlo_bands", "strategy_analysis"],
              "provides": ["review_decision", "iteration_proposal",
                           "wf_degradation", "mc_overfit_flag", "benchmark_comparison"]},
             {"name": "portfolio", "type": "agent",

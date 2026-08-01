@@ -111,3 +111,20 @@ The system MUST extend `HypothesisConfig` with `llm_rationale: str | None`, `sou
 - WHEN HypothesisConfig is inspected
 - THEN llm_rationale is None
 - AND source_urls is empty
+
+### Requirement: IterationConfig auto_iterate Flag
+
+The system MUST define IterationConfig with auto_iterate controlling the reconfiguration loop.
+
+#### Scenario: auto_iterate=True enables loop
+
+- GIVEN IterationConfig.auto_iterate=True
+- WHEN execute_campaign runs
+- THEN the orchestrator evaluates review_decision after each iteration
+
+#### Scenario: auto_iterate=False preserves single-iteration behavior
+
+- GIVEN IterationConfig.auto_iterate=False
+- WHEN execute_campaign runs
+- THEN a single iteration executes
+- AND portfolio composition begins
