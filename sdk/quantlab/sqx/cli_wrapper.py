@@ -277,6 +277,18 @@ async def _dispatch_real(
     """
     base_url = _SQX_BASE_URL
 
+    # ── License pre-flight (LIC-01/02): real path only, before any SQX work ──
+    from quantlab.cli.runner import RealExecutor
+    from quantlab.pipeline.license import license_preflight
+
+    sqcli_binary = _find_sqcli(sqx_install_path)
+    if sqcli_binary:
+        license_preflight(RealExecutor(sqcli_binary))
+    else:
+        logger.warning(
+            "sqcli binary not found for license pre-flight at '%s'", sqx_install_path
+        )
+
     # ── Phase 0: Create project directory from template ──
     logger.info("Phase 0/6: Creating project '%s' from template ...", campaign_id)
 
