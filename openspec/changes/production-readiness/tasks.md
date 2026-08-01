@@ -31,8 +31,8 @@ Chain strategy pre-resolved by user (stacked-to-main). If feature-branch-chain i
 - [x] **T2 (S1)** create `sdk/quantlab/cli/__main__.py` (`sys.exit(main())`); add `api` subparser to `sdk/quantlab/cli/main.py` → `cmd_api` boots `DashboardServer(ServerConfig(host="0.0.0.0", port))`, Ctrl+C → 0 (CLI-02/03) · verify: `python -m quantlab.cli api` + `curl :8080/api/health` 200 · ~55
 - [ ] **T3 (S1)** run `uv lock` → commit `sdk/uv.lock` (CLI-04) · dep: T1 · verify: fresh `uv sync` green · ~30 (generated, excluded)
 - [x] **T4 (S1)** `pytest.ini`: `testpaths = tests sdk/tests`, `norecursedirs = assets sdk/.venv .venv venv .git build dist __pycache__ *.egg-info`; root `conftest.py` adds `sdk/` to sys.path (TST-01/02) · verify: bare `pytest` collects both trees · ~20
-- [ ] **T5 (S1)** fix imports in 8 `sdk/tests/test_guardian/*.py`: `sdk.quantlab...` → `quantlab...` (TST-03) · verify: `pytest sdk/tests/test_guardian -q` 0 collection errors · ~8
-- [ ] **T6 (S1)** `sdk/tests/test_pr3_statistics_agent.py::test_run_missing_export_paths_raises` → assert empty stats + warning, no ValueError (TST-04) · verify: test passes · ~12
+- [x] **T5 (S1)** fix imports in 8 `sdk/tests/test_guardian/*.py`: `sdk.quantlab...` → `quantlab...` (TST-03) · verify: `pytest sdk/tests/test_guardian -q` 0 collection errors · ~8
+- [x] **T6 (S1)** `sdk/tests/test_pr3_statistics_agent.py::test_run_missing_export_paths_raises` → assert empty stats + warning, no ValueError (TST-04) · verify: test passes · ~12
 
 ## Phase 2 — Slice 1: Deploy & hygiene
 
