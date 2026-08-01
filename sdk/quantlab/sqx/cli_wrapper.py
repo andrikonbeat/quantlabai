@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import sys
 import tempfile
 import time
 import urllib.parse
@@ -55,6 +56,39 @@ _COMMAND_ENDPOINT = "/call?cmd="
 _DAEMON_START_TIMEOUT = 60.0  # max seconds for daemon to become ready
 _SQX_PORT = 5050
 _SQX_BASE_URL = f"http://127.0.0.1:{_SQX_PORT}"
+
+
+def mock_mode_guard(force_mock: bool = False) -> None:
+    """Guard against silent mock dispatch (MOK-01/02).
+
+    Real mode (no mock) is a no-op. When dispatch would run in mock mode the
+    warning is emitted BOTH through the module logger and stderr, so
+    simulation can never happen silently. In ``QUANTLAB_ENV=production``,
+    mock mode raises unless the operator explicitly opted in via
+    ``SQX_FORCE_MOCK=1`` — an unforced ``dry_run`` or code-level mock flag is
+    treated as an accident, not an override.
+    """
+    explicit_override = os.environ.get("SQX_FORCE_MOCK", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if not (force_mock or explicit_override):
+        return
+
+    warning = (
+        "Mock mode active — dispatch results are simulated, not live SQX. "
+        "Set SQX_FORCE_MOCK=1 to allow explicit simulation."
+    )
+    logger.warning(warning)
+    print(f"WARNING: {warning}", file=sys.stderr)
+
+    is_production = os.environ.get("QUANTLAB_ENV", "").lower() == "production"
+    if is_production and not explicit_override:
+        raise RuntimeError(
+            "Mock mode is not allowed in production (QUANTLAB_ENV=production). "
+            "Set SQX_FORCE_MOCK=1 to explicitly enable simulation."
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +167,7 @@ async def dispatch_campaign(
         force_mock
         or os.environ.get("SQX_FORCE_MOCK", "").lower() in ("1", "true", "yes")
     )
+    mock_mode_guard(force_mock=use_mock)
 
     try:
         if sqcli_path and not use_mock:

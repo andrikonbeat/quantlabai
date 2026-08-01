@@ -605,6 +605,11 @@ class BuilderAgent:
                 _is_dry = config.get("dry_run", False) if isinstance(config, dict) else getattr(config, "dry_run", False)
                 force_mock = _is_dry or os.environ.get("SQX_FORCE_MOCK", "").lower() in ("1", "true", "yes")
 
+                # Mock-mode guard: warn always, raise in production without an
+                # explicit SQX_FORCE_MOCK override (MOK-01/02).
+                from quantlab.sqx.cli_wrapper import mock_mode_guard
+                mock_mode_guard(force_mock=force_mock)
+
                 sqcli_result = await dispatch_campaign(
                     cfx_bytes=cfx_bytes,
                     campaign_id=campaign_id,
