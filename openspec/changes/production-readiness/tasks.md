@@ -36,12 +36,12 @@ Chain strategy pre-resolved by user (stacked-to-main). If feature-branch-chain i
 
 ## Phase 2 — Slice 1: Deploy & hygiene
 
-- [ ] **T7 (S1)** `Dockerfile`: remove poetry blocks (L96–102), `pip install -e .`, keep PYTHONPATH, set CMDs L122/157 to `["quantlab","api"]` (CID-03) · dep: T2 · verify: `docker build` + health 200 · ~30
-- [ ] **T8 (S1)** `docker-compose.yml` fix 9 defects: contexts L10/47 → `docker/`, dedupe container_name L44/49 + deploy L66/80, drop `Dockerfile.sqx` block + `data/sqx` + `certs/`, drop nginx service (CID-04, decision a) · verify: `docker compose config` clean · ~45
-- [ ] **T9 (S1)** `.github/workflows/ci.yml`: `pip install -e "sdk[dev]"`, `pytest --cov --cov-report=xml:coverage.xml`, delete phantom docs job (CID-01/02) · verify: CI green + `sdk/coverage.xml` uploaded · ~25
-- [ ] **T10 (S1)** junk removal: `git rm` `=5.18`, `Save location: /`, installer skeleton (go.sum + binary), dup test files (root `test_refutation_layer.py`); delete untracked `=3.0` (HGN-01) · verify: `git ls-files` shows none · ~25
-- [ ] **T11 (S1)** `git rm --cached assets/SQX_144_2953_linux_20260601.zip` + `.gitignore` `assets/SQX_*.zip` (HGN-02) · verify: zip absent from `git ls-files` · ~2
-- [ ] **T12 (S1)** triage commits: `sdd/`+`openspec/` own commit; refutation (`sdk/quantlab/agents/refutation/`, tests) own commit; deletions own commits (HGN-03) · verify: `git log` shows clean groups · ~5
+- [x] **T7 (S1)** `Dockerfile`: remove poetry blocks (L96–102), `pip install -e .`, keep PYTHONPATH, set CMDs L122/157 to `["quantlab","api"]` (CID-03) · dep: T2 · verify: `docker build` + health 200 · ~30
+- [x] **T8 (S1)** `docker-compose.yml` fix 9 defects: contexts L10/47 → `docker/`, dedupe container_name L44/49 + deploy L66/80, drop `Dockerfile.sqx` block + `data/sqx` + `certs/`, drop nginx service (CID-04, decision a) · verify: `docker compose config` clean · ~45
+- [x] **T9 (S1)** `.github/workflows/ci.yml`: `pip install -e "sdk[dev]"`, `pytest --cov --cov-report=xml:coverage.xml`, delete phantom docs job (CID-01/02) · verify: CI green + `sdk/coverage.xml` uploaded · ~25
+- [x] **T10 (S1)** junk removal: `git rm` `=5.18`, `Save location: /`, installer skeleton (go.sum + binary), dup test files (root `test_refutation_layer.py`); delete untracked `=3.0` (HGN-01) · verify: `git ls-files` shows none · ~25
+- [x] **T11 (S1)** `git rm --cached assets/SQX_144_2953_linux_20260601.zip` + `.gitignore` `assets/SQX_*.zip` (HGN-02) · verify: zip absent from `git ls-files` · ~2
+- [x] **T12 (S1)** triage commits: `sdd/`+`openspec/` own commit; refutation (`sdk/quantlab/agents/refutation/`, tests) own commit; deletions own commits (HGN-03) · verify: `git log` shows clean groups · ~5
 - [ ] **T13 (S1)** refresh `STATE.md`: current workflow, measured pass count (decision b), drop poetry/630 claims (HGN-04) · dep: T4–T6 · verify: no stale claims · ~30
 
 ## Phase 3 — Slice 2: Guards (RED-first)
