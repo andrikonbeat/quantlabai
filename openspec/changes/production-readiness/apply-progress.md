@@ -95,3 +95,31 @@
 ## Status
 
 **13/13 Slice 2 tasks complete** (T14–T25). Ready for verify. Full-suite run pending in verify phase.
+
+---
+
+# Slice 2 Completion Commit (Batch 2b)
+
+**Executed**: 2026-08-01 · **Change**: production-readiness · **Mode**: Standard
+
+## Gap found and fixed
+
+The prior batch's WU-4 (895b3c6) staged only `test_integration.py`/`test_static.py` from T21's acceptance set. The core DSH-MOD API acceptance tests plus their shared fixtures were left untracked, so a clean PR checkout would lose them (committed `test_integration.py` depends on the untracked `client` fixture in `conftest.py`).
+
+**Fixed**: commit `ec1aa11` — `test(dashboard): commit T21 DSH-MOD API acceptance tests` (321 insertions):
+`tests/dashboard/{__init__.py, conftest.py, test_api.py, test_foundation.py, test_templates.py}`.
+
+## Verification (Slice 2)
+
+| Evidence | Result |
+|---|---|
+| Focused S2 suites | `pytest sdk/tests/dashboard/test_pid_lifecycle.py tests/sqx/test_mock_guard.py tests/sqx/test_license_guard.py tests/news sdk/tests/agents/test_llm_agent_news.py -q` → **53 passed** (pid 6 + mock 8 + license 7 + news/news-agent 32) |
+| Dashboard suites | `pytest tests/dashboard sdk/tests/dashboard -q` → **530 passed** (incl. T21 acceptance set + PID lifecycle) |
+| Canonical full run | `SQX_FORCE_MOCK=1 sdk/.venv/bin/python -m pytest -q --tb=no -rf -p no:cacheprovider --ignore=assets` → **2628 passed / 14 failed / 3 skipped** (2645 collected, 0 errors) |
+| Failure reconciliation | 14 remaining = pre-existing out-of-scope only: `tests/robustness/*` (12), `tests/phase5/test_pipeline_registry.py` (1), `tests/cfx/test_reader.py` (1). All 35 Slice-2 in-scope expected-red are now GREEN. Zero regressions vs S1 baseline (2572 passed / 49 failed). |
+| Runtime harness | T20: default sqcli path resolves on disk (`assets/SQX_144_2953_linux_20260601/` exists); API endpoints serve KnowledgeStore data; report 404 envelope verified via test suite |
+| Rollback boundary | revert `ec1aa11` (test-only commit) → tree back to prior state; implementation WU commits 6b6a436..0dca1e3 revert independently |
+
+## Status
+
+**13/13 Slice 2 tasks complete, verified green.** Ready for sdd-verify.
