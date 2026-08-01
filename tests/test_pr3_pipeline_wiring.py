@@ -209,15 +209,15 @@ class TestResearchDirectorRouting:
     def test_llm_routing_preserves_stage_count(self) -> None:
         """GIVEN AgentConfig.model = "gpt-4"
         WHEN ResearchDirector builds the pipeline
-        THEN the pipeline has 14 stages (9 agents + 5 gates).
+        THEN the pipeline has 15 stages (10 agents + 5 gates).
         """
         director = ResearchDirector()
         config = _make_minimal_config()
         agent_config = self._build_agent_config(model="gpt-4")
         pipeline = director.build_pipeline(config, agent_config=agent_config)
 
-        # 9 agent stages (research_llm + hypothesis_builder + refutation + builder + ...) + 5 gate interceptors = 14
-        assert len(pipeline.stages) == 14
+        # 10 agent stages (research_llm + hypothesis_builder + refutation + builder + statistics + analysis + review + portfolio + deploy + monitor) + 5 gate interceptors = 15
+        assert len(pipeline.stages) == 15
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -3,9 +3,15 @@
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
-from quantlab.readers.databank import DatabankCSVReader, DatabankXLSXReader
-from quantlab.readers.models import EquityPoint, SummaryStats, Trade
+from quantlab.readers.databank import DatabankCSVReader, DatabankXLSXReader, read_strategies
+from quantlab.readers.models import (
+    EquityPoint,
+    StrategySummary,
+    SummaryStats,
+    Trade,
+)
 from quantlab.tools.exceptions import ParseError
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -214,3 +220,181 @@ class TestSummaryStatsModel:
         assert stats.total_trades == 50
         assert stats.win_rate is None
         assert stats.sharpe_ratio is None
+
+
+class TestStrategySummaryModel:
+    """Tests for the ``StrategySummary`` Pydantic model."""
+
+    def test_default_fields_are_none(self) -> None:
+        """GIVEN a StrategySummary with no fields
+        WHEN the model is instantiated
+        THEN all optional fields are None.
+        """
+        summary = StrategySummary()
+        assert summary.strategy_name is None
+        assert summary.profit_factor is None
+        assert summary.total_trades is None
+
+    def test_partial_fields(self) -> None:
+        """GIVEN a StrategySummary with only strategy_name and profit_factor
+        WHEN the model is instantiated
+        THEN only those fields are populated; others remain None.
+        """
+        summary = StrategySummary(strategy_name="Test", profit_factor=2.5)
+        assert summary.strategy_name == "Test"
+        assert summary.profit_factor == 2.5
+        assert summary.total_trades is None
+
+
+class TestReadStrategies:
+    """Tests for ``read_strategies`` — strategies databank parsing."""
+
+    def test_alias_profit_factor_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'Profit Factor'
+        WHEN read_strategies parses it
+        THEN profit_factor is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert len(strategies) == 5
+        assert strategies[0].strategy_name == "Momentum_EMA_30"
+        assert strategies[0].profit_factor == 1.85
+
+    def test_alias_sharpe_ratio_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'Sharpe Ratio'
+        WHEN read_strategies parses it
+        THEN sharpe_ratio is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert strategies[0].sharpe_ratio == 1.42
+
+    def test_alias_win_rate_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'Win Rate'
+        WHEN read_strategies parses it
+        THEN win_rate is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert strategies[0].win_rate == 0.61
+
+    def test_alias_total_trades_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'Trades'
+        WHEN read_strategies parses it
+        THEN total_trades is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert strategies[0].total_trades == 320
+
+    def test_alias_max_drawdown_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'Max DD'
+        WHEN read_strategies parses it
+        THEN max_drawdown is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert strategies[0].max_drawdown == 12.4
+
+    def test_alias_mc_p10_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'MC p10'
+        WHEN read_strategies parses it
+        THEN mc_p10 is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert strategies[0].mc_p10 == 2.5
+
+    def test_alias_wf_is_sharpe_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'WF IS Sharpe'
+        WHEN read_strategies parses it
+        THEN wf_is_sharpe is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert strategies[0].wf_is_sharpe == 1.55
+
+    def test_alias_wf_oos_sharpe_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'WF OOS Sharpe'
+        WHEN read_strategies parses it
+        THEN wf_oos_sharpe is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert strategies[0].wf_oos_sharpe == 1.31
+
+    def test_alias_wf_cycles_maps(self) -> None:
+        """GIVEN a strategies CSV with column 'WF Cycles'
+        WHEN read_strategies parses it
+        THEN wf_cycles is populated via alias mapping.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert strategies[0].wf_cycles == 8
+
+    def test_unknown_columns_tolerated(self) -> None:
+        """GIVEN a strategies CSV with unrecognized extra columns
+        WHEN read_strategies parses it
+        THEN known columns are mapped and unknown ones ignored without error.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert len(strategies) == 5
+        # Extra columns like Recovery Factor, System Quality, Curve Score are ignored
+        assert strategies[0].strategy_name is not None
+
+    def test_absent_columns_none(self) -> None:
+        """GIVEN a strategies CSV missing optional columns
+        WHEN read_strategies parses it
+        THEN absent fields are None.
+        """
+        # Create a minimal CSV with only strategy_name
+        import tempfile
+
+        import pandas as pd
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("Name\n")
+            f.write("TestStrategy\n")
+            path = f.name
+
+        try:
+            strategies = read_strategies(path)
+            assert len(strategies) == 1
+            assert strategies[0].strategy_name == "TestStrategy"
+            assert strategies[0].profit_factor is None
+            assert strategies[0].sharpe_ratio is None
+            assert strategies[0].total_trades is None
+        finally:
+            Path(path).unlink()
+
+    def test_corrupt_csv_raises_parse_error(self) -> None:
+        """GIVEN a corrupted CSV file
+        WHEN read_strategies attempts to parse it
+        THEN a ParseError is raised without crashing.
+        """
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".csv", delete=False) as f:
+            f.write(b"")
+            path = f.name
+
+        try:
+            with pytest.raises(ParseError):
+                read_strategies(path)
+        finally:
+            Path(path).unlink()
+
+    def test_multiple_strategies_parsed(self) -> None:
+        """GIVEN a strategies CSV with multiple rows
+        WHEN read_strategies parses it
+        THEN all strategies are returned in order.
+        """
+        strategies = read_strategies(FIXTURES / "strategies.csv")
+        assert len(strategies) == 5
+        names = [s.strategy_name for s in strategies]
+        assert names == [
+            "Momentum_EMA_30",
+            "MeanRev_RSI_14",
+            "Breakout_ATR_5",
+            "Trend_Follow_200",
+            "Scalp_Boll_20",
+        ]
+
+    def test_nonexistent_file_raises_parse_error(self) -> None:
+        """GIVEN a path to a file that does not exist
+        WHEN read_strategies attempts to parse
+        THEN a ParseError is raised.
+        """
+        with pytest.raises(ParseError, match="Failed to read"):
+            read_strategies("/nonexistent/path/strategies.csv")

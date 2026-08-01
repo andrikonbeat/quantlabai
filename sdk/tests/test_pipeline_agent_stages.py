@@ -8,6 +8,7 @@ import pytest
 
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.agent_stages import (
+    AnalysisStage,
     BuilderStage,
     DeployStage,
     MonitorStage,
@@ -86,12 +87,34 @@ class TestStatisticsStage:
         assert StatisticsStage.name == "statistics"
 
 
+class TestAnalysisStage:
+    """AnalysisStage I/O contract per spec scenario."""
+
+    def test_requires(self) -> None:
+        stage = AnalysisStage()
+        expected = ["export_paths", "statistics"]
+        assert stage.requires == expected
+
+    def test_provides(self) -> None:
+        stage = AnalysisStage()
+        expected = [
+            "strategy_analysis",
+            "selected_strategies",
+            "strategy_verdicts",
+            "wf_cycles",
+        ]
+        assert stage.provides == expected
+
+    def test_name(self) -> None:
+        assert AnalysisStage.name == "analysis"
+
+
 class TestReviewStage:
     """ReviewStage I/O contract per spec scenario."""
 
     def test_requires(self) -> None:
         stage = ReviewStage()
-        expected = ["statistics", "aggregate_stats", "monte_carlo_bands"]
+        expected = ["statistics", "aggregate_stats", "monte_carlo_bands", "strategy_analysis"]
         assert stage.requires == expected
 
     def test_provides(self) -> None:
@@ -175,14 +198,14 @@ class TestFullChainContract:
     """Verify the complete agent-stage chain satisfies contracts.
     
     Some keys come from external sources (config, gates, environment):
-    - ``selected_strategies`` → provided by ResearchDirector or config
+    - ``selected_strategies`` → provided by AnalysisStage
     - ``live_equity`` → provided by external data feed
     - ``gate_decision_*`` → provided by GateInterceptorStage
     - ``deployment_result`` → provided by DeployStage itself
     """
 
     def test_chain_contract_with_external_keys(self) -> None:
-        """GIVEN all 7 agent stages in order plus external key sources
+        """GIVEN all 8 agent stages in order plus external key sources
         WHEN checking requires against cumulative provides + external keys
         THEN all requirements are satisfied.
         """
@@ -190,12 +213,12 @@ class TestFullChainContract:
             ResearchStage(),
             BuilderStage(),
             StatisticsStage(),
+            AnalysisStage(),
             ReviewStage(),
         ]
 
         # External keys that would come from config, gates, or environment
         external_keys = {
-            "selected_strategies",     # from ResearchDirector / config
             "live_equity",             # from external data feed
             "gate_decision_HUMAN_APPROVE_PORTFOLIO",  # from gate
             "gate_decision_HUMAN_REVIEW_PERFORMANCE", # from gate

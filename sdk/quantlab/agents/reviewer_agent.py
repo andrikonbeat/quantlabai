@@ -562,6 +562,7 @@ class ReviewerAgent(ReviewStage):
         statistics = context.artifacts.get("statistics", {})
         aggregate_stats = context.artifacts.get("aggregate_stats", {})
         monte_carlo_bands = context.artifacts.get("monte_carlo_bands", {})
+        strategy_analysis = context.artifacts.get("strategy_analysis", None)
 
         if not statistics:
             logger.warning(
@@ -600,9 +601,18 @@ class ReviewerAgent(ReviewStage):
             "note": "No walk-forward data available in context",
         }
         if wf_cycles:
-            # Extract IS and OOS metrics from WF cycles
-            is_metrics = [c.get("in_sample", {}).get("sharpe", 0) for c in wf_cycles]
-            oos_metrics = [c.get("out_of_sample", {}).get("sharpe", 0) for c in wf_cycles]
+            # Support both AnalysisAgent format (wf_is_sharpe / wf_oos_sharpe)
+            # and legacy in_sample/out_of_sample format.
+            is_metrics: list[float] = []
+            oos_metrics: list[float] = []
+            for cycle in wf_cycles:
+                if isinstance(cycle, dict):
+                    if "wf_is_sharpe" in cycle and "wf_oos_sharpe" in cycle:
+                        is_metrics.append(float(cycle.get("wf_is_sharpe") or 0))
+                        oos_metrics.append(float(cycle.get("wf_oos_sharpe") or 0))
+                    elif "in_sample" in cycle and "out_of_sample" in cycle:
+                        is_metrics.append(float(cycle.get("in_sample", {}).get("sharpe", 0)))
+                        oos_metrics.append(float(cycle.get("out_of_sample", {}).get("sharpe", 0)))
             if is_metrics and oos_metrics:
                 wf_degradation = self.check_wf_overfitting(is_metrics, oos_metrics)
 
@@ -638,6 +648,8 @@ class ReviewerAgent(ReviewStage):
         context.artifacts["wf_degradation"] = wf_degradation
         context.artifacts["mc_overfit_flag"] = mc_overfit.get("mc_overfit_flag", False)
         context.artifacts["benchmark_comparison"] = benchmark_comparison
+        if strategy_analysis is not None:
+            context.artifacts["strategy_analysis"] = strategy_analysis
 
         logger.info(
             "ReviewerAgent: decision=%s, failed=%s",
@@ -645,10 +657,14 @@ class ReviewerAgent(ReviewStage):
             evaluation.get("failed_checks", []),
         )
 
-        return {
+        result: dict[str, Any] = {
             "review_decision": review_decision,
             "iteration_proposal": iteration_proposal,
             "wf_degradation": wf_degradation,
             "mc_overfit_flag": mc_overfit.get("mc_overfit_flag", False),
             "benchmark_comparison": benchmark_comparison,
         }
+        if strategy_analysis is not None:
+            result["strategy_analysis"] = strategy_analysis
+
+        return result

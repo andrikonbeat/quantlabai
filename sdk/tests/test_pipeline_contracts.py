@@ -128,12 +128,14 @@ class TestValidateContracts:
             _make_stage("research", [], ["research_config", "objectives", "hypotheses"]),
             _make_stage("builder", ["research_config"], ["cfx_bytes", "campaign_id", "export_paths"]),
             _make_stage("statistics", ["export_paths"], ["statistics", "aggregate_stats", "monte_carlo_bands"]),
-            _make_stage("review", ["statistics", "aggregate_stats", "monte_carlo_bands"],
+            _make_stage("analysis", ["export_paths", "statistics"],
+                       ["strategy_analysis", "selected_strategies", "strategy_verdicts", "wf_cycles"]),
+            _make_stage("review", ["statistics", "aggregate_stats", "monte_carlo_bands", "strategy_analysis"],
                        ["review_decision", "iteration_proposal"]),
             _make_stage("gate",
                        [],
                        ["gate_decision_HUMAN_APPROVE_PORTFOLIO"]),
-            _make_stage("portfolio", ["review_decision", "gate_decision_HUMAN_APPROVE_PORTFOLIO"],
+            _make_stage("portfolio", ["review_decision", "gate_decision_HUMAN_APPROVE_PORTFOLIO", "selected_strategies"],
                        ["portfolio_cfx", "portfolio_result"]),
         ]
 

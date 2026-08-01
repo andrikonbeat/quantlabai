@@ -13,7 +13,7 @@ from typing import Optional
 
 import pandas as pd
 
-from quantlab.readers.models import EquityPoint, SummaryStats, Trade
+from quantlab.readers.models import EquityPoint, StrategySummary, SummaryStats, Trade
 from quantlab.tools.exceptions import ParseError
 
 # ── Expected column name mappings ─────────────────────────────────────────────
@@ -39,6 +39,19 @@ SUMMARY_FIELDS = {
     "max_drawdown": "max_drawdown",
     "profit_factor": "profit_factor",
     "sharpe_ratio": "sharpe_ratio",
+}
+
+STRATEGY_COLUMNS = {
+    "strategy_name": ["Name", "Strategy", "StrategyName"],
+    "profit_factor": ["Profit Factor", "PF", "ProfitFactor"],
+    "sharpe_ratio": ["Sharpe Ratio", "Sharpe", "SharpeRatio"],
+    "win_rate": ["Win Rate", "WinRate", "Win %"],
+    "total_trades": ["Trades", "Total Trades", "TradesCount"],
+    "max_drawdown": ["Max DD", "MaxDrawdown", "Max Drawdown"],
+    "mc_p10": ["MC p10", "MC P10", "Monte Carlo p10"],
+    "wf_is_sharpe": ["WF IS Sharpe", "IS Sharpe"],
+    "wf_oos_sharpe": ["WF OOS Sharpe", "OOS Sharpe"],
+    "wf_cycles": ["WF Cycles", "WF_Cycles"],
 }
 
 
@@ -135,6 +148,43 @@ def _parse_summary(df: pd.DataFrame) -> SummaryStats:
     )
 
 
+def _parse_strategies(df: pd.DataFrame) -> list[StrategySummary]:
+    """Parse a strategies DataFrame into a list of StrategySummary models.
+
+    Unknown columns are ignored; absent mapped columns yield None.
+    """
+    cols = list(df.columns)
+    mapped: dict[str, str] = {}
+
+    for field, aliases in STRATEGY_COLUMNS.items():
+        col = _find_column(cols, aliases)
+        if col:
+            mapped[field] = col
+
+    strategies: list[StrategySummary] = []
+    for _, row in df.iterrows():
+        strategies.append(
+            StrategySummary(
+                strategy_name=(
+                    str(row[mapped["strategy_name"]]).strip()
+                    if mapped.get("strategy_name")
+                    else None
+                ),
+                profit_factor=_safe_float(row.get(mapped["profit_factor"])) if mapped.get("profit_factor") else None,
+                sharpe_ratio=_safe_float(row.get(mapped["sharpe_ratio"])) if mapped.get("sharpe_ratio") else None,
+                win_rate=_safe_float(row.get(mapped["win_rate"])) if mapped.get("win_rate") else None,
+                total_trades=_safe_int(row.get(mapped["total_trades"])) if mapped.get("total_trades") else None,
+                max_drawdown=_safe_float(row.get(mapped["max_drawdown"])) if mapped.get("max_drawdown") else None,
+                mc_p10=_safe_float(row.get(mapped["mc_p10"])) if mapped.get("mc_p10") else None,
+                wf_is_sharpe=_safe_float(row.get(mapped["wf_is_sharpe"])) if mapped.get("wf_is_sharpe") else None,
+                wf_oos_sharpe=_safe_float(row.get(mapped["wf_oos_sharpe"])) if mapped.get("wf_oos_sharpe") else None,
+                wf_cycles=_safe_int(row.get(mapped["wf_cycles"])) if mapped.get("wf_cycles") else None,
+            )
+        )
+
+    return strategies
+
+
 def _safe_float(value: object) -> Optional[float]:
     """Safely convert a value to float, returning None on failure."""
     if value is None:
@@ -153,6 +203,26 @@ def _safe_int(value: object) -> Optional[int]:
         return int(float(value))
     except (ValueError, TypeError):
         return None
+
+
+def read_strategies(path: str | Path) -> list[StrategySummary]:
+    """Parse a strategies CSV into a list of StrategySummary models.
+
+    Args:
+        path: Path to the CSV file.
+
+    Returns:
+        A list of StrategySummary models.
+
+    Raises:
+        ParseError: If the CSV is corrupted or cannot be read.
+    """
+    try:
+        df = pd.read_csv(path)
+    except Exception as exc:
+        raise ParseError(f"Failed to read CSV: {exc}") from exc
+
+    return _parse_strategies(df)
 
 
 # ── Public readers ────────────────────────────────────────────────────────────
@@ -224,6 +294,25 @@ class DatabankCSVReader:
             raise ParseError(f"Failed to read CSV: {exc}") from exc
 
         return _parse_summary(df)
+
+    def read_strategies(self, path: str | Path) -> list[StrategySummary]:
+        """Parse a strategies CSV into a list of StrategySummary models.
+
+        Args:
+            path: Path to the CSV file.
+
+        Returns:
+            A list of StrategySummary models.
+
+        Raises:
+            ParseError: If the CSV is corrupted or cannot be read.
+        """
+        try:
+            df = pd.read_csv(path)
+        except Exception as exc:
+            raise ParseError(f"Failed to read CSV: {exc}") from exc
+
+        return _parse_strategies(df)
 
 
 class DatabankXLSXReader:

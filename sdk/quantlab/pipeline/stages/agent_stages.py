@@ -77,10 +77,30 @@ class StatisticsStage(Stage, ABC):
         raise NotImplementedError("StatisticsStage must be implemented by a concrete agent subclass")
 
 
+class AnalysisStage(Stage, ABC):
+    """Parses strategies.csv, computes per-strategy metrics, applies overfit heuristics, and selects strategies.
+
+    **Requires**: export_paths, statistics
+    **Provides**: strategy_analysis, selected_strategies, strategy_verdicts, wf_cycles
+    """
+
+    name: str = "analysis"
+    requires: list[str] = ["export_paths", "statistics"]
+    provides: list[str] = [
+        "strategy_analysis",
+        "selected_strategies",
+        "strategy_verdicts",
+        "wf_cycles",
+    ]
+
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
+        raise NotImplementedError("AnalysisStage must be implemented by a concrete agent subclass")
+
+
 class ReviewStage(Stage, ABC):
     """Evaluates campaign results against acceptance criteria, proposes iterations.
 
-    **Requires**: statistics, aggregate_stats, monte_carlo_bands
+    **Requires**: statistics, aggregate_stats, monte_carlo_bands, strategy_analysis
     **Provides**: review_decision, iteration_proposal, wf_degradation, mc_overfit_flag, benchmark_comparison
     """
     name: str = "review"
@@ -88,6 +108,7 @@ class ReviewStage(Stage, ABC):
         "statistics",
         "aggregate_stats",
         "monte_carlo_bands",
+        "strategy_analysis",
     ]
     provides: list[str] = [
         "review_decision",

@@ -441,16 +441,19 @@ class TestRunMethod:
         assert result["review_decision"] == "ACCEPT"
 
     @pytest.mark.asyncio
-    async def test_run_missing_statistics_raises(self) -> None:
+    async def test_run_missing_statistics_returns_needs_review(self) -> None:
         """GIVEN a PipelineContext without statistics
         WHEN run() is called
-        THEN ValueError is raised.
+        THEN the needs_review fallback is returned (no exception).
         """
         agent = ReviewerAgent()
         ctx = PipelineContext(config={})
 
-        with pytest.raises(ValueError, match="No statistics"):
-            await agent.run(ctx)
+        result = await agent.run(ctx)
+
+        assert result["review_decision"] == "needs_review"
+        assert result["wf_degradation"]["overfitting_flag"] is False
+        assert result["mc_overfit_flag"] is False
 
     @pytest.mark.asyncio
     async def test_run_with_benchmark_data(self) -> None:
@@ -476,3 +479,150 @@ class TestRunMethod:
 
         result = await agent.run(ctx)
         assert ctx.artifacts["benchmark_comparison"]["benchmark_verdict"] == "OUTPERFORMS"
+
+
+class TestRunWithStrategyAnalysis:
+    """Task 4.1: ReviewerAgent.run() consumes strategy_analysis and wf_cycles."""
+
+    @pytest.mark.asyncio
+    async def test_run_includes_strategy_analysis_when_present(self) -> None:
+        """GIVEN context artifacts include strategy_analysis
+        WHEN run() is called
+        THEN strategy_analysis is present in the returned dict and context artifacts.
+        """
+        agent = ReviewerAgent()
+        strategy_analysis = [
+            {
+                "name": "strat_A",
+                "metrics": {"sharpe_ratio": 2.0, "profit_factor": 3.0},
+                "flags": [],
+                "score": 85.0,
+            },
+            {
+                "name": "strat_B",
+                "metrics": {"sharpe_ratio": 1.2, "profit_factor": 1.1},
+                "flags": ["extreme_pf_low_trades"],
+                "score": 40.0,
+            },
+        ]
+        ctx = PipelineContext(
+            config={},
+            artifacts={
+                "statistics": {
+                    "sharpe_ratio": 1.6,
+                    "max_drawdown": 10.0,
+                    "profit_factor": 1.8,
+                    "win_rate": 0.55,
+                    "total_trades": 150,
+                },
+                "strategy_analysis": strategy_analysis,
+            },
+        )
+
+        result = await agent.run(ctx)
+
+        assert "strategy_analysis" in result
+        assert result["strategy_analysis"] == strategy_analysis
+        assert ctx.artifacts["strategy_analysis"] == strategy_analysis
+
+    @pytest.mark.asyncio
+    async def test_run_computes_wf_degradation_from_analysis_format_wf_cycles(
+        self,
+    ) -> None:
+        """GIVEN wf_cycles in AnalysisAgent format (wf_is_sharpe / wf_oos_sharpe)
+        WHEN run() is called
+        THEN wf_degradation is computed from those values, not from a missing key.
+        """
+        agent = ReviewerAgent()
+        wf_cycles = [
+            {
+                "strategy_name": "strat_A",
+                "cycles": 12,
+                "wf_is_sharpe": 2.0,
+                "wf_oos_sharpe": 0.8,
+            },
+            {
+                "strategy_name": "strat_B",
+                "cycles": 12,
+                "wf_is_sharpe": 1.9,
+                "wf_oos_sharpe": 0.5,
+            },
+        ]
+        ctx = PipelineContext(
+            config={},
+            artifacts={
+                "statistics": {
+                    "sharpe_ratio": 1.6,
+                    "max_drawdown": 10.0,
+                    "profit_factor": 1.8,
+                    "win_rate": 0.55,
+                    "total_trades": 150,
+                },
+                "wf_cycles": wf_cycles,
+            },
+        )
+
+        result = await agent.run(ctx)
+
+        wf = result["wf_degradation"]
+        assert wf["overfitting_flag"] is True
+        assert wf["degradation_ratio"] is not None
+        assert wf["degradation_ratio"] < 0.7
+        assert "iteration_proposal" in wf
+
+    @pytest.mark.asyncio
+    async def test_run_preserves_no_data_fallback_when_strategy_analysis_absent(
+        self,
+    ) -> None:
+        """GIVEN no strategy_analysis and no wf_cycles in artifacts
+        WHEN run() is called
+        THEN benchmark_comparison is NO_DATA and wf_degradation reports no data.
+        """
+        agent = ReviewerAgent()
+        ctx = PipelineContext(
+            config={},
+            artifacts={
+                "statistics": {
+                    "sharpe_ratio": 1.6,
+                    "max_drawdown": 10.0,
+                    "profit_factor": 1.8,
+                    "win_rate": 0.55,
+                    "total_trades": 150,
+                },
+            },
+        )
+
+        result = await agent.run(ctx)
+
+        assert result["benchmark_comparison"]["benchmark_verdict"] == "NO_DATA"
+        wf = result["wf_degradation"]
+        assert wf["overfitting_flag"] is False
+        assert wf["degradation_ratio"] is None
+        assert "No walk-forward data available" in wf.get("note", "")
+
+    @pytest.mark.asyncio
+    async def test_run_preserves_no_data_fallback_when_wf_cycles_empty(self) -> None:
+        """GIVEN wf_cycles is an empty list
+        WHEN run() is called
+        THEN wf_degradation reports no data (empty list is falsy).
+        """
+        agent = ReviewerAgent()
+        ctx = PipelineContext(
+            config={},
+            artifacts={
+                "statistics": {
+                    "sharpe_ratio": 1.6,
+                    "max_drawdown": 10.0,
+                    "profit_factor": 1.8,
+                    "win_rate": 0.55,
+                    "total_trades": 150,
+                },
+                "wf_cycles": [],
+            },
+        )
+
+        result = await agent.run(ctx)
+
+        wf = result["wf_degradation"]
+        assert wf["overfitting_flag"] is False
+        assert wf["degradation_ratio"] is None

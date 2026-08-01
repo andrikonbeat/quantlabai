@@ -252,6 +252,76 @@ class MockSQXHandler(BaseHTTPRequestHandler):
         stats_path = base / "statistics.json"
         stats_path.write_text(json.dumps(stats, indent=2))
 
+        strategies = [
+            {
+                "Name": "strat_alpha",
+                "Profit Factor": round(random.uniform(1.5, 2.5), 2),
+                "Sharpe Ratio": round(random.uniform(1.0, 2.0), 2),
+                "Win Rate": round(random.uniform(0.45, 0.65), 2),
+                "Trades": random.randint(80, 200),
+                "Max DD": round(random.uniform(5.0, 15.0), 2),
+                "MC p10": round(random.uniform(-500, 500), 2),
+                "WF IS Sharpe": round(random.uniform(1.5, 2.5), 2),
+                "WF OOS Sharpe": round(random.uniform(1.2, 2.0), 2),
+                "WF Cycles": random.choice([0, 12]),
+            },
+            {
+                "Name": "strat_beta",
+                "Profit Factor": round(random.uniform(6.0, 8.0), 2),
+                "Sharpe Ratio": round(random.uniform(3.0, 4.0), 2),
+                "Win Rate": round(random.uniform(0.70, 0.85), 2),
+                "Trades": random.randint(3, 8),
+                "Max DD": round(random.uniform(2.0, 8.0), 2),
+                "MC p10": round(random.uniform(-200, 200), 2),
+                "WF IS Sharpe": round(random.uniform(2.0, 3.0), 2),
+                "WF OOS Sharpe": round(random.uniform(1.0, 1.5), 2),
+                "WF Cycles": random.choice([0, 12]),
+            },
+            {
+                "Name": "strat_gamma",
+                "Profit Factor": round(random.uniform(1.2, 2.0), 2),
+                "Sharpe Ratio": round(random.uniform(0.8, 1.5), 2),
+                "Win Rate": round(random.uniform(0.40, 0.55), 2),
+                "Trades": random.randint(50, 150),
+                "Max DD": round(random.uniform(8.0, 20.0), 2),
+                "MC p10": round(random.uniform(-800, -100), 2),
+                "WF IS Sharpe": round(random.uniform(1.0, 1.8), 2),
+                "WF OOS Sharpe": round(random.uniform(0.3, 0.6), 2),
+                "WF Cycles": 12,
+            },
+            {
+                "Name": "strat_delta",
+                "Profit Factor": round(random.uniform(1.3, 2.2), 2),
+                "Sharpe Ratio": round(random.uniform(0.9, 1.7), 2),
+                "Win Rate": round(random.uniform(0.48, 0.60), 2),
+                "Trades": random.randint(60, 180),
+                "Max DD": round(random.uniform(6.0, 18.0), 2),
+                "MC p10": round(random.uniform(-300, 100), 2),
+                "WF IS Sharpe": round(random.uniform(1.4, 2.2), 2),
+                "WF OOS Sharpe": round(random.uniform(1.3, 2.1), 2),
+                "WF Cycles": 12,
+            },
+        ]
+
+        strategies_path = base / "strategies.csv"
+        with strategies_path.open("w", newline="") as f:
+            fieldnames = [
+                "Name",
+                "Profit Factor",
+                "Sharpe Ratio",
+                "Win Rate",
+                "Trades",
+                "Max DD",
+                "MC p10",
+                "WF IS Sharpe",
+                "WF OOS Sharpe",
+                "WF Cycles",
+            ]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for s in strategies:
+                writer.writerow(s)
+
         try:
             return self._send_text(f"Exported {base}\n")
         except Exception:

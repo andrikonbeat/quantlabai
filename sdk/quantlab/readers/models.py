@@ -53,3 +53,23 @@ class SummaryStats(BaseModel):
     )
     profit_factor: Optional[float] = Field(default=None, description="Profit factor (gross profit / gross loss)")
     sharpe_ratio: Optional[float] = Field(default=None, description="Annualised Sharpe ratio")
+
+
+class StrategySummary(BaseModel):
+    """Per-strategy metrics from a Databank strategies export.
+
+    All fields are optional because different SQX exports may include
+    different subsets of strategy metrics. Missing fields default to
+    ``None`` rather than raising a parse error.
+    """
+
+    strategy_name: Optional[str] = Field(default=None, description="Strategy name")
+    profit_factor: Optional[float] = Field(default=None, description="Profit factor")
+    sharpe_ratio: Optional[float] = Field(default=None, description="Sharpe ratio")
+    win_rate: Optional[float] = Field(default=None, description="Win rate as a decimal (0.0–1.0)")
+    total_trades: Optional[int] = Field(default=None, description="Total number of trades")
+    max_drawdown: Optional[float] = Field(default=None, description="Maximum drawdown as a percentage")
+    mc_p10: Optional[float] = Field(default=None, description="Monte Carlo p10 metric")
+    wf_is_sharpe: Optional[float] = Field(default=None, description="Walk-forward in-sample Sharpe")
+    wf_oos_sharpe: Optional[float] = Field(default=None, description="Walk-forward out-of-sample Sharpe")
+    wf_cycles: Optional[int] = Field(default=None, description="Number of walk-forward cycles")

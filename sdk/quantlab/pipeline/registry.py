@@ -129,6 +129,7 @@ class StageRegistry:
         from quantlab.agents.research_agent import ResearchAgent
         from quantlab.agents.builder_agent import BuilderAgent
         from quantlab.agents.statistics_agent import StatisticsAgent
+        from quantlab.agents.analysis_agent import AnalysisAgent
         from quantlab.agents.reviewer_agent import ReviewerAgent
         from quantlab.agents.portfolio_agent import PortfolioAgent
         from quantlab.agents.deployment_agent import DeploymentAgent
@@ -136,7 +137,7 @@ class StageRegistry:
 
         # Stage wrappers for agents that don't inherit from Stage ABC
         from quantlab.pipeline.stages.agent_stages import (
-            LLMResearchStage, ResearchStage, BuilderStage, StatisticsStage,
+            LLMResearchStage, AnalysisStage, ResearchStage, BuilderStage, StatisticsStage,
             ReviewStage, PortfolioStage, DeployStage, MonitorStage,
             HypothesisBuilderStage, RefutationStage, GuardianEvaluationStage,
         )
@@ -156,6 +157,16 @@ class StageRegistry:
 
             def __init__(self, **kwargs: Any) -> None:
                 self._agent = BuilderAgent()
+                super().__init__(**kwargs)
+
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+                return await self._agent.run(ctx)
+
+        class AnalysisAgentStage(AnalysisStage):
+            """Wrapper: adapts AnalysisAgent.run() to Stage.execute()."""
+
+            def __init__(self, **kwargs: Any) -> None:
+                self._agent = AnalysisAgent()
                 super().__init__(**kwargs)
 
             async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
@@ -303,6 +314,7 @@ class StageRegistry:
             "hypothesis_builder": HypothesisBuilderAgentStage,
             "refutation": RefutationAgentStage,
             "builder": BuilderAgentStage,
+            "analysis": AnalysisAgentStage,
             "statistics": StatisticsAgent,
             "review": ReviewerAgent,
             "portfolio": PortfolioAgent,
@@ -369,7 +381,7 @@ class StageRegistry:
             "read", "compute_stats", "knowledge_store", "report",
         }
         agent_names = {
-            "research", "research_llm", "builder", "statistics", "review",
+            "research", "research_llm", "builder", "analysis", "statistics", "review",
             "portfolio", "deploy", "monitor",
         }
         gate_names = {

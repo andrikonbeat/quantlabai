@@ -65,7 +65,7 @@ class TestEndToEnd:
 
         pipeline = director.build_pipeline(config)
         stage_names = [s.name for s in pipeline.stages]
-        assert len(stage_names) == 12
+        assert len(stage_names) == 15
 
         # Step 3: Create PipelineContext with ResearchAgent output
         from quantlab.pipeline.base import PipelineContext

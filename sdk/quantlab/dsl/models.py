@@ -269,6 +269,27 @@ class RiskConfig(BaseModel):
     var_confidence: float = Field(default=0.95, gt=0.0, lt=1.0, description="VaR confidence level")
 
 
+class AnalysisConfig(BaseModel):
+    """Thresholds and weights for the analysis stage."""
+
+    min_trades: int = Field(default=50, ge=0, description="Minimum trades to avoid extreme-metric flag")
+    extreme_pf: float = Field(default=3.0, gt=0.0, description="Profit factor above this is extreme with low trades")
+    extreme_sharpe: float = Field(default=2.0, gt=0.0, description="Sharpe above this is extreme with low trades")
+    oos_is_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum OOS/IS Sharpe ratio")
+    score_weights: dict[str, float] = Field(
+        default_factory=lambda: {
+            "pf_weight": 0.25,
+            "sharpe_weight": 0.20,
+            "win_rate_weight": 0.15,
+            "mdd_weight": 0.15,
+            "mar_weight": 0.10,
+            "recovery_weight": 0.10,
+            "expectancy_weight": 0.05,
+        },
+        description="Per-metric weights for composite score (must sum to 1.0)",
+    )
+
+
 # ── Root config ────────────────────────────────────────────────────────────────
 
 
@@ -316,6 +337,12 @@ class ResearchConfig(BaseModel):
         description="Optional cost configuration for broker-aware cost modelling",
     )
 
+    # Analysis configuration
+    analysis: AnalysisConfig = Field(
+        default_factory=AnalysisConfig,
+        description="Analysis stage thresholds and scoring weights",
+    )
+
     # MetaGuardian integration
     guardian_state: Optional[dict] = Field(default=None, description="Current MetaGuardian state for DSL translation")
 
@@ -353,7 +380,8 @@ class ResearchConfig(BaseModel):
         """Validate agent names against known agents."""
         known_agents = {
             "research", "builder", "statistics", "review",
-            "portfolio", "deploy", "monitor", "research_director"
+            "portfolio", "deploy", "monitor", "research_director",
+            "analysis",
         }
         for agent in self.agents:
             if agent.name not in known_agents:
