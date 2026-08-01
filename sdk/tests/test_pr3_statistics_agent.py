@@ -6,6 +6,7 @@ rolling metrics, and the run() pipeline contract.
 
 import csv
 import json
+import logging
 import math
 import os
 import tempfile
@@ -424,16 +425,25 @@ class TestRunMethod:
             shutil.rmtree(tmp_dir)
 
     @pytest.mark.asyncio
-    async def test_run_missing_export_paths_raises(self) -> None:
+    async def test_run_missing_export_paths_raises(self, caplog: pytest.LogCaptureFixture) -> None:
         """GIVEN a PipelineContext without export_paths
         WHEN run() is called
-        THEN ValueError is raised.
+        THEN empty statistics are returned, a warning is logged, and no exception is raised.
         """
         agent = StatisticsAgent()
         ctx = PipelineContext(config={})
+        result = await agent.run(ctx)
 
-        with pytest.raises(ValueError, match="No export_paths"):
-            await agent.run(ctx)
+        assert result["statistics"] == StatsResult().model_dump()
+        assert result["aggregate_stats"] == {}
+        assert result["monte_carlo_bands"] == {}
+        assert result["rolling_metrics"] == {}
+        assert result["regime_alerts"] == []
+        assert any(
+            "No export_paths" in rec.message
+            for rec in caplog.records
+            if rec.levelno == logging.WARNING
+        )
 
     @pytest.mark.asyncio
     async def test_run_with_trades_only(self) -> None:
