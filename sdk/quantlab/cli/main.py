@@ -57,6 +57,7 @@ from quantlab.cli.agent_commands import add_agent_subparser
 from quantlab.cli.campaign_commands import add_campaign_subparser
 from quantlab.cli.dashboard_commands import add_dashboard_subparser
 from quantlab.cli.monitor_commands import add_monitor_subparser
+from quantlab.dashboard.app import DashboardServer, ServerConfig
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Constants & Defaults
@@ -1086,6 +1087,24 @@ def build_parser() -> argparse.ArgumentParser:
     # ── dashboard ──────────────────────────────────────────────────────────────
     add_dashboard_subparser(subparsers)
 
+    # ── api ────────────────────────────────────────────────────────────────────
+    p_api = subparsers.add_parser(
+        "api",
+        help="Serve the QuantLab dashboard/API on 0.0.0.0 (blocking)",
+    )
+    p_api.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host to bind (default: 0.0.0.0)",
+    )
+    p_api.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Port to bind (default: 8080)",
+    )
+    p_api.set_defaults(func=cmd_api)
+
     # ── monitor ────────────────────────────────────────────────────────────────
     add_monitor_subparser(subparsers)
 
@@ -1133,6 +1152,29 @@ def build_parser() -> argparse.ArgumentParser:
 # ──────────────────────────────────────────────────────────────────────────────
 # Entry Points
 # ──────────────────────────────────────────────────────────────────────────────
+
+
+async def cmd_api(args: argparse.Namespace) -> int:
+    """Boot the dashboard server as the public API (host 0.0.0.0).
+
+    Blocks until Ctrl+C; returns 0 on clean shutdown (CLI-03).
+    """
+    config = ServerConfig(host=args.host, port=args.port)
+    server = DashboardServer(config)
+
+    try:
+        print(f"QuantLab API listening on http://{args.host}:{args.port} ...")
+        server.start()
+
+        while server.is_running:
+            await asyncio.sleep(1)
+
+        return EXIT_OK
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        print("\nShutting down...")
+        return EXIT_OK
+    finally:
+        server.stop()
 
 
 def main(argv: list[str] | None = None) -> int:

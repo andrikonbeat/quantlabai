@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "quantlab"
 version = "0.1.0"
@@ -34,6 +38,12 @@ reporting = [
 dashboard = [
     "flask>=3.0",
 ]
+
+[project.scripts]
+quantlab = "quantlab.cli.main:cli_entry"
+
+[tool.setuptools.packages.find]
+include = ["quantlab*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
