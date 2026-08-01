@@ -35,12 +35,10 @@ class TestProviderLazyInit:
 
     def test_web_search_var_none_initially(self, agent: LLMResearchAgent) -> None:
         """_web_search is None on a fresh instance."""
-        # RED: attribute doesn't exist yet → will fail with AttributeError
         assert agent._web_search is None
 
     def test_rss_news_var_none_initially(self, agent: LLMResearchAgent) -> None:
         """_rss_news is None on a fresh instance."""
-        # RED: attribute doesn't exist yet → will fail with AttributeError
         assert agent._rss_news is None
 
     def test_get_web_search_returns_web_search_provider(
@@ -48,7 +46,6 @@ class TestProviderLazyInit:
     ) -> None:
         """_get_web_search() returns a WebSearchProvider-like instance."""
         provider = agent._get_web_search()
-        # Check for the key interface method rather than type
         assert hasattr(provider, "search_web")
 
     def test_get_rss_news_returns_rss_provider(
@@ -218,7 +215,6 @@ class TestFetchDataNews:
                 mock_rss.fetch_news = AsyncMock(return_value=[])
                 mock_get_rss.return_value = mock_rss
 
-                # Should NOT raise
                 data = await agent.fetch_data(
                     objective="test",
                     market_context={"market": "tech"},
@@ -248,7 +244,6 @@ class TestFetchDataNews:
                     objective="test",
                     market_context={"ticker": "AAPL"},
                 )
-                # Should still have web results
                 assert len(data["news"]) == 2
 
     @pytest.mark.asyncio
@@ -268,7 +263,7 @@ class TestFetchDataNews:
 
                 data = await agent.fetch_data(
                     objective="test",
-                    market_context={"market": "technology sector"},
+                    market_context={},  # no market, no ticker → no RSS
                 )
 
                 mock_rss.fetch_news.assert_not_called()
@@ -315,7 +310,6 @@ class TestFetchDataNews:
                     market_context={"market": "AI sector"},
                 )
 
-                # Should have used "AI sector" (from context.market) not objective
                 mock_web.search_web.assert_called_once_with("AI sector")
 
     @pytest.mark.asyncio
@@ -363,7 +357,6 @@ class TestBuildPromptNewsURLs:
             ],
         }
         prompt = agent.build_prompt("test objective", data)
-        # The format string should include the URL in the articles_text
         assert "https://finance.yahoo.com/aapl" in prompt
         assert "Apple Hits Record High" in prompt
         assert "Apple stock reached new heights" in prompt
@@ -384,10 +377,8 @@ class TestBuildPromptNewsURLs:
             ],
         }
         prompt = agent.build_prompt("test objective", data)
-        # Should contain the title but URL should be empty
         assert "News Without URL" in prompt
         assert "Some content" in prompt
-        # The format should still handle it without error
 
     def test_empty_news_skips_section(self, agent: LLMResearchAgent) -> None:
         """When news_data is empty, the news section is not included."""
@@ -398,5 +389,4 @@ class TestBuildPromptNewsURLs:
             "news": [],
         }
         prompt = agent.build_prompt("test objective", data)
-        # If news section were included, it would have "No news articles available"
         assert "No news articles available" not in prompt
