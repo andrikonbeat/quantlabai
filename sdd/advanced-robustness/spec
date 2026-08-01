@@ -1,0 +1,112 @@
+# Delta Specs: advanced-robustness
+
+## circuit-breaker
+
+### ADDED Requirements
+
+### Requirement: CircuitBreaker States
+The system MUST implement a CircuitBreaker with CLOSED, OPEN, HALF_OPEN states. CLOSED passes calls normally and counts failures. OPEN fails calls immediately. HALF_OPEN allows a single probe call.
+
+- CLOSED→OPEN: failures reach threshold (default 5) → transitions to OPEN
+- OPEN→HALF_OPEN: recovery timeout elapses (default 30s) → transitions to HALF_OPEN
+- HALF_OPEN→CLOSED: probe succeeds → transitions to CLOSED; counter resets
+- HALF_OPEN→OPEN: probe fails → transitions back to OPEN
+
+### Requirement: Async Support
+The circuit breaker MUST support async wrapping via `await breaker.call(coro)`.
+
+## retry-policy
+
+### ADDED Requirements
+
+### Requirement: RetryPolicy Configuration
+The system MUST provide RetryPolicy with max_retries (default 3), base_delay (default 1s), max_delay (default 60s), jitter (default True).
+
+### Requirement: Exponential Backoff
+The system MUST apply exponential backoff: delay = min(base_delay * 2^attempt, max_delay).
+
+### Requirement: Async Retry
+The system MUST support `await retry_policy.retry(coro)` for async coroutines.
+
+## resilient-notifier
+
+### ADDED Requirements
+
+### Requirement: ResilientNotifier Wrapper
+The system MUST provide ResilientNotifier wrapping any Notifier, applying RetryPolicy to each send() call.
+
+### Requirement: Bounded Queue
+The system MUST queue failed notifications into a bounded in-memory queue (default 1000). Oldest entries evicted when full.
+
+### Requirement: Persistent Queue
+The system SHALL persist queued notifications to a local JSONL file surviving process restarts.
+
+### Requirement: Flush Mechanism
+The system MUST provide flush() that retries all queued notifications.
+
+## knowledge-store-health
+
+### ADDED Requirements
+
+### Requirement: KnowledgeStoreHealthCheck
+The system MUST provide KnowledgeStoreHealthCheck with async check() that writes a probe record, reads it back, and returns HealthStatus.
+
+### Requirement: Health Status TTL
+The system SHALL cache health status with configurable TTL (default 60s).
+
+### Requirement: Probe Record Cleanup
+The system MUST clean up probe records after a successful check.
+
+## llm-circuit-breaker
+
+### ADDED Requirements
+
+### Requirement: LLM Circuit Breaker Integration
+The system MUST wrap LLM API calls with a CircuitBreaker before the existing fallback chain in LLMResearchAgent. When OPEN, the LLM call is skipped and fallback to classic ResearchAgent occurs immediately.
+
+### Requirement: Fallback Chain Preservation
+The existing fallback chain (LLM → classic ResearchAgent) MUST be preserved. The circuit breaker is an additional guard.
+
+## llm-research
+
+### MODIFIED Requirements
+
+### Requirement: Error Handling — Fallback
+If the LLM call fails, the system MUST fall back to classic ResearchAgent. The LLM call MUST be wrapped by a CircuitBreaker. When OPEN, the LLM call is skipped and fallback occurs immediately.
+(Previously: LLM call attempted regardless of circuit state)
+
+### Requirement: Rate Limiting & Caching
+The system MUST reuse TokenBucket for rate limiting and SqliteCache for response caching. The circuit breaker failure counter is incremented on rate-limit errors.
+
+## knowledge-storage
+
+### ADDED Requirements
+
+### Requirement: KnowledgeStore Health Check
+The system MUST expose health_check() on KnowledgeStore returning HealthStatus by writing and reading a probe record.
+
+### Requirement: Write Buffering When Circuit Open
+The system MUST buffer writes when the circuit breaker is OPEN. Buffered writes are replayed when the circuit transitions to CLOSED. Buffer is bounded (default 1000 entries); oldest evicted when full.
+
+### MODIFIED Requirements
+
+### Requirement: Metadata Indexing
+The system MUST maintain a metadata index (knowledge/index.yaml). The system MUST also expose health_check() as defined in the ADDED requirements.
+(Previously: index.yaml only; no health reporting capability)
+
+## autonomous-monitor
+
+### ADDED Requirements
+
+### Requirement: Monitor Integrates KnowledgeStore Health
+The daemon MUST check store health at each compute interval and include status in heartbeat and metrics output. Unhealthy store triggers STORE_UNHEALTHY WARNING alert.
+
+### MODIFIED Requirements
+
+### Requirement: Alert Dispatch
+The daemon MUST route alerts via NotifierDispatcher. The system MAY include store_health in the details field when store health is degraded.
+(Previously: alerts did not include KnowledgeStore health status)
+
+### Requirement: Time-Series Persistence
+The daemon SHALL persist metrics and alerts to Knowledge Lake. The system SHALL also persist store health status entries with metric_name "store_health".
+(Previously: only metrics and alerts persisted; store health not in time-series)
