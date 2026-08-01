@@ -55,9 +55,11 @@ from quantlab.cli.pipeline_commands import (
 from quantlab.cli.knowledge_commands import add_knowledge_subparser
 from quantlab.cli.agent_commands import add_agent_subparser
 from quantlab.cli.campaign_commands import add_campaign_subparser
-from quantlab.cli.dashboard_commands import add_dashboard_subparser
 from quantlab.cli.monitor_commands import add_monitor_subparser
-from quantlab.dashboard.app import DashboardServer, ServerConfig
+
+# NOTE: dashboard_commands / dashboard.app are imported lazily inside
+# build_parser() and cmd_api(): the dashboard package ships in Slice 2 and is
+# not committed yet, so the base CLI must remain importable without it.
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Constants & Defaults
@@ -1085,7 +1087,14 @@ def build_parser() -> argparse.ArgumentParser:
     add_campaign_subparser(subparsers)
 
     # ── dashboard ──────────────────────────────────────────────────────────────
-    add_dashboard_subparser(subparsers)
+    # Lazy: the dashboard package ships in Slice 2; the base CLI must not
+    # depend on it (clean-checkout importability).
+    try:
+        from quantlab.cli.dashboard_commands import add_dashboard_subparser
+    except ImportError:
+        add_dashboard_subparser = None
+    if add_dashboard_subparser is not None:
+        add_dashboard_subparser(subparsers)
 
     # ── api ────────────────────────────────────────────────────────────────────
     p_api = subparsers.add_parser(
@@ -1159,6 +1168,17 @@ async def cmd_api(args: argparse.Namespace) -> int:
 
     Blocks until Ctrl+C; returns 0 on clean shutdown (CLI-03).
     """
+    # Lazy: the dashboard package ships in Slice 2; give a clear error until then.
+    try:
+        from quantlab.dashboard.app import DashboardServer, ServerConfig
+    except ImportError:
+        print_error(
+            "The 'api' command requires the dashboard package, which ships in "
+            "Slice 2 and is not installed yet. Run the base CLI commands "
+            "(monitor/run/analysis) instead."
+        )
+        return EXIT_ERROR
+
     config = ServerConfig(host=args.host, port=args.port)
     server = DashboardServer(config)
 
