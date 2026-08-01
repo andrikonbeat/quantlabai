@@ -209,14 +209,14 @@ class TestResearchDirectorRouting:
     def test_llm_routing_preserves_stage_count(self) -> None:
         """GIVEN AgentConfig.model = "gpt-4"
         WHEN ResearchDirector builds the pipeline
-        THEN the pipeline has 15 stages (10 agents + 5 gates).
+        THEN the pipeline still has the full stage set (8 agents + 5 gates + 2 direct agents).
         """
         director = ResearchDirector()
         config = _make_minimal_config()
         agent_config = self._build_agent_config(model="gpt-4")
         pipeline = director.build_pipeline(config, agent_config=agent_config)
 
-        # 10 agent stages (research_llm + hypothesis_builder + refutation + builder + statistics + analysis + review + portfolio + deploy + monitor) + 5 gate interceptors = 15
+        # 8 agent stages + 5 gate interceptors + Statistics + Monitoring = 15
         assert len(pipeline.stages) == 15
 
 
@@ -372,3 +372,77 @@ class TestPipelineIntegration:
         p = runner.build_from_config(pipeline_config)
         assert len(p.stages) == 7
         assert p.stages[0].name == "research_llm"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Task 4.4 (E2E) — Mock campaign → strategies.csv → analysis → review → portfolio
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestE2EAnalysisReviewerWiring:
+    """End-to-end: mock campaign exports strategies.csv, analysis stage parses it,
+    reviewer consumes strategy_analysis/wf_cycles, selected_strategies is non-empty."""
+
+    @pytest.mark.asyncio
+    async def test_mock_campaign_roundtrip_analysis_to_reviewer(self, tmp_path: Path) -> None:
+        """GIVEN a mock SQX export with strategies.csv
+        WHEN AnalysisAgent parses it and ReviewerAgent consumes the artifacts
+        THEN selected_strategies is non-empty and reviewer uses real wf_cycles.
+        """
+        from quantlab.agents.analysis_agent import AnalysisAgent
+        from quantlab.agents.reviewer_agent import ReviewerAgent
+        from quantlab.pipeline.base import PipelineContext
+        from quantlab.sqx.mock_sqx_server import MockSQXHandler
+
+        project = "e2e_roundtrip"
+        original_dir = MockSQXHandler._export_dir
+        try:
+            MockSQXHandler._export_dir = tmp_path
+            handler = object.__new__(MockSQXHandler)
+            MockSQXHandler._generate_mock_exports(handler, project)
+        finally:
+            MockSQXHandler._export_dir = original_dir
+
+        export_dir = tmp_path / project
+        strategies_path = export_dir / "strategies.csv"
+        assert strategies_path.exists(), "strategies.csv missing from mock export"
+
+        # Build a context mimicking what the pipeline would produce
+        ctx = PipelineContext(
+            config={},
+            artifacts={
+                "export_paths": [str(export_dir / "trades.csv"), str(strategies_path)],
+                "statistics": {
+                    "sharpe_ratio": 1.6,
+                    "max_drawdown": 10.0,
+                    "profit_factor": 1.8,
+                    "win_rate": 0.55,
+                    "total_trades": 150,
+                },
+            },
+        )
+
+        # Run AnalysisAgent
+        analysis_agent = AnalysisAgent()
+        analysis_result = await analysis_agent.run(ctx)
+
+        assert "strategy_analysis" in analysis_result
+        assert "selected_strategies" in analysis_result
+        assert "wf_cycles" in analysis_result
+        assert len(analysis_result["selected_strategies"]) > 0, (
+            "selected_strategies should be non-empty after analysis"
+        )
+
+        # Run ReviewerAgent with analysis artifacts present
+        reviewer_agent = ReviewerAgent()
+        review_result = await reviewer_agent.run(ctx)
+
+        # Reviewer consumed strategy_analysis
+        assert "strategy_analysis" in review_result
+        assert review_result["strategy_analysis"] == analysis_result["strategy_analysis"]
+
+        # WF degradation computed from real wf_cycles (at least one cycle present)
+        wf = review_result["wf_degradation"]
+        assert wf.get("error") != "Empty metric lists — cannot compute degradation"
+
+        # selected_strategies survives through to the portfolio-ready context
+        assert ctx.artifacts.get("selected_strategies") == analysis_result["selected_strategies"]

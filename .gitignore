@@ -35,6 +35,8 @@ knowledge/raw/*
 *.sqx
 *.sqxc
 databanks/
+# SQX distribution archives (kept on external volume; see HGN-02)
+assets/SQX_*.zip
 
 # Logs
 *.log
