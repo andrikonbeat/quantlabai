@@ -46,18 +46,18 @@ Chain strategy pre-resolved by user (stacked-to-main). If feature-branch-chain i
 
 ## Phase 3 — Slice 2: Guards (RED-first)
 
-- [ ] **T14 (S2)** RED: PID tests — missing PID → "not running"; stale PID → removed; SIGTERM removes file (DSH-02, threat-matrix) · `sdk/tests/dashboard/` · ~30
-- [ ] **T15 (S2)** impl `sdk/quantlab/cli/dashboard_commands.py` PID start (write `{pid, started_at}`), stop (SIGTERM + remove), status (uptime via os.kill) (DSH-02) · dep: T14 · verify: T14 green · ~60
-- [ ] **T16 (S2)** RED: mock guard — warn on missing sqcli; warn on `SQX_FORCE_MOCK`; prod w/o force raises; prod+force → mock + warn (MOK-01/02, threat-matrix) · `tests/sqx/` · ~70
-- [ ] **T17 (S2)** impl `mock_mode_guard()` in `sdk/quantlab/sqx/cli_wrapper.py` (L132–135); reuse in `sdk/quantlab/agents/builder_agent.py` (L604–606) (MOK-01/02) · dep: T16 · verify: T16 green · ~30
-- [ ] **T18 (S2)** RED: license — `SQX_LICENSE` short-circuits; raw output logged; prod unlicensed raises; dev warns; mock skips (LIC, LIC-02) · `tests/sqx/` · ~60
-- [ ] **T19 (S2)** impl `sdk/quantlab/pipeline/license.py`: pre-flight `check()` on real dispatch, `SQX_LICENSE` override, raw `-license action=info` logging, prod raise / dev warn (LIC, LIC-02) · dep: T18 · verify: T18 green · ~35
+- [x] **T14 (S2)** RED: PID tests — missing PID → "not running"; stale PID → removed; SIGTERM removes file (DSH-02, threat-matrix) · `sdk/tests/dashboard/` · ~30
+- [x] **T15 (S2)** impl `sdk/quantlab/cli/dashboard_commands.py` PID start (write `{pid, started_at}`), stop (SIGTERM + remove), status (uptime via os.kill) (DSH-02) · dep: T14 · verify: T14 green · ~60
+- [x] **T16 (S2)** RED: mock guard — warn on missing sqcli; warn on `SQX_FORCE_MOCK`; prod w/o force raises; prod+force → mock + warn (MOK-01/02, threat-matrix) · `tests/sqx/` · ~70
+- [x] **T17 (S2)** impl `mock_mode_guard()` in `sdk/quantlab/sqx/cli_wrapper.py` (L132–135); reuse in `sdk/quantlab/agents/builder_agent.py` (L604–606) (MOK-01/02) · dep: T16 · verify: T16 green · ~30
+- [x] **T18 (S2)** RED: license — `SQX_LICENSE` short-circuits; raw output logged; prod unlicensed raises; dev warns; mock skips (LIC, LIC-02) · `tests/sqx/` · ~60
+- [x] **T19 (S2)** impl `sdk/quantlab/pipeline/license.py`: pre-flight `check()` on real dispatch, `SQX_LICENSE` override, raw `-license action=info` logging, prod raise / dev warn (LIC, LIC-02) · dep: T18 · verify: T18 green · ~35
 
 ## Phase 4 — Slice 2: Dashboard & news
 
-- [ ] **T20 (S2)** `sdk/quantlab/dashboard/app.py`: replace L62 hardcode with config → `SQX_INSTALL_PATH` → default chain; unresolvable → clear "sqcli unavailable" error (DSH-01) · verify: env path used · ~20
-- [ ] **T21 (S2)** RED: API tests — campaigns list/empty, detail/404, pipeline list/detail/404, stats empty-safe, report real data (DSH-MOD) · `sdk/tests/dashboard/` · ~120
-- [ ] **T22 (S2)** impl `GET /api/campaigns` + `/api/campaigns/{id}` on KnowledgeStore (metrics, equity/trades/statistics/phases, 404 envelope) (DSH-MOD) · dep: T21 · verify: T21 green · ~70
-- [ ] **T23 (S2)** impl `GET /api/pipeline[/{run_id}]` + `GET /api/stats` (empty-safe aggregates) (DSH-MOD) · dep: T21 · verify: T21 green · ~60
-- [ ] **T24 (S2)** fix report bug: `POST /api/reports/generate` uses real export_paths data (app.py L187–196), 404 for missing campaign (DSH-MOD) · dep: T22 · verify: non-empty report · ~35
-- [ ] **T25 (S2)** news: `sdk/quantlab/agents/llm_research_agent.py` — `_get_web_search`/`_get_rss_news` lazy singletons (ImportError→None), `fetch_data` merge (ticker-scoped, degrade), `build_prompt` URLs; `sdk/quantlab/agents/prompts.py` news template URL line (NWS-01/02/03) · verify: 17 tests in `sdk/tests/agents/test_llm_agent_news.py` green · ~110
+- [x] **T20 (S2)** `sdk/quantlab/dashboard/app.py`: replace L62 hardcode with config → `SQX_INSTALL_PATH` → default chain; unresolvable → clear "sqcli unavailable" error (DSH-01) · verify: env path used · ~20
+- [x] **T21 (S2)** RED: API tests — campaigns list/empty, detail/404, pipeline list/detail/404, stats empty-safe, report real data (DSH-MOD) · `sdk/tests/dashboard/` · ~120
+- [x] **T22 (S2)** impl `GET /api/campaigns` + `/api/campaigns/{id}` on KnowledgeStore (metrics, equity/trades/statistics/phases, 404 envelope) (DSH-MOD) · dep: T21 · verify: T21 green · ~70
+- [x] **T23 (S2)** impl `GET /api/pipeline[/{run_id}]` + `GET /api/stats` (empty-safe aggregates) (DSH-MOD) · dep: T21 · verify: T21 green · ~60
+- [x] **T24 (S2)** fix report bug: `POST /api/reports/generate` uses real export_paths data (app.py L187–196), 404 for missing campaign (DSH-MOD) · dep: T22 · verify: non-empty report · ~35
+- [x] **T25 (S2)** news: `sdk/quantlab/agents/llm_research_agent.py` — `_get_web_search`/`_get_rss_news` lazy singletons (ImportError→None), `fetch_data` merge (ticker-scoped, degrade), `build_prompt` URLs; `sdk/quantlab/agents/prompts.py` news template URL line (NWS-01/02/03) · verify: 17 tests in `sdk/tests/agents/test_llm_agent_news.py` green · ~110

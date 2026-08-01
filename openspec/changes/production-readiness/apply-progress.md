@@ -53,3 +53,45 @@
 ## Status
 
 **13/13 S1 tasks complete** (T3 deferred). Slice 1 ready for PR 1. Slice 2 (T14–T25) not started — out of scope for this apply batch.
+
+---
+
+# Slice 2 Progress (Batch 2)
+
+**Executed**: 2026-08-01 · **Change**: production-readiness · **Mode**: Standard
+
+## Task Status — Slice 2 (T14–T25)
+
+| Task | Status | Evidence |
+|---|---|---|
+| T14 PID RED | ✅ | `sdk/tests/dashboard/test_pid_lifecycle.py` — 6 tests: missing PID → not running; stale PID removed; live PID uptime; SIGTERM removes file (WU-1) |
+| T15 PID impl | ✅ | `dashboard_commands.py`: `write_pid_file {pid, started_at}` JSON, `read_pid_file`, `_pid_alive` via `os.kill(pid,0)`, `status()` (stale removal + uptime), `stop()` SIGTERM + file removal, `_default_pid_file()` honors `QUANTLAB_PID_FILE`; wired into start/finally (WU-1) |
+| T16 mock-guard RED | ✅ | `tests/sqx/test_mock_guard.py` — 8 tests: warn on missing sqcli; warn on `SQX_FORCE_MOCK`; prod w/o force raises; prod+force → mock + warn (WU-2) |
+| T17 mock guard impl | ✅ | `mock_mode_guard(force_mock)` in cli_wrapper.py (L132–135): logger+stderr warn; prod + mock w/o `SQX_FORCE_MOCK` raises RuntimeError; wired in dispatch_campaign + builder_agent L604–606 (WU-2) |
+| T18 license RED | ✅ | `tests/sqx/test_license_guard.py` — 7 tests: `SQX_LICENSE` short-circuit; raw output logged; prod unlicensed raises; dev warns; mock skips (WU-3) |
+| T19 license impl | ✅ | `pipeline/license.py`: `check()` honors `SQX_LICENSE` override via `_parse_status`; raw `-license action=info` logged at INFO; new `license_preflight(executor, *, env)` — LICENSED pass / prod raise LicenseError / dev warn; wired in `_dispatch_real` (WU-3) |
+| T20 sqcli path chain | ✅ | `app.py`: `DEFAULT_SQX_INSTALL_PATH = "assets/SQX_144_2953_linux_20260601"`; `ServerConfig.sqx_install_path`; `resolve_sqcli_binary(config)` chain config → `SQX_INSTALL_PATH` → default via `resolve_sqcli_path`; unresolvable → None + `SQCLI_UNAVAILABLE` error (WU-4) |
+| T21 API RED | ✅ | restored `tests/dashboard/*` = acceptance set (test_api, test_foundation, test_integration, test_static, test_templates) — 64 tests green after impl (WU-4) |
+| T22 campaigns API | ✅ | `GET /api/campaigns` + `/api/campaigns/{id}` on KnowledgeStore (`query().execute()` / `filter_by_campaign`): metrics, equity/trades/statistics/phases empty-safe, 404 envelope (WU-4) |
+| T23 pipeline/stats API | ✅ | `GET /api/pipeline[/{run_id}]` via `load_pipeline_runs`/`get_pipeline_run`; `GET /api/stats` empty-safe aggregates (WU-4) |
+| T24 report fix | ✅ | `POST /api/reports/generate`: 404 for "nonexistent"/"missing" campaign ids; `_load_campaign_export_data(store, id)` reads `structured/{id}/{trades,equity,statistics}.json` or `structured/{id}.json`; `result.model_dump(mode="json")` replaces broken `to_json()` (WU-4) |
+| T25 news providers | ✅ | agent: `_get_web_search`/`_get_rss_news` lazy singletons (ImportError→None), `fetch_data` merges web (market_query = market or objective) + ticker-scoped RSS, degrades on failure; `build_prompt` renders `(url)` when present, omits when absent; prompts.py news template cites source URLs; web_search sync-DDGS bugfix (`async with` → sync + `asyncio.to_thread`); stale missing-dep tests rewritten to patch module guard (WU-5) |
+
+## Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused test commands | WU-1: `pytest sdk/tests/dashboard/test_pid_lifecycle.py -q` → 6 passed · WU-2: `pytest tests/sqx/test_mock_guard.py -q` → 8 passed · WU-3: `pytest tests/sqx/test_license_guard.py -q` → 7 passed · WU-4: `pytest tests/dashboard sdk/tests/dashboard -q` → 64 + 466 passed · WU-5: `pytest sdk/tests/agents/test_llm_agent_news.py tests/news -q` → 32 passed |
+| Regression checks per WU | dashboard 466 + 64 green; sqx/monitor 134 green; pipeline 70 green; agents 253 green; circuit-breaker 6 green; cli 31 green — after every commit |
+| Runtime harness | T20: default sqcli path resolves on disk (`assets/SQX_144_2953_linux_20260601/` exists); endpoints serve KnowledgeStore data; report 404 envelope verified via test suite |
+| Rollback boundary | revert WU commits (`58e9f70..0dca1e3`, 5 commits); earlier S1 commits untouched |
+
+## Deviations
+
+- **tests/dashboard static tests aligned to modular assets**: restored `test_static.py`/`test_integration.py` asserted flat `dashboard.css`/`dashboard.js` monoliths that the modular refactor (PR6-03, green in baseline) explicitly deleted. Updated them to assert the modular entry points (`css/design-tokens.css`, `js/main.js`, `js/api/client.js`, `js/components/ChartContainer.js`, `js/utils/poller.js`). This is an alignment with the real architecture, not a scope change.
+- **tests/news rewrite**: `test_web_search.py`/`test_rss.py` assumed deps missing; now installed → rewrote to patch the module-level guard (`DDGS`/`feedparser` = None) instead of sys.modules, since the guard binds at import.
+- Everything else matches design; T3 (uv lock) still deferred from S1 (uv unavailable).
+
+## Status
+
+**13/13 Slice 2 tasks complete** (T14–T25). Ready for verify. Full-suite run pending in verify phase.
