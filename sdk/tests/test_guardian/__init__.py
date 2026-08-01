@@ -7,12 +7,12 @@ import pytest
 # Test that we can import the module
 def test_guardian_import():
     """Test that the guardian module can be imported."""
-    from sdk.quantlab import guardian
+    from quantlab import guardian
     assert guardian is not None
 
 def test_guardian_submodule_imports():
     """Test that we can import the submodules."""
-    from sdk.quantlab.guardian import (
+    from quantlab.guardian import (
         BaseGuardian,
         CapitalGuardian,
         ExecutionGuardian,
@@ -43,7 +43,7 @@ def test_guardian_submodule_imports():
 def test_guardian_can_create_instances():
     """Test that we can create basic instances (where dependencies allow)."""
     # Test that we can import and access the classes
-    from sdk.quantlab.guardian.models import GuardianResult
+    from quantlab.guardian.models import GuardianResult
     
     # Test creating a simple result
     result = GuardianResult(
@@ -59,7 +59,7 @@ def test_guardian_can_create_instances():
     assert result.message == "test"
 
     # Test creating a MetaGuardianOrchestrator (with empty list for now)
-    from sdk.quantlab.guardian import MetaGuardianOrchestrator, MetaGuardianConfig
+    from quantlab.guardian import MetaGuardianOrchestrator, MetaGuardianConfig
     config = MetaGuardianConfig()
     orchestrator = MetaGuardianOrchestrator(config, [])
     assert isinstance(orchestrator, MetaGuardianOrchestrator)

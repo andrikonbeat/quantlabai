@@ -6,12 +6,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from sdk.quantlab.guardian.orchestrator import MetaGuardianOrchestrator
-from sdk.quantlab.guardian.models import (
+from quantlab.guardian.orchestrator import MetaGuardianOrchestrator
+from quantlab.guardian.models import (
     MetaGuardianConfig,
     PortfolioState,
 )
-from sdk.quantlab.guardian import (
+from quantlab.guardian import (
     MarketGuardian,
     RiskGuardian,
     PortfolioGuardian,

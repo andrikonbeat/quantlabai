@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from sdk.quantlab.guardian.portfolio import PortfolioGuardian
-from sdk.quantlab.guardian.models import GuardianStatus, GuardianType
+from quantlab.guardian.portfolio import PortfolioGuardian
+from quantlab.guardian.models import GuardianStatus, GuardianType
 
 
 class TestPortfolioGuardian:

@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from sdk.quantlab.guardian.market import MarketGuardian
-from sdk.quantlab.guardian.models import GuardianResult, GuardianStatus, GuardianType
+from quantlab.guardian.market import MarketGuardian
+from quantlab.guardian.models import GuardianResult, GuardianStatus, GuardianType
 
 
 class TestMarketGuardian:

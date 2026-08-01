@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from sdk.quantlab.guardian.execution import ExecutionGuardian
-from sdk.quantlab.guardian.models import GuardianStatus, GuardianType
+from quantlab.guardian.execution import ExecutionGuardian
+from quantlab.guardian.models import GuardianStatus, GuardianType
 
 
 class TestExecutionGuardian:
