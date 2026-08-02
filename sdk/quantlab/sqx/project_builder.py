@@ -795,6 +795,14 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         r'<MainTestValues {main_test_values_xml} />',
         "dict",
     ),
+    # ── Blocks bridge (REQ-18 / REQ-03) ──
+    # Special-cased in _apply_build_config: probes the template for each
+    # enabled block key and emits weight/use attributes on matching elements.
+    "enabled_blocks": (
+        r'<Block key="[^"]*"',
+        r'<Block key="[^"]*"',
+        "blocks",
+    ),
 }
 
 
@@ -822,6 +830,48 @@ def _build_main_test_values_xml(values: dict[str, bool]) -> str:
     return " ".join(parts)
 
 
+def _apply_block_entries(
+    template_xml: str, enabled: list[str], weights: dict[str, float]
+) -> str:
+    """Emit enabled-block entries into the template XML (REQ-03).
+
+    Probes the template for each enabled block key; if any probe fails, logs a
+    warning and returns the XML unchanged (no partial edits).
+
+    Args:
+        template_xml: The raw template XML string.
+        enabled: Building-block names to enable in the template.
+        weights: Per-block weight overrides (missing names default to 1.0).
+
+    Returns:
+        The modified XML string, or the original when a probe fails.
+    """
+    for name in enabled:
+        if not re.search(rf'<Block key="{re.escape(name)}"', template_xml):
+            logger.warning(
+                "Blocks bridge: template has no <Block key=\"%s\"> — leaving XML unchanged",
+                name,
+            )
+            return template_xml
+
+    xml = template_xml
+    for name in enabled:
+        weight = weights.get(name, 1.0)
+        xml = re.sub(
+            rf'(<Block key="{re.escape(name)}"[^>]*?weight=")[^"]*(")',
+            rf'\g<1>{weight:g}\g<2>',
+            xml,
+            count=1,
+        )
+        xml = re.sub(
+            rf'(<Block key="{re.escape(name)}"[^>]*?use=")false(")',
+            r'\g<1>true\g<2>',
+            xml,
+            count=1,
+        )
+    return xml
+
+
 def _apply_build_config(template_xml: str, config: BuildConfig) -> str:
     """Apply BuildConfig overrides to the template XML.
 
@@ -846,6 +896,11 @@ def _apply_build_config(template_xml: str, config: BuildConfig) -> str:
             # Special handling for MainTestValues dict
             values_xml = _build_main_test_values_xml(value)
             xml = re.sub(pattern, f'<MainTestValues {values_xml} />', xml)
+            continue
+
+        if format_type == "blocks":
+            # Blocks bridge (REQ-03): emit block entries via template probe.
+            xml = _apply_block_entries(xml, value, config.block_weights or {})
             continue
 
         formatted = _format_build_config_value(value, format_type)
