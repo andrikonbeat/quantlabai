@@ -17,6 +17,7 @@ class CampaignMetrics:
     max_drawdown: Optional[float] = None
     total_trades: Optional[int] = None
     net_profit: Optional[float] = None
+    total_return: Optional[float] = None
 
 
 @dataclass
@@ -28,6 +29,9 @@ class CampaignSummary:
     tags: list[str] = field(default_factory=list)
     created: Optional[datetime] = None
     path: Optional[Path] = None
+    market: Optional[str] = None
+    timeframe: Optional[str] = None
+    status: Optional[str] = None
 
 
 @dataclass

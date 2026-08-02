@@ -6,6 +6,7 @@ import os
 import sys
 import json
 import signal
+import statistics as py_stats
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,7 +16,9 @@ from flask import Flask, jsonify, render_template, request
 
 from quantlab.cli.runner import CliRunner, MockExecutor
 from quantlab.knowledge.store import KnowledgeStore
+from quantlab.readers.models import Trade, EquityPoint
 from quantlab.reporting.generator import ReportGenerator, ReportConfig, ReportFormat, ReportTheme
+from quantlab.stats.models import StatsResult
 from quantlab.tools.platform import get_sqcli_binary, resolve_sqcli_path
 
 # Documented default SQX install path (no machine-specific paths).
@@ -120,6 +123,130 @@ def _load_campaign_export_data(
     return trades, equity, statistics
 
 
+def _campaign_entry(c: Any) -> dict:
+    """Build the campaign API entry carrying the DSH-MOD spec field contract.
+
+    Spec: each entry SHALL carry ``campaign_id, market, timeframe, sharpe,
+    profit_factor, win_rate, status, total_return``. The extra ``name`` /
+    ``metrics`` / ``tags`` / ``created`` / ``path`` fields are additive.
+    ``market`` / ``timeframe`` / ``status`` surface from stored campaign
+    metadata (index entry ``market``/``symbol``/``timeframe``/``status``) and
+    are ``None`` when the lake does not carry them — no data is invented.
+    ``total_return`` surfaces from stored metrics when present.
+    """
+    metrics = c.metrics
+    return {
+        "campaign_id": c.campaign_id,
+        "name": c.name,
+        "market": c.market,
+        "timeframe": c.timeframe,
+        "sharpe": metrics.sharpe_ratio if metrics else None,
+        "profit_factor": metrics.profit_factor if metrics else None,
+        "win_rate": metrics.win_rate if metrics else None,
+        "status": c.status,
+        "total_return": metrics.total_return if metrics else None,
+        "metrics": (
+            {
+                "sharpe_ratio": metrics.sharpe_ratio,
+                "profit_factor": metrics.profit_factor,
+                "win_rate": metrics.win_rate,
+                "max_drawdown": metrics.max_drawdown,
+                "total_trades": metrics.total_trades,
+                "net_profit": metrics.net_profit,
+            }
+            if metrics
+            else None
+        ),
+        "tags": c.tags,
+        "created": c.created.isoformat() if c.created else None,
+        "path": str(c.path) if c.path else None,
+    }
+
+
+def _campaign_exists(store: KnowledgeStore, campaign_id: str) -> bool:
+    """Return True when the campaign is known to the Knowledge Lake.
+
+    A campaign exists when the store index resolves it or when export
+    artifacts are present under ``structured/{campaign_id}``. Genuinely
+    absent ids report 404 instead of generating empty reports.
+    """
+    result = store.query().filter_by_campaign(campaign_id).execute()
+    if result.campaigns:
+        return True
+    structured = store.root / "structured"
+    return (structured / campaign_id).is_dir() or (structured / f"{campaign_id}.json").is_file()
+
+
+def _as_typed_export(trades: list, equity: list, statistics: dict):
+    """Convert raw lake JSON export data into the typed models the
+    ReportGenerator expects, falling back to the raw dicts when a payload
+    does not match the model shape (the generator is attribute-tolerant).
+
+    The dashboard JSON endpoints keep the raw lake data; only the report
+    generator consumes typed ``Trade`` / ``EquityPoint`` / ``StatsResult``.
+    """
+    typed_trades: list = []
+    for item in trades:
+        if isinstance(item, dict):
+            try:
+                typed_trades.append(Trade(**item))
+            except Exception:
+                typed_trades.append(item)
+        else:
+            typed_trades.append(item)
+
+    typed_equity: list = []
+    for item in equity:
+        if isinstance(item, dict):
+            try:
+                typed_equity.append(EquityPoint(**item))
+            except Exception:
+                typed_equity.append(item)
+        else:
+            typed_equity.append(item)
+
+    typed_stats: dict | StatsResult = statistics
+    if isinstance(statistics, dict) and statistics:
+        try:
+            typed_stats = StatsResult(**statistics)
+        except Exception:
+            typed_stats = statistics
+
+    return typed_trades, typed_equity, typed_stats
+
+    # structured/{campaign_id}/{trades,equity,statistics}.json
+    campaign_dir = structured_dir / campaign_id
+    if campaign_dir.is_dir():
+        for name, target in (("trades", trades), ("equity", equity), ("statistics", statistics)):
+            f = campaign_dir / f"{name}.json"
+            if f.is_file():
+                try:
+                    payload = json.loads(f.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, OSError):
+                    continue
+                if name == "statistics" and isinstance(payload, dict):
+                    statistics = payload
+                elif isinstance(payload, list):
+                    target.extend(payload)
+
+    # structured/{campaign_id}.json (single-file fallback)
+    single = structured_dir / f"{campaign_id}.json"
+    if single.is_file():
+        try:
+            payload = json.loads(single.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            payload = None
+        if isinstance(payload, dict):
+            if isinstance(payload.get("trades"), list):
+                trades = payload["trades"]
+            if isinstance(payload.get("equity"), list):
+                equity = payload["equity"]
+            if isinstance(payload.get("statistics"), dict):
+                statistics = payload["statistics"]
+
+    return trades, equity, statistics
+
+
 # ─── Helper: JSON error envelope ──────────────────────────────────────────────
 
 def error_response(code: str, message: str, status: int = 500):
@@ -174,28 +301,7 @@ def create_app(config: Optional[ServerConfig] = None) -> Flask:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             result = store.query().execute()
-            campaigns = [
-                {
-                    "campaign_id": c.campaign_id,
-                    "name": c.name,
-                    "metrics": (
-                        {
-                            "sharpe_ratio": c.metrics.sharpe_ratio,
-                            "profit_factor": c.metrics.profit_factor,
-                            "win_rate": c.metrics.win_rate,
-                            "max_drawdown": c.metrics.max_drawdown,
-                            "total_trades": c.metrics.total_trades,
-                            "net_profit": c.metrics.net_profit,
-                        }
-                        if c.metrics
-                        else None
-                    ),
-                    "tags": c.tags,
-                    "created": c.created.isoformat() if c.created else None,
-                    "path": str(c.path) if c.path else None,
-                }
-                for c in result.campaigns
-            ]
+            campaigns = [_campaign_entry(c) for c in result.campaigns]
             return success_response(campaigns)
         except Exception as e:
             return error_response("INTERNAL_ERROR", str(e))
@@ -209,30 +315,14 @@ def create_app(config: Optional[ServerConfig] = None) -> Flask:
                 return error_response("CAMPAIGN_NOT_FOUND", f"Campaign '{campaign_id}' not found", 404)
 
             c = result.campaigns[0]
-            campaign = {
-                "campaign_id": c.campaign_id,
-                "name": c.name,
-                "metrics": (
-                    {
-                        "sharpe_ratio": c.metrics.sharpe_ratio,
-                        "profit_factor": c.metrics.profit_factor,
-                        "win_rate": c.metrics.win_rate,
-                        "max_drawdown": c.metrics.max_drawdown,
-                        "total_trades": c.metrics.total_trades,
-                        "net_profit": c.metrics.net_profit,
-                    }
-                    if c.metrics
-                    else None
-                ),
-                "tags": c.tags,
-                "created": c.created.isoformat() if c.created else None,
-                "path": str(c.path) if c.path else None,
-                # Detail sections, empty-safe when the lake has no artifacts.
-                "equity": [],
-                "trades": [],
-                "statistics": {},
-                "phases": [],
-            }
+            # Real export data from the lake, empty-safe when absent.
+            trades, equity, statistics = _load_campaign_export_data(store, campaign_id)
+            campaign = _campaign_entry(c)
+            campaign["equity_curve"] = equity
+            campaign["trades"] = trades
+            campaign["statistics"] = statistics
+            # No phase-result artifact exists in the Knowledge Lake yet.
+            campaign["phases"] = []
             return success_response(campaign)
         except Exception as e:
             return error_response("INTERNAL_ERROR", str(e))
@@ -264,10 +354,34 @@ def create_app(config: Optional[ServerConfig] = None) -> Flask:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             campaigns = store.query().execute()
-            runs = store.load_pipeline_runs()
+
+            def metric_values(attr: str) -> list[float]:
+                return [
+                    getattr(c.metrics, attr)
+                    for c in campaigns.campaigns
+                    if c.metrics and getattr(c.metrics, attr) is not None
+                ]
+
+            def mean_or_zero(values: list[float]) -> float:
+                return py_stats.mean(values) if values else 0.0
+
+            sharpes = metric_values("sharpe_ratio")
+            max_dds = metric_values("max_drawdown")
+            win_rates = metric_values("win_rate")
+            total_trades = sum(metric_values("total_trades"))
+
             stats = {
+                # DSH-MOD spec aggregate fields, computed from real stored
+                # campaigns; empty-safe (zeros) when no campaigns exist.
+                "sharpe_mean": mean_or_zero(sharpes),
+                "sharpe_std": py_stats.stdev(sharpes) if len(sharpes) >= 2 else 0.0,
+                "max_drawdown_pct": mean_or_zero(max_dds),
+                "win_rate_mean": mean_or_zero(win_rates),
+                "total_trades": total_trades,
+                # No benchmark data source in the Knowledge Lake — empty.
+                "benchmark_comparison": None,
                 "total_campaigns": campaigns.total_count,
-                "total_pipeline_runs": len(runs),
+                "total_pipeline_runs": len(store.load_pipeline_runs()),
                 "generated_at": datetime.now(timezone.utc).isoformat(),
             }
             return success_response(stats)
@@ -286,10 +400,10 @@ def create_app(config: Optional[ServerConfig] = None) -> Flask:
             if not campaign_id:
                 return error_response("BAD_REQUEST", "campaign_id is required", 400)
 
-            # Missing campaign -> 404 with the error envelope. The sentinel
-            # convention ("nonexistent"/"missing") mirrors the CLI contract
-            # used across the dashboard suite.
-            if "nonexistent" in campaign_id or "missing" in campaign_id:
+            store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
+            # Missing campaign -> 404 with the error envelope, based on the
+            # store index and the lake export artifacts (no sentinel strings).
+            if not _campaign_exists(store, campaign_id):
                 return error_response(
                     "CAMPAIGN_NOT_FOUND",
                     f"Campaign '{campaign_id}' not found",
@@ -307,8 +421,8 @@ def create_app(config: Optional[ServerConfig] = None) -> Flask:
             )
 
             # Load REAL export data for the campaign (empty-safe fallback).
-            store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             trades, equity, statistics = _load_campaign_export_data(store, campaign_id)
+            trades, equity, statistics = _as_typed_export(trades, equity, statistics)
 
             # Generate report
             generator = ReportGenerator(config)

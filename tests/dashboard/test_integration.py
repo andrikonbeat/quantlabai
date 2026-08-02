@@ -2,6 +2,8 @@
 
 import pytest
 
+from .seed import seed_campaign, seed_export_data
+
 
 class TestDashboardIntegration:
     """End-to-end dashboard integration tests."""
@@ -54,7 +56,10 @@ class TestDashboardIntegration:
         assert resp.status_code == 200
         assert "javascript" in resp.content_type
 
-    def test_report_generation_endpoint_accepts_post(self, client):
+    def test_report_generation_endpoint_accepts_post(self, store_client):
+        client, store = store_client
+        seed_campaign(store, "test-campaign")
+        seed_export_data(store, "test-campaign")
         resp = client.post(
             "/api/reports/generate",
             json={"campaign_id": "test-campaign", "formats": ["html"]},
@@ -62,6 +67,15 @@ class TestDashboardIntegration:
         assert resp.status_code == 200
         data = resp.get_json()
         assert data["success"] is True
+
+    def test_report_generation_endpoint_404_for_absent_campaign(self, client):
+        resp = client.post(
+            "/api/reports/generate",
+            json={"campaign_id": "test-campaign", "formats": ["html"]},
+        )
+        assert resp.status_code == 404
+        data = resp.get_json()
+        assert data["success"] is False
 
     def test_all_pages_return_200(self, client):
         pages = ["/", "/campaigns", "/pipeline", "/stats"]

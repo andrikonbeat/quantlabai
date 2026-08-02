@@ -219,6 +219,7 @@ class QueryBuilder:
                         max_drawdown=metrics.get("max_drawdown"),
                         total_trades=metrics.get("total_trades"),
                         net_profit=metrics.get("net_profit"),
+                        total_return=metrics.get("total_return"),
                     )
                 else:
                     campaign_metrics = None
@@ -230,6 +231,9 @@ class QueryBuilder:
                     tags=info.get("tags", []),
                     created=datetime.fromisoformat(info.get("created")) if info.get("created") else None,
                     path=info.get("path", ""),
+                    market=info.get("market") or info.get("symbol"),
+                    timeframe=info.get("timeframe"),
+                    status=info.get("status"),
                 ))
 
         # Agent-memory entries
@@ -268,6 +272,9 @@ class QueryBuilder:
         """Check if campaign matches all filters."""
         f = self._filter
         m = campaign.metrics
+
+        if f.campaign_id and campaign.campaign_id != f.campaign_id:
+            return False
 
         if m:
             if f.sharpe_min is not None and (m.sharpe_ratio is None or m.sharpe_ratio < f.sharpe_min):
