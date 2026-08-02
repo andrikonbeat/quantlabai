@@ -61,3 +61,16 @@ Chain strategy pre-resolved by user (stacked-to-main). If feature-branch-chain i
 - [x] **T23 (S2)** impl `GET /api/pipeline[/{run_id}]` + `GET /api/stats` (empty-safe aggregates) (DSH-MOD) · dep: T21 · verify: T21 green · ~60
 - [x] **T24 (S2)** fix report bug: `POST /api/reports/generate` uses real export_paths data (app.py L187–196), 404 for missing campaign (DSH-MOD) · dep: T22 · verify: non-empty report · ~35
 - [x] **T25 (S2)** news: `sdk/quantlab/agents/llm_research_agent.py` — `_get_web_search`/`_get_rss_news` lazy singletons (ImportError→None), `fetch_data` merge (ticker-scoped, degrade), `build_prompt` URLs; `sdk/quantlab/agents/prompts.py` news template URL line (NWS-01/02/03) · verify: 17 tests in `sdk/tests/agents/test_llm_agent_news.py` green · ~110
+
+## Phase 5 — Correction Batch (verify findings, all marked [x] on completion)
+
+> Trigger: verify phase found 8 PARTIAL S2 scenarios (dashboard API field contracts + static-only coverage). Resolved in one correction transaction (`8cd7769`) + docs commit. Full evidence in apply-progress.md §Correction Batch.
+
+- [x] **C1** DSH-01 sqcli path chain automated tests: env used; config overrides env; unresolvable → None + `SQCLI_UNAVAILABLE` (DSH-01) · `TestSqcliPathResolution` in `tests/dashboard/test_api.py` · ~40
+- [x] **C2** `GET /api/campaigns` entry contract: top-level `campaign_id, market, timeframe, sharpe, profit_factor, win_rate, status, total_return` from stored metadata/metrics, empty-safe (DSH-MOD) · `_campaign_entry` in app.py + `CampaignMetrics.total_return`/`CampaignSummary.market/timeframe/status` in knowledge/models.py + query.py · ~80
+- [x] **C3** `GET /api/campaigns/{id}` detail from real lake export data; rename `equity` → `equity_curve` per spec (DSH-MOD) · wire `_load_campaign_export_data` into detail endpoint · ~40
+- [x] **C4** pipeline detail stages test via seeded `PipelineRun` (DSH-MOD) · `test_pipeline_detail_returns_stages` · ~25
+- [x] **C5** `GET /api/stats` spec aggregates `sharpe_mean, sharpe_std, max_drawdown_pct, win_rate_mean, total_trades, benchmark_comparison` from real campaigns, empty-safe (DSH-MOD) · app.py stats endpoint · ~45
+- [x] **C6** report real-data test: seeded export data → real json report + response contract; typed Trade/EquityPoint/StatsResult conversion for serialization (DSH-MOD) · `_as_typed_export` in app.py · ~50
+- [x] **C7** report 404 for genuinely absent campaign via `_campaign_exists` (index OR `structured/{id}`), replacing sentinel strings (DSH-MOD) · ~30
+- [x] **C8** docs-only: re-document S1 carry-forward warnings (CI `SQX_FORCE_MOCK`/suite scope) in verify-report; no code change · ~10

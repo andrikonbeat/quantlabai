@@ -123,3 +123,48 @@ The prior batch's WU-4 (895b3c6) staged only `test_integration.py`/`test_static.
 ## Status
 
 **13/13 Slice 2 tasks complete, verified green.** Ready for sdd-verify.
+
+---
+
+# Correction Batch (Batch 3)
+
+**Executed**: 2026-08-02 · **Change**: production-readiness · **Mode**: Standard
+**Trigger**: verify phase found 8 PARTIAL S2 scenarios (dashboard API response-shape / field-contract deviations + static-only coverage) in `verify-report.md`. Machine verdict `fail` (canonical exit 1, pre-existing out-of-scope failures) — correction required before archive.
+
+## Fix Tasks
+
+| Fix | Finding (verify) | Resolution | Test evidence |
+|---|---|---|---|
+| 1 | DSH-01 path chain static-only | added `TestSqcliPathResolution` (3 tests): env path used; config overrides env; unresolvable → `SQCLI_PATH=None` + `CLI_RUNNER=None` + "sqcli unavailable" in `SQCLI_UNAVAILABLE` | `test_env_path_used_when_set`, `test_config_overrides_env`, `test_unresolvable_returns_none_and_app_reports_unavailable` |
+| 2 | campaigns field contract deviation | `_campaign_entry()` — top-level `campaign_id, market, timeframe, sharpe, profit_factor, win_rate, status, total_return` sourced from stored index metadata (`market`/`symbol`, `timeframe`, `status`) + `metrics.total_return`; empty-safe `None`; no invented data | `test_campaigns_entries_carry_spec_field_contract`, `test_campaigns_missing_metadata_is_empty_safe` |
+| 3 | campaign detail sections hardcoded empty | detail endpoint now wires `_load_campaign_export_data`; renamed `equity` → `equity_curve` per spec; `phases` stays `[]` (no phase artifact exists in lake) | `test_campaign_detail_returns_real_sections` (equity_curve len 2, trades len 2, statistics.total_trades 120, `"equity" not in entry`) |
+| 4 | pipeline detail stages static-only | seeded `PipelineRun` via `store.save_pipeline_run` with 2 `StageRun`s; asserts name/status/duration/error | `test_pipeline_detail_returns_stages` |
+| 5 | stats field contract deviation | `GET /api/stats` computes spec aggregates from real stored campaigns: `sharpe_mean, sharpe_std, max_drawdown_pct, win_rate_mean, total_trades, benchmark_comparison` (empty-safe zeros; benchmark `None` — no benchmark source in lake); keeps `total_campaigns, total_pipeline_runs, generated_at` | `test_stats_returns_aggregated_spec_fields` (sharpe_mean 1.5, sharpe_std ≈0.707, max_drawdown_pct −12.0, win_rate_mean 0.55, total_trades 300), `test_stats_empty_safe_zeros` |
+| 6 | report real-data untested | report test seeds export data; asserts real json report file (campaign_id, trade_count 2, equity_curve len 2, statistics.total_trades 120, sharpe_ratio 1.5) + response contract fields; typed conversion `_as_typed_export` (dict→Trade/EquityPoint/StatsResult, tolerant fallback) so JSON serialization works | `test_report_generate_uses_real_export_data`, `test_report_generate_returns_json` |
+| 7 | report 404 untested (sentinel hack) | replaced sentinel-string convention with `_campaign_exists(store, id)` (store index OR `structured/{id}` artifacts) → genuinely absent id 404s with `CAMPAIGN_NOT_FOUND` envelope | `test_report_generate_404_for_missing_campaign`, `test_campaign_detail_returns_404_for_absent_id` |
+| 8 | S1 carry-forward WARNING (CI/SQX_FORCE_MOCK) | docs only — no code change; unchanged and re-documented in verify-report (out of correction scope, Slice-1 CI scope gap) | n/a (docs) |
+
+Supporting model change: `CampaignMetrics.total_return` + `CampaignSummary.market/timeframe/status` (models.py) populated in `query.py` (build + `_matches_filters` now honors `filter_by_campaign`, which was a no-op before).
+
+## Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused test command | `sdk/.venv/bin/python -m pytest tests/dashboard -q --tb=short -p no:cacheprovider --ignore=assets` → **77 passed** (was 64 pre-correction) |
+| Dashboard total | `sdk/.venv/bin/python -m pytest tests/dashboard sdk/tests/dashboard -q ...` → **543 passed** (was 530) |
+| Knowledge layer | `sdk/.venv/bin/python -m pytest sdk/tests/test_knowledge.py -q ...` → **12 passed** (1 expected FormatWarning); `tests/phase5/test_knowledge_cli.py` → **23 passed** (model change backward-compatible) |
+| Canonical full suite | `SQX_FORCE_MOCK=1 sdk/.venv/bin/python -m pytest -q --tb=no -rf -p no:cacheprovider --ignore=assets` → **2640 passed / 15 failed / 3 skipped** (15 = 14 pre-existing out-of-scope + 1 documented pre-existing flake `TestE2EAnalysisReviewerWiring::test_mock_campaign_roundtrip_analysis_to_reviewer` — passed in verify's run, fails in ~1/3 of runs per RNG; diff of `mock_sqx_server.py`/`test_pr3_pipeline_wiring.py` empty across this batch) |
+| Runtime harness | report POST with seeded lake data writes real json report (asserted in test); campaign detail serves lake artifacts; manual smoke on empty lake: stats zeros + benchmark None, campaigns `[]`, absent report campaign → 404 envelope |
+| Rollback boundary | revert `8cd7769` (single correction transaction) → tree back to verified Slice-2 state; docs artifacts commit reverts independently; no S1/S2 WU commits touched |
+
+## Deviations
+
+- `equity` → `equity_curve` rename in detail response aligns implementation with spec text (spec section 5 names the detail section `equity_curve`); the covering test asserts `"equity" not in entry`.
+- `phases` remains `[]` in detail: no phase-result artifact exists in the Knowledge Lake; design does not define one. Documented, not silent.
+- `benchmark_comparison` always `None`: no benchmark data source in the lake. Documented, not silent.
+- Fix 8 (S1 CI warning) is documentation-only — carried forward unchanged, out of correction scope.
+- Everything else matches design and spec delta.
+
+## Status
+
+**8/8 correction fixes complete** (7 code/test + 1 docs). Committed as `8cd7769` + docs commit. Ready for re-verify / archive.
