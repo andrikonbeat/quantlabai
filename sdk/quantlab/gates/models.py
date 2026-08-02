@@ -151,6 +151,12 @@ DEFAULT_GATE_POLICIES: dict[str, GatePolicyConfig] = {
         fallback=FallbackPolicy.CONTINUE,
         notifications=["console"],
     ),
+    "HUMAN_APPROVE_CONFIG": GatePolicyConfig(
+        gate_id="HUMAN_APPROVE_CONFIG",
+        timeout_hours=24.0,
+        fallback=FallbackPolicy.HOLD,
+        notifications=["webhook", "console"],
+    ),
 }
 
 
