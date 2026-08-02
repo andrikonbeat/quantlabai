@@ -290,6 +290,49 @@ class AnalysisConfig(BaseModel):
     )
 
 
+# ── Retest / Optimize blocks (REQ-19) ─────────────────────────────────────────
+
+
+class RetestBlock(BaseModel):
+    """Optional ``retest`` block for a research campaign (REQ-19).
+
+    Mirrors ``RetesterConfig`` (``quantlab.phase4.retester``) plus
+    ``max_iterations`` for the bounded retest loop. When ``max_iterations`` is
+    None the loop uses ``ResearchConfig.iteration_config.max_iterations``.
+    """
+
+    strategy_id: str = Field(..., description="Strategy to retest")
+    databanks: list[str] = Field(..., description="Databank names to retest against")
+    monte_carlo_runs: int = Field(default=100, description="Monte Carlo reruns")
+    mc_percentile: int = Field(default=95, description="Monte Carlo percentile")
+    walkforward_cycles: int = Field(default=5, description="Walk-forward cycles")
+    min_trades: int = Field(default=30, description="Minimum trades to accept")
+    confidence_level: float = Field(default=0.95, description="Confidence level")
+    broker_profile: Any | None = Field(default=None, description="Broker profile override")
+    cost_config: Any | None = Field(default=None, description="Cost config override")
+    max_iterations: int | None = Field(
+        default=None,
+        description="Bounded retest iterations (falls back to iteration_config)",
+    )
+
+
+class OptimizeBlock(BaseModel):
+    """Optional ``optimize`` block for a research campaign (REQ-19).
+
+    Mirrors ``OptimizerConfig`` (``quantlab.phase4.optimizer``).
+    """
+
+    strategy_id: str = Field(..., description="Strategy to optimize")
+    method: str = Field(default="Genetic", description="Optimization method")
+    objective: str = Field(default="SharpeRatio", description="Optimization objective")
+    walkforward_cycles: int = Field(default=10, description="Walk-forward cycles")
+    population: int = Field(default=100, description="Population size")
+    generations: int = Field(default=50, description="Generation count")
+    crossover: float = Field(default=0.8, description="Crossover probability")
+    mutation: float = Field(default=0.1, description="Mutation probability")
+    databanks: list[str] | None = Field(default=None, description="Databanks to optimize on")
+
+
 # ── Root config ────────────────────────────────────────────────────────────────
 
 
@@ -345,6 +388,16 @@ class ResearchConfig(BaseModel):
 
     # MetaGuardian integration
     guardian_state: Optional[dict] = Field(default=None, description="Current MetaGuardian state for DSL translation")
+
+    # Retest / optimize blocks (REQ-19) — optional; absent means no block.
+    retest: Optional[RetestBlock] = Field(
+        default=None,
+        description="Optional retest block for the bounded retest loop",
+    )
+    optimize: Optional[OptimizeBlock] = Field(
+        default=None,
+        description="Optional optimize block for the optimizer stage",
+    )
 
     @model_validator(mode="after")
     def _validate_unique_strategy_names(self) -> ResearchConfig:

@@ -200,6 +200,10 @@ class BuildConfig:
     rc_min_markets: int | None = None
     main_test_values: dict[str, bool] | None = None  # which cross-check validations to run
 
+    # ── Blocks bridge (REQ-18 / REQ-03) ──
+    enabled_blocks: list[str] | None = None  # DSL building-block names to enable in SQX
+    block_weights: dict[str, float] | None = None  # per-block weight overrides
+
 
 _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
     # ── Trading Session (BuildTradingOptions) ──
