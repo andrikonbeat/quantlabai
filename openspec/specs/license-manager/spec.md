@@ -58,19 +58,42 @@ The system SHOULD support license activation via `sqcli -license action=update c
 
 ### Requirement: Startup Guard
 
-The CampaignRunner MUST check license status at startup. If the status is `unlicensed` or `expired`, the runner SHALL raise a LicenseError and abort the campaign.
+The system MUST run `LicenseManager.check()` as a pre-flight on REAL dispatch (mock path skips it). Non-LICENSED status SHALL log a warning with detail; the run SHALL block (raise) only when `QUANTLAB_ENV=production`. (Previously: CampaignRunner raised LicenseError at startup for unlicensed/expired regardless of environment)
 
-#### Scenario: Unlicensed startup aborts campaign
+#### Scenario: Production unlicensed aborts
+- GIVEN production env and unlicensed SQX
+- WHEN a real dispatch starts
+- THEN a LicenseError is raised and no sqcli commands beyond the license check run
 
-- GIVEN an unlicensed SQX installation
-- WHEN CampaignRunner starts a campaign
-- THEN a LicenseError is raised
-- AND no sqcli commands beyond the license check are dispatched
+#### Scenario: Production licensed proceeds
+- GIVEN production env and a licensed SQX
+- WHEN a real dispatch starts
+- THEN the check passes and the run proceeds
 
-#### Scenario: Licensed startup proceeds normally
+#### Scenario: Dev unlicensed warns only
+- GIVEN non-production env and unlicensed SQX
+- WHEN a real dispatch starts
+- THEN a warning with detail is logged and the run proceeds
 
-- GIVEN a licensed SQX installation
-- WHEN CampaignRunner starts a campaign
-- THEN the license check passes
-- AND the campaign proceeds to the translate phase
+#### Scenario: Mock path skips check
+- GIVEN mock dispatch (SQX_FORCE_MOCK)
+- WHEN a command dispatches
+- THEN no license check runs
 
+**Acceptance**: license guard active on real dispatch in production (proposal success criterion).
+
+### Requirement: LIC-02 SQX_LICENSE override + raw logging
+
+The system MUST accept the `SQX_LICENSE` env value as a passed-through license status override (CI/dev) and MUST always log the raw `sqcli -license action=info` output. No real-format parsing is required.
+
+#### Scenario: Env override short-circuits
+- GIVEN `SQX_LICENSE=licensed`
+- WHEN check() runs
+- THEN the override value is reported without invoking sqcli
+
+#### Scenario: Raw output logged
+- GIVEN a real license check
+- WHEN check() executes sqcli
+- THEN the raw output is logged for diagnosis
+
+**Acceptance**: env override works; raw output visible in logs.

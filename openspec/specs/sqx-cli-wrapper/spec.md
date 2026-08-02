@@ -153,3 +153,35 @@ The system MUST expose a public function `extract_error_patterns(status_text: st
 - WHEN extract_error_patterns is called
 - THEN it returns up to 3 matched lines
 - AND each line is the full text from the status response
+
+### Requirement: MOK-01 Loud mock warning
+
+Whenever mock dispatch is chosen — `SQX_FORCE_MOCK` set OR sqcli not found — the system MUST emit a prominent warning (logger/stderr) stating results are simulated, at every decision point (`cli_wrapper.py` and `builder_agent.py:604-606`). (Previously: silent fallback at cli_wrapper.py:132-160)
+
+#### Scenario: Missing sqcli warns
+- GIVEN sqcli not found and no SQX_FORCE_MOCK
+- WHEN a command dispatches
+- THEN mock dispatch occurs AND a MOCK MODE warning is emitted
+
+#### Scenario: Forced mock warns
+- GIVEN `SQX_FORCE_MOCK=1`
+- WHEN a command dispatches
+- THEN mock is used AND the warning is emitted
+
+**Acceptance**: no silent mock dispatch (proposal success criterion).
+
+### Requirement: MOK-02 Production hard-fail
+
+When `QUANTLAB_ENV=production` and mock would be used WITHOUT explicit `SQX_FORCE_MOCK`, the system MUST abort (raise/exit) before dispatching.
+
+#### Scenario: Production blocks silent mock
+- GIVEN QUANTLAB_ENV=production, no sqcli, no SQX_FORCE_MOCK
+- WHEN a command dispatches
+- THEN an error is raised and no mock result is returned
+
+#### Scenario: Production allows explicit mock
+- GIVEN QUANTLAB_ENV=production and SQX_FORCE_MOCK=1
+- WHEN a command dispatches
+- THEN mock is used with the MOK-01 warning
+
+**Acceptance**: production never silently mocks.
