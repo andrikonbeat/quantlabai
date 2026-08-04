@@ -132,6 +132,7 @@ class ResearchDirector:
         self,
         config: ResearchConfig,
         agent_config: Any = None,
+        orchestrated: bool = False,
     ) -> Any:
         """Build the full 8-agent pipeline with 5 gate stages from a config.
 
@@ -140,6 +141,14 @@ class ResearchDirector:
 
         Stage order: research_llm|research → hypothesis_builder → refutation → [gate1] → builder → statistics →
         review → [gate2] → portfolio → [gate3] → deploy → [gate4] → monitor → [gate5]
+
+        When ``orchestrated=True`` (orchestrated campaign flow, PR3), the
+        builder is followed by ``config_review`` → [HUMAN_APPROVE_CONFIG gate] →
+        ``dispatch``, and the loop tail gains ``retester`` / ``optimizer`` when
+        the corresponding DSL blocks are configured (REQ-01/REQ-05/REQ-06):
+        research → … → builder → config_review → dispatch → … → monitor →
+        retester → optimizer. The HUMAN_APPROVE_CONFIG gate always blocks in
+        orchestrated mode (D2/D3) and unregistered gates fail closed (REQ-11).
 
         The research stage is selected based on ``agent_config``:
         - If ``agent_config.model`` is non-empty → ``research_llm`` (LLM-powered)
@@ -150,6 +159,8 @@ class ResearchDirector:
                     and gate_policies.
             agent_config: Optional ``AgentConfig`` for LLM routing. When provided
                 and ``model != ""``, uses the LLM-powered research stage.
+            orchestrated: When True, wires the orchestrated flow stages
+                (config_review, dispatch, and optionally retester/optimizer).
 
         Returns:
             A ``Pipeline`` instance with all stages in correct order.
@@ -179,13 +190,26 @@ class ResearchDirector:
             {"name": "hypothesis_builder", "type": "agent"},
             {"name": "refutation", "type": "agent"},
             {"name": "builder", "type": "agent"},
+        ]
+        if orchestrated:
+            # REQ-05/06 + AD-8: review the in-flight build config, then dispatch
+            # at the split boundary (builder no longer dispatches).
+            stages.append({"name": "config_review", "type": "agent"})
+            stages.append({"name": "dispatch", "type": "agent"})
+        stages.extend([
             {"name": "statistics", "type": "agent"},
             {"name": "analysis", "type": "agent"},
             {"name": "review", "type": "agent"},
             {"name": "portfolio", "type": "agent"},
             {"name": "deploy", "type": "agent"},
             {"name": "monitor", "type": "agent"},
-        ]
+        ])
+        if orchestrated:
+            # REQ-07/08/09 (D4): bounded retest then optimize at the loop tail.
+            if config.retest is not None:
+                stages.append({"name": "retester", "type": "agent"})
+            if config.optimize is not None:
+                stages.append({"name": "optimizer", "type": "agent"})
 
         # Gate definitions with after_stage positions
         gates = [
@@ -225,6 +249,18 @@ class ResearchDirector:
                 fallback="CONTINUE",
             ),
         ]
+        if orchestrated:
+            # REQ-06 (D2/D3): config gate between review and dispatch — always
+            # blocks in autonomous mode; MODIFY waits for human confirmation.
+            gates.append(
+                GateConfig(
+                    gate_id="HUMAN_APPROVE_CONFIG",
+                    name="HUMAN_APPROVE_CONFIG",
+                    after_stage="config_review",
+                    timeout_hours=24,
+                    fallback="HOLD",
+                )
+            )
 
         # Build pipeline config
         pipeline_config = MultiAgentPipelineConfig(
@@ -266,22 +302,42 @@ class ResearchDirector:
                 stage_obj.set_callback(self._gate_callbacks[gate_id])
 
             else:
-                # Set a default auto-approve callback for automated test mode
-                from quantlab.pipeline.stages.gate_interceptor import (
-                    GateAction,
-                    GateContext,
-                    GateDecision,
-                )
+                # No orchestrator and no registered callback for this gate.
+                if orchestrated:
+                    # REQ-11: unregistered gates fail closed in orchestrated
+                    # mode — HOLD, never auto-approve (D2).
+                    from quantlab.gates.callbacks import fail_closed_callback
 
-                async def _auto_approve(ctx: GateContext) -> GateDecision:
-                    return GateDecision(
-                        gate_id=ctx.gate_id,
-                        action=GateAction.APPROVED,
-                        reason="Auto-approved (no callback registered)",
-                        decided_by="system",
+                    async def _fail_closed(
+                        gate_ctx: GateContext,
+                        _fc: Any = fail_closed_callback,
+                    ) -> GateDecision:
+                        ctx_dict: dict[str, Any] = (
+                            gate_ctx.__dict__
+                            if hasattr(gate_ctx, "__dict__")
+                            else dict(gate_ctx)
+                        )
+                        return await _fc(ctx_dict)
+
+                    stage_obj.set_callback(_fail_closed)
+
+                else:
+                    # Set a default auto-approve callback for automated test mode
+                    from quantlab.pipeline.stages.gate_interceptor import (
+                        GateAction,
+                        GateContext,
+                        GateDecision,
                     )
 
-                stage_obj.set_callback(_auto_approve)
+                    async def _auto_approve(ctx: GateContext) -> GateDecision:
+                        return GateDecision(
+                            gate_id=ctx.gate_id,
+                            action=GateAction.APPROVED,
+                            reason="Auto-approved (no callback registered)",
+                            decided_by="system",
+                        )
+
+                    stage_obj.set_callback(_auto_approve)
 
         return pipeline
 

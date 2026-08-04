@@ -153,6 +153,26 @@ class BuilderAgent:
         # Phase 4: Dispatch with retry
         versioned_campaign_id = context.config.get("campaign_id")
         build_config = context.config.get("build_config")
+
+        if context.config.get("orchestrated"):
+            # AD-3/AD-8 (orchestrated split): the builder translates, validates,
+            # and licenses, but the dispatch step moves to the DispatchStage
+            # boundary. Publish cfx_bytes + the in-flight build_config for the
+            # ConfigReviewStage; dispatch artifacts stay absent.
+            context.artifacts["cfx_bytes"] = cfx_bytes
+            if build_config is not None:
+                context.artifacts["build_config"] = build_config
+            logger.info(
+                "BuilderAgent: orchestrated mode — dispatch deferred to DispatchStage"
+            )
+            return {
+                "cfx_bytes": cfx_bytes,
+                "translate_log": translate_log,
+                "validation": validation_result,
+                "license": license_result,
+                "build_config": build_config,
+            }
+
         dispatch_result = await self._dispatch_with_retry(
             cfx_bytes, research_config,
             campaign_id=versioned_campaign_id,
@@ -524,12 +544,22 @@ class BuilderAgent:
                 bp.eta_seconds = _try_float(value.rstrip("s"), None)
         return bp
 
-    async def _ensure_data(self, config: Any) -> None:
+    async def _ensure_data(self, config: Any, orchestrated: bool = False) -> None:
         """Ensure market data exists for the symbol used in this campaign.
 
         Calls ``DataManager.ensure_symbol()`` to register the symbol via
-        sqcli and download data if needed. This is a best-effort pre-flight
-        check — failures are logged but do not block dispatch.
+        sqcli and download data if needed.
+
+        In legacy mode this is a best-effort pre-flight — failures are logged
+        but do not block dispatch. In orchestrated mode (REQ-13) it is a HARD
+        pre-flight: any failure raises ``RuntimeError`` so dispatch aborts.
+
+        Args:
+            config: The ``ResearchConfig`` (or dict) carrying the market symbol.
+            orchestrated: When True, failures raise instead of being logged.
+
+        Raises:
+            RuntimeError: In orchestrated mode, when data cannot be ensured.
         """
         try:
             from quantlab.data import DataManager
@@ -554,15 +584,26 @@ class BuilderAgent:
             if status == "ok":
                 logger.info("Data pre-flight: symbol '%s' ready", symbol)
             else:
-                logger.warning(
-                    "Data pre-flight for '%s': %s — %s",
-                    symbol,
-                    status,
-                    result.get("error", "unknown"),
+                message = (
+                    f"Data pre-flight for '{symbol}': {status} — "
+                    f"{result.get('error', 'unknown')}"
                 )
-        except ImportError:
+                if orchestrated:
+                    raise RuntimeError(message)
+                logger.warning(message)
+        except ImportError as e:
+            if orchestrated:
+                raise RuntimeError(
+                    f"Data pre-flight failed (orchestrated): DataManager unavailable — {e}"
+                ) from e
             logger.debug("DataManager not available — skipping data pre-flight")
+        except RuntimeError:
+            raise
         except Exception as e:
+            if orchestrated:
+                raise RuntimeError(
+                    f"Data pre-flight failed (orchestrated): {e}"
+                ) from e
             logger.warning("Data pre-flight failed (non-blocking): %s", e)
 
     async def _dispatch_single(
@@ -572,6 +613,7 @@ class BuilderAgent:
         skip_data_check: bool = False,
         campaign_id: str | None = None,
         build_config: Any = None,
+        orchestrated: bool = False,
     ) -> DispatchResult:
         """Execute a single SQX dispatch attempt.
 
@@ -583,6 +625,10 @@ class BuilderAgent:
             config: ``ResearchConfig`` for campaign metadata.
             skip_data_check: If ``True``, skip the pre-flight data check.
                 Default ``False`` ensures data exists before real dispatches.
+            campaign_id: Override for the campaign id.
+            build_config: In-flight ``BuildConfig`` for the dispatch.
+            orchestrated: When True, ``_ensure_data`` is a HARD pre-flight
+                (REQ-13): data errors abort dispatch instead of being logged.
 
         Returns:
             ``DispatchResult`` with dispatch results.
@@ -594,7 +640,7 @@ class BuilderAgent:
 
         # Pre-flight: ensure market data exists for this symbol
         if not skip_data_check:
-            await self._ensure_data(config)
+            await self._ensure_data(config, orchestrated=orchestrated)
 
         try:
             # Try sqx_cli_wrapper if available

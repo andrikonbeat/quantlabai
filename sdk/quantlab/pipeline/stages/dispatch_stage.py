@@ -92,6 +92,9 @@ class DispatchStage(Stage):
             skip_data_check=self._skip_data_check,
             campaign_id=getattr(research_config, "campaign", None),
             build_config=build_config,
+            # DispatchStage is the orchestrated dispatch boundary (AD-8):
+            # the data pre-flight is a HARD check (REQ-13).
+            orchestrated=True,
         )
 
         campaign_id = getattr(result, "campaign_id", None)
