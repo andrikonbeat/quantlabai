@@ -11,6 +11,8 @@ from typing import Union
 
 from pydantic import BaseModel, Field
 
+from quantlab.customproject.models import DatabankSpec
+
 
 # ── Section Types ────────────────────────────────────────────────────
 
@@ -155,6 +157,22 @@ class BuildTask(BaseModel):
 # ── Archive Models ───────────────────────────────────────────────────
 
 
+class TaskMeta(BaseModel):
+    """Per-task routing metadata emitted on the ``<Task>`` element.
+
+    Lives alongside ``CfxProject.tasks`` (the ordered task XML seed) so the
+    writer can emit the real per-task ``type``, ``name`` and ``active``
+    attributes (REQ-23). Absent entries fall back to legacy behaviour
+    (type ``Build``, name derived from the XML file name, active ``true``).
+    """
+
+    task_type: str = "Build"
+    name: str = ""
+    active: bool = True
+    show_settings_overview: bool = False
+    sample_name: str = "Custom"
+
+
 class CfxConfig(BaseModel):
     """Single-file config: <Task> root, one BuildTask."""
 
@@ -172,6 +190,8 @@ class CfxProject(BaseModel):
     name: str
     tasks: dict[str, BuildTask]
     schema_version: str
+    databanks: list[DatabankSpec] = Field(default_factory=list)
+    task_meta: dict[str, TaskMeta] = Field(default_factory=dict)
 
     @property
     def task_type(self) -> str:

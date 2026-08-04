@@ -12,6 +12,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree
+from xml.sax.saxutils import quoteattr
 
 from quantlab.cfx.models import (
     AtmConfig,
@@ -31,6 +32,7 @@ from quantlab.cfx.models import (
     ResourceConfig,
     RetesterDataConfig,
     SettingsSection,
+    TaskMeta,
     WalkForwardConfig,
 )
 
@@ -417,31 +419,59 @@ def _write_config_archive(
 
 
 def _write_project_archive(zf: zipfile.ZipFile, project: CfxProject) -> None:
-    """Write config.xml + task XML files for a multi-file project."""
-    tasks_el = ElementTree.Element("Tasks")
+    """Write config.xml + task XML files for a multi-file project.
 
+    Emits the verified golden layout (assets/SQX_144_2953_linux_20260601/
+    user/projects/*/project.cfx): ``<Project name= version=>`` root, ordered
+    ``<Tasks>`` with one ``<Task type= name= showSettingsOverview= sampleName=
+    active= taskXMLFile=>`` per task, and a ``<Databanks>`` registry section
+    (REQ-23). Per-task type/name/active come from ``project.task_meta``;
+    missing entries fall back to the legacy behaviour (type Build, name from
+    the file name, active true) so pre-existing callers keep their output.
+    """
+    lines: list[str] = [
+        f"<Project name={quoteattr(project.name)} version={quoteattr(project.schema_version)}>",
+        "  <Tasks>",
+    ]
     for filename in project.tasks:
-        ElementTree.SubElement(
-            tasks_el,
-            "Task",
-            attrib={
-                "type": "Build",
-                "name": filename.replace(".xml", ""),
-                "active": "true",
-                "version": project.schema_version,
-                "taskXMLFile": filename,
-            },
+        meta = project.task_meta.get(filename)
+        task_type = meta.task_type if meta else "Build"
+        task_name = meta.name if meta and meta.name else filename.replace(".xml", "")
+        active = "true" if meta is None or meta.active else "false"
+        overview = (
+            str(meta.show_settings_overview).lower()
+            if meta
+            else "false"
         )
+        sample = meta.sample_name if meta else "Custom"
+        lines.append(
+            "    <Task"
+            f" type={quoteattr(task_type)}"
+            f" name={quoteattr(task_name)}"
+            f" showSettingsOverview={quoteattr(overview)}"
+            f" sampleName={quoteattr(sample)}"
+            f" active={quoteattr(active)}"
+            f" taskXMLFile={quoteattr(filename)}"
+            " />"
+        )
+    lines.append("  </Tasks>")
 
-    project_root = ElementTree.Element(
-        "Project",
-        attrib={
-            "name": project.name,
-            "version": project.schema_version,
-        },
-    )
-    project_root.append(tasks_el)
-    zf.writestr("config.xml", _xml_to_bytes(project_root))
+    if project.databanks:
+        lines.append("  <Databanks>")
+        for db in project.databanks:
+            position = f" position={quoteattr(str(db.position))}" if db.position is not None else ""
+            lines.append(
+                "    <Databank"
+                f" name={quoteattr(db.name)}"
+                f" view={quoteattr(db.view)}"
+                f" syncType={quoteattr(db.sync_type)}"
+                f"{position}"
+                " />"
+            )
+        lines.append("  </Databanks>")
+
+    lines.append("</Project>")
+    zf.writestr("config.xml", "\n".join(lines).encode("utf-8"))
 
     # Write each task XML.
     for filename, task in project.tasks.items():
