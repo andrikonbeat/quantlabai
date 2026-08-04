@@ -45,6 +45,7 @@ agents:
       sdd: gentle-orchestrator
       cli: sqcli
       dashboard: phase2-queue
+      campaign: quantlab-campaign
       knowledge: codegraph-read
     permission:
       question: allow
