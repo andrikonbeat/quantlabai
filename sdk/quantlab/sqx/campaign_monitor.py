@@ -13,6 +13,8 @@ WARNING/CRITICAL events trigger either a registered callback or a
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import logging
 import math
 import re
@@ -20,6 +22,7 @@ import time
 import urllib.parse
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable, Literal
 
 import httpx
@@ -31,6 +34,7 @@ logger = logging.getLogger(__name__)
 # ── Constants ───────────────────────────────────────────────────────────────
 
 _COMMAND_ENDPOINT = "/call?cmd="
+_STRATEGIES_CSV_FILENAME = "strategies.csv"
 
 # ── Data Models ─────────────────────────────────────────────────────────────
 
@@ -153,6 +157,49 @@ def parse_databank_counts(text: str | None) -> dict[str, int] | None:
             "counts treated as unknown"
         )
         return None
+    return counts
+
+
+def parse_strategy_counts_csv(text: str | None) -> dict[str, int]:
+    """Parse exported ``strategies.csv`` rows into per-strategy counts (REQ-21).
+
+    The export is written at ``/tmp/sqx-exports/{campaign_id}/strategies.csv``
+    by the dispatch path. Missing/empty/garbage input is TOLERATED: the
+    function returns ``{}`` instead of raising, so a campaign that has not
+    exported yet (or exports a partial file mid-generation) degrades to
+    "no artifact progress" rather than crashing the monitor. Rows without a
+    ``Name`` value and rows whose header lacks a ``Name`` column are skipped
+    (partial rows tolerated); duplicate names accumulate.
+
+    Args:
+        text: Raw contents of the exported ``strategies.csv``.
+
+    Returns:
+        A mapping of strategy name to row count (``{}`` when unparseable).
+    """
+    if not text or not text.strip():
+        logger.warning("Strategies CSV missing/empty — artifact counts unknown")
+        return {}
+
+    try:
+        reader = csv.DictReader(io.StringIO(text))
+    except csv.Error as exc:
+        logger.warning("Strategies CSV unparseable (%s) — counts unknown", exc)
+        return {}
+
+    if reader.fieldnames is None or "Name" not in reader.fieldnames:
+        logger.warning(
+            "Strategies CSV has no 'Name' column — artifact counts unknown"
+        )
+        return {}
+
+    counts: dict[str, int] = {}
+    for row in reader:
+        name = row.get("Name")
+        if not name or not name.strip():
+            continue
+        counts[name.strip()] = counts.get(name.strip(), 0) + 1
+
     return counts
 
 
@@ -312,6 +359,14 @@ class CampaignMonitor:
         config: Optional raw campaign configuration (dict or object) used to
             build the baseline context for :meth:`current_snapshot`. May be
             ``None`` — the snapshot then carries only the derived baseline.
+        export_dir: Optional directory containing the exported
+            ``strategies.csv`` (REQ-21). When set, artifact-derived strategy
+            counts are read each poll and feed the snapshot and stall
+            detection. ``None`` disables the artifact signal entirely.
+        gate_writer: Optional sync ``(event) -> None`` callback invoked for
+            WARNING/CRITICAL events when ``on_watcher_event`` is ``None``
+            (orchestrated mode writes a gate decision-file via this hook
+            instead of prompting in the CLI).
     """
 
     def __init__(
@@ -323,6 +378,8 @@ class CampaignMonitor:
         on_watcher_event: Callable[[WatcherEvent], None] | None = None,
         http_timeout: float = 10.0,
         config: Any | None = None,
+        export_dir: str | Path | None = None,
+        gate_writer: Callable[[WatcherEvent], None] | None = None,
     ) -> None:
         self._campaign_id = campaign_id
         self._base_url = base_url.rstrip("/")
@@ -331,6 +388,9 @@ class CampaignMonitor:
         self._on_watcher_event = on_watcher_event
         self._http_timeout = http_timeout
         self._config = config
+        self._export_dir = Path(export_dir) if export_dir else None
+        self._gate_writer = gate_writer
+        self._notifiers: list[Any] = []
 
         # Internal state
         self._start_time: float = 0.0
@@ -344,6 +404,19 @@ class CampaignMonitor:
         # Databank observability state (surfaced via current_snapshot())
         self._last_status_text: str = ""
         self._databank_counts: dict[str, int] | None = None
+        # Artifact observability state (REQ-14/REQ-21)
+        self._strategy_counts: dict[str, int] = {}
+        self._last_artifact_count: int = 0
+
+    def add_notifier(self, notifier: Any) -> None:
+        """Register an async notifier to fan out every emitted event (REQ-15).
+
+        Args:
+            notifier: An object exposing ``async send(message, **kwargs)``
+                (e.g. ``quantlab.gates.notifiers.Notifier``). ``send()`` is
+                scheduled on the running loop; failures never propagate.
+        """
+        self._notifiers.append(notifier)
 
     # ── Public API ──────────────────────────────────────────────────────
 
@@ -428,9 +501,9 @@ class CampaignMonitor:
 
         Provides the latest raw status text, the generated strategy count,
         per-databank record counts (``None`` when unknown or parse-failed),
-        elapsed seconds, and the baseline context (raw config values merged
-        with the derived :class:`BaselineConfig`). This is the snapshot
-        provider consumed by
+        artifact-derived strategy counts (REQ-14), elapsed seconds, and the
+        baseline context (raw config values merged with the derived
+        :class:`BaselineConfig`). This is the snapshot provider consumed by
         :class:`~quantlab.sqx.llm_generation_monitor.LLMGenerationMonitor`.
         """
         return MonitorSnapshot(
@@ -439,6 +512,7 @@ class CampaignMonitor:
             databank_counts=self._databank_counts,
             elapsed_s=self._elapsed_s(),
             baseline=self._build_baseline_context(),
+            strategy_counts=dict(self._strategy_counts),
         )
 
     # ── Internal: Run Loop ──────────────────────────────────────────────
@@ -498,9 +572,14 @@ class CampaignMonitor:
             # ── Databank observability (fetch failure is tolerated) ──
             databank_text = await self._fetch_databank(client)
 
+            # ── Artifact observability (REQ-21): strategies.csv signal ──
+            strategy_counts = self._read_strategy_counts()
+
             # ── Process one poll tick ──
             elapsed = time.monotonic() - self._start_time
-            events = self._poll_tick(status_text, elapsed, databank_text)
+            events = self._poll_tick(
+                status_text, elapsed, databank_text, strategy_counts
+            )
             for ev in events:
                 await self._dispatch_event(ev)
 
@@ -593,12 +672,20 @@ class CampaignMonitor:
         status_text: str,
         elapsed: float,
         databank_text: str | None = None,
+        strategy_counts: dict[str, int] | None = None,
     ) -> list[WatcherEvent]:
         """Analyse one status response and return any events it triggers.
 
         Also records the raw status text and parses/stores the databank
-        record counts for :meth:`current_snapshot`. Databank parse failures
-        never raise: the counts are treated as unknown (``None``).
+        record counts and artifact strategy counts for
+        :meth:`current_snapshot`. Databank parse failures never raise: the
+        counts are treated as unknown (``None``).
+
+        Zero-growth stall detection considers artifact progress (REQ-21):
+        when ``strategy_counts`` is provided and grew since the last tick,
+        the stall counter is reset even though the status-text count is
+        flat. When ``strategy_counts`` is ``None`` (artifact not enabled or
+        unavailable) the legacy status-text-only behavior is preserved.
 
         Args:
             status_text: Raw status text from the SQX daemon.
@@ -606,6 +693,8 @@ class CampaignMonitor:
             databank_text: Optional raw ``-databank action=list`` output.
                 When ``None`` (fetch failed) the counts are treated as
                 unknown.
+            strategy_counts: Optional artifact-derived strategy counts
+                (REQ-21). ``None`` disables the artifact stall signal.
 
         Returns:
             A (possibly empty) list of WatcherEvent instances.
@@ -615,6 +704,13 @@ class CampaignMonitor:
             self._databank_counts = None
         else:
             self._databank_counts = parse_databank_counts(databank_text)
+
+        # Artifact signal (REQ-21): growth resets the zero-growth stall.
+        artifact_growth = False
+        if strategy_counts is not None:
+            self._strategy_counts = strategy_counts
+            artifact_growth = len(strategy_counts) > self._last_artifact_count
+            self._last_artifact_count = len(strategy_counts)
 
         events: list[WatcherEvent] = []
         count = extract_results_count(status_text)
@@ -649,8 +745,10 @@ class CampaignMonitor:
         if errors:
             return events
 
-        # 3. Zero-growth stall (established throughput then stopped)
-        if count == self._last_count:
+        # 3. Zero-growth stall (established throughput then stopped).
+        #    Artifact progress (REQ-21) resets the stall even when the
+        #    status-text count is flat.
+        if count == self._last_count and not artifact_growth:
             self._stall_polls += 1
             if self._stall_polls >= self._baseline.stall_polls_threshold:
                 events.append(
@@ -694,19 +792,23 @@ class CampaignMonitor:
     # ── Internal: Event Dispatch ────────────────────────────────────────
 
     async def _dispatch_event(self, event: WatcherEvent) -> None:
-        """Record an event and notify the user via callback or CLI prompt.
+        """Record an event and notify the user via callback, gate, or CLI prompt.
 
         WARNING/CRITICAL events in CLI mode trigger a ``rich.prompt.Confirm``.
-        On approval, the campaign is stopped via the HTTP API.
+        On approval, the campaign is stopped via the HTTP API. Orchestrated
+        mode registers a gate writer instead of prompting (REQ-20).
         """
         self._events.append(event)
 
         if self._on_watcher_event is not None:
             self._on_watcher_event(event)
-            return
-
-        # CLI mode — prompt only for WARNING/CRITICAL
-        if event.severity in ("WARNING", "CRITICAL"):
+        elif self._gate_writer is not None:
+            # Orchestrated mode: surface WARNING/CRITICAL events through the
+            # gate decision-file channel instead of a CLI prompt.
+            if event.severity in ("WARNING", "CRITICAL"):
+                self._gate_writer(event)
+        elif event.severity in ("WARNING", "CRITICAL"):
+            # CLI mode — prompt only for WARNING/CRITICAL
             from rich.prompt import Confirm
 
             confirmed = Confirm.ask(
@@ -717,6 +819,67 @@ class CampaignMonitor:
             )
             if confirmed:
                 await self._stop_campaign()
+
+        self._fanout_notify(event)
+
+    def _fanout_notify(self, event: WatcherEvent) -> None:
+        """Schedule an async notification to every registered notifier.
+
+        Never raises: notifier ``send()`` is fire-and-forget on the running
+        loop and each notifier's ``send()`` already logs its own failures.
+        """
+        if not self._notifiers:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.warning(
+                "CampaignMonitor('%s') no running loop — notifier skipped",
+                self._campaign_id,
+            )
+            return
+        message = (
+            f"[{event.severity}] {event.campaign_id} {event.event_type}: "
+            f"{event.details}"
+        )
+        for notifier in self._notifiers:
+            try:
+                loop.create_task(
+                    notifier.send(
+                        message,
+                        campaign_id=event.campaign_id,
+                        event_type=event.event_type,
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "CampaignMonitor('%s') notifier send failed: %s",
+                    self._campaign_id,
+                    exc,
+                )
+
+    def _read_strategy_counts(self) -> dict[str, int] | None:
+        """Read and parse the exported ``strategies.csv`` (REQ-21).
+
+        Returns ``None`` when ``export_dir`` is unset (artifact signal
+        disabled). When the file is missing or unparseable, returns ``{}``
+        — the artifact signal degrades to "no progress" but never raises.
+        """
+        if self._export_dir is None:
+            return None
+        path = self._export_dir / _STRATEGIES_CSV_FILENAME
+        if not path.is_file():
+            return {}
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            logger.warning(
+                "CampaignMonitor('%s') strategies.csv read failed: %s",
+                self._campaign_id,
+                exc,
+            )
+            return {}
+        return parse_strategy_counts_csv(text)
 
     async def _stop_campaign(self) -> None:
         """Dispatch ``-project action=stop`` via the HTTP API."""

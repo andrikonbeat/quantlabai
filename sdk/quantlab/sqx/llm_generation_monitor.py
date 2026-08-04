@@ -59,6 +59,7 @@ class MonitorSnapshot:
     databank_counts: dict[str, int] | None = None
     elapsed_s: float = 0.0
     baseline: dict[str, Any] = field(default_factory=dict)
+    strategy_counts: dict[str, int] = field(default_factory=dict)
 
 
 class Verdict(BaseModel):
@@ -101,6 +102,11 @@ def build_prompt(snapshot: MonitorSnapshot) -> str:
         if snapshot.databank_counts
         else "unknown"
     )
+    artifact_counts = (
+        ", ".join(f"{k}: {v}" for k, v in snapshot.strategy_counts.items())
+        if snapshot.strategy_counts
+        else "unknown"
+    )
     baseline_lines = "\n".join(
         f"  {key}: {value}" for key, value in snapshot.baseline.items()
     )
@@ -114,6 +120,7 @@ def build_prompt(snapshot: MonitorSnapshot) -> str:
         "\n"
         f"Strategies generated: {snapshot.generated_count}\n"
         f"Databank record counts: {counts}\n"
+        f"Exported strategy counts: {artifact_counts}\n"
         f"Elapsed seconds: {snapshot.elapsed_s:.1f}\n"
         "\n"
         "Campaign baseline (expected values):\n"
@@ -414,6 +421,7 @@ class LLMGenerationMonitor:
         self.on_verdict = on_verdict
         self._poll_interval = poll_interval
         self._stopped = False
+        self._notifiers: list[Any] = []
         self._executor = ActionExecutor(
             campaign_id=campaign_id,
             base_url=base_url,
@@ -421,6 +429,16 @@ class LLMGenerationMonitor:
         )
 
     # ── Public API ──────────────────────────────────────────────────────
+
+    def add_notifier(self, notifier: Any) -> None:
+        """Register an async notifier to fan out every validated verdict.
+
+        Args:
+            notifier: An object exposing ``async send(message, **kwargs)``
+                (e.g. ``quantlab.gates.notifiers.Notifier``). Sends are
+                scheduled on the running loop; failures never propagate.
+        """
+        self._notifiers.append(notifier)
 
     async def run(self) -> None:
         """Run the poll loop until stopped.
@@ -488,6 +506,8 @@ class LLMGenerationMonitor:
                     exc,
                 )
 
+        self._fanout_notify(verdict)
+
         if verdict.recommended_action != "stop":
             logger.debug(
                 "LLMGenerationMonitor('%s') verdict: continue",
@@ -542,3 +562,42 @@ class LLMGenerationMonitor:
                 self.campaign_id,
             )
             self._stopped = True
+
+    # ── Internal: Notifiers ─────────────────────────────────────────────
+
+    def _fanout_notify(self, verdict: Verdict) -> None:
+        """Schedule an async notification to every registered notifier.
+
+        Never raises: notifier ``send()`` is fire-and-forget on the running
+        loop and each notifier's ``send()`` already logs its own failures.
+        """
+        if not self._notifiers:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.warning(
+                "LLMGenerationMonitor('%s') no running loop — notifier skipped",
+                self.campaign_id,
+            )
+            return
+        message = (
+            f"[{verdict.severity}] {self.campaign_id} LLM verdict: "
+            f"{verdict.recommended_action} (confidence {verdict.confidence:.2f}) "
+            f"— {verdict.assessment}"
+        )
+        for notifier in self._notifiers:
+            try:
+                loop.create_task(
+                    notifier.send(
+                        message,
+                        campaign_id=self.campaign_id,
+                        recommended_action=verdict.recommended_action,
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "LLMGenerationMonitor('%s') notifier send failed: %s",
+                    self.campaign_id,
+                    exc,
+                )

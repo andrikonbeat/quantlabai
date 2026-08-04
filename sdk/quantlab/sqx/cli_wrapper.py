@@ -34,6 +34,8 @@ from typing import Any, Awaitable, Callable
 import httpx
 
 from quantlab.dsl.models import LLMConfig
+from quantlab.gates.notifiers import ConsoleNotifier, WebhookNotifier
+from quantlab.sqx.blocks_bridge import validate_exported_blocks
 from quantlab.sqx.campaign_monitor import CampaignMonitor, WatcherEvent, compute_baseline
 from quantlab.sqx.llm_generation_monitor import LLMGenerationMonitor, Verdict
 from quantlab.sqx.mock_sqx_server import MockSQXServer
@@ -113,6 +115,9 @@ async def dispatch_campaign(
     confidence_threshold: float = 0.7,
     poll_every_n: int = 5,
     build_config: Any = None,
+    orchestrated: bool = False,
+    gate_event_dir: str | None = None,
+    webhook_url: str | None = None,
 ) -> dict[str, Any]:
     """Dispatch a campaign to SQX via the daemon-based HTTP API.
 
@@ -151,11 +156,19 @@ async def dispatch_campaign(
         confidence_threshold: Minimum verdict confidence required to
             dispatch an action (default 0.7).
         poll_every_n: Run the LLM poll every N-th monitor tick (default 5).
+        orchestrated: Orchestrated mode (REQ-20). Registers webhook + console
+            notifiers and a gate writer on the spawned monitors, and appends
+            a post-dispatch blocks-validation report (REQ-04) to the result.
+            ``False`` keeps the legacy dispatch path byte-identical.
+        gate_event_dir: Base directory for gate decision files (REQ-20).
+            Used to write stall/error gate events in orchestrated mode.
+        webhook_url: Webhook URL for the webhook notifier (REQ-15). Falls
+            back to the ``QUANTLAB_WEBHOOK_URL`` environment variable.
 
     Returns:
         Dict with ``status`` (``"completed"``, ``"timeout"``,
         ``"failed"``), ``export_paths``, ``watcher_events``, and
-        optionally ``error``.
+        optionally ``error``. In orchestrated mode also ``blocks_report``.
     """
     if sqx_install_path is None:
         sqx_install_path = _resolve_sqx_install_path(config)
@@ -185,6 +198,9 @@ async def dispatch_campaign(
                 confidence_threshold=confidence_threshold,
                 poll_every_n=poll_every_n,
                 build_config=build_config,
+                orchestrated=orchestrated,
+                gate_event_dir=gate_event_dir,
+                webhook_url=webhook_url,
             )
         else:
             # Write CFX to temp file for mock path
@@ -206,6 +222,9 @@ async def dispatch_campaign(
                     confidence_threshold=confidence_threshold,
                     poll_every_n=poll_every_n,
                     build_config=build_config,
+                    orchestrated=orchestrated,
+                    gate_event_dir=gate_event_dir,
+                    webhook_url=webhook_url,
                 )
             finally:
                 if os.path.exists(temp_cfx):
@@ -243,6 +262,9 @@ async def _dispatch_real(
     confidence_threshold: float = 0.7,
     poll_every_n: int = 5,
     build_config: Any = None,
+    orchestrated: bool = False,
+    gate_event_dir: str | None = None,
+    webhook_url: str | None = None,
 ) -> dict[str, Any]:
     """Dispatch using the real SQX daemon (sqcli without arguments).
 
@@ -274,6 +296,11 @@ async def _dispatch_real(
         confirm_stop: Optional human-confirmation hook for stop verdicts.
         confidence_threshold: Minimum verdict confidence to dispatch.
         poll_every_n: LLM poll cadence (every N-th monitor tick).
+        orchestrated: Orchestrated mode — registers notifiers + gate writer
+            on the spawned monitors (REQ-15/REQ-20) and appends a
+            post-dispatch blocks report (REQ-04).
+        gate_event_dir: Gate decision-file base directory (REQ-20).
+        webhook_url: Webhook URL for the webhook notifier (REQ-15).
     """
     base_url = _SQX_BASE_URL
 
@@ -374,13 +401,20 @@ async def _dispatch_real(
 
     # ── CampaignMonitor setup ──
     baseline = compute_baseline(cfg_dict, poll_interval=5.0)
+    notifiers = _build_notifiers(webhook_url) if orchestrated else []
+    gate_writer = _build_gate_writer(gate_event_dir, campaign_id) \
+        if orchestrated else None
     monitor = CampaignMonitor(
         campaign_id=campaign_id,
         base_url=base_url,
         baseline=baseline,
         on_watcher_event=on_watcher_event,
         config=cfg_dict,
+        export_dir=f"/tmp/sqx-exports/{campaign_id}",
+        gate_writer=gate_writer,
     )
+    for notifier in notifiers:
+        monitor.add_notifier(notifier)
     monitor_task = asyncio.create_task(monitor.run())
 
     # ── Optional LLM monitor (opt-in via llm_config) ──
@@ -394,6 +428,8 @@ async def _dispatch_real(
         confirm_stop=confirm_stop,
         confidence_threshold=confidence_threshold,
         poll_every_n=poll_every_n,
+        orchestrated=orchestrated,
+        notifiers=notifiers,
     )
 
     # ── Phase 2: Poll status ──
@@ -465,7 +501,14 @@ async def _dispatch_real(
         logger.warning("Daemon stop failed: %s", e)
 
     status = "completed" if is_completed else "timeout"
-    return {"status": status, "export_paths": export_paths, "watcher_events": watcher_events}
+    result: dict[str, Any] = {
+        "status": status,
+        "export_paths": export_paths,
+        "watcher_events": watcher_events,
+    }
+    if orchestrated:
+        result["blocks_report"] = _validate_blocks(build_config, export_paths)
+    return result
 
 
 # ── Lightweight daemon handle for cli_wrapper ──
@@ -571,10 +614,15 @@ async def _dispatch_mock(
     confidence_threshold: float = 0.7,
     poll_every_n: int = 5,
     build_config: Any = None,
+    orchestrated: bool = False,
+    gate_event_dir: str | None = None,
+    webhook_url: str | None = None,
 ) -> dict[str, Any]:
     """Dispatch using the mock HTTP server (no real sqcli required).
 
-    Also spawns a CampaignMonitor for E2E integration testing.
+    Also spawns a CampaignMonitor for E2E integration testing. In
+    orchestrated mode mirrors the real path's notifier/gate-writer wiring
+    and post-dispatch blocks validation (REQ-04/REQ-15/REQ-20).
     """
     base_url = await _ensure_mock_server()
 
@@ -597,6 +645,9 @@ async def _dispatch_mock(
     # ── CampaignMonitor setup — poll faster than dispatch loop ──
     monitor_poll = max(0.5, poll_interval / 2)
     baseline = compute_baseline({"timeframe": "H1"}, poll_interval=monitor_poll)
+    notifiers = _build_notifiers(webhook_url) if orchestrated else []
+    gate_writer = _build_gate_writer(gate_event_dir, campaign_id) \
+        if orchestrated else None
     monitor = CampaignMonitor(
         campaign_id=campaign_id,
         base_url=base_url,
@@ -604,7 +655,11 @@ async def _dispatch_mock(
         poll_interval=monitor_poll,
         on_watcher_event=on_watcher_event,
         config={"timeframe": "H1"},
+        export_dir=f"/tmp/sqx-exports/{campaign_id}",
+        gate_writer=gate_writer,
     )
+    for notifier in notifiers:
+        monitor.add_notifier(notifier)
     monitor_task = asyncio.create_task(monitor.run())
 
     # ── Optional LLM monitor (opt-in via llm_config) ──
@@ -618,6 +673,8 @@ async def _dispatch_mock(
         confirm_stop=confirm_stop,
         confidence_threshold=confidence_threshold,
         poll_every_n=poll_every_n,
+        orchestrated=orchestrated,
+        notifiers=notifiers,
     )
 
     # Poll status
@@ -666,11 +723,14 @@ async def _dispatch_mock(
         pass
 
     export_paths = _collect_exports(sqx_install_path, campaign_id)
-    return {
+    result: dict[str, Any] = {
         "status": "completed" if is_completed else "timeout",
         "export_paths": export_paths,
         "watcher_events": watcher_events,
     }
+    if orchestrated:
+        result["blocks_report"] = _validate_blocks(build_config, export_paths)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -689,12 +749,18 @@ def _spawn_llm_monitor(
     confirm_stop: Callable[[Verdict], Awaitable[bool]] | None,
     confidence_threshold: float,
     poll_every_n: int,
+    orchestrated: bool = False,
+    notifiers: list[Any] | None = None,
 ) -> asyncio.Task[None] | None:
     """Spawn the optional LLM monitor as a sibling task to CampaignMonitor.
 
     Returns ``None`` when ``llm_config`` is ``None`` — the opt-in hook is
     disabled and dispatch behaves exactly as before (spec: "Hook not
     registered preserves behavior", zero LLM calls).
+
+    In orchestrated mode (REQ-15) the webhook/console notifiers are
+    registered on the LLM monitor so verdicts fan out through the same
+    channels as watcher events.
     """
     if llm_config is None:
         return None
@@ -711,6 +777,9 @@ def _spawn_llm_monitor(
         on_verdict=on_llm_verdict,
         monitor=monitor,
     )
+    if orchestrated:
+        for notifier in notifiers or []:
+            llm_monitor.add_notifier(notifier)
     return asyncio.create_task(llm_monitor.run())
 
 
@@ -724,6 +793,94 @@ async def _stop_llm_monitor_task(llm_monitor_task: asyncio.Task[None]) -> None:
     """
     llm_monitor_task.cancel()
     await asyncio.gather(llm_monitor_task, return_exceptions=True)
+
+
+# ---------------------------------------------------------------------------
+# Orchestrated monitor wiring helpers (REQ-04/REQ-15/REQ-20)
+# ---------------------------------------------------------------------------
+
+
+def _build_notifiers(webhook_url: str | None) -> list[Any]:
+    """Build the notifier fanout for orchestrated dispatch (REQ-15).
+
+    Always includes a console notifier. A webhook notifier is added when a
+    URL is provided explicitly or via ``QUANTLAB_WEBHOOK_URL`` (design open
+    question resolved: env default).
+    """
+    notifiers: list[Any] = [ConsoleNotifier()]
+    url = webhook_url or os.environ.get("QUANTLAB_WEBHOOK_URL")
+    if url:
+        notifiers.append(WebhookNotifier(url))
+    return notifiers
+
+
+def _build_gate_writer(
+    gate_event_dir: str | None, campaign_id: str
+) -> Callable[[WatcherEvent], None] | None:
+    """Build the gate decision-file writer for monitor events (REQ-20).
+
+    WARNING/CRITICAL watcher events are surfaced as pending gate files in
+    ``{gate_event_dir}/{campaign_id}/{gate_id}.pending.json`` so the OpenCode
+    agent (or any gate resolver) can act on them. Returns ``None`` when no
+    ``gate_event_dir`` is configured — the monitor then falls back to its
+    CLI prompt path (legacy behavior).
+    """
+    if not gate_event_dir:
+        return None
+    from quantlab.gates.callbacks import write_pending
+
+    def writer(event: WatcherEvent) -> None:
+        try:
+            write_pending(
+                gate_event_dir,
+                campaign_id,
+                f"campaign_{event.event_type}",
+                {"event": event.to_dict()},
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Gate writer for '%s' failed (%s): %s",
+                campaign_id,
+                event.event_type,
+                exc,
+            )
+
+    return writer
+
+
+def _exported_strategy_names(export_paths: list[str]) -> list[str]:
+    """Collect strategy names from exported ``strategies.csv`` files.
+
+    Returns ``[]`` when no CSV export is available — the post-dispatch
+    blocks report then flags every intended block as missing (REQ-04).
+    """
+    from quantlab.sqx.campaign_monitor import parse_strategy_counts_csv
+
+    names: list[str] = []
+    for path in export_paths:
+        if not path.endswith(".csv"):
+            continue
+        try:
+            text = Path(path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        names.extend(parse_strategy_counts_csv(text).keys())
+    return sorted(set(names))
+
+
+def _validate_blocks(
+    build_config: Any, export_paths: list[str]
+) -> dict[str, Any]:
+    """Validate exported strategies against intended blocks (REQ-04).
+
+    Builds the ``blocks_report`` for orchestrated dispatch results:
+    ``{"ok": bool, "missing": [block names]}``. ``ok`` is ``True`` when no
+    intended blocks are missing from the exports (no CSV export ⇒ all
+    intended blocks missing).
+    """
+    intended = list(getattr(build_config, "enabled_blocks", []) or [])
+    report = validate_exported_blocks(_exported_strategy_names(export_paths), intended)
+    return {"ok": report.ok, "missing": report.missing}
 
 
 # ---------------------------------------------------------------------------
