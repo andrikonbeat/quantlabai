@@ -163,6 +163,59 @@ store.rebuild_index()  # Scans all files and writes index.yaml
 warnings = store.validate_formats()  # Checks for non-standard formats
 ```
 
+## Orchestrated Campaign Flow
+
+The AI-directed orchestrated campaign runs the full research loop end-to-end
+with human-validated gates. Scope ends at retest/optimize with
+recommendations — there is **no deploy** phase and no post-deploy
+orchestration.
+
+### Routing
+
+`quantlab-orchestrator` classifies the intent and delegates campaign requests
+(e.g., "run a full campaign") to the `quantlab-campaign` subagent via the
+`task` tool. SDD, CLI, and dashboard routes are unchanged.
+
+### Harness
+
+The `quantlab-campaign` subagent owns the 8-phase loop:
+
+```
+research → hypothesis → config → review → dispatch → monitor → retest → optimize
+```
+
+Each phase returns the Result Contract envelope (`status`,
+`executive_summary`, `artifacts`, `next_recommended`, `risks`). The loop halts
+after optimize with recommendations and never proceeds to deploy (D1). A
+failed phase halts the loop for a human decision.
+
+Assets are versioned in-repo:
+
+- `AI/opencode/agents/campaign.md` — the campaign agent prompt
+- `AI/opencode/skills/quantlab-run-campaign/SKILL.md` — the seed skill
+
+### Human Gates (fail-closed)
+
+Gates resolve through a decision-file channel under
+`/tmp/sqx-gates/{campaign_id}/`: the pipeline writes a `.pending.json`
+envelope, the agent presents it via the `question` tool, and the human
+decision is written back as `.decision.json`. In headless mode the agent falls
+back to stdin.
+
+Autonomous rules are binding:
+
+- Config-review and optimizer re-dispatch gates **always block** for a human
+  decision (D2); a MODIFY verdict requires human confirmation before applying
+  (D3).
+- Unanswered gates **fail closed (HOLD)** — they never auto-approve (REQ-11).
+- Legacy CLI auto-approve remains available outside orchestrated mode.
+
+### Data
+
+`DataManager` is **Dukascopy-only** at launch (FX M1/M5/H1). Orchestrated
+dispatch runs `_ensure_data` as a hard pre-flight; crypto, CSV, and yahoo
+datasources raise `NotSupportedError` (D5).
+
 ## Directory Structure
 
 ```

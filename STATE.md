@@ -90,6 +90,39 @@ Además: `tests/` en la raíz (árbol heredado; testpaths recoge ambos: `tests s
 
 ---
 
+## 🧭 Orchestrated Campaign Flow (harness)
+
+SDD change `orchestrated-campaign-flow` (REQ-01..21) — flujo de campaña
+orquestado por IA con gates humanos. Modo orquestado **flag-gated**
+(`orchestrated=True`): el CLI/pipeline legacy queda byte-idéntico.
+
+| Componente | Archivo |
+|------------|---------|
+| Harness prompt (subagente `quantlab-campaign`) | `AI/opencode/agents/campaign.md` |
+| Seed skill | `AI/opencode/skills/quantlab-run-campaign/SKILL.md` |
+| Routing (campaign → `quantlab-campaign`) | `~/.config/opencode/prompts/quantlab/orchestrator.md` + `openspec/config.yaml` |
+| Pipeline orquestado | `agents/research_director.py` (`build_pipeline(orchestrated=True)`) |
+| Stages | `pipeline/stages/{config_review,dispatch,retester,optimizer}_stage.py` |
+| Gate callbacks (decision-file IPC) | `gates/callbacks.py` |
+| DataManager Dukascopy-only | `data/{data_manager,symbol_registry}.py` |
+
+El bucle de 8 fases (`research → hypothesis → config → review → dispatch →
+monitor → retest → optimize`) **se detiene tras optimize con
+recomendaciones — NO hay deploy** (D1) y no hay feedback
+optimize → re-dispatch (D4). Cada fase devuelve el envelope Result Contract
+(`status`, `executive_summary`, `artifacts`, `next_recommended`, `risks`).
+
+Gates humanos **fail-closed** (REQ-11): protocolo de archivo de decisión en
+`/tmp/sqx-gates/{campaign_id}/` con `question` tool como canal primario y
+stdin como fallback headless. Config review y re-dispatch de optimizer
+**siempre bloquean** en modo autónomo (D2); MODIFY exige confirmación humana
+antes de aplicar (D3); gate sin callback → **HOLD**, nunca auto-aprueba.
+`DataManager` es **solo Dukascopy** (FX M1/M5/H1); crypto/CSV/yahoo lanzan
+`NotSupportedError` (D5); `_ensure_data` es pre-flight duro en modo
+orquestado (REQ-13).
+
+---
+
 ## 🧩 Módulos Recientemente Agregados
 
 | Módulo | Propósito |
