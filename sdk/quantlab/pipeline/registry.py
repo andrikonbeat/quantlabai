@@ -23,6 +23,10 @@ from quantlab.pipeline.stages.agent_stages import (
 )
 from quantlab.pipeline.stages.gate_interceptor import GateInterceptorStage
 from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
+from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
+from quantlab.pipeline.stages.dispatch_stage import DispatchStage
+from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
+from quantlab.pipeline.stages.retester_stage import RetesterStage
 
 logger = logging.getLogger(__name__)
 
@@ -324,6 +328,13 @@ class StageRegistry:
             "guardian_evaluate": GuardianEvaluationStage,
             # Monte Carlo simulation
             "monte_carlo": MonteCarloStage,
+            # Orchestrated flow stages (PR 3, REQ-17): concrete stages with no
+            # separate agent wrapper — registered following the research_llm
+            # precedent so build_from_config can instantiate them by name.
+            "config_review": ConfigReviewStage,
+            "retester": RetesterStage,
+            "optimizer": OptimizerStage,
+            "dispatch": DispatchStage,
             # Gate interceptor
             "gate": GateInterceptorStage,
             # Aliases for gate names

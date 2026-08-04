@@ -52,6 +52,12 @@ from quantlab.pipeline.stages.gate_interceptor import (
 )
 from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
 
+# Re-export orchestrated flow stages (PR 3): config review, dispatch, retest, optimize
+from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
+from quantlab.pipeline.stages.dispatch_stage import DispatchStage
+from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
+from quantlab.pipeline.stages.retester_stage import RetesterStage
+
 __all__ = [
     # Original SQX stages
     "ValidateStage",
@@ -86,4 +92,9 @@ __all__ = [
     "HUMAN_GATE_IDS",
     # Monte Carlo
     "MonteCarloStage",
+    # Orchestrated flow (PR 3)
+    "ConfigReviewStage",
+    "DispatchStage",
+    "RetesterStage",
+    "OptimizerStage",
 ]
