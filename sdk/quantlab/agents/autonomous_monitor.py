@@ -24,7 +24,9 @@ import yaml
 
 from quantlab.agents.monitoring_agent import MonitoringAgent
 from quantlab.gates.notifiers import (
+    ConsoleNotifier,
     EmailNotifier,
+    MobilePushNotifier,
     Notifier,
     SlackNotifier,
     WebhookNotifier,
@@ -50,6 +52,7 @@ _ENV_MAP: dict[str, str] = {
     "heartbeat_interval": "HEARTBEAT_INTERVAL",
     "max_retries": "MAX_RETRIES",
     "knowledge_root": "KNOWLEDGE_ROOT",
+    "push_on_warning": "PUSH_ON_WARNING",
 }
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -84,6 +87,8 @@ class MonitorConfig:
             (default ``"knowledge"``).
         notifiers: Dict mapping notifier name → config dict
             (default ``{}``).
+        push_on_warning: Route WARNING-severity alerts to the mobile push
+            channel as well (opt-in; CRITICAL always pushes) — REQ-35.
     """
 
     strategy_id: str
@@ -95,6 +100,7 @@ class MonitorConfig:
     max_retries: int = 5
     knowledge_root: str = "knowledge"
     notifiers: dict[str, dict[str, Any]] = field(default_factory=dict)
+    push_on_warning: bool = False
 
     def __post_init__(self) -> None:
         """Apply ``AUTONOMOUS_MONITOR_*`` env-var overrides after init."""
@@ -176,7 +182,7 @@ class MonitorConfig:
 # ── Notifier severity→channel routing ───────────────────────────────────────
 
 _SEVERITY_ROUTES: dict[str, tuple[str, ...]] = {
-    "CRITICAL": ("slack", "email", "webhook"),
+    "CRITICAL": ("slack", "email", "webhook", "push"),
     "WARNING": ("slack", "webhook"),
     "INFO": (),
 }
@@ -203,14 +209,20 @@ class NotifierDispatcher:
     def __init__(
         self,
         notifiers: dict[str, Notifier] | None = None,
+        *,
+        push_on_warning: bool = False,
     ) -> None:
         """Initialise with optional pre-built notifier instances.
 
         Args:
             notifiers: Dict mapping channel name → ``Notifier`` instance.
                 When ``None``, defaults to an empty dict (log-only mode).
+            push_on_warning: When True, WARNING-severity alerts also route
+                to the ``push`` channel (REQ-35: WARNING → push is opt-in
+                and configurable). CRITICAL always routes to push.
         """
         self._notifiers: dict[str, Notifier] = notifiers or {}
+        self._push_on_warning = push_on_warning
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -223,7 +235,9 @@ class NotifierDispatcher:
                 to each notifier's ``send()`` as keyword arguments.
         """
         severity = alert.get("severity", "INFO")
-        channels = _SEVERITY_ROUTES.get(severity, ())
+        channels = list(_SEVERITY_ROUTES.get(severity, ()))
+        if severity == "WARNING" and self._push_on_warning:
+            channels.append("push")
 
         for channel in channels:
             notifier = self._notifiers.get(channel)
@@ -457,6 +471,7 @@ class AutonomousMonitorDaemon:
         else:
             self._dispatcher = NotifierDispatcher(
                 notifiers=self._build_notifiers(config.notifiers),
+                push_on_warning=config.push_on_warning,
             )
 
         self._executor = executor or AutoActionExecutor(config, self._store)
@@ -896,6 +911,12 @@ class AutonomousMonitorDaemon:
                     notifiers[name] = WebhookNotifier(
                         url=cfg["url"],
                     )
+                elif name_lower == "push":
+                    notifiers[name] = MobilePushNotifier(
+                        endpoint=cfg["endpoint"],
+                    )
+                elif name_lower == "console":
+                    notifiers[name] = ConsoleNotifier()
                 else:
                     logger.warning(
                         "Unknown notifier type '%s' — skipping", name

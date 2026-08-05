@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -148,3 +149,56 @@ class SlackNotifier(Notifier):
             logger.info("[SLACK NOTIFICATION] %s", payload)
         except Exception as exc:  # noqa: BLE001
             logger.warning("Slack notification to %s failed: %s", self.webhook_url, exc)
+
+
+class MobilePushNotifier(Notifier):
+    """Mobile push channel registered in ``NotifierDispatcher`` (REQ-35).
+
+    Delivers alerts to a mobile push endpoint. An async ``transport`` may be
+    injected for deterministic tests; the default transport posts the JSON
+    payload to the endpoint via ``aiohttp``. Delivery failures are logged at
+    ``WARNING`` and never raised — a push failure must NOT break the alert
+    pipeline (REQ-35 scenario 2).
+    """
+
+    def __init__(
+        self,
+        endpoint: str,
+        *,
+        transport: Callable[[str, dict[str, Any]], Awaitable[None]] | None = None,
+        headers: dict[str, str] | None = None,
+        timeout: float = 10.0,
+    ) -> None:
+        self.endpoint = endpoint
+        self.headers = headers or {}
+        self.timeout = timeout
+        self._transport = transport
+
+    async def send(self, message: str, **kwargs: Any) -> None:
+        payload: dict[str, Any] = {"text": message}
+        payload.update(kwargs)
+        try:
+            if self._transport is not None:
+                await self._transport(self.endpoint, payload)
+                logger.info("Mobile push notification sent to %s", self.endpoint)
+                return
+            import aiohttp
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self.endpoint,
+                    json=payload,
+                    headers=self.headers,
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                ):
+                    logger.info("Mobile push notification sent to %s", self.endpoint)
+        except ImportError:
+            logger.info(
+                "[MOBILE PUSH NOTIFICATION] endpoint=%s payload=%s",
+                self.endpoint,
+                payload,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "Mobile push notification to %s failed: %s", self.endpoint, exc
+            )
