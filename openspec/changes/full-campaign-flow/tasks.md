@@ -35,11 +35,11 @@ Chain strategy: stacked-to-main
 
 ## PR-2: Execution Substrate (REQ-26..28, 42)
 
-- [ ] 2.1 RED: mock parity + resume tests (REQ-28, REQ-26) — `tests/substrate/`
-- [ ] 2.2 `substrate/executor.py` + `lifecycle.py` — state machine, PhaseResult (REQ-26)
-- [ ] 2.3 `poller.py`, `events.py` (CampaignMonitor, REQ-42), `exporter.py`
-- [ ] 2.4 RED: sqcli selectors — relative, missing, `SQCLI_PATH`, mock (fail-closed)
-- [ ] 2.5 retest→optimize in one load, gate hold (REQ-27); legacy parity (REQ-28)
+- [x] 2.1 RED: mock parity + resume tests (REQ-28, REQ-26) — `tests/substrate/`
+- [x] 2.2 `substrate/executor.py` + `lifecycle.py` — state machine, PhaseResult (REQ-26)
+- [x] 2.3 `poller.py`, `events.py` (CampaignMonitor, REQ-42), `exporter.py`
+- [x] 2.4 RED: sqcli selectors — relative, missing, `SQCLI_PATH`, mock (fail-closed)
+- [x] 2.5 retest→optimize in one load, gate hold (REQ-27); legacy parity (REQ-28)
 
 ## PR-3: Compiler Pipeline (REQ-29..30, 39)
 
