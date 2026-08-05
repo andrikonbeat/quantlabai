@@ -413,6 +413,7 @@ class AutonomousMonitorDaemon:
         store: TimeSeriesStore | None = None,
         dispatcher: NotifierDispatcher | None = None,
         executor: AutoActionExecutor | None = None,
+        ops_surface: Any | None = None,
     ) -> None:
         """Initialise the daemon.
 
@@ -426,6 +427,10 @@ class AutonomousMonitorDaemon:
                 from config when not provided.
             executor: Optional ``AutoActionExecutor`` instance. Created
                 from config + store when not provided.
+            ops_surface: Optional 24-7 ops surface (REQ-36). When set, a
+                live evaluation that transitions state escalates a push
+                alert with state and reason. Opt-in — the default daemon
+                loop is unchanged without it.
         """
         self._config = config
         self._state: str = "stopped"
@@ -445,6 +450,10 @@ class AutonomousMonitorDaemon:
         self._live_eval_held: bool = False
         self._live_evaluator: Callable[[EquityPoint], Any] | None = None
         self._live_points: list[EquityPoint] = []
+        self._campaign_id: str | None = None
+
+        # 24-7 ops surface (REQ-36) — opt-in escalation + ack layer
+        self._ops_surface: Any | None = ops_surface
 
         # Backoff base for reconnection (per spec: 5s). Exposed for test injection.
         self._reconnect_base: float = 5.0
@@ -566,6 +575,15 @@ class AutonomousMonitorDaemon:
         """True while live MetaGuardian evaluation is held (REQ-40 s2)."""
         return self._live_eval_held
 
+    @property
+    def ops_surface(self) -> Any | None:
+        """The 24-7 ops surface (REQ-36), or ``None`` when not wired."""
+        return self._ops_surface
+
+    def set_ops_surface(self, ops_surface: Any | None) -> None:
+        """Wire (or unwire) the 24-7 ops surface for escalation (REQ-36)."""
+        self._ops_surface = ops_surface
+
     def set_live_evaluator(
         self,
         evaluator: Callable[[EquityPoint], Any] | None,
@@ -595,13 +613,28 @@ class AutonomousMonitorDaemon:
         forwarded to the live evaluator only while connected — during a
         STREAM_LOST hold no live data reaches MetaGuardian, so no live-based
         state transition can occur (fail-closed, REQ-40 scenario 2).
+
+        When the evaluator reports a state transition and a 24-7 ops surface
+        is wired (REQ-36), the transition escalates a push alert with the
+        resulting state and reason.
         """
         self._live_points.append(point)
         if self._live_evaluator is None or self._live_eval_held:
             return
         result = self._live_evaluator(point)
         if inspect.isawaitable(result):
-            await result
+            result = await result
+        if (
+            result is not None
+            and getattr(result, "transitioned", False)
+            and getattr(result, "state", None) is not None
+            and self._ops_surface is not None
+        ):
+            await self._ops_surface.escalate(
+                self._campaign_id or self._config.strategy_id,
+                result.state,
+                reason=getattr(result, "reason", ""),
+            )
 
     async def stream_live(
         self,
@@ -619,6 +652,7 @@ class AutonomousMonitorDaemon:
         Yields:
             EquityPoint — each point consumed from the account feed.
         """
+        self._campaign_id = campaign_id
         self._release_live_eval()
         while True:
             try:
