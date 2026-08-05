@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import logging
+import os
 import re
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
+from quantlab.compiler import (
+    JfxArtifact,
+    is_compiler_enabled,
+)
+from quantlab.compiler.compiler import CompilerPipeline
 from quantlab.phase4.http_client import AsyncSQXClient
 from quantlab.phase4.errors import (
     JForexError,
@@ -14,6 +21,8 @@ from quantlab.phase4.errors import (
     JForexStrategyNotFoundError,
     JForexServerError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class JForexDeployer:
@@ -86,6 +95,79 @@ class JForexDeployer:
         output_path = output_dir / f"{class_name}.java"
         output_path.write_text(java_source, encoding="utf-8")
         return output_path
+
+    def compile_strategy(
+        self,
+        java_path: str | Path,
+        *,
+        jdk_home: Optional[str | Path] = None,
+        env: Optional[dict[str, str]] = None,
+        fixer: Optional[Callable[[str, list[str]], str]] = None,
+        max_fix_iterations: int = 5,
+    ) -> JfxArtifact | Path:
+        """Route an exported ``.java`` through the compiler pipeline (REQ-39).
+
+        The deploy path continues: javac from the external JDK
+        (``QUANTLAB_JDK_HOME``) compiles the source and packages the result as
+        a ``.jfx`` (REQ-29). Compile errors route into the bounded fix loop
+        (REQ-30); when the bound is exhausted a :class:`CompileError` is
+        raised and deployment is blocked — no ``.jfx`` and no deployable JAR
+        are produced (REQ-39 scenario 2).
+
+        Rollback boundary (design slice 3): ``QUANTLAB_COMPILER=0`` keeps the
+        ``.java``-only path — the *java_path* is returned unchanged and no
+        compile step runs.
+
+        Returns:
+            The packaged :class:`JfxArtifact`, or the original *java_path*
+            when the compiler is disabled.
+
+        Raises:
+            CompilerConfigError: JDK/javac missing or non-executable —
+                fail-closed before javac runs (REQ-29).
+            CompileError: javac failed with a structured error report, or the
+                fix loop exhausted its bound with full history (REQ-30).
+        """
+        env = os.environ if env is None else env
+        if not is_compiler_enabled(env):
+            logger.info("QUANTLAB_COMPILER=0 — keeping .java-only deploy path")
+            return Path(java_path)
+        return CompilerPipeline.compile(
+            java_path,
+            jdk_home=jdk_home,
+            env=env,
+            fixer=fixer,
+            max_fix_iterations=max_fix_iterations,
+        )
+
+    async def export_and_compile(
+        self,
+        strategy_id: str,
+        output_dir: str | Path,
+        *,
+        strategy_name: Optional[str] = None,
+        jdk_home: Optional[str | Path] = None,
+        env: Optional[dict[str, str]] = None,
+        fixer: Optional[Callable[[str, list[str]], str]] = None,
+        max_fix_iterations: int = 5,
+    ) -> JfxArtifact | Path:
+        """Export a strategy and route it through the compiler (REQ-39).
+
+        ``export_strategy`` writes the ``.java``; ``compile_strategy`` then
+        routes it through :class:`CompilerPipeline` and packages the ``.jfx``
+        (REQ-39 scenario 1: "export then compile to .jfx"). A compile failure
+        blocks deploy (REQ-39 scenario 2) — no JAR is produced.
+        """
+        java_path = await self.export_strategy(
+            strategy_id, output_dir, strategy_name=strategy_name
+        )
+        return self.compile_strategy(
+            java_path,
+            jdk_home=jdk_home,
+            env=env,
+            fixer=fixer,
+            max_fix_iterations=max_fix_iterations,
+        )
 
     async def deploy_indicators(
         self,
