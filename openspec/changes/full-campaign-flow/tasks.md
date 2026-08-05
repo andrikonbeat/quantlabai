@@ -43,10 +43,10 @@ Chain strategy: stacked-to-main
 
 ## PR-3: Compiler Pipeline (REQ-29..30, 39)
 
-- [ ] 3.1 RED: missing JDK→CompilerConfigError, no partial .jfx; non-exec javac (REQ-29)
-- [ ] 3.2 `compiler/compiler.py` javac compile + `jfx.py` packaging (REQ-29)
-- [ ] 3.3 `fixloop.py` bounded fix, per-iteration log, bound→CompileError + history (REQ-30)
-- [ ] 3.4 `jforex_deploy.py` .jfx routing; RED: compile failure blocks deploy (REQ-39)
+- [x] 3.1 RED: missing JDK→CompilerConfigError, no partial .jfx; non-exec javac (REQ-29)
+- [x] 3.2 `compiler/compiler.py` javac compile + `jfx.py` packaging (REQ-29)
+- [x] 3.3 `fixloop.py` bounded fix, per-iteration log, bound→CompileError + history (REQ-30)
+- [x] 3.4 `jforex_deploy.py` .jfx routing; RED: compile failure blocks deploy (REQ-39)
 
 ## PR-4: Demo Deploy + Gates (REQ-31..32, 38)
 
