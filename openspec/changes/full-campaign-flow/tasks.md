@@ -63,7 +63,7 @@ Chain strategy: stacked-to-main
 
 ## PR-6: Mobile + Orchestration (REQ-35..36, 01M, 37, 43..44)
 
-- [ ] 6.1 MobilePushNotifier + severity routing; RED: push fail logged, others deliver (REQ-35)
-- [ ] 6.2 24-7 daemon escalation on transitions + expiry, ack (REQ-36)
-- [ ] 6.3 `campaign.md` PHASES + flow assert; RED: dropped phase aborts (REQ-37)
-- [ ] 6.4 stages portfolio/compile/deploy/demo/archive; chained retest/optimize (REQ-43..44)
+- [x] 6.1 MobilePushNotifier + severity routing; RED: push fail logged, others deliver (REQ-35)
+- [x] 6.2 24-7 daemon escalation on transitions + expiry, ack (REQ-36)
+- [x] 6.3 `campaign.md` PHASES + flow assert; RED: dropped phase aborts (REQ-37)
+- [x] 6.4 stages portfolio/compile/deploy/demo/archive; chained retest/optimize (REQ-43..44)

@@ -1,6 +1,6 @@
 # Apply Progress: Full Campaign Flow
 
-Cumulative across batches. Latest batch: PR-5 Archive + Feedback (REQ-33..34, 40..41).
+Cumulative across batches. Latest batch: PR-6 Mobile + Orchestration (REQ-35..36, 01M, 37, 43..44).
 
 ## PR-1: Custom-Project Generator (REQ-22..25) — COMPLETE
 
@@ -177,5 +177,53 @@ Commits: `1bf1b72` (feedback), `9295a76` (live feed + hold), `a5ec7d0` (live eva
 - **STREAM_LOST hold is per-stream**: a fresh `stream_live()` releases the hold (evaluation resumes); the hold protects the *live* evaluation window only.
 - Pre-existing failures NOT caused by PR-5 (confirmed at base `09ac069` and re-confirmed with the new module removed): `tests/phase4/test_project_builder.py::TestBuildConfigMapCoverage::{test_all_buildconfig_fields_in_map, test_map_entries_have_valid_format_types}` — untouched.
 - Additional pre-existing failure (confirmed failing on the parent branch without PR-5 code): `tests/robustness/test_autonomous_monitor_health.py::TestAutonomousMonitorStoreHealthIntegration::test_circuit_breaker_used_for_store_writes` — `AttributeError: 'KnowledgeStore' object has no attribute '_circuit_breaker'` (test expects an internal attribute the store never had). Untouched per strict-TDD rule; flag for a future batch.
+
+## PR-6: Mobile + Orchestration (REQ-35..36, 01M, 37, 43..44) — COMPLETE
+
+- [x] 6.1 MobilePushNotifier + severity routing; RED: push fail logged, others deliver (REQ-35)
+- [x] 6.2 24-7 daemon escalation on transitions + expiry, ack (REQ-36)
+- [x] 6.3 `campaign.md` PHASES + flow assert; RED: dropped phase aborts (REQ-37)
+- [x] 6.4 stages portfolio/compile/deploy/demo/archive; chained retest/optimize (REQ-43..44)
+
+Commits: `49f6123`, `0739745`, `bbc86d6`, `31d66bd` on `feat/mobile-orchestration`.
+
+### What
+
+- **6.1 (REQ-35)**: `sdk/quantlab/gates/notifiers.py` — `MobilePushNotifier(endpoint, *, transport=None, headers=None, timeout=10.0)` POSTs JSON to the push endpoint with transport injection; failures are logged (not raised) at WARNING severity so a dead push endpoint never blocks monitoring. `sdk/quantlab/agents/autonomous_monitor.py`: `_SEVERITY_ROUTES["CRITICAL"]` now includes `"push"` (CRITICAL always pushes); `NotifierDispatcher` gains `push_on_warning` (default `False` — WARNING push is opt-in via `PUSH_ON_WARNING` env or `MonitorConfig.push_on_warning`); `_build_notifiers` maps `"push"` → `MobilePushNotifier`, `"console"` → `ConsoleNotifier`. RED: 11 tests in `tests/gates/test_notifiers.py` (push fail logged + others still deliver, CRITICAL routes to push, opt-in WARNING behavior).
+- **6.2 (REQ-36)**: new `sdk/quantlab/agents/ops_surface.py` — `OpsSurface` 24-7 operations surface with `EscalationAlert` (campaign/severity/state/message/acked/timestamps), one-directional worsening escalation (`_ESCALATION_RANK`: NORMAL < VIGILANCE < DEFENSIVE < QUARANTINE), `demo_window_expired()`, `ack()`, `pending_alerts()`/`flush_pending()`, `on_transition` hook pushing `GUARDIAN_ESCALATION`; `demo_window_expired()` pushes `DEMO_WINDOW_EXPIRED`. `AutonomousMonitorDaemon` gains `ops_surface` (property + `set_ops_surface`) and `_deliver_live_point` escalates whenever `result.transitioned` and an ops surface is wired. RED: 13 tests in `tests/agents/test_ops_surface.py` (local `_make_mock_notifier` — `tests/agents` has no `__init__.py`).
+- **6.3 (REQ-37)**: new `sdk/quantlab/campaign/flow.py` — `PHASES` tuple of the 14 phases (research → live-ops), `FlowIntegrityError`, and `assert_flow(phases)` fail-closed (wrong length/order/membership raises). `AI/opencode/agents/campaign.md` rewritten to the 14-phase lifecycle with an explicit "PHASES constant" block kept byte-identical to `quantlab.campaign.flow.PHASES` and instructions to run the flow-integrity assert. RED: 11 tests in `tests/campaign/test_flow_integrity.py` incl. doc-sync via `ast` (extracts the literal from campaign.md and compares to the code tuple).
+- **6.4 (REQ-43..44, REQ-01 phases 9-13)**: five concrete stages in `sdk/quantlab/pipeline/stages/` — `portfolio_stage.py` (`PortfolioStage`: consumes `selected_strategies`, publishes normalized `portfolio_result` via injectable `optimize_fn`, default pure `PortfolioComposer.normalize_weights`), `compile_stage.py` (`CompileStage`: routes each strategy through the compiler pipeline, injectable `compile_fn`), `deploy_stage.py` (`DeployStage`: `DeploymentAgent.package_jfx`, dry-run default), `demo_stage.py` (`DemoStage`: `DemoDeployer.deploy` honouring the 14-day window, `BLOCKED_EXPIRED` → fail-closed with `pending_gate=HUMAN_APPROVE_DEMO`, `ctx.config.demo_now` pins the clock), `archive_stage.py` (`ArchiveStage`: `ArchivePhase.run(campaign_id)` → `archive_bundle`). `renderers.py` `_crosschecks_section` now emits `<MonteCarlo enabled simulations/>` (Retest, REQ-43) and `<Parameters enabled .../>` (Optimize, REQ-44) inside CrossChecks — disabled elements stay present so a harness change can never silently drop a cross-check. `StageRegistry` maps `portfolio`/`deploy` to the concrete orchestrated stages (superseding the legacy `PortfolioAgent`/`DeployAgentStage` wrappers) and adds `compile`/`demo`/`archive`. Chained `Filtering → Retest → Optimize` in ONE custom-project load (`Tasks/Task` order, CrossChecks carry WF+MC+params); standalone `Retester.run`/`Optimizer.run` signatures unchanged.
+
+### Work Unit Evidence
+
+| Evidence | Required value |
+|---|---|
+| Focused test command and exact result | `pytest tests/pipeline/stages/ -q` → **18 passed** (0.83s): orchestration contracts+behaviors (5 stages + full chain, 10 tests) and chained retest/optimize (8 tests). Per unit: 6.1 `pytest tests/gates/test_notifiers.py -q` → 11 passed; 6.2 `pytest tests/agents/test_ops_surface.py -q` → 13 passed; 6.3 `pytest tests/campaign/test_flow_integrity.py -q` → 11 passed |
+| Runtime harness command/scenario and exact result | Chained one-load: `generate_cfx_archive` for Filtering→Retest→Optimize → `config.xml` contains `Tasks/Task` order Filtering, Retest, Optimize; `Retest-Task1.xml` `CrossChecks` carries `WalkForward enabled="true" cycles="12"` + `MonteCarlo enabled="true" simulations="500"`; `Optimize-Task1.xml` carries `Parameters enabled="true" maxOptimizations="100"`; MC/params absent → disabled elements emitted. Full chain: `Pipeline` of PortfolioStage→CompileStage→DeployStage→DemoStage→ArchiveStage with injectable fakes produces artifact keys in order `[selected_strategies, portfolio_result, compiled_strategies, deployment_result, demo_result, archive_bundle]`; expired demo window → `BLOCKED_EXPIRED`. Regression: `tests/pipeline/ tests/customproject/ tests/agents/ tests/gates/ tests/campaign/ tests/phase5/` → **314 passed, 6 skipped** (6.59s) |
+| Rollback boundary | All PR-6 additions are additive: new modules (`ops_surface.py`, `campaign/flow.py`, the five stage modules) + new tests; the only modifications to existing files are `notifiers.py` (new class + route additions), `autonomous_monitor.py` (new params/properties, defaults preserve legacy behavior), `renderers.py` (CrossChecks gains MonteCarlo/Parameters — existing WalkForward assertions unchanged), `registry.py` (portfolio/deploy remap + compile/demo/archive keys). Reverting `49f6123..31d66bd` removes PR-6 without touching PR-1..5. Full suite: 19 failed + 11 errors vs **20 failed + 11 errors on pristine HEAD** — same pre-existing, order-dependent families (orchestrator interference, robustness knowledge-store, cfx reader, project_builder, prompt); no regression attributable to PR-6 |
+
+### TDD Cycle Evidence
+
+| Task | Test File | Layer | Safety Net | RED | GREEN | TRIANGULATE | REFACTOR |
+|------|-----------|-------|------------|-----|-------|-------------|----------|
+| 6.1 | `tests/gates/test_notifiers.py` | Unit | ✅ 62 passed (gates + autonomous_monitor) | ✅ Written (AttributeError: MobilePushNotifier) | ✅ Passed | ✅ 11 cases (push POST payload, failure logged not raised, CRITICAL route, WARNING opt-in on/off) | ✅ Clean |
+| 6.2 | `tests/agents/test_ops_surface.py` | Unit | ✅ 62 passed | ✅ Written (ModuleNotFoundError: agents.ops_surface) | ✅ Passed | ✅ 13 cases (rank ordering, worsening-only escalation, ack, expiry push, pending/flush, daemon wiring) | ✅ Clean |
+| 6.3 | `tests/campaign/test_flow_integrity.py` | Unit | ✅ 89 passed (ops_surface + guardian + daemon) | ✅ Written (ModuleNotFoundError: campaign.flow) | ✅ Passed | ✅ 11 cases (14 phases exact, order, doc-sync ast, dropped phase aborts) | ✅ Clean |
+| 6.4 | `tests/pipeline/stages/test_orchestration_stages.py` + `test_chained_retest_optimize.py` | Unit | ✅ 177 passed (pipeline/customproject/agents/gates/campaign) | ✅ Written (17 failed: ModuleNotFoundError ×5 stage modules + missing MonteCarlo/Parameters) | ✅ Passed | ✅ 18 cases (5 stage contracts, behaviors, full chain order, one-load chain, MC/params on/off, standalone signatures) | ✅ Clean |
+
+### Deviations from Design
+
+- **`PortfolioStage` does NOT publish `portfolio_cfx` into `ctx.artifacts`** (the chain test asserts exact artifact keys `[selected_strategies, portfolio_result, compiled_strategies, deployment_result, demo_result, archive_bundle]`; `portfolio_cfx` stays in the stage's return dict — compilation publishes .jfx artifacts later). Abstract anchor's `provides` list retained on the concrete class for contract compatibility.
+- **Registry remap**: `portfolio`/`deploy` now map to the concrete orchestrated `PortfolioStage`/`DeployStage` (REQ-01 phases 9/11) instead of the legacy `PortfolioAgent`/`DeployAgentStage` wrappers. This follows the PR-3 precedent (concrete orchestrated stages registered by name) and the legacy wrapper classes/imports were removed (dead code after the remap).
+- **`test_pipeline_registry.py::test_registry_initializes_with_all_stages` was stale** — it had failed on this branch since PR-3 (its exact-set assertion never included `analysis`/`config_review`/`retester`/`optimizer`/`dispatch`). Updated the expected set with the PR-3 keys + the five PR-6 keys; test now passes. Verified pre-existing on pristine HEAD.
+
+### Notes / Gotchas
+
+- **Strict-TDD for 6.4**: the one-load chain test (`test_chained_retest_optimize.py`) was written first and failed with `ModuleNotFoundError` for the five stage modules; the missing `<MonteCarlo>`/`<Parameters>` elements were the second RED failure. All GREEN after adding the modules and the renderer sections.
+- **Annotation forms in signature tests**: `Retester.run`/`Optimizer.run` annotate `config` with a forward-reference string (e.g. `"RetesterConfig"`), not a class — the signature tests resolve both forms via `_annotation_name()`.
+- **Pre-existing failures confirmed NOT caused by PR-6** (full suite on pristine HEAD: 20 failed + 11 errors; with PR-6: 19 failed + 11 errors): orchestrator cross-file interference, robustness knowledge-store circuit-breaker, cfx multi-file detection, project-builder map coverage, campaign-agent prompt. None import PR-6 modules; all fail identically without PR-6 code.
+- **Stash gotcha**: `git stash push -u` + full-suite run regenerates `knowledge/index.yaml` and `knowledge/timeseries/monitor.db`, which then collide on `git stash pop` (untracked conflict). Worked around by verifying all tracked + new files restored, then dropping the stale stash. Avoid stashing `knowledge/` when running the full suite.
+
+
 
 
