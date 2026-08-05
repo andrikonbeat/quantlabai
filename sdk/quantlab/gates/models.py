@@ -23,6 +23,7 @@ class GateDecisionAction(str, Enum):
     TIMEOUT = "timeout"
     FALLBACK = "fallback"
     HOLD = "hold"
+    ABORT = "abort"
 
 
 class FallbackPolicy(str, Enum):
@@ -142,6 +143,18 @@ DEFAULT_GATE_POLICIES: dict[str, GatePolicyConfig] = {
     "HUMAN_APPROVE_DEPLOY": GatePolicyConfig(
         gate_id="HUMAN_APPROVE_DEPLOY",
         timeout_hours=12.0,
+        fallback=FallbackPolicy.HOLD,
+        notifications=["email", "slack"],
+    ),
+    "HUMAN_APPROVE_DEMO": GatePolicyConfig(
+        gate_id="HUMAN_APPROVE_DEMO",
+        timeout_hours=12.0,
+        fallback=FallbackPolicy.HOLD,
+        notifications=["email", "slack"],
+    ),
+    "HUMAN_APPROVE_ARCHIVE": GatePolicyConfig(
+        gate_id="HUMAN_APPROVE_ARCHIVE",
+        timeout_hours=24.0,
         fallback=FallbackPolicy.HOLD,
         notifications=["email", "slack"],
     ),
