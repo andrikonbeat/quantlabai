@@ -12,12 +12,13 @@ This module provides:
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 import os
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, AsyncGenerator, Callable
 
 import yaml
 
@@ -425,6 +426,12 @@ class AutonomousMonitorDaemon:
         self._stream_retries: int = 0
         self._loop_exception: Exception | None = None
 
+        # MetaGuardian live feed state (REQ-41 / REQ-40)
+        self._stream_state: str = "connected"  # "connected" | "STREAM_LOST"
+        self._live_eval_held: bool = False
+        self._live_evaluator: Callable[[EquityPoint], Any] | None = None
+        self._live_points: list[EquityPoint] = []
+
         # Backoff base for reconnection (per spec: 5s). Exposed for test injection.
         self._reconnect_base: float = 5.0
 
@@ -517,17 +524,99 @@ class AutonomousMonitorDaemon:
             "error": str(self._loop_exception) if self._loop_exception else None,
             "store_healthy": not self._store_unhealthy,
             "store_health": "healthy" if not self._store_unhealthy else "unhealthy",
+            "stream_state": self._stream_state,
+            "live_eval_held": self._live_eval_held,
         }
 
     # ── Internal: stream factory (injectable for testing) ───────────────────
 
     def _get_stream(
         self,
+        campaign_id: str | None = None,
     ) -> AsyncGenerator[EquityPoint, None]:
         """Create a live equity stream for the configured strategy."""
         return ResultReader.stream_live(
-            campaign_id=self._config.strategy_id,
+            campaign_id=campaign_id or self._config.strategy_id,
         )
+
+    # ── MetaGuardian live feed (REQ-41 / REQ-40) ────────────────────────────
+
+    @property
+    def stream_state(self) -> str:
+        """Live-feed state: ``"connected"`` or ``"STREAM_LOST"`` (REQ-40)."""
+        return self._stream_state
+
+    @property
+    def live_eval_held(self) -> bool:
+        """True while live MetaGuardian evaluation is held (REQ-40 s2)."""
+        return self._live_eval_held
+
+    def set_live_evaluator(
+        self,
+        evaluator: Callable[[EquityPoint], Any] | None,
+    ) -> None:
+        """Register the MetaGuardian live evaluator (REQ-40).
+
+        The evaluator receives each live equity point once the daemon is
+        connected. It may be sync or async. While the stream is held
+        (STREAM_LOST) the evaluator is never invoked.
+        """
+        self._live_evaluator = evaluator
+
+    def _hold_live_eval(self) -> None:
+        """Enter the STREAM_LOST hold: no live-based transition may occur."""
+        self._stream_state = "STREAM_LOST"
+        self._live_eval_held = True
+
+    def _release_live_eval(self) -> None:
+        """Resume live evaluation (a fresh stream is available)."""
+        self._stream_state = "connected"
+        self._live_eval_held = False
+
+    async def _deliver_live_point(self, point: EquityPoint) -> None:
+        """Route a live equity point to the MetaGuardian feed (REQ-41).
+
+        The raw point is buffered for the archive statistics feed. It is
+        forwarded to the live evaluator only while connected — during a
+        STREAM_LOST hold no live data reaches MetaGuardian, so no live-based
+        state transition can occur (fail-closed, REQ-40 scenario 2).
+        """
+        self._live_points.append(point)
+        if self._live_evaluator is None or self._live_eval_held:
+            return
+        result = self._live_evaluator(point)
+        if inspect.isawaitable(result):
+            await result
+
+    async def stream_live(
+        self,
+        campaign_id: str,
+    ) -> AsyncGenerator[EquityPoint, None]:
+        """Stream live demo-account equity/positions to MetaGuardian (REQ-41).
+
+        Consumes the account feed for *campaign_id*, delivers every point to
+        the MetaGuardian live evaluator (REQ-40), and yields it to the caller.
+        Heartbeat/metrics continue as before (REQ-41). When the stream is lost
+        beyond ``max_retries``, a ``STREAM_LOST`` alert is dispatched and live
+        evaluation holds — no live-based state transition occurs (fail-closed,
+        REQ-40 scenario 2).
+
+        Yields:
+            EquityPoint — each point consumed from the account feed.
+        """
+        self._release_live_eval()
+        while True:
+            try:
+                async for point in self._get_stream(campaign_id):
+                    await self._on_point(point)
+                    await self._maybe_heartbeat()
+                    yield point
+            except (ConnectionError, OSError) as exc:
+                logger.warning("stream_live: %s", exc)
+                if not await self._reconnect():
+                    return
+            else:
+                return
 
     # ── Internal: main loop ─────────────────────────────────────────────────
 
@@ -574,8 +663,10 @@ class AutonomousMonitorDaemon:
             logger.exception("Daemon loop fatal error: %s", exc)
 
     async def _on_point(self, point: EquityPoint) -> None:
-        """Process a single equity point."""
+        """Process a single equity point: buffer it and deliver it to the
+        MetaGuardian live feed (REQ-41)."""
         self._equity_buffer.append(point)
+        await self._deliver_live_point(point)
 
     # ── Internal: compute cycle ─────────────────────────────────────────────
 
@@ -740,6 +831,9 @@ class AutonomousMonitorDaemon:
                 self._config.max_retries,
             )
             self._state = "error"
+
+            # STREAM_LOST hold — no live-based state transition may occur
+            self._hold_live_eval()
 
             # Dispatch STREAM_LOST CRITICAL alert
             alert: dict[str, Any] = {
