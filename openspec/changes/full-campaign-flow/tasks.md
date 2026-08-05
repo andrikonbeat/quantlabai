@@ -56,10 +56,10 @@ Chain strategy: stacked-to-main
 
 ## PR-5: Archive + Feedback (REQ-33..34, 40..41)
 
-- [ ] 5.1 `feedback.py` record()→FeedbackRecord at archive; RED: gates never bypassed (REQ-34)
-- [ ] 5.2 `stream_live()` feed; RED: STREAM_LOST hold, no transition (REQ-41, REQ-40)
-- [ ] 5.3 MetaGuardian live eval — drawdown>10%→DEFENSIVE + feedback (REQ-40)
-- [ ] 5.4 `campaign_archive.py` plan/stats/bundle; DEGRADING→replacement, ARCHIVE gate (REQ-33)
+- [x] 5.1 `feedback.py` record()→FeedbackRecord at archive; RED: gates never bypassed (REQ-34)
+- [x] 5.2 `stream_live()` feed; RED: STREAM_LOST hold, no transition (REQ-41, REQ-40)
+- [x] 5.3 MetaGuardian live eval — drawdown>10%→DEFENSIVE + feedback (REQ-40)
+- [x] 5.4 `campaign_archive.py` plan/stats/bundle; DEGRADING→replacement, ARCHIVE gate (REQ-33)
 
 ## PR-6: Mobile + Orchestration (REQ-35..36, 01M, 37, 43..44)
 
