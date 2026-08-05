@@ -51,17 +51,53 @@ def _databanks_section(task: CustomProjectTask) -> DatabanksConfig | None:
     return DatabanksConfig(raw_xml=f"<Databanks>\n{inner}\n  </Databanks>")
 
 
+def _param_attrs(raw: str) -> str:
+    """Turn ``key=value`` pairs into quoted XML attributes (REQ-44).
+
+    ``"maxOptimizations=100,population=50"`` →
+    ``maxOptimizations="100" population="50"``
+    """
+    parts: list[str] = []
+    for chunk in raw.split(","):
+        chunk = chunk.strip()
+        if not chunk:
+            continue
+        if "=" in chunk:
+            key, _, value = chunk.partition("=")
+            parts.append(f'{key.strip()}="{value.strip()}"')
+        else:
+            parts.append(chunk)
+    return " ".join(parts)
+
+
 def _crosschecks_section(task: CustomProjectTask) -> CrossChecksConfig:
-    """CrossChecks for Retest/Optimize; Walk-Forward lives here (REQ-25)."""
+    """CrossChecks for Retest/Optimize (REQ-25, REQ-43/44).
+
+    Walk-Forward always renders here — never as a standalone task (REQ-25).
+    Monte Carlo (Retest, REQ-43) renders enabled only when ``monte_carlo_runs``
+    is configured; parameter ranges (Optimize, REQ-44) render from
+    ``optimize_params``. Disabled elements stay present so a harness change
+    can never silently drop a cross-check.
+    """
     enabled = "true" if "walkforward_cycles" in task.params else "false"
     cycles = task.params.get("walkforward_cycles", "5")
-    return CrossChecksConfig(
-        raw_xml=(
-            "<CrossChecks>"
-            f'<WalkForward enabled="{enabled}" cycles="{cycles}" />'
-            "</CrossChecks>"
-        )
-    )
+    parts = ["<CrossChecks>"]
+
+    mc_runs = task.params.get("monte_carlo_runs")
+    mc_attr = 'enabled="false"'
+    if mc_runs is not None:
+        mc_attr = f'enabled="true" simulations="{mc_runs}"'
+    parts.append(f"<MonteCarlo {mc_attr} />")
+
+    opt = task.params.get("optimize_params")
+    if opt is not None:
+        parts.append(f'<Parameters enabled="true" {_param_attrs(opt)} />')
+    else:
+        parts.append('<Parameters enabled="false" />')
+
+    parts.append(f'<WalkForward enabled="{enabled}" cycles="{cycles}" />')
+    parts.append("</CrossChecks>")
+    return CrossChecksConfig(raw_xml="".join(parts))
 
 
 def _base_task(task: CustomProjectTask) -> BuildTask:

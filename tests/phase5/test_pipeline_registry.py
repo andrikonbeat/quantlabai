@@ -49,6 +49,16 @@ class TestStageRegistry:
             "guardian_evaluate",
             "monte_carlo",
             "cost_injection",
+            # PR 3 orchestrated flow stages (REQ-17)
+            "analysis",
+            "config_review",
+            "retester",
+            "optimizer",
+            "dispatch",
+            # PR 6 post-optimize stages (REQ-01 phases 9-13)
+            "compile",
+            "demo",
+            "archive",
         }
         assert set(registry._stage_map.keys()) == expected_stages
 

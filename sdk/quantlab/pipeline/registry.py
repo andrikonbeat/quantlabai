@@ -135,8 +135,6 @@ class StageRegistry:
         from quantlab.agents.statistics_agent import StatisticsAgent
         from quantlab.agents.analysis_agent import AnalysisAgent
         from quantlab.agents.reviewer_agent import ReviewerAgent
-        from quantlab.agents.portfolio_agent import PortfolioAgent
-        from quantlab.agents.deployment_agent import DeploymentAgent
         from quantlab.agents.monitoring_agent import MonitoringAgent
 
         # Stage wrappers for agents that don't inherit from Stage ABC
@@ -144,6 +142,16 @@ class StageRegistry:
             LLMResearchStage, AnalysisStage, ResearchStage, BuilderStage, StatisticsStage,
             ReviewStage, PortfolioStage, DeployStage, MonitorStage,
             HypothesisBuilderStage, RefutationStage, GuardianEvaluationStage,
+        )
+        # Post-optimize orchestrated stages (PR 6): concrete REQ-01 phase
+        # implementations. Aliased so they don't shadow the abstract anchors
+        # imported above (the anchors still drive the legacy wrapper classes).
+        from quantlab.pipeline.stages.archive_stage import ArchiveStage
+        from quantlab.pipeline.stages.compile_stage import CompileStage
+        from quantlab.pipeline.stages.demo_stage import DemoStage
+        from quantlab.pipeline.stages.deploy_stage import DeployStage as DeployPackageStage
+        from quantlab.pipeline.stages.portfolio_stage import (
+            PortfolioStage as PortfolioComposeStage,
         )
 
         class ResearchAgentStage(ResearchStage):
@@ -171,16 +179,6 @@ class StageRegistry:
 
             def __init__(self, **kwargs: Any) -> None:
                 self._agent = AnalysisAgent()
-                super().__init__(**kwargs)
-
-            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
-                return await self._agent.run(ctx)
-
-        class DeployAgentStage(DeployStage):
-            """Wrapper: adapts DeploymentAgent.run() to Stage.execute()."""
-
-            def __init__(self, **kwargs: Any) -> None:
-                self._agent = DeploymentAgent()
                 super().__init__(**kwargs)
 
             async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
@@ -321,8 +319,6 @@ class StageRegistry:
             "analysis": AnalysisAgentStage,
             "statistics": StatisticsAgent,
             "review": ReviewerAgent,
-            "portfolio": PortfolioAgent,
-            "deploy": DeployAgentStage,
             "monitor": MonitoringAgent,
             # Guardian evaluation
             "guardian_evaluate": GuardianEvaluationStage,
@@ -335,6 +331,15 @@ class StageRegistry:
             "retester": RetesterStage,
             "optimizer": OptimizerStage,
             "dispatch": DispatchStage,
+            # Post-optimize orchestrated stages (PR 6, REQ-01 phases 9-13):
+            # portfolio/compile/deploy/demo/archive. These concrete stages
+            # supersede the legacy PortfolioAgent/DeployAgentStage wrappers —
+            # the 14-phase flow routes through the phase engines directly.
+            "portfolio": PortfolioComposeStage,
+            "compile": CompileStage,
+            "deploy": DeployPackageStage,
+            "demo": DemoStage,
+            "archive": ArchiveStage,
             # Gate interceptor
             "gate": GateInterceptorStage,
             # Aliases for gate names

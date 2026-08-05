@@ -30,11 +30,13 @@ from quantlab.pipeline._stages import (
 
 # Re-export new agent stages
 from quantlab.pipeline.stages.agent_stages import (
+    AnalysisStage,
     BuilderStage,
-    DeployStage,
     GuardianEvaluationStage,
+    HypothesisBuilderStage,
+    LLMResearchStage,
     MonitorStage,
-    PortfolioStage,
+    RefutationStage,
     ResearchStage,
     ReviewStage,
     StatisticsStage,
@@ -58,6 +60,14 @@ from quantlab.pipeline.stages.dispatch_stage import DispatchStage
 from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
 from quantlab.pipeline.stages.retester_stage import RetesterStage
 
+# Concrete post-optimize stages (PR 6, REQ-01 phases 9-13): these shadow the
+# abstract anchors of the same name — both subclass the abstract contract.
+from quantlab.pipeline.stages.archive_stage import ArchiveStage
+from quantlab.pipeline.stages.compile_stage import CompileStage
+from quantlab.pipeline.stages.demo_stage import DemoStage
+from quantlab.pipeline.stages.deploy_stage import DeployStage
+from quantlab.pipeline.stages.portfolio_stage import PortfolioStage
+
 __all__ = [
     # Original SQX stages
     "ValidateStage",
@@ -78,8 +88,6 @@ __all__ = [
     "BuilderStage",
     "StatisticsStage",
     "ReviewStage",
-    "PortfolioStage",
-    "DeployStage",
     "MonitorStage",
     "GuardianEvaluationStage",
     # Gate interceptor
@@ -97,4 +105,10 @@ __all__ = [
     "DispatchStage",
     "RetesterStage",
     "OptimizerStage",
+    # Post-optimize orchestrated stages (PR 6, REQ-01 phases 9-13)
+    "PortfolioStage",
+    "DeployStage",
+    "CompileStage",
+    "DemoStage",
+    "ArchiveStage",
 ]
