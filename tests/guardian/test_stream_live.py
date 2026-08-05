@@ -122,7 +122,6 @@ class TestStreamLiveFeed:
 
 class TestStreamLostHold:
     """REQ-40 scenario 2: no stream → STREAM_LOST hold, no live transition."""
-
     @pytest.mark.asyncio
     async def test_stream_lost_holds_and_never_evaluates(self) -> None:
         """GIVEN the live stream is unavailable beyond max retries
@@ -175,3 +174,40 @@ class TestStreamLostHold:
         assert ok is False
         assert daemon.stream_state == "STREAM_LOST"
         assert daemon.live_eval_held is True
+
+
+class TestFeedToLiveEval:
+    """REQ-40/41 wiring: daemon feed → evaluate_live → DEFENSIVE + feedback."""
+
+    @pytest.mark.asyncio
+    async def test_daemon_feed_drives_defensive_via_evaluate_live(self) -> None:
+        """GIVEN a live feed breaching 10% drawdown
+        WHEN the daemon streams it into the evaluate_live evaluator
+        THEN a DEFENSIVE evaluation with a feedback record results
+        (REQ-40 scenario 1 through the REQ-41 feed).
+        """
+        from quantlab.guardian.live import evaluate_live
+        from quantlab.guardian.models import PortfolioState
+
+        evaluations: list[Any] = []
+        window: list[EquityPoint] = []
+
+        def evaluator(point: EquityPoint) -> None:
+            window.append(point)
+            if len(window) >= 3:
+                evaluations.append(
+                    evaluate_live(list(window), campaign_id="camp-wired")
+                )
+
+        daemon = _daemon(stream_fn=_feed([100.0, 100.0, 88.0]))
+        daemon.set_live_evaluator(evaluator)
+
+        async for _ in daemon.stream_live("camp-wired"):
+            pass
+
+        assert len(evaluations) == 1
+        result = evaluations[0]
+        assert result.state == PortfolioState.DEFENSIVE
+        assert result.transitioned is True
+        assert result.feedback is not None
+        assert result.feedback.campaign_id == "camp-wired"
