@@ -50,9 +50,9 @@ Chain strategy: stacked-to-main
 
 ## PR-4: Demo Deploy + Gates (REQ-31..32, 38)
 
-- [ ] 4.1 DEMO/ARCHIVE gates into GATE_POLICIES+GATE_IDS, HOLD; RED: no auto-approve, question-tool (REQ-38)
-- [ ] 4.2 `demo_deploy.py` 14-day window, expiry block + reminder (REQ-31)
-- [ ] 4.3 `deployment_agent.py` real JAR + JCloud; dry-run mock, no network (REQ-32)
+- [x] 4.1 DEMO/ARCHIVE gates into GATE_POLICIES+GATE_IDS, HOLD; RED: no auto-approve, question-tool (REQ-38)
+- [x] 4.2 `demo_deploy.py` 14-day window, expiry block + reminder (REQ-31)
+- [x] 4.3 `deployment_agent.py` real JAR + JCloud; dry-run mock, no network (REQ-32)
 
 ## PR-5: Archive + Feedback (REQ-33..34, 40..41)
 
