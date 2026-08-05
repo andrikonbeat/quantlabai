@@ -41,6 +41,7 @@ class DeploymentResult:
     endpoint_url: str = ""
     errors: list[str] = field(default_factory=list)
     artifact_paths: list[str] = field(default_factory=list)
+    pending_gate: str = ""
 
 
 class DeploymentAgent(DeployStage):
