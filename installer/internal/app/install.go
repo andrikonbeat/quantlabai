@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"golang.org/x/term"
 
 	"github.com/ogzuz/quantlab/internal/config"
 	"github.com/ogzuz/quantlab/internal/journal"
@@ -20,14 +21,25 @@ import (
 )
 
 // cmdInstall implements the `quantlab install` command. It runs the full
-// installation pipeline: validate prerequisites → run wizard → install SDK
-// → merge agents → install skills/prompts → write state.
-func cmdInstall(w io.Writer) error {
+// installation pipeline: validate prerequisites → optional config wizard →
+// install SDK → merge agents → install skills/prompts → write state.
+//
+// The configuration wizard is optional. Pass --no-wizard (or --skip-wizard
+// / --yes) to skip it entirely, and it is also skipped automatically when
+// stdout is not an interactive terminal. When no API key is collected — from
+// a skipped wizard or a cancelled one — the pipeline continues without it;
+// LLM calls then rely on environment variables.
+func cmdInstall(w io.Writer, args []string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("home dir: %w", err)
 	}
+	return cmdInstallHome(w, args, home)
+}
 
+// cmdInstallHome is cmdInstall with an explicit home directory, so tests can
+// run the full flow against an isolated home without touching the real one.
+func cmdInstallHome(w io.Writer, args []string, home string) error {
 	qlDir := config.StateDir(home)
 	st, err := state.LoadOrInit(qlDir)
 	if err != nil {
@@ -68,20 +80,33 @@ func cmdInstall(w io.Writer) error {
 		fmt.Fprintf(w, "    OpenCode is recommended for full QuantLab functionality.\n")
 	}
 
-	// --- Step 2: Run wizard ---
-	fmt.Fprintf(w, "\n📋 Running configuration wizard...\n")
+	// --- Step 2: Configuration (wizard optional) ---
+	runWiz := wizardEnabled(args, term.IsTerminal(int(os.Stdout.Fd())))
 
-	wizModel, err := runWizard()
-	if err != nil {
-		return fmt.Errorf("wizard: %w", err)
-	}
+	var apiKey, modelChoice, sdkPath string
 
-	apiKey, modelChoice, sdkPath := wizModel.Result()
-	if apiKey == "" {
-		fmt.Fprintf(w, "\nWizard cancelled. No changes made.\n")
-		return nil
+	if !runWiz {
+		if hasNoWizardFlag(args) {
+			fmt.Fprintf(w, "\n⚙ Skipping configuration wizard (--no-wizard).\n")
+		} else {
+			fmt.Fprintf(w, "\n⚙ No interactive terminal detected — skipping configuration wizard.\n")
+		}
+		fmt.Fprintf(w, "  ⚠ No API key provided — SDK will rely on OpenCode/LLM env vars. Continuing to sync agents/skills/prompts.\n")
+	} else {
+		fmt.Fprintf(w, "\n📋 Running configuration wizard...\n")
+
+		wizModel, err := runWizard()
+		if err != nil {
+			return fmt.Errorf("wizard: %w", err)
+		}
+
+		apiKey, modelChoice, sdkPath = wizModel.Result()
+		if apiKey == "" {
+			fmt.Fprintf(w, "\n⚠ No API key provided — SDK will rely on OpenCode/LLM env vars. Continuing to sync agents/skills/prompts.\n")
+		} else {
+			fmt.Fprintf(w, "  ✓ Configuration collected\n")
+		}
 	}
-	fmt.Fprintf(w, "  ✓ Configuration collected\n")
 
 	// --- Step 3: Build and run pipeline ---
 	fmt.Fprintf(w, "\n🚀 Installing QuantLab AI...\n\n")
@@ -111,6 +136,26 @@ func cmdInstall(w io.Writer) error {
 	fmt.Fprintf(w, "\n✅ QuantLab AI installed successfully!\n")
 	fmt.Fprintf(w, "  Run 'quantlab status' to verify.\n")
 	return nil
+}
+
+// hasNoWizardFlag reports whether the given args request skipping the config
+// wizard. Canonical flag is --no-wizard; --skip-wizard and --yes are accepted
+// aliases.
+func hasNoWizardFlag(args []string) bool {
+	for _, arg := range args {
+		switch arg {
+		case "--no-wizard", "--skip-wizard", "--yes":
+			return true
+		}
+	}
+	return false
+}
+
+// wizardEnabled decides whether to run the interactive configuration wizard:
+// it runs only when no skip flag is present AND stdout is an interactive
+// terminal. Otherwise the wizard is skipped and no API key is collected.
+func wizardEnabled(args []string, stdoutTTY bool) bool {
+	return !hasNoWizardFlag(args) && stdoutTTY
 }
 
 // runWizard starts the config wizard TUI and returns the resulting model.

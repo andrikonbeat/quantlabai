@@ -55,12 +55,12 @@ Run 'quantlab help <command>' for command-specific help.
 
 // commandHelp maps each command to its detailed help text.
 var commandHelp = map[string]string{
-	"install": `Usage: quantlab install
+	"install": `Usage: quantlab install [--no-wizard]
 
 Install QuantLab AI on your system. Runs a configuration wizard, then:
 
   1. Validates prerequisites (Python 3.11+, OpenCode)
-  2. Collects API keys and model preferences
+  2. Collects API keys and model preferences (wizard)
   3. Creates Python virtual environment and installs SDK
   4. Merges QuantLab agents into opencode.json
   5. Installs QuantLab skills and prompts
@@ -70,8 +70,20 @@ Install QuantLab AI on your system. Runs a configuration wizard, then:
 The installation is fully rollbackable — any failure during apply
 reverses all changes made so far.
 
+Options:
+  --no-wizard     Skip the configuration wizard (no API key prompt).
+                  Use for non-interactive or re-sync installs. Aliases:
+                  --skip-wizard, --yes. Also applied automatically when
+                  stdout is not a terminal.
+
+When no API key is provided (skipped wizard, cancelled wizard, or no
+terminal), the installation continues without one. The QuantLab SDK
+delegates LLM calls to OpenCode, so configure provider keys in OpenCode
+(auth.json) instead.
+
 Examples:
   quantlab install
+  quantlab install --no-wizard
 `,
 
 	"uninstall": `Usage: quantlab uninstall

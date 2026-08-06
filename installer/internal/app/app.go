@@ -26,7 +26,7 @@ func RunArgs(args []string, stdout io.Writer) error {
 
 	switch cmd {
 	case "install":
-		return cmdInstall(stdout)
+		return cmdInstall(stdout, args[1:])
 	case "uninstall":
 		return cmdUninstall(stdout)
 	case "sync":
