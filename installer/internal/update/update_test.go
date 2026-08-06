@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -66,6 +67,7 @@ func TestFindAssetForPlatform(t *testing.T) {
 			{Name: "quantlab-linux-amd64", BrowserDownloadURL: "https://example.com/quantlab-linux-amd64", Size: 1024},
 			{Name: "quantlab-linux-arm64", BrowserDownloadURL: "https://example.com/quantlab-linux-arm64", Size: 1024},
 			{Name: "quantlab-darwin-amd64", BrowserDownloadURL: "https://example.com/quantlab-darwin-amd64", Size: 1024},
+			{Name: "quantlab-darwin-arm64", BrowserDownloadURL: "https://example.com/quantlab-darwin-arm64", Size: 1024},
 		},
 	}
 
@@ -79,20 +81,57 @@ func TestFindAssetForPlatform(t *testing.T) {
 	if size <= 0 {
 		t.Errorf("expected positive size, got %d", size)
 	}
+
+	// The returned asset must match the running platform (hyphen form).
+	wantName := fmt.Sprintf("quantlab-%s-%s", runtime.GOOS, runtime.GOARCH)
+	if name != wantName {
+		t.Errorf("asset = %q, want %q", name, wantName)
+	}
 }
 
-func TestFindAssetForPlatform_Fallback(t *testing.T) {
-	// Release with no platform-specific binary, only generic "quantlab" asset
+func TestFindAssetForPlatform_UnderscoreNames(t *testing.T) {
+	// Matches the GoReleaser archive naming: quantlab_<version>_<os>_<arch>.tar.gz.
+	release := &ReleaseInfo{
+		Tag: "v1.0.0",
+		Assets: []Asset{
+			{Name: "quantlab_1.0.0_linux_amd64.tar.gz", BrowserDownloadURL: "https://example.com/quantlab-linux-amd64.tar.gz", Size: 4096},
+			{Name: "quantlab_1.0.0_linux_arm64.tar.gz", BrowserDownloadURL: "https://example.com/quantlab-linux-arm64.tar.gz", Size: 4096},
+			{Name: "quantlab_1.0.0_darwin_amd64.tar.gz", BrowserDownloadURL: "https://example.com/quantlab-darwin-amd64.tar.gz", Size: 4096},
+			{Name: "quantlab_1.0.0_darwin_arm64.tar.gz", BrowserDownloadURL: "https://example.com/quantlab-darwin-arm64.tar.gz", Size: 4096},
+		},
+	}
+
+	name, url, _, ok := release.FindAssetForPlatform()
+	if !ok {
+		t.Fatal("expected to find an underscore archive for this platform")
+	}
+	wantName := fmt.Sprintf("quantlab_1.0.0_%s_%s.tar.gz", runtime.GOOS, runtime.GOARCH)
+	if name != wantName {
+		t.Errorf("asset = %q, want %q", name, wantName)
+	}
+	if url == "" {
+		t.Error("empty download URL")
+	}
+}
+
+func TestFindAssetForPlatform_RejectsNonBinaryAssets(t *testing.T) {
+	// Package files, checksum manifests, and generic names must never be
+	// selected, even as a fallback.
 	release := &ReleaseInfo{
 		Tag: "v1.0.0",
 		Assets: []Asset{
 			{Name: "quantlab", BrowserDownloadURL: "https://example.com/quantlab", Size: 1024},
+			{Name: "quantlab_1.0.0_linux_amd64.deb", BrowserDownloadURL: "https://example.com/quantlab.deb", Size: 1024},
+			{Name: "quantlab_1.0.0_amd64.rpm", BrowserDownloadURL: "https://example.com/quantlab.rpm", Size: 1024},
+			{Name: "quantlab_1.0.0_amd64.msi", BrowserDownloadURL: "https://example.com/quantlab.msi", Size: 1024},
+			{Name: "checksums.txt", BrowserDownloadURL: "https://example.com/checksums.txt", Size: 1024},
+			{Name: "quantlab_1.0.0_linux_amd64.tar.gz.sha256", BrowserDownloadURL: "https://example.com/checksum", Size: 128},
 		},
 	}
 
 	_, _, _, ok := release.FindAssetForPlatform()
-	if !ok {
-		t.Error("expected fallback to find 'quantlab' asset")
+	if ok {
+		t.Error("expected no match for package/checksum/generic assets")
 	}
 }
 
@@ -120,7 +159,9 @@ func TestApplyUpdate_AtomicSwap(t *testing.T) {
 
 	// Apply update with new data
 	newData := []byte("#!/bin/bash\necho new")
-	if err := ApplyUpdate(newData, targetPath, ""); err != nil {
+	hash := sha256.Sum256(newData)
+	verifySHA := fmt.Sprintf("%x", hash)
+	if err := ApplyUpdate(newData, targetPath, verifySHA); err != nil {
 		t.Fatalf("ApplyUpdate() error = %v", err)
 	}
 
@@ -216,6 +257,47 @@ func TestFindChecksumAsset(t *testing.T) {
 	}
 }
 
+func TestParseChecksum(t *testing.T) {
+	shaDeb := "1111111111111111111111111111111111111111111111111111111111111111"
+	shaTar := "2222222222222222222222222222222222222222222222222222222222222222"
+
+	manifest := fmt.Sprintf("%s  quantlab_1.0.0_linux_amd64.deb\n%s  quantlab_1.0.0_linux_amd64.tar.gz\n", shaDeb, shaTar)
+
+	got, err := ParseChecksum(manifest, "quantlab_1.0.0_linux_amd64.tar.gz")
+	if err != nil {
+		t.Fatalf("ParseChecksum() error = %v", err)
+	}
+	if got != shaTar {
+		t.Errorf("digest = %q, want %q", got, shaTar)
+	}
+}
+
+func TestParseChecksum_MissingEntry(t *testing.T) {
+	manifest := "1111111111111111111111111111111111111111111111111111111111111111  other-file.tar.gz\n"
+	_, err := ParseChecksum(manifest, "quantlab_1.0.0_linux_amd64.tar.gz")
+	if err == nil {
+		t.Fatal("expected error when asset has no checksum entry")
+	}
+}
+
+func TestParseChecksum_BareHex(t *testing.T) {
+	sha := "3333333333333333333333333333333333333333333333333333333333333333"
+	got, err := ParseChecksum(sha+"\n", "quantlab_1.0.0_linux_amd64.tar.gz")
+	if err != nil {
+		t.Fatalf("ParseChecksum() bare hex error = %v", err)
+	}
+	if got != sha {
+		t.Errorf("digest = %q, want %q", got, sha)
+	}
+}
+
+func TestParseChecksum_InvalidDigest(t *testing.T) {
+	_, err := ParseChecksum("not-a-valid-hex  quantlab_1.0.0_linux_amd64.tar.gz\n", "quantlab_1.0.0_linux_amd64.tar.gz")
+	if err == nil {
+		t.Fatal("expected error for invalid digest")
+	}
+}
+
 func TestDownloadUpdate(t *testing.T) {
 	expected := []byte("binary content here")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -277,7 +359,9 @@ func TestApplyUpdate_NoOriginalFile(t *testing.T) {
 	targetPath := filepath.Join(dir, "new-binary")
 
 	data := []byte("fresh install content")
-	if err := ApplyUpdate(data, targetPath, ""); err != nil {
+	hash := sha256.Sum256(data)
+	verifySHA := fmt.Sprintf("%x", hash)
+	if err := ApplyUpdate(data, targetPath, verifySHA); err != nil {
 		t.Fatalf("ApplyUpdate() to new path error = %v", err)
 	}
 
@@ -287,6 +371,30 @@ func TestApplyUpdate_NoOriginalFile(t *testing.T) {
 	}
 	if string(got) != string(data) {
 		t.Errorf("content = %q, want %q", string(got), string(data))
+	}
+}
+
+func TestApplyUpdate_MissingChecksum(t *testing.T) {
+	// SHA-256 verification is mandatory: an empty checksum must fail the
+	// update (fail-closed) and leave the original binary untouched.
+	dir := t.TempDir()
+	targetPath := filepath.Join(dir, "quantlab")
+
+	if err := os.WriteFile(targetPath, []byte("old"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	err := ApplyUpdate([]byte("new binary"), targetPath, "")
+	if err == nil {
+		t.Fatal("expected error when checksum is missing, got nil")
+	}
+
+	got, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "old" {
+		t.Errorf("original content should be preserved, got %q", string(got))
 	}
 }
 

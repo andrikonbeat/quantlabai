@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/ogzuz/quantlab/internal/tui/confirm"
@@ -35,12 +36,13 @@ func cmdUpdate(w io.Writer) error {
 	}
 
 	newVersion := strings.TrimPrefix(release.Tag, "v")
+	newVersion = strings.TrimPrefix(newVersion, "installer/")
 	fmt.Fprintf(w, "  → New version available: %s\n", newVersion)
 
 	// 3. Find the right asset for this platform
 	assetName, assetURL, _, ok := release.FindAssetForPlatform()
 	if !ok {
-		fmt.Fprintf(w, "  ✗ No binary found for your platform (%s/%s).\n", os.Getenv("GOOS"), os.Getenv("GOARCH"))
+		fmt.Fprintf(w, "  ✗ No binary found for your platform (%s/%s).\n", runtime.GOOS, runtime.GOARCH)
 		fmt.Fprintf(w, "    Release page: https://github.com/ogzuz/quantlab/releases/latest\n")
 		return nil
 	}
@@ -60,20 +62,19 @@ func cmdUpdate(w io.Writer) error {
 
 	fmt.Fprintf(w, "  ✓ Downloaded %d bytes\n", len(data))
 
-	// 5. Look for checksum
+	// 5. Verify the SHA-256 checksum — verification is mandatory (fail-closed).
 	checksumURL, _, found := release.FindChecksumAsset(assetName)
-	verifySHA := ""
-	if found {
-		fmt.Fprintf(w, "  → Verifying checksum...\n")
-		checksumData, err := update.DownloadUpdate(checksumURL)
-		if err == nil {
-			// Parse checksum file (simple format: "sha256  filename" or "sha256 filename")
-			content := strings.TrimSpace(string(checksumData))
-			parts := strings.Fields(content)
-			if len(parts) > 0 {
-				verifySHA = parts[0]
-			}
-		}
+	if !found {
+		return fmt.Errorf("no SHA-256 checksum asset found for %q; refusing to update", assetName)
+	}
+	fmt.Fprintf(w, "  → Verifying SHA-256 checksum...\n")
+	checksumData, err := update.DownloadUpdate(checksumURL)
+	if err != nil {
+		return fmt.Errorf("download checksum: %w", err)
+	}
+	verifySHA, err := update.ParseChecksum(string(checksumData), assetName)
+	if err != nil {
+		return fmt.Errorf("verify checksum: %w", err)
 	}
 
 	// 6. Find our binary path
@@ -82,7 +83,7 @@ func cmdUpdate(w io.Writer) error {
 		return fmt.Errorf("cannot determine executable path: %w", err)
 	}
 
-	// 7. Apply update with optional verification
+	// 7. Apply update (verification already enforced above and inside ApplyUpdate)
 	fmt.Fprintf(w, "  → Applying update...\n")
 	if err := update.ApplyUpdate(data, exePath, verifySHA); err != nil {
 		return fmt.Errorf("apply update failed: %w", err)
