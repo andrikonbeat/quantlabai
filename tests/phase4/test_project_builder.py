@@ -802,7 +802,10 @@ class TestBuildConfigMapCoverage:
 
     def test_map_entries_have_valid_format_types(self) -> None:
         """All mapping entries should have valid format types."""
-        valid_types = {"boolean", "int", "float", "string", "dict"}
+        # "blocks" (REQ-03) is a special-cased format type used by the Blocks
+        # bridge entries (enabled_blocks / block_weights), applied inside
+        # _apply_build_config via _apply_block_entries.
+        valid_types = {"boolean", "int", "float", "string", "dict", "blocks"}
         for field_name, (pattern, replacement, format_type) in _BUILD_CONFIG_MAP.items():
             assert format_type in valid_types, (
                 f"Field '{field_name}' has invalid format_type '{format_type}'. "

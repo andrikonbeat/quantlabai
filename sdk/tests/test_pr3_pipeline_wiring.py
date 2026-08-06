@@ -216,8 +216,10 @@ class TestResearchDirectorRouting:
         agent_config = self._build_agent_config(model="gpt-4")
         pipeline = director.build_pipeline(config, agent_config=agent_config)
 
-        # 8 agent stages + 5 gate interceptors + Statistics + Monitoring = 15
-        assert len(pipeline.stages) == 15
+        # 9 agent stages + 5 gate interceptors + Statistics + Monitoring = 16
+        # (compile stage added between portfolio and deploy for the canonical
+        # 14-phase pipeline, REQ-01/REQ-37).
+        assert len(pipeline.stages) == 16
 
 
 # ══════════════════════════════════════════════════════════════════════════════

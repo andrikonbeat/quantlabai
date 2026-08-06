@@ -803,6 +803,15 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         r'<Block key="[^"]*"',
         "blocks",
     ),
+    # block_weights is consumed inside the "blocks" branch via
+    # _apply_block_entries when processing enabled_blocks (see guard in
+    # _apply_build_config); it must be mapped here so every BuildConfig field
+    # is covered, but is never applied as an independent field.
+    "block_weights": (
+        r'<Block key="[^"]*"',
+        r'<Block key="[^"]*"',
+        "blocks",
+    ),
 }
 
 
@@ -888,6 +897,11 @@ def _apply_build_config(template_xml: str, config: BuildConfig) -> str:
     xml = template_xml
 
     for field_name, (pattern, replacement, format_type) in _BUILD_CONFIG_MAP.items():
+        if field_name == "block_weights":
+            # Consumed inside the "blocks" branch via _apply_block_entries when
+            # processing enabled_blocks; skip to avoid double application.
+            continue
+
         value = getattr(config, field_name, None)
         if value is None:
             continue

@@ -201,6 +201,11 @@ class ResearchDirector:
             {"name": "analysis", "type": "agent"},
             {"name": "review", "type": "agent"},
             {"name": "portfolio", "type": "agent"},
+            # Canonical 14-phase order (REQ-01/REQ-37): portfolio -> compile ->
+            # deploy. CompileStage provides "compiled_strategies", which the
+            # deploy stage requires; the pipeline must include it between
+            # portfolio and deploy to satisfy the internal stage contract.
+            {"name": "compile", "type": "agent"},
             {"name": "deploy", "type": "agent"},
             {"name": "monitor", "type": "agent"},
         ])

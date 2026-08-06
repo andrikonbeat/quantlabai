@@ -65,7 +65,9 @@ class TestEndToEnd:
 
         pipeline = director.build_pipeline(config)
         stage_names = [s.name for s in pipeline.stages]
-        assert len(stage_names) == 15
+        # 11 agent stages + 5 gate interceptors = 16 (compile stage added between
+        # portfolio and deploy for the canonical 14-phase pipeline, REQ-01/REQ-37).
+        assert len(stage_names) == 16
 
         # Step 3: Create PipelineContext with ResearchAgent output
         from quantlab.pipeline.base import PipelineContext

@@ -5,8 +5,9 @@ wired from the OpenCode config (``~/.config/opencode/``).  These tests assert:
 
 - the orchestrator prompt routes campaign intents to ``quantlab-campaign``
   while keeping SDD/CLI/dashboard routes unchanged (REQ-16);
-- the campaign agent prompt owns the 8-phase loop and stops after optimize
-  with no deploy boundary (REQ-01, D1);
+- the campaign agent prompt owns the 14-phase loop and continues past
+  optimize through deploy, demo, and archive to live-ops (REQ-37, which
+  replaced the old 8-phase loop / REQ-01, D1 behavior);
 - the decision-file gate protocol is described (AD-4) with the question tool
   as primary and stdin as headless fallback;
 - ``opencode.json`` registers ``quantlab-campaign`` by ``{file:...}``
@@ -43,6 +44,12 @@ CAMPAIGN_PHASES = [
     "monitor",
     "retest",
     "optimize",
+    "portfolio",
+    "compile",
+    "deploy",
+    "demo",
+    "archive",
+    "live-ops",
 ]
 
 
@@ -82,24 +89,27 @@ class TestCampaignRouting:
 
 
 class TestCampaignAgentPrompt:
-    """REQ-01: the harness prompt owns the 8-phase loop, no deploy."""
+    """REQ-37: the harness prompt owns the 14-phase loop through live-ops."""
 
     def test_campaign_agent_prompt_exists_in_repo(self) -> None:
         _read(CAMPAIGN_AGENT_PROMPT)  # exists + readable
 
-    def test_campaign_agent_prompt_owns_8_phase_loop(self) -> None:
+    def test_campaign_agent_prompt_owns_14_phase_loop(self) -> None:
         text = _read(CAMPAIGN_AGENT_PROMPT)
         for phase in CAMPAIGN_PHASES:
             assert phase in text.lower(), f"campaign prompt must include phase {phase}"
 
-    def test_campaign_agent_prompt_stops_after_optimize_no_deploy(self) -> None:
+    def test_campaign_agent_prompt_continues_past_optimize_through_archive(self) -> None:
         text = _read(CAMPAIGN_AGENT_PROMPT)
         lowered = text.lower()
-        # The loop must end at optimize with recommendations (REQ-01/D1).
+        # The loop MUST NOT halt at optimize (REQ-37 replaces the old
+        # REQ-01/D1 stop-after-optimize behavior).
         assert "optimize" in lowered
-        assert "stop" in lowered
-        # The no-deploy boundary must be explicit: no deploy phase exists (D1).
-        assert "no deploy" in lowered
+        assert "continues past optimize" in lowered
+        # It MUST proceed through deploy, demo, and archive to live-ops.
+        assert "deploy" in lowered
+        assert "archive" in lowered
+        assert "live-ops" in lowered
 
     def test_campaign_agent_prompt_returns_result_contract_envelope(self) -> None:
         text = _read(CAMPAIGN_AGENT_PROMPT)
