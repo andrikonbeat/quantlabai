@@ -1,0 +1,97 @@
+# QuantLab Installer — GoReleaser Configuration
+# Builds for linux/amd64, linux/arm64, darwin/amd64, darwin/arm64.
+#
+# Releases are tagged installer/vX.Y.Z (see .github/workflows/release-installer.yml).
+# GoReleaser (OSS) does not strip tag prefixes, so every template that renders
+# the version strips the "installer/" and "v" prefixes via `trimprefix`.
+project_name: quantlab
+
+version: 2
+
+env:
+  - GO111MODULE=on
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: quantlab
+    main: ./cmd/quantlab
+    binary: quantlab
+    ldflags:
+      - -X github.com/ogzuz/quantlab/internal/app.version={{ trimprefix "v" (trimprefix "installer/" .Version) }}
+      - -X github.com/ogzuz/quantlab/internal/app.commit={{ .Commit }}
+      - -X github.com/ogzuz/quantlab/internal/app.date={{ .Date }}
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: quantlab
+    formats:
+      - tar.gz
+    # The archive contains only the binary: skills/prompts/templates are
+    # embedded via go:embed (internal/assets), so no LICENSE/README files
+    # are bundled. Name uses <os>_<arch> (underscore) which the updater
+    # matcher resolves (see internal/update/update.go).
+    name_template: >-
+      quantlab_{{ trimprefix "v" (trimprefix "installer/" .Version) }}_{{ .Os }}_{{ .Arch }}
+
+nfpms:
+  - id: quantlab
+    package_name: quantlab
+    file_name_template: >-
+      quantlab_{{ trimprefix "v" (trimprefix "installer/" .Version) }}_{{ .Arch }}
+    vendor: QuantLab AI
+    homepage: https://github.com/ogzuz/quantlab
+    description: QuantLab AI — Installer & Lifecycle Manager
+    maintainer: QuantLab Team
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/local/bin
+    contents:
+      - src: "{{ .Binary }}"
+        dst: /usr/local/bin/quantlab
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-snapshot"
+
+release:
+  github:
+    owner: ogzuz
+    name: quantlab
+  draft: false
+  prerelease: auto
+  header: |
+    ## QuantLab AI {{ trimprefix "v" (trimprefix "installer/" .Version) }}
+
+    Build {{ .Commit }}
+  footer: |
+    ### Installation
+
+    Download the archive for your platform and run:
+
+        tar -xzf quantlab_{{ trimprefix "v" (trimprefix "installer/" .Version) }}_{{ .Os }}_{{ .Arch }}.tar.gz
+        ./quantlab install
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
