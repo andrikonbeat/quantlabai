@@ -1,6 +1,7 @@
 package app
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -95,13 +96,13 @@ func TestBuildSyncPlan_NotInstalled(t *testing.T) {
 
 func TestBuildSyncPlan_AssetsDir(t *testing.T) {
 	// Verify the assetFS is accessible (needed by skills/prompts steps)
-	fs := assetFS()
-	if fs == nil {
+	assets := assetFS()
+	if assets == nil {
 		t.Fatal("assetFS() returned nil")
 	}
 
 	// Check that skills dir exists in assets
-	entries, err := fs.ReadDir("skills")
+	entries, err := fs.ReadDir(assets, "skills")
 	if err != nil {
 		t.Logf("skills dir not found in assets: %v", err)
 	} else {
@@ -109,7 +110,7 @@ func TestBuildSyncPlan_AssetsDir(t *testing.T) {
 	}
 
 	// Check that prompts dir exists in assets
-	entries, err = fs.ReadDir("prompts")
+	entries, err = fs.ReadDir(assets, "prompts")
 	if err != nil {
 		t.Logf("prompts dir not found in assets: %v", err)
 	} else {

@@ -137,7 +137,7 @@ func TestMergeOpenCodeAgents_NoFile(t *testing.T) {
 
 // testState creates a minimal state for testing.
 func testState(homeDir string) *state.State {
-	return &state.State{
-		statePath: filepath.Join(homeDir, ".quantlab", "state.json"),
-	}
+	st := &state.State{}
+	st.SetStatePath(filepath.Join(homeDir, ".quantlab", "state.json"))
+	return st
 }

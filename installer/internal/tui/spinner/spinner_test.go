@@ -7,6 +7,22 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// isQuitCmd reports whether cmd is bubbletea's quit command. In
+// bubbletea v1.3.4 tea.Quit is a Cmd (a func), which can only be
+// compared to nil, so the command is invoked and its resulting
+// QuitMsg is asserted instead.
+func isQuitCmd(cmd tea.Cmd) bool {
+	if cmd == nil {
+		return false
+	}
+	msg := cmd()
+	if msg == nil {
+		return false
+	}
+	_, ok := msg.(tea.QuitMsg)
+	return ok
+}
+
 func TestNewModel(t *testing.T) {
 	m := NewModel("Testing...")
 	if m.msg != "Testing..." {
@@ -51,14 +67,11 @@ func TestModel_UpdateCtrlC(t *testing.T) {
 func TestModel_QuitOnCtrlC(t *testing.T) {
 	// Send an actual ctrl+c message
 	m := NewModel("test")
-	updated, cmd := m.Update(tea.KeyMsg{
-		Type:  tea.KeyCtrlC,
-		String: "ctrl+c",
-	})
+	updated, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyCtrlC}))
 	if !updated.(model).quitting {
 		t.Fatal("ctrl+c should set quitting")
 	}
-	if cmd != tea.Quit {
+	if !isQuitCmd(cmd) {
 		t.Fatalf("expected tea.Quit, got %v", cmd)
 	}
 }

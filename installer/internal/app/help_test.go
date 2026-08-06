@@ -114,7 +114,7 @@ func TestFormatHelpSummary(t *testing.T) {
 	if !strings.Contains(summary, "status") {
 		t.Errorf("summary missing 'status'")
 	}
-	if !strings.Count(summary, "\n  ") < 8 {
+	if strings.Count(summary, "\n  ") < 8 {
 		t.Errorf("expected at least 8 command lines in summary")
 	}
 }

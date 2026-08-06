@@ -244,7 +244,7 @@ func TestMaskKey(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"sk-abc123def456", "sk-a••••c456"},
+		{"sk-abc123def456", "sk-a••••f456"},
 		{"short", "••••••••"},
 		{"", "••••••••"},
 	}

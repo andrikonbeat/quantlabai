@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/lipgloss"
 )
 
 // ProgressStep defines a single step in a multi-step operation.
@@ -32,8 +31,8 @@ func NewProgress(steps []ProgressStep) *ProgressTracker {
 		progress.WithDefaultGradient(),
 		progress.WithWidth(50),
 	)
-	p.FullColor = lipgloss.Color("37")   // teal
-	p.EmptyColor = lipgloss.Color("240") // dark grey
+	p.FullColor = "37"   // teal
+	p.EmptyColor = "240" // dark grey
 	return &ProgressTracker{
 		Steps:   steps,
 		Current: 0,

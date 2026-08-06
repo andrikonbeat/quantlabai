@@ -25,7 +25,7 @@ type VersionInfo struct {
 // GetVersionInfo returns the build-time version information as a struct.
 func GetVersionInfo() VersionInfo {
 	return VersionInfo{
-		Version: version,
+		Version: Version,
 		Commit:  commit,
 		Date:    date,
 	}

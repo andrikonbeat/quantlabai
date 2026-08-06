@@ -6,6 +6,22 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// isQuitCmd reports whether cmd is bubbletea's quit command. In
+// bubbletea v1.3.4 tea.Quit is a Cmd (a func), which can only be
+// compared to nil, so the command is invoked and its resulting
+// QuitMsg is asserted instead.
+func isQuitCmd(cmd tea.Cmd) bool {
+	if cmd == nil {
+		return false
+	}
+	msg := cmd()
+	if msg == nil {
+		return false
+	}
+	_, ok := msg.(tea.QuitMsg)
+	return ok
+}
+
 func TestNewModel(t *testing.T) {
 	m := NewModel()
 	if m.step != StepWelcome {
@@ -29,7 +45,7 @@ func TestModel_Init(t *testing.T) {
 
 func TestModel_WelcomeEnter(t *testing.T) {
 	m := NewModel()
-	updated, cmd := m.Update(tea.KeyMsg{String: "enter"})
+	updated, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
 	if newM.step != StepAPIKey {
 		t.Fatalf("after enter on welcome, step = %d, want %d", newM.step, StepAPIKey)
@@ -41,9 +57,9 @@ func TestModel_WelcomeEnter(t *testing.T) {
 
 func TestModel_EscapeQuits(t *testing.T) {
 	m := NewModel()
-	updated, cmd := m.Update(tea.KeyMsg{String: "esc"})
+	updated, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEsc}))
 	newM := updated.(Model)
-	if cmd != tea.Quit {
+	if !isQuitCmd(cmd) {
 		t.Fatalf("expected tea.Quit, got %v", cmd)
 	}
 	_ = newM
@@ -71,7 +87,7 @@ func TestModel_APIKeyProgress(t *testing.T) {
 	// Type an API key
 	m.apiKeyInput.SetValue("sk-test-key-12345")
 
-	updated, cmd := m.Update(tea.KeyMsg{String: "enter"})
+	updated, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
 	if newM.step != StepModel {
 		t.Fatalf("after entering API key, step = %d, want %d", newM.step, StepModel)
@@ -90,7 +106,7 @@ func TestModel_APIKeyRequired(t *testing.T) {
 	// Empty API key
 	m.apiKeyInput.SetValue("")
 
-	updated, _ := m.Update(tea.KeyMsg{String: "enter"})
+	updated, _ := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
 	if newM.step != StepAPIKey {
 		t.Fatal("should stay on API key step when empty")
@@ -104,7 +120,7 @@ func TestModel_ModelStep(t *testing.T) {
 	m := NewModel()
 	m.step = StepModel
 
-	updated, cmd := m.Update(tea.KeyMsg{String: "enter"})
+	updated, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
 	if newM.step != StepSDKPath {
 		t.Fatalf("after model step, got step %d", newM.step)
@@ -119,7 +135,7 @@ func TestModel_SDKPathStep(t *testing.T) {
 	m.step = StepSDKPath
 	m.sdkPathInput.SetValue("/custom/path")
 
-	updated, _ := m.Update(tea.KeyMsg{String: "enter"})
+	updated, _ := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
 	if newM.step != StepSummary {
 		t.Fatalf("after SDK path step, step = %d", newM.step)
@@ -134,7 +150,7 @@ func TestModel_SDKPathAuto(t *testing.T) {
 	m.step = StepSDKPath
 	m.sdkPathInput.SetValue("") // empty → auto
 
-	updated, _ := m.Update(tea.KeyMsg{String: "enter"})
+	updated, _ := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
 	if newM.sdkPath != "auto" {
 		t.Fatalf("empty sdk path should become 'auto', got %q", newM.sdkPath)
@@ -145,7 +161,7 @@ func TestModel_SummaryToConfirm(t *testing.T) {
 	m := NewModel()
 	m.step = StepSummary
 
-	updated, _ := m.Update(tea.KeyMsg{String: "enter"})
+	updated, _ := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
 	if newM.step != StepConfirm {
 		t.Fatalf("after summary, step = %d, want %d", newM.step, StepConfirm)
@@ -156,9 +172,9 @@ func TestModel_ConfirmQuits(t *testing.T) {
 	m := NewModel()
 	m.step = StepConfirm
 
-	updated, cmd := m.Update(tea.KeyMsg{String: "enter"})
+	updated, cmd := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
-	if cmd != tea.Quit {
+	if !isQuitCmd(cmd) {
 		t.Fatalf("enter on confirm should quit, got %v", cmd)
 	}
 	_ = newM
@@ -190,7 +206,7 @@ func TestMaskKey(t *testing.T) {
 		{"", "••••••••"},
 		{"ab", "••••••••"},
 		{"12345678", "••••••••"},
-		{"sk-test-key-12345", "sk-t••••12345"},
+		{"sk-test-key-12345", "sk-t••••2345"},
 		{"abcdefghijkl", "abcd••••ijkl"},
 	}
 

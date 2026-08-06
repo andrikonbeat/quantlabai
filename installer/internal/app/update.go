@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/ogzuz/quantlab/internal/tui/confirm"
 	"github.com/ogzuz/quantlab/internal/tui/spinner"
@@ -121,5 +122,5 @@ func reexec() error {
 	if err != nil {
 		return fmt.Errorf("get executable for restart: %w", err)
 	}
-	return os.Exec(exe, args, os.Environ())
+	return syscall.Exec(exe, args, os.Environ())
 }

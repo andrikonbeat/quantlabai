@@ -316,6 +316,8 @@ func IsNewerVersion(a, b string) bool {
 
 // compareSemver compares two dot-separated version strings.
 // Returns -1 if a < b, 0 if equal, 1 if a > b.
+// A prerelease suffix (e.g. "1.0.0-beta") sorts below the stable
+// release with the same version core ("1.0.0").
 func compareSemver(a, b string) int {
 	partsA := strings.Split(a, ".")
 	partsB := strings.Split(b, ".")
@@ -325,17 +327,15 @@ func compareSemver(a, b string) int {
 		maxLen = len(partsB)
 	}
 
+	var preA, preB string
+
 	for i := 0; i < maxLen; i++ {
 		var numA, numB int
 		if i < len(partsA) {
-			if _, err := fmt.Sscanf(partsA[i], "%d", &numA); err != nil {
-				return 0
-			}
+			numA, preA = parseVersionPart(partsA[i])
 		}
 		if i < len(partsB) {
-			if _, err := fmt.Sscanf(partsB[i], "%d", &numB); err != nil {
-				return 0
-			}
+			numB, preB = parseVersionPart(partsB[i])
 		}
 		if numA < numB {
 			return -1
@@ -345,5 +345,32 @@ func compareSemver(a, b string) int {
 		}
 	}
 
-	return 0
+	// Identical version cores: a release without a prerelease wins over
+	// one with it; otherwise compare prereleases lexicographically.
+	switch {
+	case preA == "" && preB == "":
+		return 0
+	case preA == "":
+		return 1
+	case preB == "":
+		return -1
+	case preA < preB:
+		return -1
+	case preA > preB:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// parseVersionPart splits a numeric version component from an optional
+// prerelease suffix (e.g. "0-beta" → 0, "beta").
+func parseVersionPart(part string) (int, string) {
+	var n int
+	if idx := strings.IndexByte(part, '-'); idx >= 0 {
+		fmt.Sscanf(part[:idx], "%d", &n)
+		return n, part[idx+1:]
+	}
+	fmt.Sscanf(part, "%d", &n)
+	return n, ""
 }
