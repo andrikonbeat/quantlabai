@@ -6,36 +6,23 @@ End-to-end pipeline runner that orchestrates the full campaign lifecycle: transl
 
 ## Requirements
 
-### Requirement: Campaign Lifecycle
+### Requirement: Orchestrated Campaign Loop (REQ-01)
 
-The system MUST execute the campaign flow with optional reconfiguration. When auto_iterate=True and review_decision=ITERATE, the system SHALL apply parameter changes and rebuild in a versioned directory. When REJECT, it SHALL abort. When APPROVE, it SHALL proceed to portfolio. When auto_iterate=False, it SHALL execute a single iteration.
+The `quantlab-campaign` subagent MUST own the orchestrated phase loop across the full 14-phase lifecycle: research → hypothesis → SQX config → config review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops (Guardian watching the demo account). Each phase MUST return the Result Contract envelope (`status`, `executive_summary`, `artifacts`, `next_recommended`, `risks`). The loop MUST NOT stop at optimize; it MUST proceed through deploy, demo, and archive. `quantlab-orchestrator` SHALL remain the router.
+(Previously: 8-phase loop halting after optimize with recommendations (D1); no deploy or post-deploy orchestration.)
 
-(Previously: Sequential execution without reconfiguration loop)
+#### Scenario: Full loop runs all 14 phases
 
-#### Scenario: Full campaign completes successfully
+- GIVEN a campaign objective entered in OpenCode chat
+- WHEN `quantlab-campaign` runs the loop
+- THEN the 14 phases execute in order, each returning the Result Contract envelope
+- AND the loop terminates at archive with a maintenance plan and statistics
 
-- GIVEN a valid ResearchConfig and a licensed SQX environment
-- AND auto_iterate is True
-- WHEN the orchestrator runs a campaign
-- THEN the standard flow executes with optional reconfiguration between iterations
-- AND a CampaignMonitor asyncio task runs concurrently during the run/poll phases
-- AND the monitor is cancelled when the campaign reaches a terminal state
+#### Scenario: Phase failure halts for human
 
-#### Scenario: Campaign fails at translation — no monitor spawned
-
-- GIVEN a ResearchConfig that fails DSL-to-CFX translation
-- WHEN the orchestrator runs the campaign
-- THEN a CampaignError is raised at the translate phase
-- AND no sqcli commands are dispatched
-- AND no CampaignMonitor is spawned
-
-#### Scenario: Campaign times out during polling — monitor cancelled
-
-- GIVEN a campaign that exceeds the configured poll timeout
-- WHEN the orchestrator polls for status beyond the limit
-- THEN a CampaignError with timeout detail is raised
-- AND the sqcli project is stopped via `-project action=stop`
-- AND the CampaignMonitor task is cancelled
+- GIVEN a phase that fails
+- WHEN the phase returns its envelope
+- THEN the envelope carries `status=failed` and the loop halts awaiting a human decision
 
 ### Requirement: Progress Callbacks
 
@@ -104,3 +91,21 @@ The `CampaignResult` model SHALL gain an optional `watcher_events: list[WatcherE
 - GIVEN a healthy campaign with no stall or error events
 - WHEN the campaign completes
 - THEN CampaignResult.watcher_events is an empty list
+
+### Requirement: Flow-Integrity Invariant (REQ-37)
+
+The full lifecycle MUST retain all 14 flow phases plus the Guardian live flow, in order, each gated by human confirmation. Simplification MUST apply only to code/infrastructure (shared substrate, consolidated generators); it MUST NOT remove, reorder, merge, or auto-approve any flow phase. Phase count and order MUST be asserted at campaign start and after any harness change.
+
+#### Scenario: Harness change preserves flow
+
+- GIVEN a refactored harness (e.g., substrate rollout)
+- WHEN the campaign starts
+- THEN the 14 phases plus the Guardian flow are asserted present and in order
+- AND each phase blocks on its human gate before proceeding
+
+#### Scenario: Dropped phase fails the assert
+
+- GIVEN a harness missing the archive phase
+- WHEN the campaign start assertion runs
+- THEN the campaign aborts with a flow-integrity error
+- AND no execution begins
