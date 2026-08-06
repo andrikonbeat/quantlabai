@@ -12,7 +12,7 @@ func TestInstallSkills(t *testing.T) {
 	skillsDir := filepath.Join(dir, "skills")
 
 	// Use the real assets directory as the embedded FS for testing
-	assets := os.DirFS("../../assets")
+	assets := os.DirFS("../assets")
 
 	installed, err := InstallSkills(assets, skillsDir)
 	if err != nil {
@@ -50,7 +50,7 @@ func TestInstallSkills(t *testing.T) {
 func TestInstallSkills_CustomSkillsDir(t *testing.T) {
 	dir := t.TempDir()
 	skillsDir := filepath.Join(dir, "custom", "skills", "path")
-	assets := os.DirFS("../../assets")
+	assets := os.DirFS("../assets")
 
 	installed, err := InstallSkills(assets, skillsDir)
 	if err != nil {
@@ -62,7 +62,7 @@ func TestInstallSkills_CustomSkillsDir(t *testing.T) {
 }
 
 func TestInstallSkills_EmptySkillsDir(t *testing.T) {
-	assets := os.DirFS("../../assets")
+	assets := os.DirFS("../assets")
 	_, err := InstallSkills(assets, "")
 	if err == nil {
 		t.Fatal("InstallSkills() expected error for empty skills dir")
@@ -74,7 +74,7 @@ func TestRemoveSkills(t *testing.T) {
 	skillsDir := filepath.Join(dir, "skills")
 
 	// Install first, then remove
-	assets := os.DirFS("../../assets")
+	assets := os.DirFS("../assets")
 	_, err := InstallSkills(assets, skillsDir)
 	if err != nil {
 		t.Fatalf("InstallSkills() error = %v", err)
@@ -138,7 +138,7 @@ func TestInstallPrompts(t *testing.T) {
 	dir := t.TempDir()
 	promptsDir := filepath.Join(dir, "prompts", "quantlab")
 
-	assets := os.DirFS("../../assets")
+	assets := os.DirFS("../assets")
 
 	installed, err := InstallPrompts(assets, promptsDir)
 	if err != nil {
@@ -167,7 +167,7 @@ func TestInstallPrompts(t *testing.T) {
 }
 
 func TestInstallPrompts_EmptyDir(t *testing.T) {
-	assets := os.DirFS("../../assets")
+	assets := os.DirFS("../assets")
 	_, err := InstallPrompts(assets, "")
 	if err == nil {
 		t.Fatal("InstallPrompts() expected error for empty dir")
@@ -178,7 +178,7 @@ func TestRemovePrompts(t *testing.T) {
 	dir := t.TempDir()
 	promptsDir := filepath.Join(dir, "prompts", "quantlab")
 
-	assets := os.DirFS("../../assets")
+	assets := os.DirFS("../assets")
 	_, err := InstallPrompts(assets, promptsDir)
 	if err != nil {
 		t.Fatalf("InstallPrompts() error = %v", err)
