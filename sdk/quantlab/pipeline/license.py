@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -92,19 +93,37 @@ class LicenseManager:
 
     @staticmethod
     def _parse_info(stdout: str) -> LicenseInfo:
-        """Heuristic parser for ``-license action=info`` output.
+        """Parse ``-license action=info`` output from the REAL sqcli.
 
-        Matches known keywords in a case-insensitive fashion.  This
-        parser is intentionally simple — replace it when the exact
-        sqcli output format is known.
+        The real sqcli prints a status line like::
+
+            StrategyQuant X Ultimate Build 144 (Futlab license) - valid until 14.08.2026, license FUTLABF255
+
+        The keyword ``licensed`` never appears; validity is signalled by
+        ``valid until <date>`` plus the license code.  Parsing precedence:
+
+        1. ``expired`` / ``trial`` keywords → the corresponding status.
+        2. ``valid until <date>`` → LICENSED, with the expiry date captured.
+        3. The ``licensed`` keyword (older/mock output) → LICENSED.
+        4. Anything else → UNLICENSED (fail-closed).
+
+        Fail-closed: when the state cannot be determined, the status is
+        UNLICENSED rather than an exception.
         """
         lower = stdout.lower()
-        if "licensed" in lower:
-            return LicenseInfo(status=LicenseStatus.LICENSED, detail=stdout)
-        if "trial" in lower:
-            return LicenseInfo(status=LicenseStatus.TRIAL, detail=stdout)
         if "expired" in lower:
             return LicenseInfo(status=LicenseStatus.EXPIRED, detail=stdout)
+        if "trial" in lower:
+            return LicenseInfo(status=LicenseStatus.TRIAL, detail=stdout)
+        valid_until = re.search(r"valid until\s+([0-9]+\.[0-9]+\.[0-9]+)", lower)
+        if valid_until:
+            return LicenseInfo(
+                status=LicenseStatus.LICENSED,
+                detail=stdout,
+                expiry_date=valid_until.group(1),
+            )
+        if "licensed" in lower:
+            return LicenseInfo(status=LicenseStatus.LICENSED, detail=stdout)
         return LicenseInfo(status=LicenseStatus.UNLICENSED, detail=stdout)
 
     def activate(self, code: str) -> CliResult:
