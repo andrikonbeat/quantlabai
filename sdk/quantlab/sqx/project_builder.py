@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from quantlab.costs.profiles import BrokerProfile
+from quantlab.data.symbol_registry import resolve_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -1014,9 +1015,18 @@ def create_project(
 
     # ── Build-Task1.xml modifications ──
 
-    # 1. Data section: symbol, timeframe, date range
-    # Symbol naming: {SYMBOL}_{TIMEFRAME}_dukas for Dukascopy data
-    chart_symbol = f"{symbol}_{timeframe.upper()}_dukas"
+    # 1. Data section: symbol, timeframe, date range.
+    # The data registry names symbols by their M1 ROOT (EURUSD_M1_dukas) —
+    # H1/D1 are derived .dat files inside that root dir, never standalone
+    # symbols. The chart must reference the root symbol so the build finds
+    # data; the timeframe attribute selects the derived bars (H1).
+    try:
+        chart_symbol = resolve_symbol(symbol, "M1", "dukascopy")
+    except ValueError:
+        # Symbol not expressible in the registry naming (e.g. non-FX or
+        # lowercase); fall back to the M1-root convention so the build
+        # still targets an existing data directory.
+        chart_symbol = f"{symbol.upper()}_M1_dukas"
 
     chart_old = re.search(
         r'<Chart symbol="[^"]*" timeframe="[^"]*" spread="\d+"',
