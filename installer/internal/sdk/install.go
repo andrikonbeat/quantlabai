@@ -16,7 +16,7 @@ type InstallOptions struct {
 	SourceDir string
 
 	// Version specifies the SDK version to install (used for pip install
-	// quantlab-ai==version). When empty, installs the latest.
+	// quantlab==version). When empty, installs the latest.
 	Version string
 
 	// Upgrade indicates whether to upgrade an existing installation.
@@ -35,15 +35,15 @@ type SDKInfo struct {
 	VenvPath  string `json:"venv_path,omitempty"`
 }
 
-// DetectInstalledSDK checks whether the quantlab-ai SDK is installed in the
-// active Python environment by running `pip show quantlab-ai`. Returns
+// DetectInstalledSDK checks whether the quantlab SDK is installed in the
+// active Python environment by running `pip show quantlab`. Returns
 // SDKInfo with Installed=false if not found.
 func DetectInstalledSDK() (*SDKInfo, error) {
 	// Try pip directly first, then python3 -m pip
 	cmds := [][]string{
-		{"pip", "show", "quantlab-ai"},
-		{"python3", "-m", "pip", "show", "quantlab-ai"},
-		{"python", "-m", "pip", "show", "quantlab-ai"},
+		{"pip", "show", "quantlab"},
+		{"python3", "-m", "pip", "show", "quantlab"},
+		{"python", "-m", "pip", "show", "quantlab"},
 	}
 
 	for _, cmdArgs := range cmds {
@@ -92,7 +92,7 @@ func InstallSDK(opts InstallOptions) (*SDKInfo, error) {
 	pipPath := filepath.Join(opts.VenvPath, "bin", "pip")
 
 	// Determine install target
-	target := "quantlab-ai"
+	target := "quantlab"
 	if opts.SourceDir != "" {
 		target = opts.SourceDir
 		if err := PipInstall(pipPath, target, opts.Upgrade, true); err != nil {
@@ -100,10 +100,10 @@ func InstallSDK(opts InstallOptions) (*SDKInfo, error) {
 		}
 	} else {
 		if opts.Version != "" {
-			target = "quantlab-ai==" + opts.Version
+			target = "quantlab==" + opts.Version
 		}
 		if err := PipInstall(pipPath, target, opts.Upgrade, false); err != nil {
-			return nil, fmt.Errorf("pip install quantlab-ai: %w", err)
+			return nil, fmt.Errorf("pip install quantlab: %w", err)
 		}
 	}
 

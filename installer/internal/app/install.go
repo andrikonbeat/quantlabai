@@ -84,6 +84,7 @@ func cmdInstallHome(w io.Writer, args []string, home string) error {
 	runWiz := wizardEnabled(args, term.IsTerminal(int(os.Stdout.Fd())))
 
 	var apiKey, modelChoice, sdkPath string
+	sdkPath = sdkPathFlag(args)
 
 	if !runWiz {
 		if hasNoWizardFlag(args) {
@@ -156,6 +157,18 @@ func hasNoWizardFlag(args []string) bool {
 // terminal. Otherwise the wizard is skipped and no API key is collected.
 func wizardEnabled(args []string, stdoutTTY bool) bool {
 	return !hasNoWizardFlag(args) && stdoutTTY
+}
+
+// sdkPathFlag returns the value of --sdk-path <dir>, or "" if not present.
+// When set, the SDK is installed editable from that local directory instead
+// of from PyPI.
+func sdkPathFlag(args []string) string {
+	for i, arg := range args {
+		if arg == "--sdk-path" && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
 }
 
 // runWizard starts the config wizard TUI and returns the resulting model.

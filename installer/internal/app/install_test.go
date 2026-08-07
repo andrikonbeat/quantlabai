@@ -83,16 +83,18 @@ func TestBuildInstallPlan_RunCreateDir(t *testing.T) {
 
 	st := testState(home)
 	j := journal.New(qlDir, filepath.Dir(opencodePath))
-	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", "auto", st, j)
+	// Use a non-existent local SDK path so the pip install fails fast
+	// without touching the network (no PyPI dependency in tests).
+	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", filepath.Join(home, "no-such-sdk"), st, j)
 
 	// Run with progress
 	err := pipeline.Run(plan, func(ev pipeline.ProgressEvent) {
 		t.Logf("progress: %s %s %s", ev.Stage, ev.StepID, ev.Status)
 	})
 	if err != nil {
-		// It's OK if SDK install fails (no Python/network) — check that
+		// It's OK if SDK install fails (no such local dir) — check that
 		// pre-SDK steps worked
-		t.Logf("Pipeline error (expected without Python): %v", err)
+		t.Logf("Pipeline error (expected without SDK dir): %v", err)
 	}
 
 	// Check that .quantlab dir was created
@@ -247,7 +249,10 @@ func TestCmdInstallHome_NoWizardProceeds(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	var buf bytes.Buffer
-	err := cmdInstallHome(&buf, []string{"--no-wizard"}, home)
+	// --sdk-path points to a non-existent local dir so the SDK pip install
+	// fails fast offline instead of hanging on PyPI. This keeps the test
+	// deterministic and network-free.
+	err := cmdInstallHome(&buf, []string{"--no-wizard", "--sdk-path", filepath.Join(home, "no-such-sdk")}, home)
 	output := buf.String()
 
 	// The flow must never abort at the wizard with --no-wizard.
@@ -269,8 +274,8 @@ func TestCmdInstallHome_NoWizardProceeds(t *testing.T) {
 	}
 
 	if err != nil {
-		// Expected when quantlab-ai is not published to PyPI: the SDK install
-		// step fails and the pipeline rolls back. The wizard was still skipped.
-		t.Logf("install returned error (expected without quantlab-ai on PyPI): %v", err)
+		// May happen in offline environments where the SDK cannot be
+		// installed; the wizard was still skipped. The pipeline rolls back.
+		t.Logf("install returned error (expected in offline env): %v", err)
 	}
 }

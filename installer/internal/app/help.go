@@ -55,12 +55,12 @@ Run 'quantlab help <command>' for command-specific help.
 
 // commandHelp maps each command to its detailed help text.
 var commandHelp = map[string]string{
-	"install": `Usage: quantlab install [--no-wizard]
+	"install": `Usage: quantlab install [--no-wizard] [--sdk-path <dir>]
 
 Install QuantLab AI on your system. Runs a configuration wizard, then:
 
   1. Validates prerequisites (Python 3.11+, OpenCode)
-  2. Collects API keys and model preferences (wizard)
+  2. Collects API keys and model preferences (wizard, optional)
   3. Creates Python virtual environment and installs SDK
   4. Merges QuantLab agents into opencode.json
   5. Installs QuantLab skills and prompts
@@ -75,6 +75,9 @@ Options:
                   Use for non-interactive or re-sync installs. Aliases:
                   --skip-wizard, --yes. Also applied automatically when
                   stdout is not a terminal.
+  --sdk-path <dir>  Install the SDK editable from a local directory
+                  (e.g. the repo's sdk/) instead of from PyPI. Useful for
+                  development and offline environments.
 
 When no API key is provided (skipped wizard, cancelled wizard, or no
 terminal), the installation continues without one. The QuantLab SDK
