@@ -44,20 +44,32 @@ class CliResult(BaseModel):
 # ── Executor protocol ──────────────────────────────────────────────────────────
 
 
+def _coerce_command(command: str | list[str]) -> list[str]:
+    """Normalize an executor command into a token list.
+
+    Accepts both styles seen in the codebase: a single command string
+    (e.g. ``"backtest --cfx out.cfx"``) and a pre-split token list
+    (e.g. ``["-license", "action=info"]`` as used by LicenseManager).
+    """
+    return command.split() if isinstance(command, str) else list(command)
+
+
 @runtime_checkable
 class Executor(Protocol):
     """Protocol for SQX command executors.
 
     Implementations must provide an ``execute`` method that accepts a
-    command string and optional keyword arguments, returning a ``CliResult``.
+    command string or token list and optional keyword arguments, returning
+    a ``CliResult``.
     """
 
-    def execute(self, command: str, **kwargs: object) -> CliResult:
+    def execute(self, command: str | list[str], **kwargs: object) -> CliResult:
         """Execute an ``sqcli`` command and return structured results.
 
         Args:
-            command: The CLI command string to execute
-                     (e.g. ``"backtest --cfx output/Test.cfx"``).
+            command: The CLI command string to execute (e.g.
+                     ``"backtest --cfx output/Test.cfx"``) or a pre-split
+                     token list (e.g. ``["-license", "action=info"]``).
             **kwargs: Optional overrides (e.g. ``timeout``).
 
         Returns:
@@ -85,7 +97,7 @@ class MockExecutor:
             is_dry_run=True,
         )
 
-    def execute(self, command: str, **kwargs: object) -> CliResult:
+    def execute(self, command: str | list[str], **kwargs: object) -> CliResult:
         """Return the canned result immediately.
 
         All arguments are accepted and ignored — no subprocess is spawned.
@@ -118,14 +130,14 @@ class RealExecutor:
 
     def execute(
         self,
-        command: str,
+        command: str | list[str],
         timeout: int = 60,
         **kwargs: object,
     ) -> CliResult:
         """Execute an ``sqcli`` subprocess command.
 
         Args:
-            command: The CLI command string to execute.
+            command: The CLI command string or token list to execute.
             timeout: Maximum wall-clock time in seconds before the process
                      is terminated (default 60).
 
@@ -139,7 +151,7 @@ class RealExecutor:
 
         try:
             proc = subprocess.run(
-                [str(self._binary), *command.split()],
+                [str(self._binary), *_coerce_command(command)],
                 capture_output=True,
                 text=True,
                 timeout=timeout,

@@ -81,6 +81,17 @@ class TestMockExecutor:
         result = executor.execute("slow command", timeout=9999)
         assert result.exit_code == 0
 
+    def test_accepts_token_list_command(self) -> None:
+        """GIVEN a command passed as a token list (e.g. LicenseManager)
+        WHEN execute() is called on the mock
+        THEN the canned mock result is returned without crashing.
+        """
+        executor = MockExecutor()
+        result = executor.execute(["-license", "action=info"])
+        assert result.exit_code == 0
+        assert result.is_dry_run is True
+        assert "[mock]" in result.stdout
+
 
 class TestRealExecutor:
     """Tests for the ``RealExecutor`` — subprocess mode."""
@@ -111,6 +122,44 @@ class TestRealExecutor:
         ):
             executor = RealExecutor()
             assert executor._binary is not None
+
+    @staticmethod
+    def _make_echo_binary(tmp_path) -> str:
+        """Create a tiny executable that echoes its argv, one token per line."""
+        echo = tmp_path / "sqcli"
+        echo.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\"\n", encoding="utf-8")
+        echo.chmod(0o755)
+        return str(echo)
+
+    def test_accepts_token_list_command(self, tmp_path) -> None:
+        """GIVEN a command passed as a token list (e.g. LicenseManager)
+        WHEN execute() is called
+        THEN the tokens are forwarded to the subprocess unchanged.
+        """
+        binary = self._make_echo_binary(tmp_path)
+        with patch("quantlab.cli.runner.resolve_sqcli_path", return_value=binary):
+            executor = RealExecutor()
+
+        result = executor.execute(["-license", "action=info"])
+
+        assert result.exit_code == 0
+        assert "-license" in result.stdout
+        assert "action=info" in result.stdout
+
+    def test_accepts_str_command(self, tmp_path) -> None:
+        """GIVEN a command passed as a single string
+        WHEN execute() is called
+        THEN it is split on whitespace and forwarded token by token.
+        """
+        binary = self._make_echo_binary(tmp_path)
+        with patch("quantlab.cli.runner.resolve_sqcli_path", return_value=binary):
+            executor = RealExecutor()
+
+        result = executor.execute("backtest --cfx output/Test.cfx")
+
+        assert result.exit_code == 0
+        stdout_lines = result.stdout.splitlines()
+        assert stdout_lines == ["backtest", "--cfx", "output/Test.cfx"]
 
 
 class TestCliRunner:
