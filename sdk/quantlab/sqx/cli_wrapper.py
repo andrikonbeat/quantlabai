@@ -55,7 +55,10 @@ _EXPORT_DIRS = [
 
 _COMMAND_ENDPOINT = "/call?cmd="
 
-_DAEMON_START_TIMEOUT = 60.0  # max seconds for daemon to become ready
+# The sqcli daemon can take 90-105s to become ready on first launch (it
+# loads every legacy project under ``user/projects/`` at startup).  The
+# readiness deadline is resolved via QUANTLAB_SQCLI_TIMEOUT (default 180s)
+# in cli/runner.resolve_sqcli_timeout.
 _SQX_PORT = 5050
 _SQX_BASE_URL = f"http://127.0.0.1:{_SQX_PORT}"
 
@@ -547,8 +550,12 @@ class _SQXDaemonHandle:
             env={**os.environ, "JAVA_HOME": java_home},
         )
 
-        # Wait for HTTP API readiness
-        deadline = time.monotonic() + _DAEMON_START_TIMEOUT
+        # Wait for HTTP API readiness.  The daemon can take 90-105s to
+        # become ready (it loads legacy projects at startup), so the
+        # deadline honors QUANTLAB_SQCLI_TIMEOUT (default 180s).
+        from quantlab.cli.runner import resolve_sqcli_timeout
+
+        deadline = time.monotonic() + resolve_sqcli_timeout()
         async with httpx.AsyncClient(timeout=5.0) as client:
             while time.monotonic() < deadline:
                 if self._proc.returncode is not None:
@@ -565,7 +572,9 @@ class _SQXDaemonHandle:
                     pass
                 await asyncio.sleep(1)
 
-        logger.error("SQX daemon not ready after %.0fs", _DAEMON_START_TIMEOUT)
+        logger.error(
+            "SQX daemon not ready after %.0fs", resolve_sqcli_timeout()
+        )
         return False
 
     async def stop(self) -> None:

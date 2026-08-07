@@ -328,6 +328,13 @@ QUANTLAB_MEMORY_ENGRAM_ENABLED="false"
 # Risk section
 QUANTLAB_RISK_MAX_POSITION_SIZE=0.05
 QUANTLAB_RISK_MAX_LEVERAGE=5.0
+
+# SQCLI daemon/command timeout in seconds (default 180). The sqcli daemon
+# can take 90-105s to become ready on first launch (it loads every legacy
+# project under user/projects/ at startup), so the default is well above
+# the old 60s timeout. Precedence: explicit per-call timeout argument,
+# then this variable, then 180.
+QUANTLAB_SQCLI_TIMEOUT=180
 ```
 
 ### Special Array Indexing Notes

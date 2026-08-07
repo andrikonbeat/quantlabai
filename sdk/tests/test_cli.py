@@ -1,6 +1,7 @@
 """Tests for the SQX CLI wrapper — Executor protocol and CliRunner."""
 
 import platform
+import subprocess
 from unittest.mock import patch
 
 import pytest
@@ -10,8 +11,17 @@ from quantlab.cli.runner import (
     CliRunner,
     MockExecutor,
     RealExecutor,
+    resolve_sqcli_timeout,
 )
 from quantlab.tools.exceptions import SQXNotFoundError, TimeoutError
+
+
+def _make_echo_binary(tmp_path) -> str:
+    """Create a tiny executable that echoes its argv, one token per line."""
+    echo = tmp_path / "sqcli"
+    echo.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\"\n", encoding="utf-8")
+    echo.chmod(0o755)
+    return str(echo)
 
 
 class TestCliResult:
@@ -126,10 +136,7 @@ class TestRealExecutor:
     @staticmethod
     def _make_echo_binary(tmp_path) -> str:
         """Create a tiny executable that echoes its argv, one token per line."""
-        echo = tmp_path / "sqcli"
-        echo.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\"\n", encoding="utf-8")
-        echo.chmod(0o755)
-        return str(echo)
+        return _make_echo_binary(tmp_path)
 
     def test_accepts_token_list_command(self, tmp_path) -> None:
         """GIVEN a command passed as a token list (e.g. LicenseManager)
@@ -160,6 +167,119 @@ class TestRealExecutor:
         assert result.exit_code == 0
         stdout_lines = result.stdout.splitlines()
         assert stdout_lines == ["backtest", "--cfx", "output/Test.cfx"]
+
+
+class TestConfigurableTimeout:
+    """Blocker 3: the daemon needs >60s, so the timeout must be configurable.
+
+    The sqcli daemon loads every legacy project at startup (90-105s on real
+    bundles).  The effective timeout resolves via
+    ``QUANTLAB_SQCLI_TIMEOUT`` (default 180s).  These tests exercise the
+    resolution and that RealExecutor forwards the resolved value to
+    ``subprocess.run`` — without launching the real daemon.
+    """
+
+    def test_default_timeout_is_180(self, monkeypatch) -> None:
+        monkeypatch.delenv("QUANTLAB_SQCLI_TIMEOUT", raising=False)
+        assert resolve_sqcli_timeout() == 180.0
+
+    def test_env_var_overrides_default(self, monkeypatch) -> None:
+        monkeypatch.setenv("QUANTLAB_SQCLI_TIMEOUT", "300")
+        assert resolve_sqcli_timeout() == 300.0
+
+    def test_explicit_argument_beats_env_var(self, monkeypatch) -> None:
+        monkeypatch.setenv("QUANTLAB_SQCLI_TIMEOUT", "300")
+        assert resolve_sqcli_timeout(120) == 120.0
+
+    def test_invalid_env_falls_back_to_default(self, monkeypatch) -> None:
+        monkeypatch.setenv("QUANTLAB_SQCLI_TIMEOUT", "not-a-number")
+        assert resolve_sqcli_timeout() == 180.0
+
+    def test_executor_forwards_resolved_timeout(self, tmp_path, monkeypatch) -> None:
+        """RealExecutor passes the env-resolved timeout to subprocess.run."""
+        binary = _make_echo_binary(tmp_path)
+        with patch("quantlab.cli.runner.resolve_sqcli_path", return_value=binary):
+            executor = RealExecutor()
+
+        captured = {}
+
+        def _fake_run(*args, **kwargs):
+            captured["timeout"] = kwargs.get("timeout")
+            return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+        monkeypatch.setenv("QUANTLAB_SQCLI_TIMEOUT", "250")
+        with patch("quantlab.cli.runner.subprocess.run", side_effect=_fake_run):
+            executor.execute("-license action=info")
+
+        assert captured["timeout"] == 250
+
+    def test_executor_default_uses_180_when_unset(self, tmp_path, monkeypatch) -> None:
+        binary = _make_echo_binary(tmp_path)
+        with patch("quantlab.cli.runner.resolve_sqcli_path", return_value=binary):
+            executor = RealExecutor()
+
+        captured = {}
+
+        def _fake_run(*args, **kwargs):
+            captured["timeout"] = kwargs.get("timeout")
+            return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+        monkeypatch.delenv("QUANTLAB_SQCLI_TIMEOUT", raising=False)
+        with patch("quantlab.cli.runner.subprocess.run", side_effect=_fake_run):
+            executor.execute("-license action=info")
+
+        assert captured["timeout"] == 180.0
+
+
+class TestDaemonStartTimeout:
+    """The daemon start deadline honors the configurable timeout (Blocker 3)."""
+
+    @pytest.mark.asyncio
+    async def test_daemon_deadline_uses_env_timeout(
+        self, tmp_path, monkeypatch
+    ) -> None:
+        import types
+
+        import quantlab.sqx.cli_wrapper as cli_wrapper
+
+        monkeypatch.setenv("QUANTLAB_SQCLI_TIMEOUT", "0.5")
+
+        called = []
+        from quantlab.cli import runner as _runner
+        original = _runner.resolve_sqcli_timeout
+
+        def _spy(timeout=None):
+            called.append(timeout)
+            return original(timeout)
+
+        # start() imports resolve_sqcli_timeout lazily from the runner
+        # module, so spy on the source module.
+        monkeypatch.setattr(_runner, "resolve_sqcli_timeout", _spy)
+
+        async def _fake_wait(*_a, **_k):
+            return 0
+
+        fake_proc = types.SimpleNamespace(returncode=None, wait=_fake_wait)
+
+        async def _fake_create_subprocess_exec(*_a, **_k):
+            return fake_proc
+
+        # The daemon never becomes ready (HTTP get always fails), so the
+        # loop runs until the short 0.5s deadline. No real sqcli starts.
+        monkeypatch.setattr(
+            cli_wrapper.asyncio, "create_subprocess_exec", _fake_create_subprocess_exec
+        )
+
+        with patch(
+            "quantlab.sqx.cli_wrapper.httpx.AsyncClient.get",
+            side_effect=ConnectionError,
+        ), patch("quantlab.sqx.cli_wrapper.asyncio.sleep"):
+            handle = cli_wrapper._SQXDaemonHandle(str(tmp_path))
+            ready = await handle.start(f"http://127.0.0.1:{cli_wrapper._SQX_PORT}")
+
+        assert ready is False
+        assert called, "resolve_sqcli_timeout was not consulted for the deadline"
+        assert called[0] == 0.5 or called[0] is None
 
 
 class TestCliRunner:

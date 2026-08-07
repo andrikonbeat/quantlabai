@@ -6,6 +6,8 @@ support, enabling development and testing without an SQX installation.
 
 from __future__ import annotations
 
+import logging
+import os
 import platform as _platform
 import subprocess
 import time
@@ -16,6 +18,49 @@ from pydantic import BaseModel, Field
 
 from quantlab.tools.exceptions import SQXNotFoundError, TimeoutError
 from quantlab.tools.platform import get_sqcli_binary, resolve_sqcli_path
+
+logger = logging.getLogger(__name__)
+
+
+# ── Timeout configuration ──────────────────────────────────────────────────────
+#
+# The sqcli daemon can take 90-180s to become ready on first launch
+# (it loads every legacy project under ``user/projects/`` at startup), so
+# a fixed 60s timeout was failing in production.  The effective timeout is
+# resolved as: explicit argument > QUANTLAB_SQCLI_TIMEOUT env var > 180s.
+
+_SQCLI_TIMEOUT_ENV = "QUANTLAB_SQCLI_TIMEOUT"
+_DEFAULT_SQCLI_TIMEOUT = 180.0
+
+
+def resolve_sqcli_timeout(timeout: float | int | None = None) -> float:
+    """Resolve the effective sqcli command/daemon timeout in seconds.
+
+    Precedence: explicit ``timeout`` argument, then the
+    ``QUANTLAB_SQCLI_TIMEOUT`` environment variable, then 180s.  Invalid
+    env values fall back to the default (never crash on a bad config).
+
+    Args:
+        timeout: Explicit timeout in seconds, or ``None`` to resolve from
+            env/default.
+
+    Returns:
+        The effective timeout in seconds (>= 1).
+    """
+    if timeout is not None:
+        return max(1.0, float(timeout))
+    raw = os.environ.get(_SQCLI_TIMEOUT_ENV, "")
+    if raw:
+        try:
+            return max(1.0, float(raw))
+        except ValueError:
+            logger.warning(
+                "Invalid %s=%r, falling back to %.0fs",
+                _SQCLI_TIMEOUT_ENV,
+                raw,
+                _DEFAULT_SQCLI_TIMEOUT,
+            )
+    return _DEFAULT_SQCLI_TIMEOUT
 
 
 # ── Structured result model ────────────────────────────────────────────────────
@@ -131,7 +176,7 @@ class RealExecutor:
     def execute(
         self,
         command: str | list[str],
-        timeout: int = 60,
+        timeout: float | int | None = None,
         **kwargs: object,
     ) -> CliResult:
         """Execute an ``sqcli`` subprocess command.
@@ -139,7 +184,9 @@ class RealExecutor:
         Args:
             command: The CLI command string or token list to execute.
             timeout: Maximum wall-clock time in seconds before the process
-                     is terminated (default 60).
+                is terminated.  ``None`` resolves via
+                ``QUANTLAB_SQCLI_TIMEOUT`` (default 180s) — the sqcli
+                daemon needs well over 60s on first launch.
 
         Returns:
             A ``CliResult`` with captured output and metadata.
@@ -148,18 +195,19 @@ class RealExecutor:
             TimeoutError: The subprocess exceeded *timeout* seconds.
         """
         start = time.monotonic()
+        effective_timeout = resolve_sqcli_timeout(timeout)
 
         try:
             proc = subprocess.run(
                 [str(self._binary), *_coerce_command(command)],
                 capture_output=True,
                 text=True,
-                timeout=timeout,
+                timeout=effective_timeout,
             )
         except subprocess.TimeoutExpired as exc:
             elapsed = time.monotonic() - start
             raise TimeoutError(
-                f"SQX command timed out after {timeout}s: {command}",
+                f"SQX command timed out after {effective_timeout:g}s: {command}",
                 cause=exc,
             ) from exc
 
