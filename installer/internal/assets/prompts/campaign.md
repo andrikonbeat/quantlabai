@@ -128,6 +128,29 @@ envelope of one phase feeds the next.
 If any phase returns `status=failed`, the loop halts and awaits a human
 decision. Do not auto-continue past a failed phase.
 
+## Long-Running Execution Policy
+
+A **long-running operation** is anything that may exceed ~10 minutes or that
+starts the real SQX daemon: real dispatch, strategy build, full backtest,
+prolonged monitor, compile with the real JDK, and real deploy. Unit tests,
+health checks, and bounded CLI commands are NOT long-running. Real campaign
+runs can take 20-35 minutes and boot the daemon SQX (JVM ~1.7GB RAM, startup
+90-105s over the 243 legacy projects).
+
+The runtime cancels subagents that wait on long-running operations; long
+execution belongs to the orchestrator's shell, with log polling and monitoring.
+
+1. You MAY prepare the config, review, write the driver/execution script, and
+   run bounded operations with an explicit timeout.
+2. When a phase requires a long-running operation (e.g. waiting on real daemon
+   generation), prepare the execution script (e.g. under `/tmp/opencode/`) and
+   return control to the orchestrator with the script and exact instructions:
+   the command to run, the log path, and what to expect.
+3. Do NOT wait for the full run inside your subagent session.
+4. The script MUST include a generous timeout (`QUANTLAB_SQCLI_TIMEOUT >=
+   240`), process cleanup (`pkill` of everything you launched), and a
+   per-phase report format.
+
 ## Human Gates (AD-4 decision-file protocol)
 
 Gates resolve through the decision-file channel under

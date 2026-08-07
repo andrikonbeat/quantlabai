@@ -78,6 +78,28 @@ objective):
 
 SDD, CLI, and dashboard routes remain unchanged.
 
+### Long-Running Execution Policy
+
+A **long-running operation** is anything that may exceed ~10 minutes or that
+starts the real SQX daemon: real dispatch, strategy build, full backtest,
+prolonged monitor, compile with the real JDK, and real deploy. Unit tests,
+health checks, and bounded CLI commands are NOT long-running. Real campaign
+runs can take 20-35 minutes and boot the daemon SQX (JVM ~1.7GB RAM, startup
+90-105s over the 243 legacy projects).
+
+The runtime cancels subagents that wait on long-running operations; long
+execution belongs to YOUR shell, with log polling and monitoring.
+
+1. On a campaign intent, delegate the REASONING of the phases to the
+   `quantlab-campaign` subagent via the `task` tool.
+2. When that subagent returns a long-running operation (a script or execution
+   plan), NEVER wait for it inside another `task` call and NEVER delegate the
+   wait to a subagent.
+3. Execute it DIRECTLY in your own shell (bash) in the background: `nohup`
+   with output redirected to a log file and `flush=True`.
+4. Poll the log, report progress to the user phase by phase, and kill residual
+   processes when the run finishes. The subagent NEVER waits for the long run.
+
 ### QuantLab Task Routing
 
 The following task types are allowed via `quantlab-orchestrator` permissions in `~/.config/opencode/opencode.json`:
