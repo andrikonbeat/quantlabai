@@ -239,3 +239,159 @@ class TestGeneratePipelineConfig:
 
         assert "risk" in pipeline_config
         assert "max_portfolio_drawdown" in pipeline_config["risk"]
+
+
+class TestKbConsult:
+    """REQ-204: BuilderAgent KB consult wiring."""
+
+    @pytest.mark.asyncio
+    async def test_builder_consult_kb_hit_allows_translation(self) -> None:
+        """GIVEN KB has entries for all tabs
+        WHEN run() is called
+        THEN KbStore.consult is called and kb_warnings is absent.
+        """
+        from quantlab.dsl.models import Strategy
+        from quantlab.pipeline.base import PipelineContext
+        from unittest.mock import AsyncMock, patch
+
+        agent = BuilderAgent()
+        config = ResearchConfig(
+            campaign="KBHitTest",
+            market="EURUSD",
+            timeframe="H1",
+            strategies=[Strategy(name="StratA", direction="BOTH")],
+        )
+
+        ctx = PipelineContext(
+            config={},
+            artifacts={"research_config": config.model_dump(mode="json")},
+        )
+
+        mock_result = DispatchResult(
+            campaign_id="test", sqcli_status="completed", export_paths=["exports/test.csv"]
+        )
+        with patch.object(
+            BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock, return_value=mock_result
+        ), patch(
+            "quantlab.knowledge.kb.store.KbStore.consult", return_value=[{"name": "param"}]
+        ) as mock_consult:
+            result = await agent.run(ctx)
+
+        mock_consult.assert_called()
+        assert "kb_warnings" not in result
+
+    @pytest.mark.asyncio
+    async def test_builder_consult_missing_entry_raises_block(self) -> None:
+        """GIVEN KB is missing entries with strict_kb=True
+        WHEN run() is called
+        THEN ConfigurationError is raised.
+        """
+        from quantlab.dsl.models import Strategy
+        from quantlab.pipeline.base import PipelineContext
+        from quantlab.pipeline.errors import ConfigurationError
+        from unittest.mock import AsyncMock, patch
+
+        agent = BuilderAgent(strict_kb=True)
+        config = ResearchConfig(
+            campaign="KBStrictTest",
+            market="EURUSD",
+            timeframe="H1",
+            strategies=[Strategy(name="StratA", direction="BOTH")],
+        )
+
+        ctx = PipelineContext(
+            config={},
+            artifacts={"research_config": config.model_dump(mode="json")},
+        )
+
+        with patch(
+            "quantlab.knowledge.kb.store.KbStore.consult", return_value=[]
+        ), patch.object(
+            BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock
+        ):
+            with pytest.raises(ConfigurationError, match="Missing or unverified KB entries"):
+                await agent.run(ctx)
+
+    @pytest.mark.asyncio
+    async def test_builder_consult_empty_kb_halts_with_warning(self) -> None:
+        """GIVEN KB has no entries at all
+        WHEN run() is called
+        THEN kb_warnings contains all tab names.
+        """
+        from quantlab.dsl.models import Strategy
+        from quantlab.pipeline.base import PipelineContext
+        from unittest.mock import AsyncMock, patch
+
+        agent = BuilderAgent()
+        config = ResearchConfig(
+            campaign="KBEmptyTest",
+            market="EURUSD",
+            timeframe="H1",
+            strategies=[Strategy(name="StratA", direction="BOTH")],
+        )
+
+        ctx = PipelineContext(
+            config={},
+            artifacts={"research_config": config.model_dump(mode="json")},
+        )
+
+        mock_result = DispatchResult(
+            campaign_id="test", sqcli_status="completed", export_paths=["exports/test.csv"]
+        )
+        with patch.object(
+            BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock, return_value=mock_result
+        ), patch(
+            "quantlab.knowledge.kb.store.KbStore.consult", return_value=[]
+        ) as mock_consult:
+            result = await agent.run(ctx)
+
+        mock_consult.assert_called()
+        assert "kb_warnings" in result
+        assert len(result["kb_warnings"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_builder_consult_needs_review_proceeds_with_warning(
+        self,
+    ) -> None:
+        """GIVEN KB entry has status=needs_review
+        WHEN run() is called
+        THEN warning is logged and translation proceeds.
+        """
+        from quantlab.dsl.models import Strategy
+        from quantlab.pipeline.base import PipelineContext
+        from unittest.mock import AsyncMock, patch
+
+        agent = BuilderAgent()
+        config = ResearchConfig(
+            campaign="KBNeedsReviewTest",
+            market="EURUSD",
+            timeframe="H1",
+            strategies=[Strategy(name="StratA", direction="BOTH")],
+        )
+
+        ctx = PipelineContext(
+            config={},
+            artifacts={"research_config": config.model_dump(mode="json")},
+        )
+
+        needs_review_entry = [
+            {
+                "name": "param",
+                "status": "needs_review",
+                "tab": "Trading options",
+            }
+        ]
+
+        mock_result = DispatchResult(
+            campaign_id="test", sqcli_status="completed", export_paths=["exports/test.csv"]
+        )
+        with patch.object(
+            BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock, return_value=mock_result
+        ), patch(
+            "quantlab.knowledge.kb.store.KbStore.consult", return_value=needs_review_entry
+        ) as mock_consult:
+            result = await agent.run(ctx)
+
+        mock_consult.assert_called()
+        assert "kb_warnings" in result
+        assert any("needing review" in str(w).lower() for w in result["kb_warnings"])

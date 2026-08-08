@@ -87,10 +87,71 @@ class BuilderAgent:
         max_retries: int = 2,
         timeout_minutes: int = 60,
         poll_interval_seconds: int = 30,
+        *,
+        strict_kb: bool = False,
     ) -> None:
         self._max_retries = max_retries
         self._timeout_minutes = timeout_minutes
         self._poll_interval = poll_interval_seconds
+        self._strict_kb = strict_kb
+
+    # ── REQ-204: KB consult ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def _active_kb_tabs(config: Any) -> list[str]:
+        """Return the active KB tabs for a ResearchConfig.
+
+        Currently returns all canonical builder tabs; future versions may
+        filter based on config content.
+        """
+        from quantlab.knowledge.kb.models import KB_TABS
+
+        return list(KB_TABS)
+
+    async def _consult_kb(self, config: Any) -> list[str]:
+        """Consult the KB for each active tab before translation.
+
+        Returns a list of warning strings for tabs with missing or
+        unverified entries. In ``strict_kb`` mode, raises
+        ``ConfigurationError`` instead of collecting warnings.
+
+        Args:
+            config: The parsed ``ResearchConfig``.
+
+        Returns:
+            List of warning messages (empty when all tabs are covered).
+
+        Raises:
+            ConfigurationError: When ``strict_kb`` is True and any tab
+                has no KB entries.
+        """
+        from quantlab.knowledge.kb.store import KbStore
+        from quantlab.knowledge.kb.models import KB_TABS
+        from quantlab.pipeline.errors import ConfigurationError
+
+        active_tabs = self._active_kb_tabs(config)
+        store = KbStore()
+        warnings: list[str] = []
+
+        for tab in active_tabs:
+            entries = store.consult(name="", tab=tab)
+            if not entries:
+                warnings.append(f"KB tab '{tab}' has no entries")
+                continue
+
+            for entry in entries:
+                if entry.get("status") == "needs_review":
+                    warnings.append(
+                        f"KB tab '{tab}' has entries needing review"
+                    )
+                    break
+
+        if warnings and self._strict_kb:
+            raise ConfigurationError(
+                f"Missing or unverified KB entries: {warnings}"
+            )
+
+        return warnings
 
     # ── Task 2.11: Main execution ──────────────────────────────────────────────
 
@@ -130,6 +191,9 @@ class BuilderAgent:
                 research_config["guardian_state"] = guardian_state
             else:
                 research_config.guardian_state = guardian_state
+
+        # REQ-204: consult KB before translation
+        kb_warnings = await self._consult_kb(research_config)
 
         # Phase 1: Translate DSL → CFX
         cfx_bytes, translate_log = await self._translate(research_config)
@@ -171,6 +235,7 @@ class BuilderAgent:
                 "validation": validation_result,
                 "license": license_result,
                 "build_config": build_config,
+                **({"kb_warnings": kb_warnings} if kb_warnings else {}),
             }
 
         dispatch_result = await self._dispatch_with_retry(
@@ -201,6 +266,7 @@ class BuilderAgent:
             "validation": validation_result,
             "license": license_result,
             "dispatch_log": dispatch_result.dispatch_log,
+            **({"kb_warnings": kb_warnings} if kb_warnings else {}),
         }
 
     # ── Phase 1: Translation ────────────────────────────────────────────────────
