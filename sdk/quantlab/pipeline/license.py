@@ -39,12 +39,15 @@ class LicenseInfo:
         detail: Raw output or human-readable detail from the check.
         expiry_date: Expiry date string, if reported by sqcli.
         trial_days_remaining: Remaining trial days, if applicable.
+        build_number: Build number extracted from the license line
+            (e.g. "144" or "144.2953"); None when absent (REQ-301).
     """
 
     status: LicenseStatus = LicenseStatus.UNLICENSED
     detail: str = ""
     expiry_date: str | None = None
     trial_days_remaining: int | None = None
+    build_number: str | None = None
 
 
 class LicenseManager:
@@ -109,22 +112,47 @@ class LicenseManager:
 
         Fail-closed: when the state cannot be determined, the status is
         UNLICENSED rather than an exception.
+
+        Additionally (REQ-301), a ``Build <number>`` token on the line is
+        captured into ``build_number`` (point version included when
+        present); a missing token yields ``build_number = None`` with a
+        warning logged and no exception raised.
         """
         lower = stdout.lower()
+        # REQ-301: extract the Build token ("Build 144" / "Build 144.2953")
+        # into a structured field; a missing token yields null with a warning
+        # and never an exception (fail-open).
+        build_match = re.search(r"build\s+([0-9]+(?:\.[0-9]+)?)", lower)
+        build_number = build_match.group(1) if build_match else None
+        if build_number is None:
+            logger.warning(
+                "No Build token found in sqcli license output; build_number=null"
+            )
         if "expired" in lower:
-            return LicenseInfo(status=LicenseStatus.EXPIRED, detail=stdout)
+            return LicenseInfo(
+                status=LicenseStatus.EXPIRED, detail=stdout, build_number=build_number
+            )
         if "trial" in lower:
-            return LicenseInfo(status=LicenseStatus.TRIAL, detail=stdout)
+            return LicenseInfo(
+                status=LicenseStatus.TRIAL, detail=stdout, build_number=build_number
+            )
         valid_until = re.search(r"valid until\s+([0-9]+\.[0-9]+\.[0-9]+)", lower)
         if valid_until:
             return LicenseInfo(
                 status=LicenseStatus.LICENSED,
                 detail=stdout,
                 expiry_date=valid_until.group(1),
+                build_number=build_number,
             )
         if "licensed" in lower:
-            return LicenseInfo(status=LicenseStatus.LICENSED, detail=stdout)
-        return LicenseInfo(status=LicenseStatus.UNLICENSED, detail=stdout)
+            return LicenseInfo(
+                status=LicenseStatus.LICENSED,
+                detail=stdout,
+                build_number=build_number,
+            )
+        return LicenseInfo(
+            status=LicenseStatus.UNLICENSED, detail=stdout, build_number=build_number
+        )
 
     def activate(self, code: str) -> CliResult:
         """Activate the license with a given activation code.
