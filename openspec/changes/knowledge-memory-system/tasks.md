@@ -29,12 +29,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 1: Foundation — Taxonomy + Index v4 (WU1)
 
-- [ ] 1.1 RED `sdk/tests/test_conformance.py`: REQ-402 writer map; off-layout write fails naming path
-- [ ] 1.2 `sdk/quantlab/knowledge/store.py` `initialize()`: add `pipeline-runs/`, `agent-memory/` + sub-layouts `structured/{campaign_id}/`, `structured/sqx-kb/{ver}/parameters/{tab}/`, `structured/sqx-version/{old}→{new}/`; idempotent, `.gitkeep`
-- [ ] 1.3 Create `sdk/quantlab/knowledge/conformance.py`: writer→canonical-dir map (REQ-402)
-- [ ] 1.4 `store.py` `rebuild_index()`: `_version: 4` + kb_parameters + version_events areas; `_upgrade_index` maps v1–3 (REQ-403)
-- [ ] 1.5 `sdk/quantlab/knowledge/indexer.py`: legacy read fallback `campaigns/ results/ stats/`; metrics from `structured/{campaign_id}/metrics.yaml` (D6)
-- [ ] 1.6 GREEN: fresh init creates 7 dirs + 3 sub-layouts; v1 index readable with defaults
+- [x] 1.1 RED `sdk/tests/test_conformance.py`: REQ-402 writer map; off-layout write fails naming path
+- [x] 1.2 `sdk/quantlab/knowledge/store.py` `initialize()`: add `pipeline-runs/`, `agent-memory/` + sub-layouts `structured/{campaign_id}/`, `structured/sqx-kb/{ver}/parameters/{tab}/`, `structured/sqx-version/{old}→{new}/`; idempotent, `.gitkeep`
+- [x] 1.3 Create `sdk/quantlab/knowledge/conformance.py`: writer→canonical-dir map (REQ-402)
+- [x] 1.4 `store.py` `rebuild_index()`: `_version: 4` + kb_parameters + version_events areas; `_upgrade_index` maps v1–3 (REQ-403)
+- [x] 1.5 `sdk/quantlab/knowledge/indexer.py`: legacy read fallback `campaigns/ results/ stats/`; metrics from `structured/{campaign_id}/metrics.yaml` (D6)
+- [x] 1.6 GREEN: fresh init creates 7 dirs + 3 sub-layouts; v1 index readable with defaults
 
 ## Phase 2: Memory Capture + Privacy (WU2)
 
