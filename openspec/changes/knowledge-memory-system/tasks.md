@@ -47,12 +47,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 3: SQX Parameter KB (WU3)
 
-- [ ] 3.1 RED `sdk/tests/test_kb.py`: missing `what_it_does` fails listing field; version-isolated lookup; status filter (REQ-201/502)
-- [ ] 3.2 Create `sdk/quantlab/knowledge/kb/models.py`: pydantic `KbParameter` 22 fields, tab Literal[8], status seeded|verified|needs_review (D7)
-- [ ] 3.3 Create `sdk/quantlab/knowledge/kb/store.py` `KbStore`: get/list/seed/verify/status/invalidate over `structured/sqx-kb/{ver}/` (REQ-202/208)
-- [ ] 3.4 Create `sdk/quantlab/knowledge/kb/seeder.py`: parse `doc_dev/SQX Builder Config.md` → seed 8 tabs; doc gaps → needs_review, never invent (REQ-203)
-- [ ] 3.5 Create `sdk/quantlab/cli/sq_commands.py` + wire `cli/main.py`: `quantlab sqx kb` list/get/seed/verify/status; unknown param exit 1 (REQ-207)
-- [ ] 3.6 GREEN: ≥1 param per tab verified vs real config evidence_ref (REQ-203)
+- [x] 3.1 RED `sdk/tests/test_kb.py`: missing `what_it_does` fails listing field; version-isolated lookup; status filter (REQ-201/502)
+- [x] 3.2 Create `sdk/quantlab/knowledge/kb/models.py`: pydantic `KbParameter` 22 fields, tab Literal[8], status seeded|verified|needs_review (D7)
+- [x] 3.3 Create `sdk/quantlab/knowledge/kb/store.py` `KbStore`: get/list/seed/verify/status/invalidate over `structured/sqx-kb/{ver}/` (REQ-202/208)
+- [x] 3.4 Create `sdk/quantlab/knowledge/kb/seeder.py`: parse `doc_dev/SQX Builder Config.md` → seed 8 tabs; doc gaps → needs_review, never invent (REQ-203)
+- [x] 3.5 Create `sdk/quantlab/cli/sq_commands.py` + wire `cli/main.py`: `quantlab sqx kb` list/get/seed/verify/status; unknown param exit 1 (REQ-207)
+- [x] 3.6 GREEN: ≥1 param per tab verified vs real config evidence_ref (REQ-203)
 
 ## Phase 4: Version Detection (WU4)
 
