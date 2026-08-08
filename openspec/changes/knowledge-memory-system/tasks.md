@@ -58,12 +58,12 @@ Chain strategy: stacked-to-main
 
 - [x] 4.1 RED `sdk/tests/test_license_build.py`: "Build 144 (Futlab…)" → `144.2953` (or `144`); missing Build → null, warn, no raise (REQ-301)
 - [x] 4.2 `sdk/quantlab/pipeline/license.py`: `LicenseInfo.build_number`, regex `Build (\d+)(?:\.(\d+))?`
-- [ ] 4.3 Create `sdk/quantlab/versioning.py`: `PINNED_SQX_VERSION="144.2953"` (D8)
-- [ ] 4.4 RED `sdk/tests/test_version.py`: in-sync silent; drift warns+proceeds; mock/no-sqcli skips; check-version exit 0/1/unknown; drift→checklist+KB invalidate; re-run additive (REQ-303/304/305)
-- [ ] 4.5 `versioning.py`: `VersionPreflight` + `DriftWorkflow` → `structured/sqx-version/{old}→{new}/checklist.yaml` {from,to,detected_at,affected_files,kb_invalidated,status} + codegraph scan (D9)
-- [ ] 4.6 `sdk/quantlab/sqx/cli_wrapper.py`: `version_preflight` beside `license_preflight` (~:310), skip w/o sqcli (REQ-701)
-- [ ] 4.7 11 prod files + `tests/sqx/test_license_guard.py` + `test_project_builder_symbol.py`: literal `144.2953` → `PINNED_SQX_VERSION` (REQ-302)
-- [ ] 4.8 `cli/sq_commands.py`: `quantlab sqx check-version` (REQ-304)
+- [x] 4.3 Create `sdk/quantlab/versioning.py`: `PINNED_SQX_VERSION="144.2953"` (D8)
+- [x] 4.4 RED `sdk/tests/test_version.py`: in-sync silent; drift warns+proceeds; mock/no-sqcli skips; check-version exit 0/1/unknown; drift→checklist+KB invalidate; re-run additive (REQ-303/304/305)
+- [x] 4.5 `versioning.py`: `VersionPreflight` + `DriftWorkflow` → `structured/sqx-version/{old}→{new}/checklist.yaml` {from,to,detected_at,affected_files,kb_invalidated,status} + codegraph scan (D9)
+- [x] 4.6 `sdk/quantlab/sqx/cli_wrapper.py`: `version_preflight` beside `license_preflight` (~:310), skip w/o sqcli (REQ-701)
+- [x] 4.7 11 prod files + `tests/sqx/test_license_guard.py` + `test_project_builder_symbol.py`: literal `144.2953` → `PINNED_SQX_VERSION` (REQ-302)
+- [x] 4.8 `cli/sq_commands.py`: `quantlab sqx check-version` (REQ-304)
 
 ## Phase 5: Consumption + Prompts (WU5)
 
