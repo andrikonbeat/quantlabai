@@ -32,7 +32,9 @@ from quantlab.translate.cfx import CfxArchive
 from quantlab.readers.databank import DatabankCSVReader
 from quantlab.stats.engine import StatisticsEngine
 from quantlab.knowledge.store import KnowledgeStore
+from quantlab.knowledge.conformance import assert_conformance
 from pathlib import Path
+import re
 import tempfile
 import time
 import asyncio
@@ -412,26 +414,37 @@ class SQXKnowledgeStoreStage(KnowledgeStoreStage):
         
         artifacts = {}
         campaign_name = config.get("campaign_name", "Campaign")
+        campaign_id = re.sub(r"[^A-Za-z0-9._-]", "_", campaign_name) or "campaign"
+        campaign_dir = Path(knowledge_root) / "structured" / campaign_id
         
-        # Store CFX
+        # Store CFX (config_writer -> structured/*/**)
         cfx_bytes = ctx.artifacts.get("cfx_bytes")
         if cfx_bytes:
-            cfx_path = Path(knowledge_root) / "campaigns" / campaign_name / f"{campaign_name}.cfx"
+            cfx_path = campaign_dir / f"{campaign_id}.cfx"
+            assert_conformance(
+                "config_writer", str(cfx_path.relative_to(Path(knowledge_root)))
+            )
             cfx_path.parent.mkdir(parents=True, exist_ok=True)
             cfx_path.write_bytes(cfx_bytes)
             artifacts["cfx"] = cfx_path
         
-        # Store results
+        # Store results (config_writer -> structured/*/**; per-artifact subdir)
         export_paths = ctx.artifacts.get("export_paths", {})
         for name, path in export_paths.items():
-            dest = Path(knowledge_root) / "results" / campaign_name / path.name
+            dest = campaign_dir / "results" / path.name
+            assert_conformance(
+                "config_writer", str(dest.relative_to(Path(knowledge_root)))
+            )
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(path.read_bytes())
             artifacts[name] = dest
         
-        # Store statistics
+        # Store statistics (metrics_writer -> structured/*/metrics.yaml)
         stats = ctx.artifacts.get("statistics", {})
-        stats_path = Path(knowledge_root) / "stats" / f"{campaign_name}.yaml"
+        stats_path = campaign_dir / "metrics.yaml"
+        assert_conformance(
+            "metrics_writer", str(stats_path.relative_to(Path(knowledge_root)))
+        )
         stats_path.parent.mkdir(parents=True, exist_ok=True)
         stats_path.write_text(yaml.dump(stats))
         artifacts["statistics"] = stats_path
