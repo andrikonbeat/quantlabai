@@ -52,7 +52,7 @@ async def cmd_campaign_rollback(args: argparse.Namespace) -> int:
     from quantlab.agents.research_director import ResearchDirector
 
     try:
-        knowledge_root = getattr(args, "knowledge_root", "knowledge/structured")
+        knowledge_root = getattr(args, "knowledge_root", "knowledge")
         director = ResearchDirector(knowledge_root=knowledge_root)
 
         # The rollback needs the campaign record in memory; if the director
@@ -151,7 +151,7 @@ def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
     # campaign rollback
     p_rollback = campaign_sub.add_parser("rollback", help="Rollback a campaign (delete Knowledge Lake artifacts)")
     p_rollback.add_argument("campaign_id", help="Campaign ID to rollback")
-    p_rollback.add_argument("--knowledge-root", default="knowledge/structured", help="Knowledge Lake root path")
+    p_rollback.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
     p_rollback.add_argument("--json", action="store_true", help="Output JSON")
     p_rollback.set_defaults(func=cmd_campaign_rollback)
 

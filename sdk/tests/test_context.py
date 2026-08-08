@@ -23,7 +23,11 @@ import pytest
 import yaml
 
 from quantlab.agents.research_director import ResearchDirector
-from quantlab.knowledge.context import compose_prior_context, render_prior_context
+from quantlab.knowledge.context import (
+    compose_prior_context,
+    detect_self_correction,
+    render_prior_context,
+)
 from quantlab.knowledge.kb.models import KbParameter
 from quantlab.knowledge.kb.store import KbStore
 from quantlab.knowledge.kb.teaching import build_teaching_table
@@ -357,3 +361,129 @@ class TestTeachingTable:
     def test_empty_teaching_table_placeholder(self) -> None:
         out = build_teaching_table([])
         assert "No KB parameters to teach" in out
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# WU6 — REQ-105 self-correction + knowledge_root reconciliation
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestSelfCorrection:
+    """REQ-105: detection-and-report of repeated failure signatures."""
+
+    def failed(self, summary: str, phase: str = "dispatch", **extra):
+        d = {
+            "agent_name": "research-director",
+            "campaign_id": "campaign-1",
+            "phase": phase,
+            "status": "failed",
+            "executive_summary": summary,
+            "risks": ["missing data"],
+            "lessons": [],
+            "timestamp": "2026-01-01T00:00:00+00:00",
+        }
+        d.update(extra)
+        return d
+
+    def test_two_prior_failures_same_signature_produce_recommendation(self) -> None:
+        prior = [
+            self.failed("dispatch failed: data gaps in M1"),
+            self.failed("dispatch failed: data gaps in M1"),
+        ]
+        current = self.failed("dispatch failed: data gaps prevent execution")
+        recs = detect_self_correction(current, prior)
+        assert len(recs) == 1
+        assert "dispatch" in recs[0]
+
+    def test_success_produces_no_recommendation(self) -> None:
+        prior = [
+            self.failed("dispatch failed: data gaps in M1"),
+            self.failed("dispatch failed: data gaps in M1"),
+        ]
+        current = self.failed("dispatch OK", status="success")
+        assert detect_self_correction(current, prior) == []
+
+    def test_first_failure_no_recommendation(self) -> None:
+        prior = [self.failed("dispatch failed: data gaps in M1")]
+        current = self.failed("dispatch failed: data gaps prevent execution")
+        assert detect_self_correction(current, prior) == []
+
+    def test_success_with_prior_failures_no_recommendation(self) -> None:
+        prior = [
+            self.failed("dispatch failed: data gaps in M1"),
+            self.failed("dispatch failed: data gaps in M1"),
+        ]
+        current = {"status": "success", "executive_summary": "all good"}
+        assert detect_self_correction(current, prior) == []
+
+    def test_render_surfaces_self_correction_on_prior_record(self) -> None:
+        records = prior_decisions()
+        records[0]["self_correction"] = [
+            "Repeated failure signature for phase 'config': review prior campaigns above."
+        ]
+        block = render_prior_context("review", records)
+        assert "Self-correction" in block
+        assert "review prior campaigns" in block
+
+
+class TestKnowledgeRootReconcile:
+    """WU6: canonical knowledge_root=knowledge with backwards-compat fallback."""
+
+    def test_director_default_root_reads_knowledge_agent_memory(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        write_memory(
+            tmp_path / "knowledge",
+            "research-director",
+            "campaign-1",
+            [
+                {
+                    "agent_name": "research-director",
+                    "campaign_id": "campaign-1",
+                    "phase": "config",
+                    "status": "success",
+                    "executive_summary": "Config validated with ATR stop loss",
+                    "timestamp": "2026-01-01T00:00:00+00:00",
+                }
+            ],
+        )
+        director = ResearchDirector()
+        block = director.compose_prior_context("campaign-3", "review")
+        assert "Config validated with ATR stop loss" in block
+
+    def test_legacy_structured_agent_memory_read_fallback(self, tmp_path) -> None:
+        write_memory(
+            tmp_path / "structured",
+            "research-director",
+            "campaign-1",
+            [
+                {
+                    "agent_name": "research-director",
+                    "campaign_id": "campaign-1",
+                    "phase": "config",
+                    "status": "success",
+                    "executive_summary": "Config validated with ATR stop loss",
+                    "timestamp": "2026-01-01T00:00:00+00:00",
+                }
+            ],
+        )
+        block = compose_prior_context("campaign-3", "review", root=tmp_path)
+        assert "Config validated with ATR stop loss" in block
+
+    def test_rollback_deletes_structured_campaign_dir(self, tmp_path) -> None:
+        from quantlab.agents.research_director import CampaignRecord
+        from quantlab.dsl.models import IterationConfig, ResearchConfig
+
+        director = ResearchDirector(knowledge_root=tmp_path)
+        campaign_dir = tmp_path / "structured" / "rollback-test"
+        campaign_dir.mkdir(parents=True)
+        director._campaigns["rollback-test"] = CampaignRecord(
+            campaign_id="rollback-test",
+            config=ResearchConfig(
+                campaign="RollbackTest",
+                market="EURUSD",
+                timeframe="H1",
+                iteration_config=IterationConfig(max_iterations=1),
+            ),
+        )
+        director.rollback_campaign("rollback-test")
+        assert not campaign_dir.exists()

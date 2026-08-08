@@ -62,7 +62,8 @@ class ResearchDirector:
 
     Args:
         knowledge_root: Root path for Knowledge Lake artifacts. Defaults to
-            ``knowledge/structured`` relative to CWD.
+            ``knowledge`` relative to CWD (the lake root; structured campaign
+            artifacts live under ``knowledge/structured/``).
         engram_save_fn: Optional async function for recording gate decisions
             to Engram. Signature: ``async fn(title, type, scope, topic_key, content)``.
         gate_orchestrator: Optional ``HumanGateOrchestrator`` instance. When
@@ -78,7 +79,7 @@ class ResearchDirector:
         gate_orchestrator: Any = None,
         memory_capture_config: dict[str, Any] | None = None,
     ) -> None:
-        self._knowledge_root = Path(knowledge_root or "knowledge/structured")
+        self._knowledge_root = Path(knowledge_root or "knowledge")
         self._engram_save_fn = engram_save_fn
         self._campaigns: dict[str, CampaignRecord] = {}
         self._runner: Any = None  # PipelineRunner, lazy-imported
@@ -819,8 +820,9 @@ class ResearchDirector:
         if campaign_id not in self._campaigns:
             raise ValueError(f"Unknown campaign '{campaign_id}'")
 
-        # Delete Knowledge Lake artifacts
-        campaign_dir = self._knowledge_root / campaign_id
+        # Delete Knowledge Lake artifacts (structured campaign dir under the
+        # canonical lake root: {root}/structured/{campaign_id}).
+        campaign_dir = self._knowledge_root / "structured" / campaign_id
         if campaign_dir.exists():
             import shutil
 

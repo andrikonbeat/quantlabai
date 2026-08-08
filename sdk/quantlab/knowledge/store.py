@@ -111,6 +111,71 @@ class FormatWarning(UserWarning):
     """Warning raised when a file uses a non-standard format."""
 
 
+# ── Deterministic text similarity (REQ-501, WU6) ──────────────────────────────
+
+# Text features are token counts PLUS char 3-gram counts over those tokens.
+# This keeps the ranking deterministic and dependency-free (no dense embedding
+# model), while still capturing phrase-level structure beyond bag-of-words.
+_NGRAM_SIZE = 3
+
+
+def _tokenize(text: str) -> list[str]:
+    """Split text into lowercase alphanumeric tokens (no regex dependency)."""
+    tokens: list[str] = []
+    current: list[str] = []
+    for ch in str(text).lower():
+        if ch.isalnum():
+            current.append(ch)
+        elif current:
+            tokens.append("".join(current))
+            current = []
+    if current:
+        tokens.append("".join(current))
+    return tokens
+
+
+def _add_text(vector: dict[str, int], text: str) -> None:
+    """Accumulate token + char n-gram counts into a feature vector."""
+    tokens = _tokenize(text)
+    for token in tokens:
+        vector[token] = vector.get(token, 0) + 1
+    if len(tokens) >= _NGRAM_SIZE:
+        for i in range(len(tokens) - _NGRAM_SIZE + 1):
+            gram = "".join(tokens[i : i + _NGRAM_SIZE])
+            vector[gram] = vector.get(gram, 0) + 1
+
+
+def _record_text(record: dict) -> str:
+    """Concatenate the comparable fields of a decision record."""
+    parts = [
+        str(record.get("phase", "")),
+        str(record.get("status", "")),
+        str(record.get("executive_summary", "")),
+    ]
+    for key in ("risks", "lessons"):
+        value = record.get(key)
+        if isinstance(value, list):
+            parts.extend(str(item) for item in value)
+        elif value is not None:
+            parts.append(str(value))
+    config = record.get("config")
+    if isinstance(config, dict):
+        parts.extend(str(value) for value in config.values())
+    return " ".join(parts)
+
+
+def _text_cosine(a: dict[str, int], b: dict[str, int]) -> float:
+    """Cosine similarity between two sparse feature vectors."""
+    if not a or not b:
+        return 0.0
+    dot = sum(count * b.get(feature, 0) for feature, count in a.items())
+    norm_a = sum(count * count for count in a.values()) ** 0.5
+    norm_b = sum(count * count for count in b.values()) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
+
 # ── KnowledgeStore ────────────────────────────────────────────────────────────
 
 
@@ -723,8 +788,10 @@ class KnowledgeStore:
             List of dicts with ``campaign_id`` and ``similarity_score``.
         """
         embeddings_dir = self.root / "embeddings"
-        if not embeddings_dir.exists():
-            return []
+        if not embeddings_dir.exists() or not any(embeddings_dir.iterdir()):
+            # WU6: no dense vectors available — fall back to a deterministic
+            # text-embedding ranking over the memory lake (REQ-501).
+            return self._find_similar_text(campaign_id, top_k, min_similarity)
 
         import numpy as np
 
@@ -779,6 +846,83 @@ class KnowledgeStore:
 
         results.sort(key=lambda x: x.get("similarity_score", 0.0), reverse=True)
         return results[:top_k]
+
+    def _find_similar_text(
+        self,
+        campaign_id: str,
+        top_k: int,
+        min_similarity: float,
+    ) -> list[dict[str, object]]:
+        """Rank campaigns by deterministic text similarity (REQ-501, WU6).
+
+        Builds a sparse token + char n-gram vector per campaign from the
+        memory lake (``agent-memory/*/*/memory.yaml``) and structured campaign
+        artifacts, then ranks by cosine similarity. Deterministic and
+        dependency-free — no dense embedding model required. An empty or
+        unreadable lake yields ``[]``.
+        """
+        corpus = self._text_corpus()
+        target = corpus.get(campaign_id)
+        if not target:
+            return []
+        results: list[dict[str, object]] = []
+        for other_id, vector in corpus.items():
+            if other_id == campaign_id:
+                continue
+            similarity = _text_cosine(vector, target)
+            if similarity > 0.0 and similarity >= min_similarity:
+                results.append(
+                    {"campaign_id": other_id, "similarity_score": similarity}
+                )
+        results.sort(
+            key=lambda r: float(r.get("similarity_score", 0.0)), reverse=True
+        )
+        return results[:top_k]
+
+    def _text_corpus(self) -> dict[str, dict[str, int]]:
+        """Map campaign_id -> text feature vector (REQ-501, WU6).
+
+        Features come from captured decisions (``agent-memory/``) and, when
+        present, the structured campaign.md artifact (``structured/``).
+        """
+        corpus: dict[str, dict[str, int]] = {}
+
+        memory_root = self.root / "agent-memory"
+        if memory_root.is_dir():
+            for memory_file in memory_root.glob("*/*/memory.yaml"):
+                campaign = memory_file.parent.name
+                try:
+                    records = yaml.safe_load(
+                        memory_file.read_text(encoding="utf-8")
+                    ) or []
+                except Exception:
+                    continue
+                if not isinstance(records, list):
+                    records = [records]
+                vector = corpus.setdefault(campaign, {})
+                for record in records:
+                    if isinstance(record, dict):
+                        _add_text(vector, _record_text(record))
+
+        structured_root = self.root / "structured"
+        if structured_root.is_dir():
+            for camp_dir in structured_root.iterdir():
+                if not camp_dir.is_dir():
+                    continue
+                summary_file = camp_dir / "campaign.md"
+                if summary_file.is_file():
+                    vector = corpus.setdefault(camp_dir.name, {})
+                    try:
+                        _add_text(
+                            vector,
+                            summary_file.read_text(
+                                encoding="utf-8", errors="ignore"
+                            ),
+                        )
+                    except Exception:
+                        continue
+
+        return corpus
 
     # ── Enhanced Indexing ─────────────────────────────────────────────────────────
 

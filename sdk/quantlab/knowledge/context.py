@@ -55,6 +55,84 @@ def _as_list(value: Any) -> list[str]:
     return [str(value)]
 
 
+def _normalize(text: str) -> str:
+    """Lowercase and drop non-alphanumeric characters (tokenization)."""
+    return " ".join(
+        "".join(ch for ch in text.lower() if ch.isalnum() or ch.isspace()).split()
+    )
+
+
+def _is_failure(status: Any) -> bool:
+    """True when a decision status is a failure outcome (REQ-105)."""
+    return str(status).strip().lower() in {"failed", "halt"}
+
+
+def _failure_signature(decision: dict[str, Any]) -> str:
+    """Normalized comparable text of a decision (phase + outcome + content).
+
+    The signature covers phase, status, executive summary, risks and lessons
+    so two failures share a signature when their *reason* overlaps — not just
+    their phase name.
+    """
+    parts = [
+        str(decision.get("phase", "")),
+        str(decision.get("status", "")),
+        str(decision.get("executive_summary", "")),
+    ]
+    parts.extend(_as_list(decision.get("risks")))
+    parts.extend(_as_list(decision.get("lessons")))
+    return _normalize(" ".join(parts))
+
+
+def _shares_signature(a: str, b: str) -> bool:
+    """True when two normalized texts share at least one token."""
+    tokens_a = set(a.split())
+    tokens_b = set(b.split())
+    if not tokens_a or not tokens_b:
+        return False
+    return bool(tokens_a & tokens_b)
+
+
+def _recommendation(phase: str) -> str:
+    return (
+        f"Repeated failure signature for phase '{phase}': review the prior "
+        "campaigns above and adjust the approach before re-running."
+    )
+
+
+def detect_self_correction(
+    decision: dict[str, Any],
+    prior_decisions: Sequence[dict[str, Any]],
+    *,
+    min_repeat: int = 2,
+) -> list[str]:
+    """Detect repeated failure signatures and return recommendations (REQ-105).
+
+    Detection-and-report only: this function NEVER modifies state. It returns
+    a list of recommendation strings (empty when no correction is warranted),
+    surfaceable for a human gate or LLM to act on.
+
+    A correction is reported when the candidate *decision* is a failure and at
+    least ``min_repeat`` prior failed decisions share its failure signature
+    (token overlap across phase/status/summary/risks/lessons). Successes and
+    first failures never produce a recommendation (REQ-105 scenarios).
+    """
+    if not _is_failure(decision.get("status")):
+        return []
+    candidate_sig = _failure_signature(decision)
+    if not candidate_sig:
+        return []
+    matches = sum(
+        1
+        for prior in prior_decisions
+        if _is_failure(prior.get("status"))
+        and _shares_signature(candidate_sig, _failure_signature(prior))
+    )
+    if matches >= min_repeat:
+        return [_recommendation(str(decision.get("phase", "")))]
+    return []
+
+
 def _load_prior_decisions(
     root: str | Path,
     *,
@@ -70,6 +148,12 @@ def _load_prior_decisions(
     source of truth.
     """
     memory_root = Path(root) / "agent-memory"
+    if not memory_root.is_dir():
+        # WU6: backwards-compat read — lakes written before the knowledge_root
+        # reconciliation live under the old director default
+        # (``knowledge/structured/agent-memory``).
+        legacy_root = Path(root) / "structured" / "agent-memory"
+        memory_root = legacy_root if legacy_root.is_dir() else memory_root
     if not memory_root.is_dir():
         return []
 
@@ -151,6 +235,9 @@ def render_prior_context(
             lessons = [str(summary)]
         if lessons:
             lines.append(f"- **Lessons**: {'; '.join(lessons)}")
+        corrections = _as_list(decision.get("self_correction"))
+        if corrections:
+            lines.append(f"- **Self-correction**: {'; '.join(corrections)}")
         lines.append("")
 
     if similar:

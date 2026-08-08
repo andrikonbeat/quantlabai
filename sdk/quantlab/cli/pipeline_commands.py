@@ -246,7 +246,7 @@ async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) 
         # Create ResearchDirector
         from quantlab.agents.research_director import ResearchDirector
 
-        knowledge_root = getattr(args, "knowledge_root", "knowledge/structured")
+        knowledge_root = getattr(args, "knowledge_root", "knowledge")
         director = ResearchDirector(knowledge_root=knowledge_root)
 
         # Execute campaign

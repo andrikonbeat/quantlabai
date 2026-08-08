@@ -244,3 +244,59 @@ class TestConfigDisabled:
         )
         memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
         assert memory_file.exists()
+
+
+class TestSelfCorrectionCapture:
+    """REQ-105: capture_phase reports repeated failure signatures (flag)."""
+
+    @pytest.mark.asyncio
+    async def test_capture_flags_repeated_failure_signature(self, tmp_path, enabled_config) -> None:
+        import yaml
+
+        camp_dir = tmp_path / "agent-memory" / "research-director" / "campaign-7"
+        camp_dir.mkdir(parents=True)
+        (camp_dir / "memory.yaml").write_text(
+            yaml.dump(
+                [
+                    {
+                        "status": "failed",
+                        "executive_summary": "dispatch failed: data gaps in M1",
+                        "phase": "dispatch",
+                        "risks": ["missing data"],
+                        "timestamp": "2026-01-01T00:00:00+00:00",
+                    },
+                    {
+                        "status": "failed",
+                        "executive_summary": "dispatch failed: data gaps in M1",
+                        "phase": "dispatch",
+                        "risks": ["missing data"],
+                        "timestamp": "2026-01-02T00:00:00+00:00",
+                    },
+                ],
+                default_flow_style=False,
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+        engram = FakeEngram()
+        service = MemoryCaptureService(
+            knowledge_root=tmp_path,
+            engram_save_fn=engram,
+            capture_config=enabled_config,
+        )
+        await service.capture_phase(
+            "research-director",
+            "campaign-7",
+            "dispatch",
+            {
+                "status": "failed",
+                "executive_summary": "dispatch failed: data gaps prevent execution",
+                "risks": ["missing data"],
+            },
+        )
+
+        records = yaml.safe_load((camp_dir / "memory.yaml").read_text(encoding="utf-8"))
+        latest = records[-1]
+        assert latest.get("self_correction"), "expected a self-correction flag on the captured decision"
+        assert any("dispatch" in r for r in latest["self_correction"])

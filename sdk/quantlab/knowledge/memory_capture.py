@@ -109,6 +109,31 @@ class MemoryCaptureService:
                 knowledge_root=self._knowledge_root,
                 engram_save_fn=self._engram_save_fn,
             )
+            # REQ-105: detection-and-report — compare this phase outcome
+            # against the campaign's own prior memory and flag repeated
+            # failure signatures instead of silently overwriting. Best-effort:
+            # a detection failure never blocks capture (REQ-102).
+            try:
+                from quantlab.knowledge.context import detect_self_correction
+
+                prior = await manager.load_memory(agent, campaign)
+                if prior:
+                    probe = dict(decision)
+                    probe["phase"] = phase
+                    corrections = detect_self_correction(probe, prior)
+                    if corrections:
+                        decision["self_correction"] = corrections
+                        logger.warning(
+                            "self-correction for %s/%s phase '%s': %s",
+                            agent,
+                            campaign,
+                            phase,
+                            "; ".join(corrections),
+                        )
+            except Exception as exc:  # noqa: BLE001 — detection is best-effort
+                logger.warning(
+                    "self-correction detection skipped (non-blocking): %s", exc
+                )
             await manager.save_decision(
                 agent, campaign, decision, phase=phase, config=config
             )
