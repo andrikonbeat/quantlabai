@@ -1,5 +1,14 @@
 # Tasks: Knowledge Memory System
 
+## Verification Status
+
+- **Verdict**: PASS WITH WARNINGS (2026-08-08)
+- **Requirements**: 27/27 implemented; 57/59 scenarios COMPLIANT, 2/59 PARTIAL (REQ-204 builder_agent consult wiring, REQ-205 config_reviewer teaching-table wiring — surfaces delivered and tested)
+- **Tests**: full suite 1219 passed / 0 failed (exit 0, `sdk/`); build `compileall` exit 0
+- **Blockers**: 0 CRITICAL findings
+- **Notable**: W1 — D6 write-side not implemented (`SQXKnowledgeStoreStage` still writes legacy `campaigns/ results/ stats/`; indexer legacy read fallback implemented and tested). W5 — pre-existing nondeterministic flake `tests/test_pr3_pipeline_wiring.py::test_mock_campaign_roundtrip_analysis_to_reviewer` (file untouched by this change). Task 6.3 (building-blocks KB tab + changelog polling) explicitly future.
+- **Full report**: Engram obs #789, topic `sdd/knowledge-memory-system/verify-report`, validated by `gentle-ai sdd-verify-validate` (27 req / 59 scenarios)
+
 ## Review Workload Forecast
 
 | Field | Value |
