@@ -94,3 +94,59 @@ class AgentMemoryEntry:
         if self.memory_content is not None:
             d["memory_content"] = self.memory_content
         return d
+
+
+@dataclass
+class PhaseEnvelope:
+    """Structured envelope for a single pipeline phase execution."""
+
+    campaign_id: str
+    phase: str
+    status: str
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    duration: Optional[float] = None
+    artifacts: list[str] = field(default_factory=list)
+    error: Optional[str] = None
+    next_gate: Optional[str] = None
+    gate_decision: Optional[str] = None
+
+
+@dataclass
+class ParameterMatrixEntry:
+    """One SQX parameter justification entry."""
+
+    tab: str
+    parameter: str
+    value: Any
+    rationale: str
+    source: str = "default"
+    confidence: float = 0.5
+    hypothesis_ref: Optional[str] = None
+
+
+@dataclass
+class FeedbackRecord:
+    """Guardian feedback record for live degradation or parameter drift."""
+
+    campaign_id: str
+    strategy_id: Optional[str] = None
+    event_type: str = "DEGRADING"
+    severity: str = "WARNING"
+    metric_delta: Optional[dict[str, float]] = None
+    parameter_deltas: list[dict[str, Any]] = field(default_factory=list)
+    detected_at: Optional[str] = None
+    recommended_action: Optional[str] = None
+
+
+@dataclass
+class MaintenancePlan:
+    """Campaign maintenance plan and replacement runbook."""
+
+    campaign_id: str
+    review_cycle_days: int = 30
+    replacement_candidates: list[str] = field(default_factory=list)
+    live_strategy_ids: list[str] = field(default_factory=list)
+    disconnected_strategy_ids: list[str] = field(default_factory=list)
+    notes: Optional[str] = None
+    updated_at: Optional[str] = None

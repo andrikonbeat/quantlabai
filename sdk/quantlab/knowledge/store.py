@@ -8,7 +8,7 @@ human-readable formats.
 Directory layout::
 
     knowledge/
-    ├── index.yaml            # auto-generated metadata index (v4)
+    ├── index.yaml            # auto-generated metadata index (v5)
     ├── raw/                  # raw/unprocessed research artifacts
     ├── structured/           # cleaned, structured data (JSON, Parquet)
     │   ├── {campaign_id}/    # per-campaign configs, metrics, results
@@ -18,7 +18,11 @@ Directory layout::
     ├── embeddings/           # vector embeddings and model artifacts
     ├── datasets/             # curated, versioned datasets
     ├── pipeline-runs/        # pipeline execution history (YAML per run)
-    └── agent-memory/         # durable per-agent per-campaign memory
+    ├── agent-memory/         # durable per-agent per-campaign memory
+    ├── campaign-phases/      # phase envelopes per campaign execution
+    ├── parameter-matrix/     # SQX parameter justification matrices
+    ├── guardian-feedback/    # live degradation and parameter feedback
+    └── maintenance/          # maintenance plans and replacement runbooks
 """
 
 from __future__ import annotations
@@ -44,6 +48,10 @@ KNOWLEDGE_DIRS = [
     "datasets",
     "pipeline-runs",
     "agent-memory",
+    "campaign-phases",
+    "parameter-matrix",
+    "guardian-feedback",
+    "maintenance",
 ]
 
 ALLOWED_EXTENSIONS = {".yaml", ".yml", ".json", ".csv", ".parquet"}
@@ -65,6 +73,10 @@ STRUCTURED_SUB_LAYOUTS = [
     "structured/_template",
     "structured/sqx-kb/_template/parameters/_template",
     "structured/sqx-version/_template→_template",
+    "campaign-phases/_template",
+    "parameter-matrix/_template",
+    "guardian-feedback/_template",
+    "maintenance/_template",
 ]
 
 
@@ -551,20 +563,34 @@ class KnowledgeStore:
 
     @staticmethod
     def _upgrade_index(data: dict[str, object]) -> dict[str, object]:
-        """Upgrade a legacy index schema to v4 with backward-compatible defaults."""
+        """Upgrade a legacy index schema to v5 with backward-compatible defaults."""
         version = str(data.get("_version", "1"))
-        if version == "4":
+        if version == "5":
             return data
 
-        # v3 → v4: add the reconciled-layout areas (REQ-403)
+        # v4 → v5: add campaign-phase, parameter-matrix, guardian-feedback, maintenance
+        if version == "4":
+            data["_version"] = "5"
+            data.setdefault("campaign_phases", {})
+            data.setdefault("parameter_matrix", {})
+            data.setdefault("guardian_feedback", {})
+            data.setdefault("maintenance", {})
+            return data
+
+        # v3 → v5 (skip v4 intermediate)
         if version == "3":
-            data["_version"] = "4"
+            data["_version"] = "5"
+            data.setdefault("agent_memory", {})
             data.setdefault("kb_parameters", {})
             data.setdefault("version_events", {})
+            data.setdefault("campaign_phases", {})
+            data.setdefault("parameter_matrix", {})
+            data.setdefault("guardian_feedback", {})
+            data.setdefault("maintenance", {})
             return data
 
         if version == "2":
-            data["_version"] = "4"
+            data["_version"] = "5"
             am_index = data.setdefault("agent_memory", {})
             for path, info in (
                 data.get("directories", {}).get("agent-memory", {}).items()
@@ -578,15 +604,23 @@ class KnowledgeStore:
                     info.setdefault("embedding_ref", None)
             data.setdefault("kb_parameters", {})
             data.setdefault("version_events", {})
+            data.setdefault("campaign_phases", {})
+            data.setdefault("parameter_matrix", {})
+            data.setdefault("guardian_feedback", {})
+            data.setdefault("maintenance", {})
             return data
 
-        # v1 → v4 (best-effort; every new area gets a default)
+        # v1 → v5 (best-effort; every new area gets a default)
         if version == "1":
-            data["_version"] = "4"
+            data["_version"] = "5"
             data.setdefault("directories", {})
             data.setdefault("agent_memory", {})
             data.setdefault("kb_parameters", {})
             data.setdefault("version_events", {})
+            data.setdefault("campaign_phases", {})
+            data.setdefault("parameter_matrix", {})
+            data.setdefault("guardian_feedback", {})
+            data.setdefault("maintenance", {})
         return data
 
     def _build_agent_memory_index(self) -> dict[str, dict[str, object]]:

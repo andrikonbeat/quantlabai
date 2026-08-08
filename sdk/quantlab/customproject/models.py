@@ -94,3 +94,5 @@ class CustomProject:
     tasks: list[CustomProjectTask] = field(default_factory=list)
     databanks: list[DatabankSpec] = field(default_factory=list)
     schema_version: str = PINNED_SQX_VERSION
+    phase_type: str | None = None
+    checkpoint_metadata: dict | None = None

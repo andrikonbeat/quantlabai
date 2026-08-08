@@ -192,6 +192,7 @@ class CfxProject(BaseModel):
     schema_version: str
     databanks: list[DatabankSpec] = Field(default_factory=list)
     task_meta: dict[str, TaskMeta] = Field(default_factory=dict)
+    metadata: dict | None = None
 
     @property
     def task_type(self) -> str:

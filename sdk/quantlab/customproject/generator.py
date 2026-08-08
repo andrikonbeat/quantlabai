@@ -83,4 +83,10 @@ def generate_cfx_archive(project: CustomProject) -> CfxArchive:
         databanks=databanks,
         task_meta=task_meta,
     )
+    if project.phase_type or project.checkpoint_metadata:
+        config.metadata = {}
+        if project.phase_type:
+            config.metadata["phase_type"] = project.phase_type
+        if project.checkpoint_metadata:
+            config.metadata["checkpoint_metadata"] = project.checkpoint_metadata
     return CfxArchive(config=config, task_files=tasks)
