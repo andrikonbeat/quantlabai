@@ -76,6 +76,6 @@ Chain strategy: stacked-to-main
 
 ## Phase 6: Later (WU6, deferred)
 
-- [ ] 6.1 Create `sdk/quantlab/knowledge/training.py`: curated JSONL export → `datasets/`, dedupe by config hash, deny-list-clean, hashed IDs (REQ-106)
-- [ ] 6.2 Embeddings semantic retrieval (`find_similar_campaigns` ranking) + `embeddings/` dir
+- [x] 6.1 Create `sdk/quantlab/knowledge/training.py`: curated JSONL export → `datasets/`, dedupe by config hash, deny-list-clean, hashed IDs (REQ-106)
+- [x] 6.2 Embeddings semantic retrieval (`find_similar_campaigns` ranking) + `embeddings/` dir
 - [ ] 6.3 Building-blocks KB tab; changelog polling (future)
