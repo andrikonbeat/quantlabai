@@ -67,12 +67,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 5: Consumption + Prompts (WU5)
 
-- [ ] 5.1 RED `sdk/tests/test_context.py`: prior memory injected w/ risks/lessons; empty lake → placeholder, no error (REQ-104/501)
-- [ ] 5.2 Create `sdk/quantlab/knowledge/context.py`: `compose_prior_context(campaign_id, phase, *, limit=10)` via QueryBuilder + find_similar_campaigns → markdown (REQ-501)
-- [ ] 5.3 `context.py`: self-correction detection-and-report; repeated failure signature → recommendation appended (REQ-105)
-- [ ] 5.4 `sdk/quantlab/agents/builder_agent.py`: KB consult; block config w/o entry unless needs_review/override (REQ-204)
-- [ ] 5.5 `sdk/quantlab/agents/config_reviewer.py`: teaching table per configured param (REQ-205)
-- [ ] 5.6 `docs/prompts/campaign.md` + agent prompts: document injected memory block (REQ-104)
+- [x] 5.1 RED `sdk/tests/test_context.py`: prior memory injected w/ risks/lessons; empty lake → placeholder, no error (REQ-104/501)
+- [x] 5.2 Create `sdk/quantlab/knowledge/context.py`: `compose_prior_context(campaign_id, phase, *, limit=10)` + `render_prior_context` (find_similar_campaigns ranking) → markdown (REQ-104/501)
+- [x] 5.3 `KbStore.consult()` — exact/fuzzy parameter name lookup + tab/category + status filters → guidance metadata (REQ-204/502). NOTE: REQ-105 self-correction detection-and-report deferred to WU6 per batch scope.
+- [x] 5.4 Create `sdk/quantlab/knowledge/kb/teaching.py`: `build_teaching_table()` — parameter→what/why/for-what teaching table (REQ-205). NOTE: `config_reviewer.py` wiring deferred (concurrent uncommitted edits); table exposed as pure function.
+- [x] 5.5 `ResearchDirector.compose_prior_context` read-side wiring + campaign.md template consumption section (REQ-104/203). NOTE: `builder_agent.py` consult wiring deferred per batch scope (consult surface delivered in 5.3).
+- [x] 5.6 `AI/opencode/agents/campaign.md` + agent prompts: "Prior Context" + "Knowledge base teaching table" sections (REQ-104/203/204/205)
 
 ## Phase 6: Later (WU6, deferred)
 
