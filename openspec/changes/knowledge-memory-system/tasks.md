@@ -38,12 +38,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 2: Memory Capture + Privacy (WU2)
 
-- [ ] 2.1 RED `sdk/tests/test_privacy.py`: scrub `FUTLABF255` at write; export SHA-256-hashes campaign ID; export deny-list-clean fails otherwise (REQ-107)
-- [ ] 2.2 Create `sdk/quantlab/knowledge/privacy.py` `PrivacyScrubber`: field-scoped deny-list + hash fn (D4)
-- [ ] 2.3 RED `sdk/tests/test_memory_capture.py`: dual-write; engram fail→lake ok; missing fields null-default; save failure non-blocking (REQ-102/103)
-- [ ] 2.4 Create `sdk/quantlab/knowledge/memory_capture.py` `MemoryCaptureService.capture_phase(agent, campaign, phase, envelope, config=None)` async, non-blocking (D1/D2)
-- [ ] 2.5 `sdk/quantlab/agents/memory.py` `save_decision`: add phase+config to dict; scrub before write (D3)
-- [ ] 2.6 `sdk/quantlab/agents/research_director.py:66,511` + campaign.md agent: wire capture at phase boundaries; config-disabled (D1)
+- [x] 2.1 RED `sdk/tests/test_privacy.py`: scrub `FUTLABF255` at write; export SHA-256-hashes campaign ID; export deny-list-clean fails otherwise (REQ-107)
+- [x] 2.2 Create `sdk/quantlab/knowledge/privacy.py` `PrivacyScrubber`: field-scoped deny-list + hash fn (D4)
+- [x] 2.3 RED `sdk/tests/test_memory_capture.py`: dual-write; engram fail→lake ok; missing fields null-default; save failure non-blocking (REQ-102/103)
+- [x] 2.4 Create `sdk/quantlab/knowledge/memory_capture.py` `MemoryCaptureService.capture_phase(agent, campaign, phase, envelope, config=None)` async, non-blocking (D1/D2)
+- [x] 2.5 `sdk/quantlab/agents/memory.py` `save_decision`: add phase+config to dict; scrub before write (D3)
+- [x] 2.6 `sdk/quantlab/agents/research_director.py:66,511` + campaign.md agent: wire capture at phase boundaries; config-disabled (D1)
 
 ## Phase 3: SQX Parameter KB (WU3)
 
