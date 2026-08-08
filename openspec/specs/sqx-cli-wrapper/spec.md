@@ -185,3 +185,25 @@ When `QUANTLAB_ENV=production` and mock would be used WITHOUT explicit `SQX_FORC
 - THEN mock is used with the MOK-01 warning
 
 **Acceptance**: production never silently mocks.
+
+### Requirement: REQ-701 Version Preflight Hook
+
+The system MUST run a version preflight in `cli_wrapper._dispatch_real` alongside `license_preflight`, before any SQX project work. The preflight SHALL compare the installed build (REQ-301) against `PINNED_SQX_VERSION` (REQ-302) and SHALL be warn-only (fail-open): drift MUST NOT block or mock dispatch. Dry-run/mock paths SHALL skip the preflight.
+
+#### Scenario: In-sync preflight is silent
+
+- GIVEN installed build equals pinned
+- WHEN `_dispatch_real` starts
+- THEN no version warning is emitted and dispatch continues
+
+#### Scenario: Drift warns only
+
+- GIVEN installed build differs from pinned
+- WHEN `_dispatch_real` starts
+- THEN a drift warning is logged and dispatch continues (fail-open)
+
+#### Scenario: Missing sqcli skips preflight
+
+- GIVEN no sqcli binary found at the install path
+- WHEN `_dispatch_real` starts
+- THEN the preflight is skipped with a warning, mirroring license_preflight behavior

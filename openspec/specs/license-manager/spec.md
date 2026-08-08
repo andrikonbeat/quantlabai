@@ -8,7 +8,8 @@ Detects and reports StrategyQuant SQX license state via `sqcli -license action=i
 
 ### Requirement: License Detection
 
-The system MUST detect the SQX license state by executing `sqcli -license action=info` and parsing the output. The system SHALL report one of: `licensed`, `unlicensed`, `expired`, or `trial`.
+The system MUST detect the SQX license state by executing `sqcli -license action=info` and parsing the output. The system SHALL report one of: `licensed`, `unlicensed`, `expired`, or `trial`. The parser SHALL additionally extract `build_number` (e.g., "144.2953") and `expiry_date` as structured fields; a missing build token MUST yield `build_number = null` without raising.
+(Previously: parsed license type and expiry only; no build_number extraction)
 
 #### Scenario: Licensed installation detected
 
@@ -37,6 +38,19 @@ The system MUST detect the SQX license state by executing `sqcli -license action
 - WHEN the license manager executes `sqcli -license action=info`
 - THEN the reported status is `trial`
 - AND the result includes remaining trial days
+
+#### Scenario: Build number parsed into structured field
+
+- GIVEN output "StrategyQuant X Ultimate Build 144 (Futlab license) - valid until 14.08.2026, license FUTLABF255"
+- WHEN LicenseInfo parses it
+- THEN build_number equals the pinned format "144.2953" (or "144" if the point version is absent)
+- AND expiry_date equals 2026-08-14
+
+#### Scenario: Missing build token yields null
+
+- GIVEN license output without a Build token
+- WHEN LicenseInfo parses it
+- THEN build_number is null, a warning is logged, and no exception is raised
 
 ### Requirement: License Activation
 
