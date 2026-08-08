@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from quantlab.versioning import PINNED_SQX_VERSION
+
 
 @dataclass
 class DatabankSpec:
@@ -84,10 +86,11 @@ class CustomProject:
         tasks: Ordered task list — order is preserved exactly in the output.
         databanks: Project-level databank registry. When empty, the generator
             derives one from the tasks' source/target databanks.
-        schema_version: CFX schema version, default ``144.2953`` (verified golden).
+        schema_version: CFX schema version — the pinned SQX build
+            (``PINNED_SQX_VERSION``, verified golden).
     """
 
     name: str
     tasks: list[CustomProjectTask] = field(default_factory=list)
     databanks: list[DatabankSpec] = field(default_factory=list)
-    schema_version: str = "144.2953"
+    schema_version: str = PINNED_SQX_VERSION

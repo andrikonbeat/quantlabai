@@ -1,10 +1,12 @@
-"""SQX KB CLI commands — ``quantlab sqx kb`` (REQ-207).
+"""SQX KB CLI commands — ``quantlab sqx kb`` (REQ-207) + ``sqx check-version`` (REQ-304).
 
 Subcommands: ``list [--tab] [--status]``, ``get {tab}/{param}``,
-``seed [--doc]``, ``verify {tab}/{param} --evidence-ref``, ``status``.
+``seed [--doc]``, ``verify {tab}/{param} --evidence-ref``, ``status``,
+``check-version``.
 
 Exit contract: 0 on success; 1 with a "not found" message for unknown
 parameters (REQ-207 scenario), and 1 on any operational failure.
+``check-version`` exits 0 in-sync, 1 drift, 0 unknown (fail-open).
 """
 
 from __future__ import annotations
@@ -165,6 +167,40 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
         return 1
 
 
+async def cmd_sqx_check_version(args: argparse.Namespace) -> int:
+    """Print installed build vs pinned build and status (REQ-304).
+
+    Exit contract: 0 in-sync, 1 drift, 0 unknown (fail-open — an
+    undetectable build must not block automation). Drift detection also
+    persists the migration checklist and invalidates the old KB version
+    (REQ-305), mirroring the dispatch pre-flight hook (REQ-701).
+    """
+    try:
+        from quantlab.cli.main import DEFAULT_SQX_PATH
+        from quantlab.cli.runner import RealExecutor
+        from quantlab.sqx.cli_wrapper import _find_sqcli
+        from quantlab.versioning import PINNED_SQX_VERSION, VersionPreflight
+
+        sqx_path = args.sqx_path or DEFAULT_SQX_PATH
+        binary = _find_sqcli(sqx_path)
+        preflight = VersionPreflight(
+            executor=None if binary is None else RealExecutor(binary),
+            knowledge_root=args.knowledge_root,
+        )
+        status = preflight.run()
+        print_human(f"SQX version: {preflight.installed_build or 'unknown'}")
+        print_human(f"Pinned: {PINNED_SQX_VERSION}")
+        print_human(f"Status: {status}")
+        if status == "in-sync":
+            return 0
+        if status == "drift":
+            return 1
+        return 0  # unknown — fail-open
+    except Exception as e:  # pragma: no cover - defensive
+        print_error(f"check-version failed: {e}")
+        return 1
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Subparser registration
 # ──────────────────────────────────────────────────────────────────────────────
@@ -240,3 +276,19 @@ def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_status = kb_sub.add_parser("status", help="Show KB status counts")
     _add_common(p_status)
     p_status.set_defaults(func=cmd_kb_status)
+
+    # ── sqx check-version ────────────────────────────────────────────────────
+    p_check = sqx_sub.add_parser(
+        "check-version", help="Print installed SQX build vs pinned (REQ-304)"
+    )
+    p_check.add_argument(
+        "--sqx-path",
+        default=None,
+        help="Path to SQX installation (default: %(default)s → CLI default)",
+    )
+    p_check.add_argument(
+        "--knowledge-root",
+        default="knowledge",
+        help="Knowledge Lake root for the drift checklist (default: knowledge)",
+    )
+    p_check.set_defaults(func=cmd_sqx_check_version)

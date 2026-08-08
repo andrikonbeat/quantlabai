@@ -3,10 +3,9 @@
 Each parameter is a 22-field pydantic model persisted as YAML at
 ``structured/sqx-kb/{sqx_version}/parameters/{tab}/{param}.yaml``.
 
-WU3 note: ``SQX_VERSION`` is a local literal constant (``144.2953``).
-WU4 replaces it with ``PINNED_SQX_VERSION`` from ``quantlab.versioning``
-(REQ-302) — this module is the single import site for the pinned version
-within the KB.
+WU4 (REQ-302): ``SQX_VERSION`` resolves through ``PINNED_SQX_VERSION`` from
+``quantlab.versioning`` — the single source of truth for the pinned SQX
+build. This module is the KB's only import site for the pinned version.
 """
 
 from __future__ import annotations
@@ -15,9 +14,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-# Pinned SQX build for this KB slice (D8). WU4 swaps this import for
-# ``from quantlab.versioning import PINNED_SQX_VERSION``.
-SQX_VERSION = "144.2953"
+from quantlab.versioning import PINNED_SQX_VERSION
+
+# Pinned SQX build for this KB slice (D8/REQ-302). Consumers resolve
+# through this constant; changing the pin propagates everywhere.
+SQX_VERSION = PINNED_SQX_VERSION
 
 # The 8 documented builder tabs (REQ-202). ``Tab`` mirrors this tuple.
 KB_TABS: tuple[str, ...] = (

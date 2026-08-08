@@ -10,6 +10,7 @@ from typing import Optional
 
 from quantlab.cfx import CfxArchive, BuildTask, CfxWriter
 from quantlab.cfx.dom import set_commission_settings, set_spread_settings
+from quantlab.versioning import PINNED_SQX_VERSION
 from quantlab.cfx.models import (
     CfxConfig,
     CfxProject,
@@ -80,7 +81,7 @@ class CfxTemplateBuilder:
             config=CfxProject(
                 name="Portfolio Master",
                 tasks={"Portfolio-Task1.xml": task},
-                schema_version="144.2953",
+                schema_version=PINNED_SQX_VERSION,
             ),
             task_files={"Portfolio-Task1.xml": task},
         )
@@ -154,7 +155,7 @@ class CfxTemplateBuilder:
         archive = CfxArchive(
                 config=CfxConfig(
                     task=task,
-                    schema_version="144.2953",
+                    schema_version=PINNED_SQX_VERSION,
                 ),
                 task_files={"Optimizer-Task1.xml": task},
             )
@@ -277,7 +278,7 @@ class CfxTemplateBuilder:
         archive = CfxArchive(
             config=CfxConfig(
                 task=task,
-                schema_version="144.2953",
+                schema_version=PINNED_SQX_VERSION,
             ),
             task_files={"Retester-Task1.xml": task},
         )

@@ -33,6 +33,7 @@ from quantlab.cfx.models import (
     CrossChecksConfig,
     RetesterDataConfig,
 )
+from quantlab.versioning import PINNED_SQX_VERSION
 from quantlab.dsl.models import (
     AcceptanceCriterion,
     BuildingBlock,
@@ -286,7 +287,7 @@ def generate_portfolio_cfx_archive(
         config=CfxProject(
             name="Portfolio Master",
             tasks={"Portfolio-Task1.xml": task},
-            schema_version="144.2953",
+            schema_version=PINNED_SQX_VERSION,
         ),
         task_files={"Portfolio-Task1.xml": task},
     )
@@ -381,7 +382,7 @@ def generate_optimizer_cfx_archive(
     archive = CfxArchive(
         config=CfxConfig(
             task=task,
-            schema_version="144.2953",
+            schema_version=PINNED_SQX_VERSION,
         ),
         task_files={"Optimizer-Task1.xml": task},
     )
@@ -468,7 +469,7 @@ def generate_retester_cfx_archive(
     archive = CfxArchive(
         config=CfxConfig(
             task=task,
-            schema_version="144.2953",
+            schema_version=PINNED_SQX_VERSION,
         ),
         task_files={"Retester-Task1.xml": task},
     )

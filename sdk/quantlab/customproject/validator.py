@@ -27,9 +27,11 @@ from xml.etree import ElementTree
 
 from quantlab.cfx.models import CfxArchive, CfxProject
 from quantlab.cfx.writer import CfxWriter
+from quantlab.versioning import PINNED_SQX_VERSION
 
-# Verified schema version of the SQX 144/2953 golden samples (REQ-24).
-GOLDEN_SCHEMA_VERSION = "144.2953"
+# Verified schema version of the SQX golden samples (REQ-24) — resolves
+# through the pinned constant (REQ-302).
+GOLDEN_SCHEMA_VERSION = PINNED_SQX_VERSION
 
 # Final fallback candidate; overridable for tests via monkeypatch.
 DEFAULT_SQCLI = Path("/usr/local/bin/sqcli")

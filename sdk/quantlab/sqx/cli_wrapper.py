@@ -29,9 +29,12 @@ import tempfile
 import time
 import urllib.parse
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 import httpx
+
+if TYPE_CHECKING:  # pragma: no cover - type-check only
+    from quantlab.pipeline.license import LicenseInfo
 
 from quantlab.dsl.models import LLMConfig
 from quantlab.gates.notifiers import ConsoleNotifier, WebhookNotifier
@@ -250,6 +253,25 @@ async def dispatch_campaign(
 # ---------------------------------------------------------------------------
 
 
+def version_preflight(
+    info: LicenseInfo, *, knowledge_root: str | Path = "knowledge"
+) -> str:
+    """Version pre-flight on real dispatch (REQ-303/701).
+
+    Runs right after ``license_preflight``, reusing the already-parsed
+    ``LicenseInfo`` (no second sqcli invocation). Fail-open: compares the
+    installed build against ``PINNED_SQX_VERSION``; on drift it logs a
+    prominent warning, persists the migration checklist, and invalidates
+    the old KB version — dispatch proceeds regardless. An unknown build
+    skips the check with a warning.
+
+    Returns: ``in-sync`` | ``drift`` | ``unknown``.
+    """
+    from quantlab.versioning import VersionPreflight
+
+    return VersionPreflight(info=info, knowledge_root=knowledge_root).run()
+
+
 async def _dispatch_real(
     sqx_install_path: str,
     campaign_id: str,
@@ -307,16 +329,18 @@ async def _dispatch_real(
     """
     base_url = _SQX_BASE_URL
 
-    # ── License pre-flight (LIC-01/02): real path only, before any SQX work ──
+    # ── License + version pre-flight (LIC-01/02, REQ-303/701): real path only ──
     from quantlab.cli.runner import RealExecutor
     from quantlab.pipeline.license import license_preflight
 
     sqcli_binary = _find_sqcli(sqx_install_path)
     if sqcli_binary:
-        license_preflight(RealExecutor(sqcli_binary))
+        license_info = license_preflight(RealExecutor(sqcli_binary))
+        version_preflight(license_info)
     else:
         logger.warning(
-            "sqcli binary not found for license pre-flight at '%s'", sqx_install_path
+            "sqcli binary not found for license/version pre-flight at '%s'",
+            sqx_install_path,
         )
 
     # ── Phase 0: Create project directory from template ──
