@@ -148,6 +148,43 @@ class ResearchDirector:
                 exc,
             )
 
+    # ── Prior-context consumption (REQ-104, REQ-501) ──────────────────────────
+
+    def compose_prior_context(
+        self,
+        campaign_id: str,
+        phase: str,
+        *,
+        limit: int = 10,
+        agent: str | None = None,
+    ) -> str:
+        """Compose the prior-campaign context block for a phase (REQ-104).
+
+        Read-side twin of ``capture_phase``: reads prior decisions, risks and
+        lessons from the memory lake at this director's ``knowledge_root`` and
+        renders the markdown block to inject into the next phase's Result
+        Contract envelope. Never raises on an empty lake — returns a "no prior
+        memory" placeholder.
+
+        Args:
+            campaign_id: Campaign the context is composed for.
+            phase: Upcoming phase name.
+            limit: Maximum number of prior decisions to include.
+            agent: Optional agent-name filter (default: all agents).
+
+        Returns:
+            Markdown block for the next phase envelope.
+        """
+        from quantlab.knowledge.context import compose_prior_context
+
+        return compose_prior_context(
+            campaign_id,
+            phase,
+            limit=limit,
+            root=self._knowledge_root,
+            agent=agent,
+        )
+
     def _get_registry(self) -> Any:
         """Lazy-import and return StageRegistry."""
         from quantlab.pipeline.registry import StageRegistry

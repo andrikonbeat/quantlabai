@@ -118,6 +118,71 @@ class KbStore:
             results.append(param)
         return results
 
+    def consult(
+        self,
+        name: str,
+        *,
+        tab: str | None = None,
+        status: str | None = None,
+        sqx_version: str | None = None,
+    ) -> list[dict[str, object]]:
+        """Look up parameters by exact-or-fuzzy name (REQ-502 consumption hook).
+
+        Used by agents (REQ-204) to consult the KB before configuring the
+        builder: an exact name match returns a single-entry list carrying the
+        guidance metadata; otherwise case-insensitive substring matches across
+        parameter names are returned. ``tab`` (category) and ``status`` act as
+        filters on every lookup.
+
+        Args:
+            name: Parameter name or fragment to look up.
+            tab: Optional category filter (one of the 8 builder tabs).
+            status: Optional status filter (seeded|verified|needs_review).
+            sqx_version: Optional version bucket; defaults to the pinned one.
+
+        Returns:
+            List of metadata dicts with the guidance fields agents need
+            (``what_it_does``, ``how_it_works_in_sqx``, ``quant_trading_role``,
+            ``small_account_recommendation``, ``status``, ``evidence_ref``).
+            Empty list when nothing matches — never raises, so a missing entry
+            cleanly blocks configuration (REQ-204).
+        """
+        candidates = self.list(tab=tab, status=status, sqx_version=sqx_version)
+        query = name.strip().lower()
+
+        exact: KbParameter | None = None
+        fuzzy: list[KbParameter] = []
+        for param in candidates:
+            if param.name.lower() == query or param.sqx_name.lower() == query:
+                exact = param
+                break  # Exact match wins; single entry.
+            if query in param.name.lower() or query in param.sqx_name.lower():
+                fuzzy.append(param)
+
+        hits = [exact] if exact is not None else fuzzy
+        return [self._consult_metadata(param) for param in hits]
+
+    @staticmethod
+    def _consult_metadata(param: KbParameter) -> dict[str, object]:
+        """Project a parameter to the agent-facing guidance metadata (REQ-204)."""
+        rec = param.small_account_recommendation
+        return {
+            "name": param.name,
+            "sqx_name": param.sqx_name,
+            "tab": param.tab,
+            "section": param.section,
+            "type": param.type,
+            "default": param.default,
+            "what_it_does": param.what_it_does,
+            "how_it_works_in_sqx": param.how_it_works_in_sqx,
+            "quant_trading_role": param.quant_trading_role,
+            "small_account_recommendation": (
+                rec.model_dump() if rec is not None else None
+            ),
+            "status": param.status,
+            "evidence_ref": param.evidence_ref,
+        }
+
     # ── Writes / lifecycle ────────────────────────────────────────────────────
 
     def seed(

@@ -253,3 +253,54 @@ Records land in `knowledge/agent-memory/{agent}/{campaign}/memory.yaml`
 (dual-written to Engram when `engram_save_fn` is wired). Do NOT capture
 deferred or failed-halt phases more than once, and never block the loop on
 the write.
+
+## Prior Context Injection (REQ-104)
+
+At EVERY phase start, compose the prior-campaign context block and include it
+in the phase envelope so the orchestrator receives prior memory in-prompt.
+Composition reads the memory lake (excluding the current campaign's own
+records), surfaces prior decisions, risks, and lessons, and ranks similar
+campaigns by embedding similarity when embeddings exist. It NEVER raises on
+an empty lake — it returns a "no prior memory" placeholder (REQ-104/501).
+
+```python
+from quantlab.knowledge.context import compose_prior_context
+
+prior_context = compose_prior_context(
+    campaign_id=campaign_id,
+    phase="config",           # the upcoming phase
+    limit=10,
+    root="knowledge",         # repo Knowledge Lake
+)
+phase_envelope["prior_context"] = prior_context  # injected in-prompt
+```
+
+The `ResearchDirector.compose_prior_context(...)` method is the wired
+equivalent when the director owns the loop. The block arrives under the
+`## Prior Context` markdown header; the placeholder text is
+`No prior memory found for phase '{phase}'. Starting fresh.`
+
+## Knowledge Base Teaching Table (REQ-203/204/205)
+
+Agents MUST consult the SQX Parameter KB before configuring the builder
+(REQ-204): exact-or-fuzzy lookup returns guidance metadata (`what_it_does`,
+`how_it_works_in_sqx`, `quant_trading_role`, `small_account_recommendation`,
+`status`, `evidence_ref`). A parameter with NO KB entry blocks configuration
+pending a `needs_review` entry or explicit user override. KB entries marked
+`needs_review` are doc gaps or drift-invalidated — never invent semantics.
+
+```python
+from quantlab.knowledge.kb.store import KbStore
+from quantlab.knowledge.kb.teaching import build_teaching_table
+
+hits = KbStore(root="knowledge").consult(
+    "Stop Loss", tab="Trading options", status=None
+)  # [] -> block configuration (REQ-204)
+
+table = build_teaching_table(parameters)  # REQ-205 markdown teaching table
+```
+
+Include the `Knowledge base teaching table` markdown block (REQ-205 columns:
+Tab/Section, Parameter, What it does, How it works in SQX, Quant trading
+role, Chosen config, Why, For what) in the config/review phase prompt so the
+agent explains every configured parameter with its why/for-what rationale.
