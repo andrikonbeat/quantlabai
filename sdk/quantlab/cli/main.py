@@ -57,6 +57,9 @@ from quantlab.cli.agent_commands import add_agent_subparser
 from quantlab.cli.campaign_commands import add_campaign_subparser
 from quantlab.cli.monitor_commands import add_monitor_subparser
 
+# SQX KB command handlers (WU3, REQ-207)
+from quantlab.cli.sq_commands import add_sqx_subparser
+
 # NOTE: dashboard_commands / dashboard.app are imported lazily inside
 # build_parser() and cmd_api(): the dashboard package ships in Slice 2 and is
 # not committed yet, so the base CLI must remain importable without it.
@@ -1079,6 +1082,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ── knowledge ──────────────────────────────────────────────────────────────
     add_knowledge_subparser(subparsers)
+
+    # ── sqx (SQX parameter KB) ─────────────────────────────────────────────────
+    add_sqx_subparser(subparsers)
 
     # ── agent ──────────────────────────────────────────────────────────────────
     add_agent_subparser(subparsers)
