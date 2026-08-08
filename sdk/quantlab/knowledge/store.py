@@ -8,13 +8,17 @@ human-readable formats.
 Directory layout::
 
     knowledge/
-    ├── index.yaml            # auto-generated metadata index
+    ├── index.yaml            # auto-generated metadata index (v4)
     ├── raw/                  # raw/unprocessed research artifacts
     ├── structured/           # cleaned, structured data (JSON, Parquet)
+    │   ├── {campaign_id}/    # per-campaign configs, metrics, results
+    │   ├── sqx-kb/{ver}/parameters/{tab}/   # SQX parameter KB
+    │   └── sqx-version/{old}→{new}/         # version-drift checklists
     ├── graph/                # relationship graphs and knowledge maps
     ├── embeddings/           # vector embeddings and model artifacts
     ├── datasets/             # curated, versioned datasets
-    └── pipeline-runs/        # pipeline execution history (YAML per run)
+    ├── pipeline-runs/        # pipeline execution history (YAML per run)
+    └── agent-memory/         # durable per-agent per-campaign memory
 """
 
 from __future__ import annotations
@@ -52,6 +56,16 @@ GITKEEP_FILENAME = ".gitkeep"
 MAX_INDEX_SIZE = 500 * 1024 * 1024
 
 PIPELINE_RUNS_DIR = "pipeline-runs"
+
+# Canonical structured sub-layout skeletons (REQ-101). ``initialize()``
+# creates these so the reconciled taxonomy exists before any real
+# campaign/version is known; the ``_template`` segments are placeholders
+# for ``{campaign_id}``, ``{ver}/{tab}`` and ``{old}→{new}`` respectively.
+STRUCTURED_SUB_LAYOUTS = [
+    "structured/_template",
+    "structured/sqx-kb/_template/parameters/_template",
+    "structured/sqx-version/_template→_template",
+]
 
 
 # ── Models ────────────────────────────────────────────────────────────────────
@@ -117,10 +131,16 @@ class KnowledgeStore:
     # ── Initialisation ─────────────────────────────────────────────────────────
 
     def initialize(self) -> None:
-        """Create the 5-directory Knowledge Lake skeleton.
+        """Create the Knowledge Lake skeleton.
 
-        Creates ``knowledge/`` and all 5 subdirectories if they do not
-        exist. Each directory receives a ``.gitkeep`` marker file.
+        Creates ``knowledge/`` and all 7 subdirectories (``raw/``,
+        ``structured/``, ``graph/``, ``embeddings/``, ``datasets/``,
+        ``pipeline-runs/``, ``agent-memory/``) plus the 3 reconciled
+        structured sub-layouts (``structured/{campaign_id}/``,
+        ``structured/sqx-kb/{ver}/parameters/{tab}/`` and
+        ``structured/sqx-version/{old}→{new}/``, as ``_template``
+        placeholders) if they do not exist. Each directory receives a
+        ``.gitkeep`` marker file.
 
         Re-initialisation on an existing structure is **idempotent**:
         no existing files are modified or deleted, and no error is raised.
@@ -132,6 +152,14 @@ class KnowledgeStore:
             dir_path.mkdir(parents=True, exist_ok=True)
 
             gitkeep = dir_path / GITKEEP_FILENAME
+            if not gitkeep.exists():
+                gitkeep.write_text("", encoding="utf-8")
+
+        for rel in STRUCTURED_SUB_LAYOUTS:
+            sub_path = self.root / rel
+            sub_path.mkdir(parents=True, exist_ok=True)
+
+            gitkeep = sub_path / GITKEEP_FILENAME
             if not gitkeep.exists():
                 gitkeep.write_text("", encoding="utf-8")
 
@@ -276,19 +304,21 @@ class KnowledgeStore:
             if entries:
                 directories[dir_name] = entries
 
-        # Build base index dict
+        # Build base index dict (v4 — reconciled layout, REQ-403)
         doc: dict[str, object] = {
             "_generated": now_iso,
-            "_version": "3",
+            "_version": "4",
             "directories": directories,
             "agent_memory": self._build_agent_memory_index(),
+            "kb_parameters": self._build_kb_parameters_index(),
+            "version_events": self._build_version_events_index(),
         }
 
-        # Enhance with metrics/tags via Indexer (if available)
+        # Enhance with campaign metrics/tags/links via Indexer (if available)
         try:
             from quantlab.knowledge.indexer import Indexer
-            indexer = Indexer(self)
-            doc = indexer.build_index(existing_index=doc)
+            indexer = Indexer(self.root)
+            doc["campaigns"] = indexer.build_index()
         except Exception:
             pass  # Non-critical enhancement; plain scan is sufficient
 
@@ -456,13 +486,20 @@ class KnowledgeStore:
 
     @staticmethod
     def _upgrade_index(data: dict[str, object]) -> dict[str, object]:
-        """Upgrade a legacy index schema to v3 with backward-compatible defaults."""
+        """Upgrade a legacy index schema to v4 with backward-compatible defaults."""
         version = str(data.get("_version", "1"))
+        if version == "4":
+            return data
+
+        # v3 → v4: add the reconciled-layout areas (REQ-403)
         if version == "3":
+            data["_version"] = "4"
+            data.setdefault("kb_parameters", {})
+            data.setdefault("version_events", {})
             return data
 
         if version == "2":
-            data["_version"] = "3"
+            data["_version"] = "4"
             am_index = data.setdefault("agent_memory", {})
             for path, info in (
                 data.get("directories", {}).get("agent-memory", {}).items()
@@ -474,13 +511,17 @@ class KnowledgeStore:
                     info.setdefault("checkpoint_paths", [])
                     info.setdefault("last_updated", None)
                     info.setdefault("embedding_ref", None)
+            data.setdefault("kb_parameters", {})
+            data.setdefault("version_events", {})
             return data
 
-        # v1 → v3 (best-effort)
+        # v1 → v4 (best-effort; every new area gets a default)
         if version == "1":
-            data["_version"] = "3"
+            data["_version"] = "4"
             data.setdefault("directories", {})
             data.setdefault("agent_memory", {})
+            data.setdefault("kb_parameters", {})
+            data.setdefault("version_events", {})
         return data
 
     def _build_agent_memory_index(self) -> dict[str, dict[str, object]]:
@@ -536,6 +577,63 @@ class KnowledgeStore:
                     "sha256": self._hash_file(memory_file),
                 }
 
+        return entries
+
+    def _build_kb_parameters_index(self) -> dict[str, dict[str, object]]:
+        """Build an index of KB parameter files under ``structured/sqx-kb/``.
+
+        Maps ``structured/sqx-kb/{ver}/parameters/{tab}/{param}.yaml`` to
+        metadata with sqx_version, tab, and parameter name (REQ-403).
+        """
+        kb_root = self.root / "structured" / "sqx-kb"
+        if not kb_root.exists():
+            return {}
+
+        entries: dict[str, object] = {}
+        for param_file in sorted(kb_root.glob("*/parameters/*/*.yaml")):
+            rel = str(param_file.relative_to(self.root))
+            # parts = (ver, "parameters", tab, filename)
+            ver, _, tab, _ = param_file.relative_to(kb_root).parts
+            entries[rel] = {
+                "sqx_version": ver,
+                "tab": tab,
+                "parameter": param_file.stem,
+                "size": param_file.stat().st_size,
+                "sha256": self._hash_file(param_file),
+            }
+        return entries
+
+    def _build_version_events_index(self) -> dict[str, dict[str, object]]:
+        """Build an index of version-event checklists under ``structured/sqx-version/``.
+
+        Maps ``structured/sqx-version/{old}→{new}/checklist.yaml`` to
+        metadata with from_version, to_version, and checklist status (REQ-403).
+        """
+        ver_root = self.root / "structured" / "sqx-version"
+        if not ver_root.exists():
+            return {}
+
+        entries: dict[str, object] = {}
+        for checklist in sorted(ver_root.glob("*/checklist.yaml")):
+            rel = str(checklist.relative_to(self.root))
+            transition = checklist.parent.name
+            from_version, to_version = (
+                transition.split("→", 1) if "→" in transition else (None, None)
+            )
+            status = None
+            try:
+                data = yaml.safe_load(checklist.read_text(encoding="utf-8"))
+                if isinstance(data, dict):
+                    status = data.get("status")
+            except Exception:
+                pass
+            entries[rel] = {
+                "from_version": from_version,
+                "to_version": to_version,
+                "status": status,
+                "size": checklist.stat().st_size,
+                "sha256": self._hash_file(checklist),
+            }
         return entries
 
     # ── Tag Management ──────────────────────────────────────────────────────────

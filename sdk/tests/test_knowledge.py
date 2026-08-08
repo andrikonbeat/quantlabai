@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-from quantlab.knowledge.store import KNOWLEDGE_DIRS, KnowledgeStore, FormatWarning
+from quantlab.knowledge.indexer import Indexer
+from quantlab.knowledge.store import (
+    STRUCTURED_SUB_LAYOUTS,
+    KNOWLEDGE_DIRS,
+    KnowledgeStore,
+    FormatWarning,
+)
 
 
 class TestKnowledgeStoreInit:
@@ -106,7 +112,7 @@ class TestKnowledgeStoreIndex:
         # Should have a valid structure
         assert "directories" in index
         assert "_generated" in index
-        assert index["_version"] == "3"  # Post-Indexer version
+        assert index["_version"] == "4"  # Post-Indexer version (REQ-403)
 
     def test_missing_index_is_rebuilt(self, tmp_path: Path) -> None:
         """If index.yaml doesn't exist, read_index rebuilds it."""
@@ -212,3 +218,223 @@ class TestKnowledgeStoreInitBase:
     def test_default_root_is_knowledge(self) -> None:
         store = KnowledgeStore()
         assert str(store.root).endswith("knowledge")
+
+
+class TestKnowledgeStoreReconciledLayout:
+    """REQ-101/REQ-402: structured/ hosts the reconciled sub-layouts."""
+
+    def test_fresh_init_creates_three_structured_sub_layouts(self, tmp_path: Path) -> None:
+        """GIVEN a fresh knowledge/ path
+        WHEN the system initializes the Knowledge Lake
+        THEN the 3 structured sub-layout skeletons are created with .gitkeep.
+        """
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        assert len(STRUCTURED_SUB_LAYOUTS) == 3
+        for rel in STRUCTURED_SUB_LAYOUTS:
+            sub = root / rel
+            assert sub.is_dir(), f"sub-layout {rel} was not created"
+            assert (sub / ".gitkeep").exists(), f"missing .gitkeep in {rel}"
+
+    def test_sub_layout_placeholder_names(self, tmp_path: Path) -> None:
+        """The parametric segments use _template placeholders so the skeleton
+        exists before any real campaign/version is known."""
+        root = tmp_path / "knowledge"
+        KnowledgeStore(root).initialize()
+
+        assert (root / "structured/_template").is_dir()
+        assert (root / "structured/sqx-kb/_template/parameters/_template").is_dir()
+        assert (root / "structured/sqx-version/_template→_template").is_dir()
+
+    def test_reinit_preserves_structured_content(self, tmp_path: Path) -> None:
+        """Re-initialization must not touch files already inside structured/."""
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        keep = root / "structured/campaign-7/config.yaml"
+        keep.parent.mkdir(parents=True, exist_ok=True)
+        keep.write_text("key: value\n", encoding="utf-8")
+
+        store.initialize()  # idempotent re-init
+
+        assert keep.read_text(encoding="utf-8") == "key: value\n"
+
+
+class TestKnowledgeStoreIndexV4:
+    """REQ-403: rebuild_index bumps to v4 and covers the reconciled areas."""
+
+    def test_rebuild_index_is_v4_with_new_areas(self, tmp_path: Path) -> None:
+        """GIVEN campaigns, agent-memory, and sqx-kb entries
+        WHEN rebuild_index() runs
+        THEN index.yaml is version 4 and includes entries for each area."""
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        # Seed a KB parameter file
+        kb_param = root / "structured/sqx-kb/144.2953/parameters/Ranking/entry.yaml"
+        kb_param.parent.mkdir(parents=True, exist_ok=True)
+        kb_param.write_text("name: entry\n", encoding="utf-8")
+
+        # Seed a version-event checklist
+        checklist = root / "structured/sqx-version/144.2953→144.2954/checklist.yaml"
+        checklist.parent.mkdir(parents=True, exist_ok=True)
+        checklist.write_text("status: pending\n", encoding="utf-8")
+
+        # Seed an agent memory entry
+        store.store_agent_memory("research-director", "campaign-7", {"decision": "ok"})
+
+        # Seed canonical campaign metrics
+        metrics = root / "structured/campaign-7/metrics.yaml"
+        metrics.parent.mkdir(parents=True, exist_ok=True)
+        metrics.write_text("sharpe_ratio: 1.5\n", encoding="utf-8")
+
+        index = store.rebuild_index()
+
+        assert index["_version"] == "4"
+        assert "kb_parameters" in index
+        assert "version_events" in index
+        assert any("sqx-kb" in key for key in index["kb_parameters"])
+        assert any("sqx-version" in key for key in index["version_events"])
+        assert "agent-memory/research-director/campaign-7/memory.yaml" in index["agent_memory"]
+        assert index.get("campaigns", {}).get("campaign-7", {}).get("metrics", {}).get("sharpe_ratio") == 1.5
+
+    def test_v1_index_readable_with_defaults(self, tmp_path: Path) -> None:
+        """GIVEN an index.yaml of version 1
+        WHEN read_index() runs
+        THEN entries parse with defaults and no error (REQ-403)."""
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        (root / "index.yaml").write_text(
+            yaml.dump(
+                {
+                    "_generated": "2024-01-01T00:00:00+00:00",
+                    "_version": "1",
+                    "directories": {"raw": {}},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        index = store.read_index()
+
+        assert index["_version"] == "4"
+        assert "directories" in index
+        assert index["kb_parameters"] == {}
+        assert index["version_events"] == {}
+
+    def test_v2_index_upgraded_to_v4(self, tmp_path: Path) -> None:
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        (root / "index.yaml").write_text(
+            yaml.dump(
+                {
+                    "_generated": "2024-01-01T00:00:00+00:00",
+                    "_version": "2",
+                    "directories": {"agent-memory": {}},
+                    "agent_memory": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        index = store.read_index()
+
+        assert index["_version"] == "4"
+        assert index["kb_parameters"] == {}
+        assert index["version_events"] == {}
+
+    def test_v3_index_upgraded_to_v4(self, tmp_path: Path) -> None:
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        (root / "index.yaml").write_text(
+            yaml.dump(
+                {
+                    "_generated": "2024-01-01T00:00:00+00:00",
+                    "_version": "3",
+                    "directories": {"raw": {}},
+                    "agent_memory": {},
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        index = store.read_index()
+
+        assert index["_version"] == "4"
+        assert index["kb_parameters"] == {}
+        assert index["version_events"] == {}
+
+
+class TestIndexerReconciledRead:
+    """D6/REQ-402: metrics from structured/{campaign_id}/metrics.yaml with
+    legacy campaigns/ results/ stats/ read fallback."""
+
+    def test_metrics_read_from_structured_campaign_dir(self, tmp_path: Path) -> None:
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        metrics = root / "structured/campaign-9/metrics.yaml"
+        metrics.parent.mkdir(parents=True, exist_ok=True)
+        metrics.write_text("sharpe_ratio: 2.5\nprofit_factor: 1.9\n", encoding="utf-8")
+
+        idx = Indexer(root).build_index()
+
+        assert "campaign-9" in idx
+        assert idx["campaign-9"]["metrics"]["sharpe_ratio"] == 2.5
+        assert idx["campaign-9"]["metrics"]["profit_factor"] == 1.9
+
+    def test_legacy_stats_fallback(self, tmp_path: Path) -> None:
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        stats = root / "stats"
+        stats.mkdir(exist_ok=True)
+        (stats / "legacy-camp.yaml").write_text("sharpe_ratio: 1.1\n", encoding="utf-8")
+
+        idx = Indexer(root).build_index()
+
+        assert idx["legacy-camp"]["metrics"]["sharpe_ratio"] == 1.1
+
+    def test_legacy_results_nested_fallback(self, tmp_path: Path) -> None:
+        """results/{campaign}/stats.yaml resolves the campaign from the dir."""
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        nested = root / "results/campaign-11/stats.yaml"
+        nested.parent.mkdir(parents=True, exist_ok=True)
+        nested.write_text("sharpe_ratio: 0.9\n", encoding="utf-8")
+
+        idx = Indexer(root).build_index()
+
+        assert idx["campaign-11"]["metrics"]["sharpe_ratio"] == 0.9
+
+    def test_canonical_wins_over_legacy_fallback(self, tmp_path: Path) -> None:
+        root = tmp_path / "knowledge"
+        store = KnowledgeStore(root)
+        store.initialize()
+
+        stats = root / "stats"
+        stats.mkdir(exist_ok=True)
+        (stats / "dup.yaml").write_text("sharpe_ratio: 0.5\n", encoding="utf-8")
+
+        metrics = root / "structured/dup/metrics.yaml"
+        metrics.parent.mkdir(parents=True, exist_ok=True)
+        metrics.write_text("sharpe_ratio: 3.0\n", encoding="utf-8")
+
+        idx = Indexer(root).build_index()
+
+        assert idx["dup"]["metrics"]["sharpe_ratio"] == 3.0
+

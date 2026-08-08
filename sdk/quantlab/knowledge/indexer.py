@@ -43,29 +43,36 @@ class Indexer:
         self._stats_dir = self.root / "stats"
         self._tags_dir = self.root / "tags"
         self._links_dir = self.root / "links"
+        self._structured_dir = self.root / "structured"
+        # Legacy locations read only as a fallback (D6).
+        self._legacy_stats_dirs = [
+            self.root / "stats",
+            self.root / "campaigns",
+            self.root / "results",
+        ]
 
     # ── Public API ──────────────────────────────────────────────────────────────
 
     def build_index(self) -> dict[str, dict[str, Any]]:
-        """Scan the Knowledge Lake and build a v2 enriched index.
+        """Scan the Knowledge Lake and build an enriched campaign index.
 
-        Walks ``knowledge/stats/`` for campaign YAML files, extracts
-        metric fields, tags, and links, and returns the enriched index.
+        Metrics are read from the canonical
+        ``structured/{campaign_id}/metrics.yaml`` (D6). When a campaign has
+        no canonical entry, legacy ``stats/``, ``campaigns/`` and
+        ``results/`` YAML files are used as a read fallback. Canonical
+        entries always win over legacy ones.
 
         Returns:
-            Dict mapping campaign path -> enriched metadata dict with
+            Dict mapping campaign id -> enriched metadata dict with
             metrics, tags, links, and basic file info.
         """
         index: dict[str, dict[str, Any]] = {}
 
-        # Scan stats directory for campaign YAML files
-        if not self._stats_dir.exists():
-            return index
-
-        for yaml_path in sorted(self._stats_dir.rglob("*.yaml")):
-            try:
-                campaign_id = yaml_path.stem  # filename without .yaml
-                stats_data = self._load_stats_yaml(yaml_path)
+        # Canonical: structured/{campaign_id}/metrics.yaml
+        if self._structured_dir.exists():
+            for metrics_yaml in sorted(self._structured_dir.glob("*/metrics.yaml")):
+                campaign_id = metrics_yaml.parent.name
+                stats_data = self._load_stats_yaml(metrics_yaml)
                 if stats_data is None:
                     continue
 
@@ -74,9 +81,33 @@ class Indexer:
                 entry["links"] = self._load_links(campaign_id)
                 index[campaign_id] = entry
 
-            except Exception as e:
-                logger.warning(f"Failed to index {yaml_path}: {e}")
+        # Legacy read fallback: stats/, campaigns/, results/
+        for legacy_dir in self._legacy_stats_dirs:
+            if not legacy_dir.exists():
                 continue
+
+            for yaml_path in sorted(legacy_dir.rglob("*.yaml")):
+                try:
+                    rel = yaml_path.relative_to(legacy_dir)
+                    if len(rel.parts) > 1:
+                        campaign_id = rel.parts[0]  # e.g. results/{campaign}/stats.yaml
+                    else:
+                        campaign_id = yaml_path.stem  # e.g. stats/{campaign}.yaml
+                    if campaign_id in index:
+                        continue  # canonical entry already indexed
+
+                    stats_data = self._load_stats_yaml(yaml_path)
+                    if stats_data is None:
+                        continue
+
+                    entry = self._build_entry(campaign_id, stats_data)
+                    entry["tags"] = self._load_tags(campaign_id)
+                    entry["links"] = self._load_links(campaign_id)
+                    index[campaign_id] = entry
+
+                except Exception as e:
+                    logger.warning(f"Failed to index {yaml_path}: {e}")
+                    continue
 
         return index
 
