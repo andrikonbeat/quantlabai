@@ -211,3 +211,45 @@ Close every phase with the Result Contract envelope:
 The final campaign envelope sets `next_recommended` to `live-ops` and states
 explicitly that the lifecycle terminated at archive with a maintenance plan
 and statistics.
+
+## Phase-Close Memory Capture (REQ-102)
+
+At EVERY phase close, persist the Result Contract envelope through
+`MemoryCaptureService` — this is the durable phase-boundary memory hook (D1).
+Capture is config-disabled by default and non-blocking (REQ-102): a failure
+logs a warning and NEVER interrupts the flow.
+
+```python
+from quantlab.knowledge.memory_capture import MemoryCaptureService
+
+async def _capture_phase_close(
+    agent: str,
+    campaign: str,
+    phase: str,
+    envelope: dict,
+    phase_config: dict | None = None,
+) -> None:
+    # QUANTLAB_MEMORY_CAPTURE=1 (or {"enabled": True}) activates capture.
+    # Engram complementarity (REQ-103): the ResearchDirector wires
+    # engram_save_fn; the lake write happens regardless.
+    await MemoryCaptureService(
+        knowledge_root="knowledge",  # repo Knowledge Lake
+    ).capture_phase(agent, campaign, phase, envelope, config=phase_config)
+```
+
+Call it with the phase name and the envelope this phase produced, e.g.:
+
+```python
+await _capture_phase_close(
+    agent="quantlab-campaign",
+    campaign=campaign_id,
+    phase="config",
+    envelope=phase_envelope,  # status, executive_summary, artifacts, next_recommended, risks
+    phase_config=build_config_dict,
+)
+```
+
+Records land in `knowledge/agent-memory/{agent}/{campaign}/memory.yaml`
+(dual-written to Engram when `engram_save_fn` is wired). Do NOT capture
+deferred or failed-halt phases more than once, and never block the loop on
+the write.

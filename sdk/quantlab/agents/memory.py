@@ -47,6 +47,9 @@ class AgentMemoryManager:
         agent: str,
         campaign: str,
         decision: dict[str, Any],
+        *,
+        phase: str | None = None,
+        config: dict[str, Any] | None = None,
     ) -> None:
         """Persist a single agent decision to Engram and Knowledge Lake.
 
@@ -55,12 +58,26 @@ class AgentMemoryManager:
             campaign: Campaign identifier.
             decision: Decision dict to persist. Missing timestamp/agent_name/campaign_id
                 are injected automatically.
+            phase: Optional phase name recorded on the decision (REQ-102).
+            config: Optional phase config recorded on the decision (REQ-102).
+
+        The decision is privacy-scrubbed (REQ-107) before EITHER store: the
+        lake record and the Engram content both carry only scrubbed values.
         """
         decision.setdefault(
             "timestamp", datetime.now(timezone.utc).isoformat()
         )
         decision.setdefault("agent_name", agent)
         decision.setdefault("campaign_id", campaign)
+        if phase is not None:
+            decision.setdefault("phase", phase)
+        if config is not None:
+            decision.setdefault("config", config)
+
+        # REQ-107: field-scoped deny-list scrub before any persistence.
+        from quantlab.knowledge.privacy import PrivacyScrubber
+
+        decision = PrivacyScrubber().scrub(decision)
 
         # Engram persistence
         if self._engram_save_fn is not None:

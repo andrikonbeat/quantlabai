@@ -76,11 +76,16 @@ class ResearchDirector:
         knowledge_root: str | Path | None = None,
         engram_save_fn: Any = None,
         gate_orchestrator: Any = None,
+        memory_capture_config: dict[str, Any] | None = None,
     ) -> None:
         self._knowledge_root = Path(knowledge_root or "knowledge/structured")
         self._engram_save_fn = engram_save_fn
         self._campaigns: dict[str, CampaignRecord] = {}
         self._runner: Any = None  # PipelineRunner, lazy-imported
+        self._capture_service: Any = None  # MemoryCaptureService, lazy-imported
+        # Phase-boundary memory capture (REQ-102). Config-disabled by default
+        # (D1): capture runs only when ``memory_capture_config`` enables it.
+        self._memory_capture_config = memory_capture_config
 
         # Optional gate callbacks: gate_id -> async callable
         self._gate_callbacks: dict[str, Any] = {}
@@ -95,6 +100,53 @@ class ResearchDirector:
 
             self._runner = PipelineRunner()
         return self._runner
+
+    def _get_capture_service(self) -> Any:
+        """Lazy-import and return MemoryCaptureService (D1)."""
+        if self._capture_service is None:
+            from quantlab.knowledge.memory_capture import MemoryCaptureService
+
+            self._capture_service = MemoryCaptureService(
+                knowledge_root=self._knowledge_root,
+                engram_save_fn=self._engram_save_fn,
+                capture_config=self._memory_capture_config,
+            )
+        return self._capture_service
+
+    # ── Phase-boundary memory capture (REQ-102, D1) ─────────────────────────────
+
+    async def capture_phase(
+        self,
+        agent: str,
+        campaign: str,
+        phase: str,
+        envelope: dict[str, Any],
+        config: dict[str, Any] | None = None,
+    ) -> None:
+        """Capture a Result Contract envelope at a phase boundary.
+
+        Delegates to :class:`MemoryCaptureService` (dual Engram + lake write,
+        privacy-scrubbed). Capture is config-disabled by default and is always
+        non-blocking: any failure is logged, never raised.
+
+        Args:
+            agent: Agent name.
+            campaign: Campaign identifier.
+            phase: Phase name.
+            envelope: Result Contract dict (status, executive_summary,
+                artifacts, next_recommended, risks).
+            config: Optional phase config persisted alongside the envelope.
+        """
+        try:
+            await self._get_capture_service().capture_phase(
+                agent, campaign, phase, envelope, config=config
+            )
+        except Exception as exc:  # noqa: BLE001 — non-blocking by contract
+            logger.warning(
+                "ResearchDirector capture failed for phase '%s' (non-blocking): %s",
+                phase,
+                exc,
+            )
 
     def _get_registry(self) -> Any:
         """Lazy-import and return StageRegistry."""
@@ -545,6 +597,7 @@ class ResearchDirector:
             try:
                 # External inputs passed as pre-satisfied for contract validation
                 EXTERNAL_INPUTS = {
+                    "build_config",
                     "live_equity",
                     "gate_decision_HUMAN_APPROVE_PORTFOLIO",
                     "gate_decision_HUMAN_APPROVE_DEPLOY",
@@ -555,6 +608,36 @@ class ResearchDirector:
                     external_provides=EXTERNAL_INPUTS,
                 )
                 record.result = result
+
+                # Phase-boundary memory capture (REQ-102, D1): config-disabled
+                # by default and non-blocking — never interrupts the campaign.
+                await self.capture_phase(
+                    agent="research-director",
+                    campaign=cid,
+                    phase=f"iteration_{iteration + 1}",
+                    envelope={
+                        "status": (
+                            "success" if result.is_successful else "failed"
+                        ),
+                        "executive_summary": (
+                            f"Campaign '{cid}' iteration {iteration + 1} "
+                            "completed successfully"
+                            if result.is_successful
+                            else f"Campaign '{cid}' iteration {iteration + 1} "
+                            f"failed: {result.error}"
+                        ),
+                        "artifacts": list(ctx.artifacts.keys()),
+                        "next_recommended": (
+                            "review" if result.is_successful else "halt"
+                        ),
+                        "risks": [],
+                    },
+                    config=(
+                        current_config.model_dump(mode="json")
+                        if hasattr(current_config, "model_dump")
+                        else None
+                    ),
+                )
 
                 if result.is_successful:
                     logger.info(
