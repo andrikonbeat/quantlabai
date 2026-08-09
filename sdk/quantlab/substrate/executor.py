@@ -72,6 +72,12 @@ class PhaseConfig:
     checkpoint_root: str | Path | None = None
     http_client: Any = None
     on_watcher_event: Callable[[WatcherEvent], None] | None = None
+    # Invoked on stall detection (WARNING/CRITICAL event) AFTER the stall
+    # checkpoint is written, so LLM-assisted diagnostics always run against a
+    # persisted state (execution-monitor spec: checkpoint before diagnostics).
+    on_stall: Callable[
+        [Phase, list[dict[str, Any]]], Awaitable[None]
+    ] | None = None
 
 
 @dataclass
@@ -267,6 +273,18 @@ class Executor:
                     lifecycle.transition(LifecycleState.COMPLETED)
                     if not completed:
                         if Executor._halt_events(events):
+                            # Checkpoint BEFORE LLM diagnostics: persist the
+                            # stalled state first so the diagnostics callback
+                            # runs against a checkpointed phase (fail-closed
+                            # for human review after the fact). STARTED is the
+                            # last durable stage before the (transient) poll.
+                            if checkpoint is not None:
+                                checkpoint.save(
+                                    LifecycleState.STARTED,
+                                    export_paths=result.export_paths,
+                                )
+                            if config.on_stall is not None:
+                                await config.on_stall(phase, events)
                             raise SubstrateError(
                                 "stall/config event detected — halted for human"
                             )
@@ -451,6 +469,17 @@ class Executor:
                     databank=task.databank,
                 )
                 if not completed and Executor._halt_events(events):
+                    # Checkpoint BEFORE LLM diagnostics (execution-monitor
+                    # spec): persist the stalled state, then hand the phase to
+                    # the diagnostics callback.
+                    if config.checkpoint_root is not None:
+                        SubstrateCheckpoint(
+                            config.checkpoint_root,
+                            config.campaign_id,
+                            task.phase,
+                        ).save(LifecycleState.STARTED)
+                    if config.on_stall is not None:
+                        await config.on_stall(task.phase, events)
                     results.append(
                         PhaseResult(
                             phase=task.phase,
