@@ -595,6 +595,23 @@ class ResearchDirector:
                     "iteration": iteration,
                     "max_iterations": max_iterations,
                     "build_config": current_build_config,
+                    # Preserve user-defined DSL fields so downstream stages
+                    # (ResearchAgent, BuilderAgent, _dispatch_real) can honor
+                    # the original config instead of regenerating defaults.
+                    "market": current_config.market.value if hasattr(current_config.market, "value") else current_config.market,
+                    "timeframe": current_config.timeframe.value if hasattr(current_config.timeframe, "value") else current_config.timeframe,
+                    "criteria": [
+                        c.model_dump(mode="json") if hasattr(c, "model_dump") else c
+                        for c in current_config.criteria
+                    ],
+                    "strategies": [
+                        s.model_dump(mode="json") if hasattr(s, "model_dump") else s
+                        for s in current_config.strategies
+                    ],
+                    "building_blocks": [
+                        b.model_dump(mode="json") if hasattr(b, "model_dump") else b
+                        for b in current_config.building_blocks
+                    ],
                 },
                 metadata={
                     "pipeline_name": f"campaign-{config.campaign}",

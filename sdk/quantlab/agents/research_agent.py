@@ -49,8 +49,12 @@ class ResearchAgent:
         self,
         objectives: list[str],
         market_context: dict[str, Any] | None = None,
+        capital_constraints: dict[str, Any] | None = None,
+        broker_profile: dict[str, Any] | None = None,
     ) -> ResearchConfig:
         """Generate a validated ``ResearchConfig`` from high-level objectives.
+
+        Applies capital-aware adjustments when constraints are provided.
 
         Parses objectives to extract market, timeframe, and building blocks,
         then creates a complete ``ResearchConfig`` with hypotheses, iteration
@@ -61,6 +65,9 @@ class ResearchAgent:
                 ``["Find mean-reversion on EURUSD H1"]``).
             market_context: Optional dict with market metadata (e.g.
                 ``{"market": "EURUSD", "timeframe": "H1", "tags": ["mean_reversion"]}``).
+            capital_constraints: Optional dict with capital-aware constraints
+                (e.g. ``{"max_drawdown": 0.12, "risk_per_trade_usd": 20.0}``).
+            broker_profile: Optional dict with broker/platform metadata.
 
         Returns:
             A fully validated ``ResearchConfig`` instance.
@@ -86,6 +93,7 @@ class ResearchAgent:
 
         # Generate hypotheses
         hypotheses = self.formulate_hypotheses(objectives)
+        self._apply_capital_constraints(hypotheses, capital_constraints)
 
         # Build the complete config
         config = ResearchConfig(
@@ -96,6 +104,7 @@ class ResearchAgent:
             strategies=strategies,
             criteria=criteria,
             hypotheses=hypotheses,
+            llm_config=self._build_llm_config(broker_profile) if broker_profile else None,
             iteration_config=IterationConfig(
                 max_iterations=5,
                 convergence_threshold=0.02,
@@ -534,6 +543,94 @@ class ResearchAgent:
 
         return hypotheses
 
+    def _apply_capital_constraints(
+        self,
+        hypotheses: list[HypothesisConfig],
+        constraints: dict[str, Any] | None,
+    ) -> None:
+        """Adjust hypotheses for small-capital trading constraints.
+
+        Mutates ``hypotheses`` in place: tightens drawdown thresholds,
+        adds low-spread instrument bias notes, and records rationale.
+        """
+        if not constraints:
+            return
+
+        max_dd = constraints.get("max_drawdown", 0.20)
+        risk_per_trade = constraints.get("risk_per_trade_usd")
+        instruments = constraints.get("instruments", [])
+        timeframe = constraints.get("timeframe")
+
+        for hypothesis in hypotheses:
+            rationale_parts = []
+            if max_dd < 0.15:
+                rationale_parts.append(
+                    f"tightened max drawdown to {max_dd:.0%} for capital preservation"
+                )
+            if instruments:
+                rationale_parts.append(
+                    f"biased toward low-spread instruments: {', '.join(instruments)}"
+                )
+            if timeframe:
+                rationale_parts.append(
+                    f"aligned to {timeframe} for controlled stop-loss sizing"
+                )
+            if risk_per_trade is not None:
+                rationale_parts.append(f"risk per trade capped at ${risk_per_trade:.2f}")
+
+            hypothesis.llm_rationale = "; ".join(rationale_parts) if rationale_parts else hypothesis.llm_rationale
+
+    def _build_llm_config(self, broker_profile: dict[str, Any]) -> dict[str, Any] | None:
+        return None
+
+    def _extended_knowledge_query(
+        self,
+        market: str,
+        timeframe: str,
+        capital_constraints: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Query Knowledge Lake with optional capital-aware filters.
+
+        Returns enriched campaign dicts and applies ``max_drawdown`` filtering
+        when the constraint is present.
+        """
+        try:
+            from quantlab.knowledge.query import QueryBuilder
+            from pathlib import Path
+
+            knowledge_root = Path("knowledge/structured")
+            index: dict[str, Any] = {"directories": {"results": {}, "campaigns": {}}}
+            builder = QueryBuilder(index, knowledge_root)
+
+            query = (
+                builder
+                .filter_by_sharpe(min_val=1.0)
+                .filter_by_date(start="2022-01-01")
+                .limit(10)
+            )
+
+            if capital_constraints and capital_constraints.get("max_drawdown") is not None:
+                query = query.filter_by_max_drawdown(capital_constraints["max_drawdown"])
+
+            result = query.execute()
+            return [
+                {
+                    "campaign_id": c.campaign_id,
+                    "name": c.name,
+                    "sharpe_ratio": c.metrics.sharpe_ratio if c.metrics else None,
+                    "profit_factor": c.metrics.profit_factor if c.metrics else None,
+                    "win_rate": c.metrics.win_rate if c.metrics else None,
+                    "max_drawdown": c.metrics.max_drawdown if c.metrics else None,
+                    "tags": c.tags,
+                    "market": c.market,
+                    "timeframe": c.timeframe,
+                }
+                for c in result.campaigns
+            ]
+        except Exception as exc:
+            logger.warning("Extended Knowledge Lake query failed: %s", exc)
+            return []
+
     # ── Task 2.9: Pipeline context integration ──────────────────────────────────
 
     async def run(self, context: Any) -> dict[str, Any]:
@@ -558,15 +655,36 @@ class ResearchAgent:
 
         market_context: dict[str, Any] | None = config.get("market_context")
 
+        capital_constraints = config.get("capital_constraints")
+        broker_profile = config.get("broker_profile")
+
         # Generate ResearchConfig from objectives
-        research_config = self.generate_config(objectives, market_context)
+        research_config = self.generate_config(
+            objectives,
+            market_context,
+            capital_constraints=capital_constraints,
+            broker_profile=broker_profile,
+        )
+
+        # Respect criteria from the input config if present — generate_config()
+        # otherwise overwrites them with the 4 hardcoded defaults.
+        original_criteria = config.get("criteria") if isinstance(config, dict) else getattr(config, "criteria", None)
+        if original_criteria:
+            research_config.criteria = original_criteria
 
         # Query Knowledge Lake for historical context
-        query_results = self.query_knowledge_lake(
-            market=research_config.market.value,
-            timeframe=research_config.timeframe.value,
-            tags=[config.get("campaign_name", "")],
-        )
+        if capital_constraints:
+            query_results = self._extended_knowledge_query(
+                market=research_config.market.value,
+                timeframe=research_config.timeframe.value,
+                capital_constraints=capital_constraints,
+            )
+        else:
+            query_results = self.query_knowledge_lake(
+                market=research_config.market.value,
+                timeframe=research_config.timeframe.value,
+                tags=[config.get("campaign_name", "")],
+            )
 
         # Formulate hypotheses with historical calibration
         hypotheses = self.formulate_hypotheses(objectives, query_results)

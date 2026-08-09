@@ -14,7 +14,7 @@ from quantlab.compiler import (
     is_compiler_enabled,
 )
 from quantlab.compiler.compiler import CompilerPipeline
-from quantlab.phase4.http_client import AsyncSQXClient
+from quantlab.phase4.http_client import DEFAULT_PORT, AsyncSQXClient
 from quantlab.phase4.errors import (
     JForexError,
     JForexConnectionError,
@@ -46,8 +46,16 @@ class JForexDeployer:
         "KRatio",
     }
 
-    def __init__(self, client: AsyncSQXClient):
+    def __init__(
+        self,
+        client: AsyncSQXClient | None = None,
+        *,
+        sqx_install_path: str | None = None,
+    ) -> None:
+        if client is None:
+            client = AsyncSQXClient(f"http://127.0.0.1:{DEFAULT_PORT}")
         self._client = client
+        self._sqx_install_path = sqx_install_path
 
     async def export_strategy(
         self,
@@ -138,6 +146,7 @@ class JForexDeployer:
             env=env,
             fixer=fixer,
             max_fix_iterations=max_fix_iterations,
+            sqx_install_path=self._sqx_install_path,
         )
 
     async def export_and_compile(
@@ -168,7 +177,6 @@ class JForexDeployer:
             fixer=fixer,
             max_fix_iterations=max_fix_iterations,
         )
-
     async def deploy_indicators(
         self,
         jforex_strategies_dir: str | Path,

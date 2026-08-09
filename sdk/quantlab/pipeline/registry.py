@@ -142,6 +142,7 @@ class StageRegistry:
             LLMResearchStage, AnalysisStage, ResearchStage, BuilderStage, StatisticsStage,
             ReviewStage, PortfolioStage, DeployStage, MonitorStage,
             HypothesisBuilderStage, RefutationStage, GuardianEvaluationStage,
+            GuardianEvaluationAgentStage,
         )
         # Post-optimize orchestrated stages (PR 6): concrete REQ-01 phase
         # implementations. Aliased so they don't shadow the abstract anchors
@@ -321,7 +322,7 @@ class StageRegistry:
             "review": ReviewerAgent,
             "monitor": MonitoringAgent,
             # Guardian evaluation
-            "guardian_evaluate": GuardianEvaluationStage,
+            "guardian_evaluate": GuardianEvaluationAgentStage,
             # Monte Carlo simulation
             "monte_carlo": MonteCarloStage,
             # Orchestrated flow stages (PR 3, REQ-17): concrete stages with no

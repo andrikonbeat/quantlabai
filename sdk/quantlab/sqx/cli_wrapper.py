@@ -42,7 +42,7 @@ from quantlab.sqx.blocks_bridge import validate_exported_blocks
 from quantlab.sqx.campaign_monitor import CampaignMonitor, WatcherEvent, compute_baseline
 from quantlab.sqx.llm_generation_monitor import LLMGenerationMonitor, Verdict
 from quantlab.sqx.mock_sqx_server import MockSQXServer
-from quantlab.sqx.project_builder import create_project, remove_project
+from quantlab.sqx.project_builder import BuildConfig, create_project, remove_project
 
 logger = logging.getLogger(__name__)
 
@@ -346,6 +346,21 @@ async def _dispatch_real(
     # ── Phase 0: Create project directory from template ──
     logger.info("Phase 0/6: Creating project '%s' from template ...", campaign_id)
 
+    # SQX enforces a single-instance lock. Kill any leftover sqcli
+    # (including hung data/license pre-flights from the builder) so the
+    # daemon can start cleanly in Phase 0.5.
+    for killer in (("pkill", "-9", "-f", str(Path(sqx_install_path) / "sqcli")), ("killall", "-9", "sqcli")):
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *killer,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.wait()
+        except Exception:
+            pass
+    await asyncio.sleep(1)
+
     # Extract DSL settings from config
     cfg_dict = config if isinstance(config, dict) else vars(config)
     symbol = _get_config_value(cfg_dict, "market", "EURUSD")
@@ -369,11 +384,15 @@ async def _dispatch_real(
             generations = int(getattr(s, "generations", generations))
             population = int(getattr(s, "population", population))
 
-    # Extract ranking criteria if available
+    # Extract ranking criteria if available.
+    # Start with None so only explicitly requested metrics are populated.
+    # Metrics missing from criteria get passthrough defaults (very low
+    # thresholds) instead of the template's harsh defaults (e.g.
+    # ReturnDDRatio > 4.0), which would silently reject 100% of strategies.
     criteria = _get_config_value(cfg_dict, "criteria", [])
-    pf = 1.3
-    return_dd = 4.0
-    avg_trades = 2
+    pf = None
+    return_dd = None
+    avg_trades = None
     for c in criteria:
         c_dict = c if isinstance(c, dict) else vars(c) if hasattr(c, "__dict__") else {}
         metric = c_dict.get("metric", "")
@@ -385,6 +404,43 @@ async def _dispatch_real(
             return_dd = val
         elif "avg" in metric.lower() or "trades" in metric.lower():
             avg_trades = val
+
+    # Fallbacks for metrics the user did not restrict via criteria.
+    if pf is None:
+        pf = 0.1
+    if return_dd is None:
+        return_dd = 0.1
+    if avg_trades is None:
+        avg_trades = 1
+
+    # ── Rankings reach the project XML even when a BuildConfig is present ──
+    # create_project only applies the criteria-derived rankings_min_* params
+    # when build_config is None. The ResearchDirector always passes a
+    # (possibly all-None) BuildConfig, so those params were silently ignored
+    # and the template's strict default filters (e.g. ReturnDDRatio > 4.0)
+    # rejected 100% of strategies. Populate the BuildConfig ranking fields
+    # instead — _apply_build_config applies them via _BUILD_CONFIG_MAP.
+    # Copy the caller's config so the director's reused instance is untouched.
+    if criteria:
+        import copy
+
+        build_config = copy.copy(build_config) if build_config is not None else BuildConfig()
+        if build_config.ranking_pf_min is None:
+            build_config.ranking_pf_min = pf
+        if build_config.ranking_return_dd_min is None:
+            build_config.ranking_return_dd_min = return_dd
+        if build_config.ranking_avg_trades_min is None:
+            build_config.ranking_avg_trades_min = avg_trades
+        if build_config.rankings_enabled is None:
+            build_config.rankings_enabled = True
+    else:
+        # No user-defined criteria → disable rankings so SQX does not apply
+        # the template's harsh defaults (ReturnDDRatio > 4.0, etc.) that
+        # silently reject 100% of strategies.
+        if build_config is None:
+            build_config = BuildConfig()
+        if build_config.rankings_enabled is None:
+            build_config.rankings_enabled = False
 
     try:
         create_project(
@@ -414,6 +470,8 @@ async def _dispatch_real(
         daemon_ready = await daemon.start(base_url)
         if not daemon_ready:
             return {"status": "failed", "export_paths": [], "error": "daemon start failed", "watcher_events": []}
+        if daemon.port is not None:
+            base_url = f"http://127.0.0.1:{daemon.port}"
     except Exception as e:
         logger.error("Daemon start failed: %s", e)
         return {"status": "failed", "export_paths": [], "error": f"daemon start failed: {e}", "watcher_events": []}
@@ -545,22 +603,51 @@ class _SQXDaemonHandle:
     """Minimal handle to start/stop the sqcli daemon.
 
     Uses subprocess to launch sqcli (no arguments) and monitors its
-    HTTP API readiness.
+    HTTP API readiness. SQX may bind to 5050 or 5051 depending on
+    availability/install behavior, so both ports are probed.
     """
 
     def __init__(self, sqx_install_path: str) -> None:
         self.sqx_install_path = sqx_install_path
         self._proc: asyncio.subprocess.Process | None = None
+        self.port: int | None = None
 
     async def start(self, base_url: str) -> bool:
         """Stop any existing process on the port, start sqcli daemon."""
-        # Kill any process on the port
-        proc = await asyncio.create_subprocess_exec(
-            "fuser", "-k", f"{_SQX_PORT}/tcp",
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-        await proc.wait()
+        # Kill any process on either candidate port
+        for port in (_SQX_PORT, 5051):
+            proc = await asyncio.create_subprocess_exec(
+                "fuser", "-k", f"{port}/tcp",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.wait()
+
+        # SQX enforces a single-instance lock. Any leftover sqcli (including
+        # hung data pre-flights) blocks daemon startup, so terminate every
+        # sqcli under this install before launching the daemon. Retry for a
+        # few seconds because the builder may respawn a pre-flight sqcli
+        # just before we reach this point.
+        for killer in (("pkill", "-9", "-f", str(Path(self.sqx_install_path) / "sqcli")), ("killall", "-9", "sqcli")):
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *killer,
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await proc.wait()
+            except Exception:
+                pass
+        for _ in range(5):
+            proc = await asyncio.create_subprocess_exec(
+                "pgrep", "-f", str(Path(self.sqx_install_path) / "sqcli"),
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+            )
+            await proc.wait()
+            if proc.returncode != 0:
+                break
+            await asyncio.sleep(1)
         await asyncio.sleep(1)
 
         # Start sqcli with no arguments (daemon mode)
@@ -585,15 +672,17 @@ class _SQXDaemonHandle:
                 if self._proc.returncode is not None:
                     logger.error("sqcli exited early (code %s)", self._proc.returncode)
                     return False
-                try:
-                    resp = await client.get(f"{base_url}/call?cmd=-h")
-                    if resp.status_code == 200:
-                        body = resp.text
-                        if "Usage" in body and "not ready" not in body.lower():
-                            logger.info("SQX daemon ready at %s", base_url)
-                            return True
-                except Exception:
-                    pass
+                for candidate in (5050, 5051):
+                    try:
+                        resp = await client.get(f"http://127.0.0.1:{candidate}/call?cmd=-h")
+                        if resp.status_code == 200:
+                            body = resp.text
+                            if "Usage" in body and "not ready" not in body.lower():
+                                self.port = candidate
+                                logger.info("SQX daemon ready at http://127.0.0.1:%d", candidate)
+                                return True
+                    except Exception:
+                        pass
                 await asyncio.sleep(1)
 
         logger.error(

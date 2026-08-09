@@ -82,17 +82,26 @@ def run_javac(
     classes_dir: str | Path,
     *,
     timeout: float = 60.0,
+    classpath: list[str | Path] | None = None,
 ) -> CompileReport:
-    """Invoke ``javac -d <classes_dir> <src>`` with a fresh output directory.
+    """Invoke ``javac -d <classes_dir> [-cp <classpath>] <src>`` with a fresh
+    output directory.
 
     The output dir is wiped before each invocation so stale classes from a
-    failed attempt can never leak into a later package.
+    failed attempt can never leak into a later package.  When *classpath* is
+    non-empty, ``-cp <os.pathsep.join(classpath)>`` is injected before the
+    source (SQX-generated strategies import ``com.strategyquant.datalib`` /
+    ``com.strategyquant.tradinglib`` from ``internal/libs/*.jar`` — without it
+    javac fails with ``package com.strategyquant.datalib does not exist``).
     """
     classes_dir = Path(classes_dir)
     if classes_dir.exists():
         shutil.rmtree(classes_dir)
     classes_dir.mkdir(parents=True)
-    cmd = [str(javac), "-d", str(classes_dir), str(src)]
+    cmd = [str(javac), "-d", str(classes_dir)]
+    if classpath:
+        cmd += ["-cp", os.pathsep.join(str(p) for p in classpath)]
+    cmd.append(str(src))
     logger.debug("javac %s", " ".join(cmd))
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     return CompileReport(
@@ -119,6 +128,7 @@ class CompilerPipeline:
         max_fix_iterations: int = DEFAULT_MAX_FIX_ITERATIONS,
         timeout: float = 60.0,
         classes_dir: Optional[str | Path] = None,
+        sqx_install_path: Optional[str | Path] = None,
     ) -> JfxArtifact:
         """Compile *src* with the external JDK and package the result.
 
@@ -148,7 +158,17 @@ class CompilerPipeline:
             else src.parent / ".classes"
         )
 
-        report = run_javac(javac, src, classes, timeout=timeout)
+        # SQX-generated strategies import com.strategyquant.datalib /
+        # com.strategyquant.tradinglib (SQTradingLib.jar), SQ.Calculators /
+        # SQ.Internal (Snippets.jar), etc. — feed every jar from the SQX
+        # install's internal/libs as the javac classpath when available.
+        classpath: list[Path] | None = None
+        if sqx_install_path is not None:
+            libs = Path(sqx_install_path) / "internal" / "libs"
+            jars = sorted(libs.glob("*.jar")) if libs.is_dir() else []
+            classpath = jars or None
+
+        report = run_javac(javac, src, classes, timeout=timeout, classpath=classpath)
         if not report.ok:
             if fixer is not None and max_fix_iterations > 0:
                 from quantlab.compiler.fixloop import run_fix_loop  # REQ-30
@@ -156,7 +176,7 @@ class CompilerPipeline:
                 result = run_fix_loop(
                     src=src,
                     compile_fn=lambda s: run_javac(
-                        javac, s, classes, timeout=timeout
+                        javac, s, classes, timeout=timeout, classpath=classpath
                     ),
                     fix_fn=fixer,
                     max_fix_iterations=max_fix_iterations,

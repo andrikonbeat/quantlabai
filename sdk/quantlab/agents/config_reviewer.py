@@ -83,19 +83,28 @@ class ConfigReviewer:
 
     def review(
         self,
-        build_config: BuildConfig,
+        build_config: BuildConfig | None,
         costs: "CostsConfig | None" = None,
     ) -> ConfigReviewVerdict:
         """Review ``build_config`` and emit APPROVE / MODIFY / BLOCK.
 
         Args:
             build_config: In-flight BuildConfig produced by the builder stage.
+                ``None`` is vacuously safe — nothing to review.
             costs: Optional cost config; drives the preset-vs-live cost note.
 
         Returns:
             ConfigReviewVerdict — BLOCK stops dispatch, MODIFY waits for
             human confirmation (D3), APPROVE proceeds.
         """
+        if build_config is None:
+            return ConfigReviewVerdict(
+                action="APPROVE",
+                reason="No build config provided — nothing to review.",
+                proposed_changes={},
+                cost_note=build_cost_note(costs),
+            )
+
         contradiction = self._find_contradiction(build_config)
         if contradiction is not None:
             return ConfigReviewVerdict(

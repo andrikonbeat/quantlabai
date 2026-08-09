@@ -14,6 +14,17 @@ from typing import Any
 
 from quantlab.pipeline.base import PipelineContext, Stage
 
+from quantlab.guardian import (
+    CapitalGuardian,
+    ExecutionGuardian,
+    MarketGuardian,
+    PortfolioGuardian,
+    QualityGuardian,
+    RiskGuardian,
+)
+from quantlab.guardian.models import MetaGuardianConfig, PortfolioState
+from quantlab.guardian.orchestrator import MetaGuardianOrchestrator
+
 
 class ResearchStage(Stage, ABC):
     """Generates ResearchConfig from objectives, market hypotheses, and knowledge lake queries.
@@ -286,3 +297,87 @@ class GuardianEvaluationStage(Stage, ABC):
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError("GuardianEvaluationStage must be implemented by a concrete agent subclass")
+
+
+class GuardianEvaluationAgentStage(GuardianEvaluationStage):
+    """Concrete wrapper: runs MetaGuardianOrchestrator against pipeline context.
+
+    Builds guardians from available context artifacts when possible; falls back
+    to passive guardians when external collectors/providers are not present so
+    the stage never hard-fails the pipeline.
+    """
+
+    def __init__(self, **kwargs: Any) -> None:
+        self._kwargs = kwargs
+
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+        research_config = ctx.artifacts.get("research_config") or {}
+        config = ctx.config or {}
+
+        guardians = self._build_guardians(research_config, config)
+
+        orchestrator = MetaGuardianOrchestrator(
+            config=MetaGuardianConfig(),
+            guardians=guardians,
+        )
+
+        portfolio_state = orchestrator.evaluate()
+        guardian_state = {
+            "portfolio_state": portfolio_state.value,
+            "state_history": [
+                {"state": s.value, "timestamp": t}
+                for s, t in orchestrator.get_state_history()
+            ],
+            "strategy_states": orchestrator.get_strategy_states(),
+        }
+
+        ctx.artifacts["guardian_state"] = guardian_state
+        ctx.artifacts["portfolio_state"] = portfolio_state.value
+
+        return {
+            "guardian_state": guardian_state,
+            "portfolio_state": portfolio_state.value,
+        }
+
+    def _build_guardians(self, research_config: dict[str, Any], pipeline_config: dict[str, Any]) -> list:
+        market_context = research_config.get("market_context") if isinstance(research_config, dict) else {}
+        capital_constraints = research_config.get("capital_constraints") if isinstance(research_config, dict) else {}
+
+        regime_collector = pipeline_config.get("regime_collector") if isinstance(pipeline_config, dict) else None
+        cost_collector = pipeline_config.get("cost_collector") if isinstance(pipeline_config, dict) else None
+        portfolio_data_provider = pipeline_config.get("portfolio_data_provider") if isinstance(pipeline_config, dict) else None
+        strategy_performance_provider = pipeline_config.get("strategy_performance_provider") if isinstance(pipeline_config, dict) else None
+
+        guardians = [
+            MarketGuardian(
+                regime_collector=regime_collector,
+                cost_collector=cost_collector,
+            ),
+            RiskGuardian(
+                portfolio_data_provider=portfolio_data_provider or _NullDataProvider(),
+            ),
+            PortfolioGuardian(
+                returns_data_provider=portfolio_data_provider or _NullDataProvider(),
+            ),
+            CapitalGuardian(
+                strategy_performance_provider=strategy_performance_provider or _NullDataProvider(),
+                risk_guardian=None,
+                portfolio_guardian=None,
+            ),
+            QualityGuardian(
+                health_score_system=portfolio_data_provider or _NullDataProvider(),
+            ),
+            ExecutionGuardian(
+                broker_interface=portfolio_data_provider or _NullDataProvider(),
+                cost_collector=cost_collector,
+            ),
+        ]
+
+        return guardians
+
+
+class _NullDataProvider:
+    """Pass-through provider that returns empty/defaults when real data is absent."""
+
+    def __getattr__(self, name: str) -> Any:
+        return lambda *args, **kwargs: {}

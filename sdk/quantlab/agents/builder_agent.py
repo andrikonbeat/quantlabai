@@ -155,6 +155,48 @@ class BuilderAgent:
 
     # ── Task 2.11: Main execution ──────────────────────────────────────────────
 
+    # ── Parameter matrix generation ─────────────────────────────────────────────
+
+    def generate_parameter_matrix(self, build_config: Any) -> list[dict[str, Any]]:
+        """Extract non-default BuildConfig fields into a parameter matrix.
+
+        Returns a list of dicts compatible with ``ParameterMatrixEntry``,
+        one per explicitly configured (non-None) BuildConfig field.
+
+        Args:
+            build_config: ``BuildConfig`` instance with overridden fields.
+
+        Returns:
+            List of parameter matrix entry dicts.
+        """
+        from quantlab.sqx.project_builder import get_tab_for_field
+
+        matrix: list[dict[str, Any]] = []
+        if build_config is None:
+            return matrix
+
+        fields = getattr(build_config, "__dataclass_fields__", {})
+        hypothesis_ref = getattr(build_config, "hypothesis", None) or getattr(
+            build_config, "hypothesis_name", None
+        )
+
+        for field_name in fields:
+            value = getattr(build_config, field_name, None)
+            if value is None:
+                continue
+
+            matrix.append({
+                "tab": get_tab_for_field(field_name),
+                "parameter": field_name,
+                "value": value,
+                "rationale": "Set by orchestrator based on hypothesis/cost/session constraint",
+                "source": "orchestrator",
+                "confidence": 0.7,
+                "hypothesis_ref": hypothesis_ref,
+            })
+
+        return matrix
+
     async def run(self, context: Any) -> dict[str, Any]:
         """Execute the builder agent stage in a pipeline.
 
@@ -218,6 +260,11 @@ class BuilderAgent:
         versioned_campaign_id = context.config.get("campaign_id")
         build_config = context.config.get("build_config")
 
+        # Parameter matrix: capture non-default build config fields
+        if build_config is not None:
+            parameter_matrix = self.generate_parameter_matrix(build_config)
+            context.artifacts["parameter_matrix"] = parameter_matrix
+
         if context.config.get("orchestrated"):
             # AD-3/AD-8 (orchestrated split): the builder translates, validates,
             # and licenses, but the dispatch step moves to the DispatchStage
@@ -235,6 +282,8 @@ class BuilderAgent:
                 "validation": validation_result,
                 "license": license_result,
                 "build_config": build_config,
+                "phase_type": "builder",
+                "checkpoint_metadata": {"campaign_id": versioned_campaign_id},
                 **({"kb_warnings": kb_warnings} if kb_warnings else {}),
             }
 
