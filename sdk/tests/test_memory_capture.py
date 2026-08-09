@@ -300,3 +300,118 @@ class TestSelfCorrectionCapture:
         latest = records[-1]
         assert latest.get("self_correction"), "expected a self-correction flag on the captured decision"
         assert any("dispatch" in r for r in latest["self_correction"])
+
+class TestParameterMatrixMetadataCapture:
+    """Task 4.3: save_decision captures parameter-matrix metadata (REQ-34)."""
+
+    @pytest.mark.asyncio
+    async def test_save_decision_captures_matrix_meta(self, tmp_path) -> None:
+        """GIVEN a decision carrying a parameter matrix
+        WHEN save_decision() runs
+        THEN parameter_matrix_meta (entry count + flagged deltas) is persisted
+        to BOTH stores — matrix confidence < 0.3 flags feed next-cycle review.
+        """
+        engram = FakeEngram()
+        manager = AgentMemoryManager(
+            knowledge_root=tmp_path,
+            engram_save_fn=engram,
+        )
+        matrix = [
+            {"parameter": "sl_atr", "value": 2.5, "confidence": 0.2},
+            {"parameter": "tp_ratio", "value": 1.8, "confidence": 0.8},
+        ]
+        await manager.save_decision(
+            "builder-agent",
+            "campaign-matrix-1",
+            {"status": "success", "parameter_matrix": matrix},
+            phase="config",
+        )
+
+        import yaml
+
+        memory_file = tmp_path / "agent-memory" / "builder-agent" / "campaign-matrix-1" / "memory.yaml"
+        records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
+        meta = records[0]["parameter_matrix_meta"]
+        assert meta["entry_count"] == 2
+        assert meta["flagged"] == ["sl_atr"]
+        # Engram content carries the same metadata.
+        assert len(engram.calls) == 1
+        assert "sl_atr" in str(engram.calls[0]["content"])
+
+    @pytest.mark.asyncio
+    async def test_matrix_meta_read_from_nested_config(self, tmp_path) -> None:
+        """GIVEN the parameter matrix nested under the phase config
+        WHEN save_decision() runs
+        THEN the metadata is still captured (matrix may travel on config).
+        """
+        engram = FakeEngram()
+        manager = AgentMemoryManager(
+            knowledge_root=tmp_path,
+            engram_save_fn=engram,
+        )
+        await manager.save_decision(
+            "builder-agent",
+            "campaign-matrix-2",
+            {"status": "success"},
+            phase="optimize",
+            config={
+                "parameter_matrix": [
+                    {"parameter": "ma_period", "value": 20, "confidence": 0.15}
+                ]
+            },
+        )
+
+        import yaml
+
+        memory_file = tmp_path / "agent-memory" / "builder-agent" / "campaign-matrix-2" / "memory.yaml"
+        records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
+        assert records[0]["parameter_matrix_meta"] == {
+            "entry_count": 1,
+            "flagged": ["ma_period"],
+        }
+        assert records[0]["phase"] == "optimize"
+
+    @pytest.mark.asyncio
+    async def test_engram_content_carries_phase(self, tmp_path) -> None:
+        """GIVEN save_decision with a phase label
+        THEN the Engram content records the phase explicitly (new phase
+        types such as demo/archive/live-ops are captured, REQ-34/REQ-37).
+        """
+        engram = FakeEngram()
+        manager = AgentMemoryManager(
+            knowledge_root=tmp_path,
+            engram_save_fn=engram,
+        )
+        await manager.save_decision(
+            "monitoring-agent",
+            "campaign-live-1",
+            {"status": "success"},
+            phase="live-ops",
+        )
+
+        assert len(engram.calls) == 1
+        assert "**Phase**: live-ops" in engram.calls[0]["content"]
+
+    @pytest.mark.asyncio
+    async def test_no_matrix_adds_no_meta(self, tmp_path) -> None:
+        """GIVEN a decision without a parameter matrix
+        WHEN save_decision() runs
+        THEN no parameter_matrix_meta key is injected (backward compatible).
+        """
+        engram = FakeEngram()
+        manager = AgentMemoryManager(
+            knowledge_root=tmp_path,
+            engram_save_fn=engram,
+        )
+        await manager.save_decision(
+            "research-agent",
+            "campaign-plain",
+            {"status": "success"},
+            phase="research",
+        )
+
+        import yaml
+
+        memory_file = tmp_path / "agent-memory" / "research-agent" / "campaign-plain" / "memory.yaml"
+        records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
+        assert "parameter_matrix_meta" not in records[0]

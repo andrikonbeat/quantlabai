@@ -19,7 +19,10 @@ from quantlab.guardian import feedback
 from quantlab.guardian.feedback import (
     FeedbackRecord,
     FeedbackSignals,
+    LiveDemoFeed,
+    flag_matrix_deltas,
     record,
+    record_demo_feedback,
 )
 
 
@@ -142,3 +145,80 @@ class TestGatesNeverBypassed:
         before = list(HUMAN_GATE_IDS)
         record("camp-7", FeedbackSignals(drawdown=0.04))
         assert HUMAN_GATE_IDS == before
+
+class TestParameterMatrixDelta:
+    """REQ-34: parameter matrix deltas feed the next research cycle."""
+
+    def test_parameter_below_threshold_is_flagged(self) -> None:
+        """GIVEN a parameter with live confidence 0.2 (< 0.3)
+        WHEN flag_matrix_deltas() evaluates the matrix
+        THEN the parameter is flagged for review.
+        """
+        flagged = flag_matrix_deltas({"sl_atr": 0.2, "tp_ratio": 0.8})
+        assert "sl_atr" in flagged
+        assert "tp_ratio" not in flagged
+
+    def test_confidence_at_threshold_is_not_flagged(self) -> None:
+        """GIVEN a parameter with live confidence exactly 0.3
+        WHEN flag_matrix_deltas() evaluates the matrix
+        THEN it is NOT flagged (strictly below the threshold).
+        """
+        assert flag_matrix_deltas({"sl_atr": 0.3}) == ()
+
+    def test_next_cycle_inputs_carry_the_delta(self) -> None:
+        """GIVEN a record with a parameter matrix delta
+        WHEN next_cycle_inputs() is called
+        THEN next-cycle research receives the flag list (REQ-34).
+        """
+        result = record(
+            "camp-8",
+            FeedbackSignals(
+                degradation=True,
+                parameter_matrix_delta=("sl_atr", "stop_loss_atr"),
+            ),
+        )
+        inputs = result.next_cycle_inputs()
+        assert inputs["parameter_matrix_delta"] == ["sl_atr", "stop_loss_atr"]
+
+    def test_no_delta_defaults_to_empty_list(self) -> None:
+        """GIVEN a record without matrix deltas
+        THEN next_cycle_inputs() exposes an empty delta list.
+        """
+        inputs = record("camp-9", FeedbackSignals()).next_cycle_inputs()
+        assert inputs["parameter_matrix_delta"] == []
+
+
+class TestLiveDemoFeed:
+    """REQ-34: the live demo-account feed is wired into the feedback record."""
+
+    def test_live_demo_feed_produces_feedback_record(self) -> None:
+        """GIVEN a live demo-account feed sample
+        WHEN record_demo_feedback() runs
+        THEN a FeedbackRecord is produced carrying the live signals.
+        """
+        feed = LiveDemoFeed(equity=100_000.0, positions=3, costs=1.4)
+        result = record_demo_feedback(
+            "camp-live-1",
+            feed,
+            degradation=True,
+            drawdown=0.12,
+            regime="TREND",
+            cost=1.4,
+            parameter_matrix_delta=("sl_atr",),
+        )
+
+        assert result.campaign_id == "camp-live-1"
+        assert result.source == "live-demo"
+        assert result.signals.degradation is True
+        assert result.signals.drawdown == 0.12
+        assert result.signals.parameter_matrix_delta == ("sl_atr",)
+        assert result.next_cycle_inputs()["parameter_matrix_delta"] == ["sl_atr"]
+
+    def test_backtest_feed_is_rejected(self) -> None:
+        """GIVEN a feed sample sourced from backtest data
+        WHEN record_demo_feedback() runs
+        THEN ValueError is raised — backtest data must not spoof the live feed.
+        """
+        backtest = LiveDemoFeed(equity=99_000.0, positions=2, costs=0.0, source="backtest")
+        with pytest.raises(ValueError):
+            record_demo_feedback("camp-live-2", backtest)

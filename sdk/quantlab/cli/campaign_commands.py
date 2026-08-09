@@ -1,6 +1,7 @@
 """Campaign CLI command handlers.
 
-Implements: campaign rollback, campaign status.
+Implements: campaign rollback, campaign status, and the full-campaign-flow
+entry point (``campaign run-flow``, REQ-37).
 """
 
 from __future__ import annotations
@@ -143,6 +144,119 @@ async def cmd_campaign_status(args: argparse.Namespace) -> int:
         return 1
 
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Full Campaign Flow Command (Phase 4, REQ-37)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _load_run_flow_config(args: argparse.Namespace) -> Any:
+    """Load the ``ResearchConfig`` for the full-campaign flow.
+
+    Reads a YAML/JSON config file when ``--config`` is given; otherwise builds
+    a minimal config from ``--campaign`` / ``--market`` / ``--timeframe``.
+    """
+    from quantlab.dsl.models import IterationConfig, ResearchConfig
+
+    config_path = getattr(args, "config", None)
+    if config_path:
+        import json
+        from pathlib import Path
+
+        raw = Path(config_path).read_text(encoding="utf-8")
+        if config_path.endswith(".json"):
+            data = json.loads(raw)
+        else:
+            import yaml
+
+            data = yaml.safe_load(raw) or {}
+        return ResearchConfig.model_validate(data)
+
+    return ResearchConfig(
+        campaign=getattr(args, "campaign", None) or "full-flow",
+        market=getattr(args, "market", "EURUSD"),
+        timeframe=getattr(args, "timeframe", "H1"),
+        iteration_config=IterationConfig(max_iterations=1),
+    )
+
+
+async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
+    """Run the full 14-phase orchestrated campaign flow (REQ-37).
+
+    Builds the orchestrated pipeline (research → hypothesis → config →
+    review → dispatch → monitor → retest → optimize → portfolio → compile →
+    deploy → demo → archive → live-ops), asserts the flow-integrity invariant
+    BEFORE any phase executes (a dropped phase aborts the run), then executes
+    every stage in order, stopping on the first failure. Human gate stages
+    are recorded as checkpoints (they resolve out-of-band); they never
+    auto-approve (REQ-11).
+    """
+    from quantlab.agents.research_director import ResearchDirector
+    from quantlab.campaign.flow import PHASES, missing_flow_stages
+    from quantlab.pipeline.base import PipelineContext
+
+    knowledge_root = getattr(args, "knowledge_root", "knowledge")
+    try:
+        config = _load_run_flow_config(args)
+    except Exception as e:
+        print_error(f"Invalid campaign config: {e}")
+        return 1
+
+    try:
+        director = ResearchDirector(knowledge_root=knowledge_root)
+        pipeline = director.build_pipeline(config, orchestrated=True)
+    except Exception as e:
+        print_error(f"Failed to build the campaign flow: {e}")
+        return 1
+
+    stage_names = [s.name for s in pipeline.stages]
+    missing = missing_flow_stages(stage_names)
+    if missing:
+        # REQ-37: abort BEFORE execution begins when a phase is dropped.
+        print_error(
+            "Flow-integrity error: missing phases "
+            f"{', '.join(missing)} — aborting before execution (REQ-37)"
+        )
+        return 1
+
+    campaign_id = getattr(args, "campaign_id", None) or config.campaign
+    ctx = PipelineContext(config={"campaign_id": campaign_id})
+    completed: list[str] = []
+    failed: str | None = None
+    for stage in pipeline.stages:
+        name = getattr(stage, "name", "?")
+        if getattr(stage, "gate_id", "").startswith("HUMAN_"):
+            completed.append(name)
+            continue
+        try:
+            await stage.execute(ctx)
+        except Exception as e:
+            failed = name
+            print_error(f"Stage '{name}' failed: {e}")
+            break
+        completed.append(name)
+
+    if failed is not None:
+        if args.json:
+            print_json({
+                "campaign": config.campaign,
+                "completed": completed,
+                "failed": failed,
+            })
+        return 1
+
+    if args.json:
+        print_json({
+            "campaign": config.campaign,
+            "phases": list(PHASES),
+            "stages": completed,
+            "status": "completed",
+        })
+    else:
+        print_human(f"Campaign '{config.campaign}' completed the full flow")
+        print_human("✓ " + " → ".join(completed))
+    return 0
+
+
 def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
     """Add campaign subcommands to main parser."""
     p_campaign = subparsers.add_parser("campaign", help="Campaign lifecycle management")
@@ -162,6 +276,19 @@ def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_status.add_argument("--json", action="store_true", help="Output JSON")
     p_status.set_defaults(func=cmd_campaign_status)
 
+    # campaign run-flow (full 14-phase orchestrated flow, REQ-37)
+    p_run = campaign_sub.add_parser(
+        "run-flow",
+        help="Run the full 14-phase orchestrated campaign flow (research → live-ops)",
+    )
+    p_run.add_argument("--config", default=None, help="Path to ResearchConfig YAML/JSON file")
+    p_run.add_argument("--campaign", default=None, help="Campaign name (when --config is absent)")
+    p_run.add_argument("--market", default="EURUSD", help="Market symbol (when --config is absent)")
+    p_run.add_argument("--timeframe", default="H1", help="Timeframe (when --config is absent)")
+    p_run.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
+    p_run.add_argument("--json", action="store_true", help="Output JSON")
+    p_run.set_defaults(func=cmd_campaign_run_flow)
+
 
 def dispatch_campaign(args: argparse.Namespace) -> int:
     """Dispatch campaign subcommand using async runner."""
@@ -169,7 +296,9 @@ def dispatch_campaign(args: argparse.Namespace) -> int:
 
     func = getattr(args, "func", None)
     if func is None:
-        print_error("Campaign subcommand required. Use 'rollback' or 'status'.")
+        print_error(
+            "Campaign subcommand required. Use 'rollback', 'status', or 'run-flow'."
+        )
         return 1
 
     return asyncio.run(func(args))

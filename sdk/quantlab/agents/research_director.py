@@ -232,11 +232,13 @@ class ResearchDirector:
         Stage order: research_llm|research → hypothesis_builder → refutation → [gate1] → builder → statistics →
         review → [gate2] → portfolio → [gate3] → deploy → [gate4] → monitor → [gate5]
 
-        When ``orchestrated=True`` (orchestrated campaign flow, PR3), the
+        When ``orchestrated=True`` (orchestrated campaign flow, PR3/PR4), the
         builder is followed by ``config_review`` → [HUMAN_APPROVE_CONFIG gate] →
         ``dispatch``, and the loop tail gains ``retester`` / ``optimizer`` when
-        the corresponding DSL blocks are configured (REQ-01/REQ-05/REQ-06):
-        research → … → builder → config_review → dispatch → … → monitor →
+        the corresponding DSL blocks are configured. The post-deploy boundary
+        runs the demo and archive phases and the post-archive live-ops loop
+        (REQ-01 phases 12-14, REQ-34): research → … → builder → config_review →
+        dispatch → … → deploy → demo → archive → monitor → guardian_evaluate →
         retester → optimizer. The HUMAN_APPROVE_CONFIG gate always blocks in
         orchestrated mode (D2/D3) and unregistered gates fail closed (REQ-11).
 
@@ -297,14 +299,26 @@ class ResearchDirector:
             # portfolio and deploy to satisfy the internal stage contract.
             {"name": "compile", "type": "agent"},
             {"name": "deploy", "type": "agent"},
-            {"name": "monitor", "type": "agent"},
         ])
         if orchestrated:
+            # Post-deploy boundary (REQ-01 phases 12-14 + live-ops loop,
+            # design: deploy → demo → archive → live-ops loop (monitor →
+            # guardian_evaluate → retester → optimizer)): demo the deployed
+            # strategy on the demo account, archive the campaign, then run the
+            # post-archive loop — monitor watches the live demo account,
+            # guardian_evaluate feeds live evaluations into the next cycle
+            # (REQ-34), and bounded retest/optimize close the loop tail.
+            stages.append({"name": "demo", "type": "agent"})
+            stages.append({"name": "archive", "type": "agent"})
+            stages.append({"name": "monitor", "type": "agent"})
+            stages.append({"name": "guardian_evaluate", "type": "agent"})
             # REQ-07/08/09 (D4): bounded retest then optimize at the loop tail.
             if config.retest is not None:
                 stages.append({"name": "retester", "type": "agent"})
             if config.optimize is not None:
                 stages.append({"name": "optimizer", "type": "agent"})
+        else:
+            stages.append({"name": "monitor", "type": "agent"})
 
         # Gate definitions with after_stage positions
         gates = [

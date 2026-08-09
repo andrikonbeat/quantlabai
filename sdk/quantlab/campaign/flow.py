@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-__all__ = ["PHASES", "FlowIntegrityError", "assert_flow"]
+__all__ = ["PHASES", "STAGE_FOR_PHASE", "FlowIntegrityError", "assert_flow", "missing_flow_stages"]
 
 # Canonical 14-phase lifecycle (REQ-01 modified): research → hypothesis →
 # SQX config → config review → dispatch → monitor → retest → optimize →
@@ -80,3 +80,44 @@ def assert_flow(phases: Sequence[str]) -> None:
                 f"flow-integrity error: phase '{phase}' at position {idx} "
                 f"out of order — expected '{PHASES[idx]}'"
             )
+
+
+# Stage-name mapping used to resolve the canonical phases onto the built
+# orchestrated pipeline (REQ-37). Each canonical phase maps to the pipeline
+# stage that implements it, so the flow-integrity preflight can assert that
+# no phase was dropped before execution begins.
+STAGE_FOR_PHASE: dict[str, str] = {
+    "research": "research",
+    "hypothesis": "hypothesis_builder",
+    "config": "builder",
+    "review": "config_review",
+    "dispatch": "dispatch",
+    "monitor": "monitor",
+    "retest": "retester",
+    "optimize": "optimizer",
+    "portfolio": "portfolio",
+    "compile": "compile",
+    "deploy": "deploy",
+    "demo": "demo",
+    "archive": "archive",
+    "live-ops": "guardian_evaluate",
+}
+
+
+def missing_flow_stages(stage_names: Sequence[str]) -> list[str]:
+    """Return canonical phases whose stage is absent from *stage_names*.
+
+    The REQ-37 preflight: an empty result means the pipeline covers every
+    canonical phase, so execution may proceed. Any non-empty result names the
+    dropped phases and the campaign SHALL abort before execution begins.
+
+    Args:
+        stage_names: Stage names of a built pipeline (e.g.
+            ``[s.name for s in pipeline.stages]``).
+
+    Returns:
+        Canonical phase names (in ``PHASES`` order) with no mapped stage
+        present in *stage_names*.
+    """
+    present = set(stage_names)
+    return [phase for phase in PHASES if STAGE_FOR_PHASE[phase] not in present]

@@ -147,8 +147,10 @@ class StageRegistry:
         # Post-optimize orchestrated stages (PR 6): concrete REQ-01 phase
         # implementations. Aliased so they don't shadow the abstract anchors
         # imported above (the anchors still drive the legacy wrapper classes).
+        from quantlab.pipeline.stages.archiver_stage import ArchiverStage
         from quantlab.pipeline.stages.archive_stage import ArchiveStage
         from quantlab.pipeline.stages.compile_stage import CompileStage
+        from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
         from quantlab.pipeline.stages.demo_stage import DemoStage
         from quantlab.pipeline.stages.deploy_stage import DeployStage as DeployPackageStage
         from quantlab.pipeline.stages.portfolio_stage import (
@@ -341,6 +343,11 @@ class StageRegistry:
             "deploy": DeployPackageStage,
             "demo": DemoStage,
             "archive": ArchiveStage,
+            # Live-ops monitoring & archive adapters (PR 3/4): execution_monitor
+            # provides monitor_result for the live-ops loop; archiver builds the
+            # maintenance/replacement runbook from guardian_state (REQ-33).
+            "execution_monitor": ExecutionMonitorStage,
+            "archiver": ArchiverStage,
             # Gate interceptor
             "gate": GateInterceptorStage,
             # Aliases for gate names

@@ -470,14 +470,15 @@ class Executor:
                 )
                 if not completed and Executor._halt_events(events):
                     # Checkpoint BEFORE LLM diagnostics (execution-monitor
-                    # spec): persist the stalled state, then hand the phase to
-                    # the diagnostics callback.
+                    # spec): persist the stalled state WITH the export paths as
+                    # checkpoint metadata, then hand the phase to the
+                    # diagnostics callback (parity with Executor.execute).
                     if config.checkpoint_root is not None:
                         SubstrateCheckpoint(
                             config.checkpoint_root,
                             config.campaign_id,
                             task.phase,
-                        ).save(LifecycleState.STARTED)
+                        ).save(LifecycleState.STARTED, export_paths=exports)
                     if config.on_stall is not None:
                         await config.on_stall(task.phase, events)
                     results.append(
@@ -490,6 +491,15 @@ class Executor:
                         )
                     )
                     continue
+                if completed and config.checkpoint_root is not None:
+                    # Per-task EXPORTED boundary checkpoint (REQ-26/REQ-27):
+                    # record the phase completion and its export paths so a
+                    # later resume continues from this task without redoing it.
+                    SubstrateCheckpoint(
+                        config.checkpoint_root,
+                        config.campaign_id,
+                        task.phase,
+                    ).save(LifecycleState.EXPORTED, export_paths=exports)
                 results.append(
                     PhaseResult(
                         phase=task.phase,

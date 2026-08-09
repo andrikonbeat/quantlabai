@@ -95,6 +95,56 @@ class TestExecutorStallCheckpointBeforeDiagnostics:
         assert observed == [f"callback checkpoint={LifecycleState.STARTED}"]
 
 
+
+
+class TestChainedCheckpointMetadata:
+    """Task 4.4: execute_chain persists checkpoint metadata (REQ-26/REQ-27).
+
+    - A completed chained task writes an EXPORTED boundary checkpoint so a
+      later resume continues from that task without redoing it.
+    - A stalled chained task checkpoints with its export paths BEFORE the
+      diagnostics callback runs (parity with Executor.execute).
+    """
+
+    async def test_completed_task_writes_exported_boundary_checkpoint(
+        self, campaign_id, tmp_path
+    ) -> None:
+        export_dir = tmp_path / "exports"
+        checkpoint_root = tmp_path / "checkpoints"
+        cfg = _cfg(campaign_id, export_dir, checkpoint_root)
+        spec = ChainSpec(tasks=[ChainedTask(name="retest-task", phase=Phase.RETEST)])
+        completed = AsyncMock(return_value=(True, []))
+
+        with patch.object(Executor, "_run_poll_stage", new=completed):
+            results = await Executor.execute_chain(spec, cfg)
+
+        assert results[0].status == PhaseStatus.COMPLETED
+        ckpt = SubstrateCheckpoint(checkpoint_root, campaign_id, Phase.RETEST)
+        assert ckpt.load() == LifecycleState.EXPORTED
+        assert ckpt.export_paths(), "boundary checkpoint must carry export paths"
+
+    async def test_stalled_task_checkpoint_carries_export_paths_before_callback(
+        self, campaign_id, tmp_path
+    ) -> None:
+        export_dir = tmp_path / "exports"
+        checkpoint_root = tmp_path / "checkpoints"
+        observed: list[tuple[LifecycleState, list[str]]] = []
+
+        async def on_stall(phase, events):
+            ckpt = SubstrateCheckpoint(checkpoint_root, campaign_id, phase)
+            observed.append((ckpt.load(), ckpt.export_paths()))
+
+        cfg = _cfg(campaign_id, export_dir, checkpoint_root, on_stall=on_stall)
+        spec = ChainSpec(tasks=[ChainedTask(name="retest-task", phase=Phase.RETEST)])
+        stalled = AsyncMock(return_value=(False, HALT_EVENTS))
+
+        with patch.object(Executor, "_run_poll_stage", new=stalled):
+            results = await Executor.execute_chain(spec, cfg)
+
+        assert results[0].status == PhaseStatus.FAILED
+        state, paths = observed[0]
+        assert state == LifecycleState.STARTED
+        assert paths, "stall checkpoint must carry the phase export paths as metadata"
 class TestExecutorStallCallbackNotInvoked:
     async def test_clean_completion_skips_callback(self, campaign_id, tmp_path) -> None:
         export_dir = tmp_path / "exports"

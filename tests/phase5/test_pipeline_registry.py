@@ -59,6 +59,9 @@ class TestStageRegistry:
             "compile",
             "demo",
             "archive",
+            # PR 4 live-ops monitoring & archive adapters (REQ-26/REQ-33)
+            "execution_monitor",
+            "archiver",
         }
         assert set(registry._stage_map.keys()) == expected_stages
 

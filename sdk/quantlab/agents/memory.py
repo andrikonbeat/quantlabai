@@ -79,6 +79,28 @@ class AgentMemoryManager:
 
         decision = PrivacyScrubber().scrub(decision)
 
+        # REQ-34 (PR4): capture parameter-matrix metadata so the persisted
+        # decision exposes matrix confidence deltas — parameters flagged for
+        # review in the next research cycle when live confidence < 0.3. The
+        # matrix may travel directly on the decision or nested under the phase
+        # config, with entries shaped like ParameterMatrixEntry
+        # (parameter + confidence).
+        matrix = decision.get("parameter_matrix")
+        if matrix is None and isinstance(decision.get("config"), dict):
+            matrix = decision["config"].get("parameter_matrix")
+        if isinstance(matrix, list) and matrix:
+            entries = [e for e in matrix if isinstance(e, dict)]
+            flagged = [
+                str(e.get("parameter") or e.get("name") or e.get("id"))
+                for e in entries
+                if isinstance(e.get("confidence"), (int, float))
+                and e["confidence"] < 0.3
+            ]
+            decision["parameter_matrix_meta"] = {
+                "entry_count": len(entries),
+                "flagged": [f for f in flagged if f],
+            }
+
         # Engram persistence
         if self._engram_save_fn is not None:
             topic_key = self._topic_key(agent, campaign)
@@ -86,11 +108,13 @@ class AgentMemoryManager:
                 "**What**: Agent {agent} recorded a decision\n"
                 "**When**: {timestamp}\n"
                 "**Campaign**: {campaign}\n"
+                "**Phase**: {phase}\n"
                 "**Decision**: {decision}"
             ).format(
                 agent=agent,
                 timestamp=decision.get("timestamp"),
                 campaign=campaign,
+                phase=decision.get("phase") or "n/a",
                 decision=decision,
             )
             try:
