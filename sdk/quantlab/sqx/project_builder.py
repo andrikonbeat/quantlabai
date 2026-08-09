@@ -59,6 +59,223 @@ def _template_path() -> Path:
     return _DEFAULT_TEMPLATE
 
 
+# ── Template default probe (parameter-justification-matrix REQ-1) ─────────────
+
+# The bundled default template is a ZIP whose Build-Task1.xml holds the
+# project defaults; parsed once per process.
+_TEMPLATE_XML_CACHE: str | None = None
+
+
+def _template_xml() -> str:
+    """Return the default template's Build-Task1.xml (zip member), cached."""
+    global _TEMPLATE_XML_CACHE
+    if _TEMPLATE_XML_CACHE is None:
+        with zipfile.ZipFile(_DEFAULT_TEMPLATE) as z:
+            _TEMPLATE_XML_CACHE = z.read("Build-Task1.xml").decode(
+                "utf-8", errors="replace"
+            )
+    return _TEMPLATE_XML_CACHE
+
+
+def _extract_template_value(match: re.Match) -> str:
+    """Extract the value text from a build-config regex match.
+
+    The map patterns are shape-heterogeneous: some wrap the value between two
+    captured groups (``(<ATMs enable=")[^"]*(")``), some are plain text nodes
+    (``<MaxGenerations>100</MaxGenerations>``), some are attribute matches
+    (``<Ranking type="ReturnDDRatio"``). Resolution order: captured-group
+    span → text node → first attribute pair → whole match.
+    """
+    text = match.group(0)
+    if match.lastindex is not None and match.lastindex >= 2:
+        start = match.end(1) - match.start()
+        stop = match.start(2) - match.start()
+        if stop > start:
+            return text[start:stop]
+    node = re.search(r">([^<]*)<", text)
+    if node:
+        return node.group(1)
+    attr = re.search(r'([\w]+)="([^"]*)"', text)
+    if attr:
+        return attr.group(2)
+    return text
+
+
+def _coerce_template_default(raw: str, format_type: str):
+    """Coerce the raw template text to the field's Python type."""
+    if format_type in ("dict", "blocks"):
+        # No scalar default: these fields are composite structures.
+        return None
+    text = raw.strip()
+    try:
+        if format_type == "boolean":
+            return text.lower() in ("true", "1", "yes")
+        if format_type == "int":
+            return int(text)
+        if format_type == "float":
+            return float(text)
+    except ValueError:
+        pass
+    return text
+
+
+def get_template_default(field_name: str):
+    """Return the SQX template default for a BuildConfig field, or ``None``.
+
+    Probes the bundled default project template with the field's build-config
+    regex and coerces the captured value to the field's type. ``None`` means
+    the field has no scalar template default (composite structures) or the
+    template does not carry the parameter.
+
+    Args:
+        field_name: A BuildConfig field name.
+
+    Returns:
+        The coerced template default value, or ``None`` when unavailable.
+    """
+    entry = _BUILD_CONFIG_MAP.get(field_name)
+    if entry is None:
+        return None
+    pattern, _replacement, format_type = entry
+    match = re.search(pattern, _template_xml())
+    if match is None:
+        return None
+    return _coerce_template_default(_extract_template_value(match), format_type)
+
+
+# SQX tab classification for BuildConfig fields — mirrors the dataclass
+# section comments (the in-repo SQX tab taxonomy, REQ-1 reviewability).
+_FIELD_TABS: dict[str, str] = {
+    # ── Trading Session (BuildTradingOptions) ──
+    "exit_at_end_of_day": "Trading Session",
+    "eod_exit_time": "Trading Session",
+    "exit_on_friday": "Trading Session",
+    "friday_exit_time": "Trading Session",
+    "limit_time_range": "Trading Session",
+    "signal_time_range_from": "Trading Session",
+    "signal_time_range_to": "Trading Session",
+    "exit_at_end_of_range": "Trading Session",
+    "max_trades_per_day": "Trading Session",
+    "session": "Trading Session",
+    "reserved_bars": "Trading Session",
+    "store_chart_data": "Trading Session",
+    # ── Rules Complexity ──
+    "min_conditions": "Rules Complexity",
+    "max_conditions": "Rules Complexity",
+    "min_exit_conditions": "Rules Complexity",
+    "max_exit_conditions": "Rules Complexity",
+    "min_period": "Rules Complexity",
+    "max_period": "Rules Complexity",
+    "min_shift": "Rules Complexity",
+    "max_shift": "Rules Complexity",
+    # ── Market Sides ──
+    "market_sides": "Market Sides",
+    "entry_symmetry": "Market Sides",
+    "exit_symmetry": "Market Sides",
+    # ── SL/PT Options ──
+    "sl_required": "SL/PT Options",
+    "sl_fixed_pips": "SL/PT Options",
+    "min_sl_pips": "SL/PT Options",
+    "max_sl_pips": "SL/PT Options",
+    "min_sl_money": "SL/PT Options",
+    "max_sl_money": "SL/PT Options",
+    "sl_atr": "SL/PT Options",
+    "min_sl_atr_multiple": "SL/PT Options",
+    "max_sl_atr_multiple": "SL/PT Options",
+    "min_sl_atr_period": "SL/PT Options",
+    "max_sl_atr_period": "SL/PT Options",
+    "pt_required": "SL/PT Options",
+    "pt_fixed_pips": "SL/PT Options",
+    "min_pt_pips": "SL/PT Options",
+    "max_pt_pips": "SL/PT Options",
+    "min_pt_money": "SL/PT Options",
+    "max_pt_money": "SL/PT Options",
+    "pt_atr": "SL/PT Options",
+    "min_pt_atr_multiple": "SL/PT Options",
+    "max_pt_atr_multiple": "SL/PT Options",
+    "min_pt_atr_period": "SL/PT Options",
+    "max_pt_atr_period": "SL/PT Options",
+    "limit_slpt_rrr": "SL/PT Options",
+    "limit_slpt_rrr_from": "SL/PT Options",
+    "limit_slpt_rrr_to": "SL/PT Options",
+    "sl_value_type": "SL/PT Options",
+    "pt_value_type": "SL/PT Options",
+    "sl_indicator_based": "SL/PT Options",
+    "pt_indicator_based": "SL/PT Options",
+    "sl_percent": "SL/PT Options",
+    "min_sl_percent": "SL/PT Options",
+    "max_sl_percent": "SL/PT Options",
+    "pt_percent": "SL/PT Options",
+    "min_pt_percent": "SL/PT Options",
+    "max_pt_percent": "SL/PT Options",
+    # ── BuildMode (Genetic) ──
+    "generations": "BuildMode (Genetic)",
+    "population": "BuildMode (Genetic)",
+    "islands": "BuildMode (Genetic)",
+    "migration_modulo": "BuildMode (Genetic)",
+    "migration_rate": "BuildMode (Genetic)",
+    "init_generation_type": "BuildMode (Genetic)",
+    "decimation_coef": "BuildMode (Genetic)",
+    "evo_restart_on_finish": "BuildMode (Genetic)",
+    "evo_restart_on_stagnation": "BuildMode (Genetic)",
+    "evo_restart_stagnation_fitness_type": "BuildMode (Genetic)",
+    "evo_restart_stagnation_generations": "BuildMode (Genetic)",
+    "evo_in_sample_period_ratio": "BuildMode (Genetic)",
+    "fresh_blood_replace_similar": "BuildMode (Genetic)",
+    "fresh_blood_replace_weakest": "BuildMode (Genetic)",
+    "fresh_blood_weakest_pct": "BuildMode (Genetic)",
+    "fresh_blood_weakest_generations": "BuildMode (Genetic)",
+    "filter_initial_population": "BuildMode (Genetic)",
+    "evo_fitness_restart_type": "BuildMode (Genetic)",
+    "evo_stagnation_restart_generations": "BuildMode (Genetic)",
+    # ── Rankings ──
+    "max_strategies": "Rankings",
+    "ranking_type": "Rankings",
+    "ranking_avg_trades_min": "Rankings",
+    "ranking_pf_min": "Rankings",
+    "ranking_return_dd_min": "Rankings",
+    "ranking_conditions_type": "Rankings",
+    # ── MoneyManagement ──
+    "mm_method": "MoneyManagement",
+    "mm_lot_size": "MoneyManagement",
+    "initial_capital": "MoneyManagement",
+    "mm_risk_pct": "MoneyManagement",
+    "mm_max_drawdown": "MoneyManagement",
+    # ── ATMs ──
+    "atms_enable": "ATMs",
+    "atms_scale_out_type": "ATMs",
+    "atms_size_decimals": "ATMs",
+    "atms_min_size": "ATMs",
+    # ── PartsToImprove ──
+    "entry_rules_symmetry": "PartsToImprove",
+    "entry_long_improvement": "PartsToImprove",
+    "entry_short_improvement": "PartsToImprove",
+    "exit_rules_symmetry": "PartsToImprove",
+    "exit_long_improvement": "PartsToImprove",
+    "exit_short_improvement": "PartsToImprove",
+    # ── CrossChecks ──
+    "wf_period": "CrossChecks",
+    "wf_optimization": "CrossChecks",
+    "wf_param1": "CrossChecks",
+    "wf_param2": "CrossChecks",
+    "wf_optimize_periods": "CrossChecks",
+    "wf_optimize_exit_types": "CrossChecks",
+    "wf_max_tests": "CrossChecks",
+    "wf_acceptance_threshold_pct": "CrossChecks",
+    "wf_acceptance_min_conditions": "CrossChecks",
+    "wf_acceptance_min_markets": "CrossChecks",
+    "wf_acceptance_pf_min": "CrossChecks",
+    "rc_spread": "CrossChecks",
+    "rc_pf_min": "CrossChecks",
+    "rc_min_conditions": "CrossChecks",
+    "rc_min_markets": "CrossChecks",
+    "main_test_values": "CrossChecks",
+    # ── Blocks bridge (REQ-18 / REQ-03) ──
+    "enabled_blocks": "Blocks bridge",
+    "block_weights": "Blocks bridge",
+}
+
+
 @dataclass
 class BuildConfig:
     """Configuration overrides for the SQX build template.
@@ -833,6 +1050,8 @@ def get_tab_for_field(field_name: str) -> str:
         "sl_fixed_pips": "MoneyManagement",
         "min_sl_pips": "MoneyManagement",
         "max_sl_pips": "MoneyManagement",
+        "min_sl_money": "MoneyManagement",
+        "max_sl_money": "MoneyManagement",
         "sl_atr": "MoneyManagement",
         "min_sl_atr_multiple": "MoneyManagement",
         "max_sl_atr_multiple": "MoneyManagement",
@@ -841,6 +1060,8 @@ def get_tab_for_field(field_name: str) -> str:
         "pt_fixed_pips": "MoneyManagement",
         "min_pt_pips": "MoneyManagement",
         "max_pt_pips": "MoneyManagement",
+        "min_pt_money": "MoneyManagement",
+        "max_pt_money": "MoneyManagement",
         "pt_atr": "MoneyManagement",
         "min_pt_atr_multiple": "MoneyManagement",
         "max_pt_atr_multiple": "MoneyManagement",
@@ -865,6 +1086,7 @@ def get_tab_for_field(field_name: str) -> str:
         "ranking_pf_min": "Ranking",
         "ranking_return_dd_min": "Ranking",
         "ranking_conditions_type": "Ranking",
+        "max_strategies": "Ranking",
         "rankings_enabled": "Ranking",
         # What to build
         "min_conditions": "What to build",
@@ -875,7 +1097,6 @@ def get_tab_for_field(field_name: str) -> str:
         "max_period": "What to build",
         "min_shift": "What to build",
         "max_shift": "What to build",
-        "max_strategies": "What to build",
         "market_sides": "What to build",
         "entry_symmetry": "What to build",
         "exit_symmetry": "What to build",
@@ -942,8 +1163,8 @@ def get_tab_for_field(field_name: str) -> str:
         "rc_min_markets": "CrossChecks",
         "main_test_values": "CrossChecks",
         # Building blocks
-        "enabled_blocks": "Building blocks",
-        "block_weights": "Building blocks",
+        "enabled_blocks": "Blocks bridge",
+        "block_weights": "Blocks bridge",
     }
     return _TAB_MAP.get(field_name, "Other")
 
