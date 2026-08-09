@@ -21,6 +21,10 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# Re-exported for BuilderAgent callers (parameter-justification-matrix REQ-1):
+# raised when a manual override lacks its rationale, blocking the run.
+from quantlab.agents.parameter_matrix import ParameterMatrixError  # noqa: E402
+
 
 def _try_int(value: str, default: int) -> int:
     """Parse an int from a string, returning *default* on failure."""
@@ -157,45 +161,117 @@ class BuilderAgent:
 
     # ── Parameter matrix generation ─────────────────────────────────────────────
 
-    def generate_parameter_matrix(self, build_config: Any) -> list[dict[str, Any]]:
-        """Extract non-default BuildConfig fields into a parameter matrix.
+    def generate_parameter_matrix(
+        self,
+        build_config: Any,
+        rationale_overrides: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Extract configured BuildConfig fields into a parameter matrix.
 
-        Returns a list of dicts compatible with ``ParameterMatrixEntry``,
-        one per explicitly configured (non-None) BuildConfig field.
+        Delegates to the shared :mod:`quantlab.agents.parameter_matrix`
+        generator (parameter-justification-matrix REQ-1): values matching the
+        SQX template default are ``default`` with rationale "using SQX
+        default"; manual overrides need a non-empty rationale and are marked
+        ``manual``; an unjustified override raises :class:`ParameterMatrixError`
+        and blocks the run.
 
         Args:
             build_config: ``BuildConfig`` instance with overridden fields.
+            rationale_overrides: Manual justifications keyed by field name.
 
         Returns:
             List of parameter matrix entry dicts.
+
+        Raises:
+            ParameterMatrixError: A manual override lacks its rationale.
         """
-        from quantlab.sqx.project_builder import get_tab_for_field
-
-        matrix: list[dict[str, Any]] = []
-        if build_config is None:
-            return matrix
-
-        fields = getattr(build_config, "__dataclass_fields__", {})
-        hypothesis_ref = getattr(build_config, "hypothesis", None) or getattr(
-            build_config, "hypothesis_name", None
+        from quantlab.agents.parameter_matrix import (
+            ParameterMatrixError,
+            generate_parameter_matrix as _generate_parameter_matrix,
         )
 
-        for field_name in fields:
-            value = getattr(build_config, field_name, None)
-            if value is None:
-                continue
+        hypothesis_ref = None
+        if build_config is not None:
+            hypothesis_ref = getattr(build_config, "hypothesis", None) or getattr(
+                build_config, "hypothesis_name", None
+            )
+        return _generate_parameter_matrix(
+            build_config,
+            rationale_overrides=rationale_overrides,
+            hypothesis_ref=hypothesis_ref,
+        )
 
-            matrix.append({
-                "tab": get_tab_for_field(field_name),
-                "parameter": field_name,
-                "value": value,
-                "rationale": "Set by orchestrator based on hypothesis/cost/session constraint",
-                "source": "orchestrator",
-                "confidence": 0.7,
-                "hypothesis_ref": hypothesis_ref,
-            })
+    @staticmethod
+    def _collect_rationale_overrides(context: Any, build_config: Any) -> dict[str, str]:
+        """Gather manual parameter justifications for the matrix (REQ-1).
 
-        return matrix
+        The primary source is the explicit ``context.config["rationale_overrides"]``
+        mapping (the orchestrator's hypothesis/cost/session constraints, written
+        by ConfigReviewStage or the caller). A parameter set outside that
+        mapping is justified only when it matches the SQX template default —
+        otherwise the run is blocked (spec: "Missing rationale blocks
+        advancement").
+
+        Args:
+            context: ``PipelineContext`` with ``config.rationale_overrides``.
+            build_config: The in-flight ``BuildConfig``.
+
+        Returns:
+            Dict of field → rationale for the manual entries.
+        """
+        overrides: dict[str, str] = {}
+        configured = (
+            context.config.get("rationale_overrides")
+            if isinstance(context.config, dict)
+            else None
+        )
+        if isinstance(configured, dict):
+            overrides.update({str(k): str(v) for k, v in configured.items()})
+        return overrides
+
+    @staticmethod
+    def _persist_build_artifacts(
+        context: Any,
+        campaign_id: str,
+        cfx_bytes: bytes,
+        parameter_matrix: list[dict[str, Any]],
+    ) -> None:
+        """Persist the CFX archive + matrix to the Knowledge Lake (REQ-2).
+
+        Runs BEFORE the dispatch boundary so a substrate handoff failure leaves
+        the build artifact preserved for recovery (spec: "CFX archive remains
+        preserved for recovery"). Writes are best-effort: a missing
+        ``knowledge_root`` is skipped silently.
+
+        Args:
+            context: ``PipelineContext`` with ``config.knowledge_root``.
+            campaign_id: The campaign identifier naming the artifacts.
+            cfx_bytes: The translated CFX archive.
+            parameter_matrix: The generated matrix entries.
+        """
+        knowledge_root = (
+            context.config.get("knowledge_root")
+            if isinstance(context.config, dict)
+            else None
+        )
+        if not knowledge_root:
+            return
+        from pathlib import Path
+
+        root = Path(knowledge_root)
+        cfx_dir = root / "structured" / campaign_id / "configs"
+        cfx_dir.mkdir(parents=True, exist_ok=True)
+        (cfx_dir / f"{campaign_id}.cfx").write_bytes(cfx_bytes)
+
+        matrix_dir = root / "parameter-matrix" / campaign_id
+        matrix_dir.mkdir(parents=True, exist_ok=True)
+        (matrix_dir / "parameter_matrix.json").write_text(
+            json.dumps(parameter_matrix, indent=2), encoding="utf-8"
+        )
+        logger.info(
+            "BuilderAgent: persisted CFX + matrix for '%s' before dispatch boundary",
+            campaign_id,
+        )
 
     async def run(self, context: Any) -> dict[str, Any]:
         """Execute the builder agent stage in a pipeline.
@@ -260,10 +336,22 @@ class BuilderAgent:
         versioned_campaign_id = context.config.get("campaign_id")
         build_config = context.config.get("build_config")
 
-        # Parameter matrix: capture non-default build config fields
+        # Parameter matrix (REQ-1): every build produces one; manual overrides
+        # must be justified, otherwise ParameterMatrixError blocks the run
+        # from advancing (spec: "Missing rationale blocks advancement").
         if build_config is not None:
-            parameter_matrix = self.generate_parameter_matrix(build_config)
+            rationale_overrides = self._collect_rationale_overrides(context, build_config)
+            parameter_matrix = self.generate_parameter_matrix(
+                build_config, rationale_overrides=rationale_overrides
+            )
             context.artifacts["parameter_matrix"] = parameter_matrix
+            # REQ-2: persist the CFX archive + matrix to the Knowledge Lake
+            # BEFORE the dispatch boundary so a handoff failure leaves the
+            # build artifact preserved for recovery.
+            if versioned_campaign_id:
+                self._persist_build_artifacts(
+                    context, versioned_campaign_id, cfx_bytes, parameter_matrix
+                )
 
         if context.config.get("orchestrated"):
             # AD-3/AD-8 (orchestrated split): the builder translates, validates,
@@ -752,6 +840,23 @@ class BuilderAgent:
 
         campaign_id = campaign_id or f"sqx_{uuid.uuid4().hex[:12]}"
         result = DispatchResult(campaign_id=campaign_id, cfx_bytes=cfx_bytes)
+
+        # REQ-1 (unified-execution-substrate): the legacy CommandDispatcher
+        # path is the default (REQ-28) AND the explicit QUANTLAB_LEGACY_EXECUTION
+        # opt-in. When the unified substrate is opted in without the legacy
+        # flag, the legacy path is refused fail-closed (AD-4) — the substrate
+        # Executor is the replacement dispatch path.
+        from quantlab.substrate import select_dispatch_backend
+
+        backend = select_dispatch_backend()
+        if backend != "legacy":
+            from quantlab.pipeline.errors import ConfigurationError
+
+            raise ConfigurationError(
+                f"dispatch backend '{backend}' selected, but BuilderAgent only "
+                "implements the legacy CommandDispatcher path — set "
+                "QUANTLAB_LEGACY_EXECUTION=1 to force it (REQ-1)"
+            )
 
         # Pre-flight: ensure market data exists for this symbol
         if not skip_data_check:

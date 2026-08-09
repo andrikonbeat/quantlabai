@@ -310,6 +310,11 @@ class ResearchDirector:
             # (REQ-34), and bounded retest/optimize close the loop tail.
             stages.append({"name": "demo", "type": "agent"})
             stages.append({"name": "archive", "type": "agent"})
+            # Canonical live-ops phase (REQ-01 phase 14, REQ-6): after the
+            # archive, live-ops starts monitoring from the archive state,
+            # before the post-archive loop (monitor → guardian_evaluate →
+            # retester → optimizer).
+            stages.append({"name": "live_ops", "type": "agent"})
             stages.append({"name": "monitor", "type": "agent"})
             stages.append({"name": "guardian_evaluate", "type": "agent"})
             # REQ-07/08/09 (D4): bounded retest then optimize at the loop tail.

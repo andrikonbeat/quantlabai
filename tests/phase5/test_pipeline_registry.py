@@ -62,6 +62,8 @@ class TestStageRegistry:
             # PR 4 live-ops monitoring & archive adapters (REQ-26/REQ-33)
             "execution_monitor",
             "archiver",
+            # PR 4 canonical live-ops phase (REQ-01 phase 14, REQ-6)
+            "live_ops",
         }
         assert set(registry._stage_map.keys()) == expected_stages
 

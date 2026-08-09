@@ -82,5 +82,16 @@ class OptimizerStage(Stage):
             output_dir=self._output_dir,
         )
         ctx.artifacts["optimization_result"] = result
+        # REQ-1 (parameter-justification-matrix): the optimizer run produces a
+        # matrix — every entry source=optimized, rationale references the
+        # optimization objective (spec scenario "Optimizer run produces matrix").
+        from quantlab.agents.parameter_matrix import generate_run_matrix
+
+        ctx.artifacts["parameter_matrix"] = generate_run_matrix(
+            config, run_type="optimize"
+        )
         # D4: no re-dispatch after optimize — the flow stops at recommendations.
-        return {"optimization_result": result}
+        return {
+            "optimization_result": result,
+            "parameter_matrix": ctx.artifacts["parameter_matrix"],
+        }

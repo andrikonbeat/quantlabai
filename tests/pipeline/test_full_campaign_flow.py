@@ -94,6 +94,16 @@ class TestFullFlowCoversCanonicalPhases:
         assert names.index("deploy") < names.index("demo") < names.index("archive")
         assert names.index("archive") < names.index("guardian_evaluate")
 
+    def test_live_ops_stage_wired_after_archive(self) -> None:
+        """GIVEN the full orchestrated pipeline
+        THEN the canonical live-ops stage runs after archive and before the
+        post-archive loop (REQ-01 phase 14, REQ-6).
+        """
+        names = _stage_names(_full_flow_pipeline())
+        assert "live_ops" in names
+        assert names.index("archive") < names.index("live_ops")
+        assert names.index("live_ops") < names.index("monitor")
+
 
 class TestFullFlowOrderSegments:
     """REQ-37: phase segments keep their canonical relative order."""

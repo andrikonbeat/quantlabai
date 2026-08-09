@@ -28,6 +28,7 @@ Directory layout::
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import warnings
 from datetime import datetime, timezone
@@ -541,6 +542,70 @@ class KnowledgeStore:
             The absolute, resolved path.
         """
         return (self.root / relative_path).resolve()
+
+    # ── Campaign Phase Envelopes ───────────────────────────────────────────────
+
+    def save_phase_envelope(
+        self,
+        campaign_id: str,
+        phase: str,
+        *,
+        status: str,
+        started_at: Optional[str] = None,
+        completed_at: Optional[str] = None,
+        duration: Optional[float] = None,
+        artifacts: Optional[list[str]] = None,
+        error: Optional[str] = None,
+        next_gate: Optional[str] = None,
+        gate_decision: Optional[str] = None,
+    ) -> Path:
+        """Persist a phase execution envelope (full-campaign-lifecycle REQ-3).
+
+        Writes ``campaign-phases/{campaign_id}/{phase}/envelope.json`` so every
+        phase — including failed ones — leaves a durable, reviewable record:
+        the status, the artifact list (the error log must be listed on
+        failure), and the next-phase gate.
+
+        Args:
+            campaign_id: Campaign identifier.
+            phase: Phase name (e.g. "retest", "archive").
+            status: Phase status ("pending", "running", "completed",
+                "failed", ...).
+            started_at: Optional ISO start timestamp.
+            completed_at: Optional ISO completion timestamp.
+            duration: Optional phase duration in seconds.
+            artifacts: Artifact paths produced by the phase; on failure this
+                MUST include the error log (REQ-3).
+            error: Error message when the phase failed.
+            next_gate: The next-phase gate — "HOLD" on failure (REQ-3).
+            gate_decision: Resolved gate action, when a gate ran.
+
+        Returns:
+            The absolute path of the written ``envelope.json``.
+        """
+        from dataclasses import asdict
+
+        from quantlab.knowledge.models import PhaseEnvelope
+
+        envelope = PhaseEnvelope(
+            campaign_id=campaign_id,
+            phase=phase,
+            status=status,
+            started_at=started_at,
+            completed_at=completed_at,
+            duration=duration,
+            artifacts=list(artifacts or []),
+            error=error,
+            next_gate=next_gate,
+            gate_decision=gate_decision,
+        )
+        envelope_dir = self.resolve(f"campaign-phases/{campaign_id}/{phase}")
+        envelope_dir.mkdir(parents=True, exist_ok=True)
+        envelope_path = envelope_dir / "envelope.json"
+        envelope_path.write_text(
+            json.dumps(asdict(envelope), indent=2, default=str), encoding="utf-8"
+        )
+        return envelope_path
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 

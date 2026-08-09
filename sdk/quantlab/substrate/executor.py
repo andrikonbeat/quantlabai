@@ -127,6 +127,46 @@ def is_unified_substrate_enabled(env: dict[str, str] | None = None) -> bool:
     return env.get("QUANTLAB_UNIFIED_SUBSTRATE", "0") == "1"
 
 
+def is_legacy_execution_enabled(env: dict[str, str] | None = None) -> bool:
+    """True when ``QUANTLAB_LEGACY_EXECUTION`` is explicitly truthy.
+
+    The legacy opt-in (unified-execution-substrate REQ-1): when set, the
+    legacy CommandDispatcher path MUST be used, overriding the unified
+    substrate opt-in. Accepted truthy spellings: ``1``, ``true``, ``yes``.
+
+    Args:
+        env: Environment mapping; defaults to ``os.environ``.
+
+    Returns:
+        True when the legacy execution path is explicitly requested.
+    """
+    env = os.environ if env is None else env
+    return env.get("QUANTLAB_LEGACY_EXECUTION", "").lower() in ("1", "true", "yes")
+
+
+def select_dispatch_backend(env: dict[str, str] | None = None) -> str:
+    """Select the dispatch backend honouring the execution flags (REQ-1/REQ-28).
+
+    Order: ``QUANTLAB_LEGACY_EXECUTION`` truthy → ``"legacy"`` (the REQ-1
+    scenario: the legacy flag forces the CommandDispatcher path, even when the
+    unified substrate is also opted in); else ``QUANTLAB_UNIFIED_SUBSTRATE=1``
+    → ``"substrate"``; else ``"legacy"`` — the default keeps the legacy paths
+    operational (REQ-28 parity).
+
+    Args:
+        env: Environment mapping; defaults to ``os.environ``.
+
+    Returns:
+        ``"legacy"`` or ``"substrate"``.
+    """
+    env = os.environ if env is None else env
+    if is_legacy_execution_enabled(env):
+        return "legacy"
+    if is_unified_substrate_enabled(env):
+        return "substrate"
+    return "legacy"
+
+
 def resolve_sqcli_path(
     sqx_install_path: str | Path, env: dict[str, str] | None = None
 ) -> str | None:

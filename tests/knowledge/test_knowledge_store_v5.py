@@ -12,6 +12,7 @@ Covers:
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -240,3 +241,53 @@ class TestKnowledgeStoreV5Artifacts:
         index = store.rebuild_index()
         assert "campaign-phases" in index["directories"]
         assert any("camp-001.yaml" in k for k in index["directories"]["campaign-phases"])
+
+
+class TestFailedPhaseEnvelope:
+    """full-campaign-lifecycle REQ-3: a failed phase envelope is durable.
+
+    Spec scenarios:
+    - GIVEN a failed phase THEN the envelope records status "failed", the
+      artifacts list includes the error log, and the next-phase gate is HOLD.
+    """
+
+    def test_failed_envelope_records_status_error_log_and_hold_gate(self, tmp_path: Path) -> None:
+        store = KnowledgeStore(root=tmp_path / "knowledge")
+        store.initialize()
+
+        path = store.save_phase_envelope(
+            "camp-001",
+            "retest",
+            status="failed",
+            artifacts=["campaign-phases/camp-001/retest/error.log"],
+            error="sqcli timeout after 120s",
+            next_gate="HOLD",
+        )
+
+        envelope_path = Path(path)
+        assert envelope_path.is_file()
+        raw = json.loads(envelope_path.read_text(encoding="utf-8"))
+        assert raw["campaign_id"] == "camp-001"
+        assert raw["phase"] == "retest"
+        assert raw["status"] == "failed"
+        assert raw["error"] == "sqcli timeout after 120s"
+        assert any("error.log" in artifact for artifact in raw["artifacts"])
+        assert raw["next_gate"] == "HOLD"
+
+    def test_successful_envelope_records_gate_decision(self, tmp_path: Path) -> None:
+        store = KnowledgeStore(root=tmp_path / "knowledge")
+        store.initialize()
+
+        path = store.save_phase_envelope(
+            "camp-002",
+            "archive",
+            status="completed",
+            artifacts=["campaign-phases/camp-002/archive/bundle.json"],
+            next_gate="live-ops",
+            gate_decision="APPROVE",
+        )
+
+        raw = json.loads(Path(path).read_text(encoding="utf-8"))
+        assert raw["status"] == "completed"
+        assert raw["gate_decision"] == "APPROVE"
+        assert raw["next_gate"] == "live-ops"

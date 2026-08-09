@@ -12,10 +12,13 @@ dispatches — it NEVER deploys (D4, no deploy orchestration in scope).
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from quantlab.agents.builder_agent import BuilderAgent
 from quantlab.pipeline.base import PipelineContext, Stage
+
+logger = logging.getLogger(__name__)
 
 # Gate approval actions accepted by the dispatch stage. ``approved`` is the
 # value written by GateInterceptorStage; ``approve`` by gates.callbacks decisions.
@@ -86,16 +89,35 @@ class DispatchStage(Stage):
 
         build_config = ctx.artifacts.get("build_config")
         research_config = ctx.artifacts.get("research_config")
-        result = await builder._dispatch_single(
-            cfx_bytes=ctx.artifacts["cfx_bytes"],
-            config=research_config,
-            skip_data_check=self._skip_data_check,
-            campaign_id=getattr(research_config, "campaign", None),
-            build_config=build_config,
-            # DispatchStage is the orchestrated dispatch boundary (AD-8):
-            # the data pre-flight is a HARD check (REQ-13).
-            orchestrated=True,
-        )
+        try:
+            result = await builder._dispatch_single(
+                cfx_bytes=ctx.artifacts["cfx_bytes"],
+                config=research_config,
+                skip_data_check=self._skip_data_check,
+                campaign_id=getattr(research_config, "campaign", None),
+                build_config=build_config,
+                # DispatchStage is the orchestrated dispatch boundary (AD-8):
+                # the data pre-flight is a HARD check (REQ-13).
+                orchestrated=True,
+            )
+        except Exception as exc:
+            # REQ-2 (builder-agent): the substrate handoff failed — fail safe.
+            # The CFX archive stays in context (preserved for recovery), the
+            # operation holds instead of advancing, and the error is recorded
+            # for the human review gate.
+            logger.warning(
+                "DispatchStage: handoff failed for '%s' — holding: %s",
+                getattr(research_config, "campaign", "?"),
+                exc,
+            )
+            ctx.artifacts["sqcli_status"] = "HOLD"
+            ctx.artifacts["dispatch_error"] = str(exc)
+            return {
+                "campaign_id": None,
+                "sqcli_status": "HOLD",
+                "export_paths": [],
+                "dispatch_error": str(exc),
+            }
 
         campaign_id = getattr(result, "campaign_id", None)
         sqcli_status = getattr(result, "sqcli_status", None)

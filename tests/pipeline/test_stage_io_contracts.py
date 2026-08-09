@@ -22,6 +22,7 @@ from quantlab.pipeline.stages.archiver_stage import ArchiverStage
 from quantlab.pipeline.stages.archive_stage import ArchiveStage
 from quantlab.pipeline.stages.demo_stage import DemoStage
 from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
+from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage
 
 
 class TestExecutionMonitorStageContract:
@@ -84,6 +85,24 @@ class TestPostDeployChainContract:
         assert set(GuardianEvaluationAgentStage.requires) <= provided
 
 
+class TestLiveOpsStageContract:
+    """REQ-6: live_ops I/O contract (canonical phase 14)."""
+
+    def test_name_is_live_ops(self) -> None:
+        assert LiveOpsStage.name == "live_ops"
+
+    def test_requires_archive_state(self) -> None:
+        """The live-ops phase consumes the archive state (archive_status +
+        maintenance_plan carried by the archive_bundle)."""
+        assert LiveOpsStage.requires == ["archive_bundle"]
+
+    def test_provides_live_ops_status(self) -> None:
+        assert LiveOpsStage.provides == ["live_ops_status"]
+
+    def test_is_a_stage(self) -> None:
+        assert issubclass(LiveOpsStage, Stage)
+
+
 class TestRegistryRegistersLiveOpsStages:
     """Task 4.2: execution_monitor and archiver are registered by name."""
 
@@ -98,6 +117,13 @@ class TestRegistryRegistersLiveOpsStages:
         stage_class = registry.get_stage_class("archiver")
         assert stage_class is not None
         assert issubclass(stage_class, ArchiverStage)
+
+    def test_registry_resolves_live_ops(self) -> None:
+        """GIVEN the registry THEN "live_ops" maps to LiveOpsStage (REQ-6)."""
+        registry = StageRegistry()
+        stage_class = registry.get_stage_class("live_ops")
+        assert stage_class is not None
+        assert issubclass(stage_class, LiveOpsStage)
 
     def test_registry_still_resolves_existing_live_ops_stages(self) -> None:
         """GIVEN the registry after the new registrations

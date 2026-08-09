@@ -151,6 +151,7 @@ class StageRegistry:
         from quantlab.pipeline.stages.archive_stage import ArchiveStage
         from quantlab.pipeline.stages.compile_stage import CompileStage
         from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
+        from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage
         from quantlab.pipeline.stages.demo_stage import DemoStage
         from quantlab.pipeline.stages.deploy_stage import DeployStage as DeployPackageStage
         from quantlab.pipeline.stages.portfolio_stage import (
@@ -348,6 +349,9 @@ class StageRegistry:
             # maintenance/replacement runbook from guardian_state (REQ-33).
             "execution_monitor": ExecutionMonitorStage,
             "archiver": ArchiverStage,
+            # Canonical live-ops phase (REQ-01 phase 14): starts live monitoring
+            # from the archive state after the archive phase (REQ-6).
+            "live_ops": LiveOpsStage,
             # Gate interceptor
             "gate": GateInterceptorStage,
             # Aliases for gate names

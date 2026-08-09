@@ -73,6 +73,18 @@ class RetesterStage(Stage):
             retester = Retester(sqx_install_path=self._sqx_install_path)
 
         config = self._build_config(block)
+        # REQ-1 (parameter-justification-matrix): the retest run produces a
+        # matrix; a parameter deviating from its retest default without a
+        # rationale raises ParameterMatrixError and blocks the run (spec:
+        # "Matrix validation fails on missing rationale").
+        from quantlab.agents.parameter_matrix import generate_run_matrix
+
+        overrides = (
+            ctx.config.get("rationale_overrides") if isinstance(ctx.config, dict) else None
+        )
+        parameter_matrix = generate_run_matrix(
+            config, run_type="retest", rationale_overrides=overrides
+        )
         # Bounded loop: Retester.run executes a single bounded campaign; the
         # max_iterations bound is enforced by the caller (WU-9 harness).
         result = await retester.run(
@@ -81,4 +93,8 @@ class RetesterStage(Stage):
             output_dir=self._output_dir,
         )
         ctx.artifacts["retest_result"] = result
-        return {"retest_result": result}
+        ctx.artifacts["parameter_matrix"] = parameter_matrix
+        return {
+            "retest_result": result,
+            "parameter_matrix": parameter_matrix,
+        }

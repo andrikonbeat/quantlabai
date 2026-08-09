@@ -35,6 +35,10 @@ class TestUnifiedExecutionHandoff:
             "orchestrated": True,
             "campaign_id": "pr2_campaign_001",
             "build_config": BuildConfig(generations=20, population=150),
+            "rationale_overrides": {
+                "generations": "population search depth",
+                "population": "population size 150",
+            },
         }
 
         agent._translate = AsyncMock(return_value=(b"cfx", {}))
@@ -62,6 +66,7 @@ class TestUnifiedExecutionHandoff:
             "orchestrated": False,
             "campaign_id": "pr2_campaign_002",
             "build_config": BuildConfig(sl_required=True),
+            "rationale_overrides": {"sl_required": "enable stop-loss requirement"},
         }
 
         agent._translate = AsyncMock(return_value=(b"cfx", {}))

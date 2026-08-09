@@ -66,6 +66,7 @@ from quantlab.pipeline.stages.archive_stage import ArchiveStage
 from quantlab.pipeline.stages.compile_stage import CompileStage
 from quantlab.pipeline.stages.demo_stage import DemoStage
 from quantlab.pipeline.stages.deploy_stage import DeployStage
+from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage
 from quantlab.pipeline.stages.portfolio_stage import PortfolioStage
 
 __all__ = [
@@ -111,4 +112,6 @@ __all__ = [
     "CompileStage",
     "DemoStage",
     "ArchiveStage",
+    # Canonical live-ops phase (REQ-01 phase 14)
+    "LiveOpsStage",
 ]

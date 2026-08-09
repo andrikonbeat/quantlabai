@@ -20,8 +20,10 @@ from quantlab.substrate.executor import (
     PhaseResult,
     SubstrateConfigError,
     SubstrateError,
+    is_legacy_execution_enabled,
     is_unified_substrate_enabled,
     resolve_sqcli_path,
+    select_dispatch_backend,
     select_dispatch_mode,
 )
 from quantlab.substrate.lifecycle import (
@@ -47,6 +49,8 @@ __all__ = [
     "WORK_STAGES",
     "can_transition",
     "is_unified_substrate_enabled",
+    "is_legacy_execution_enabled",
     "resolve_sqcli_path",
     "select_dispatch_mode",
+    "select_dispatch_backend",
 ]
