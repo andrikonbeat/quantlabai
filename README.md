@@ -165,10 +165,10 @@ warnings = store.validate_formats()  # Checks for non-standard formats
 
 ## Orchestrated Campaign Flow
 
-The AI-directed orchestrated campaign runs the full research loop end-to-end
-with human-validated gates. Scope ends at retest/optimize with
-recommendations — there is **no deploy** phase and no post-deploy
-orchestration.
+The AI-directed orchestrated campaign runs the full 14-phase research loop
+end-to-end with human-validated gates at every boundary. The flow proceeds
+through deploy, demo, and archive to the terminal live-ops phase (Guardian
+watching the demo account) — it does NOT stop at optimize.
 
 ### Routing
 
@@ -178,16 +178,15 @@ orchestration.
 
 ### Harness
 
-The `quantlab-campaign` subagent owns the 8-phase loop:
+The `quantlab-campaign` subagent owns the 14-phase loop:
 
 ```
-research → hypothesis → config → review → dispatch → monitor → retest → optimize
+research → hypothesis → config → review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops
 ```
 
 Each phase returns the Result Contract envelope (`status`,
-`executive_summary`, `artifacts`, `next_recommended`, `risks`). The loop halts
-after optimize with recommendations and never proceeds to deploy (D1). A
-failed phase halts the loop for a human decision.
+`executive_summary`, `artifacts`, `next_recommended`, `risks`). A failed phase
+halts the loop for a human decision.
 
 Assets are versioned in-repo:
 
@@ -204,8 +203,9 @@ back to stdin.
 
 Autonomous rules are binding:
 
-- Config-review and optimizer re-dispatch gates **always block** for a human
-  decision (D2); a MODIFY verdict requires human confirmation before applying
+- The `HUMAN_APPROVE_CONFIG`, `HUMAN_APPROVE_DEPLOY`, `HUMAN_APPROVE_DEMO`,
+  and `HUMAN_APPROVE_ARCHIVE` gates **always block** for a human decision
+  (D2/REQ-38); a MODIFY verdict requires human confirmation before applying
   (D3).
 - Unanswered gates **fail closed (HOLD)** — they never auto-approve (REQ-11).
 - Legacy CLI auto-approve remains available outside orchestrated mode.

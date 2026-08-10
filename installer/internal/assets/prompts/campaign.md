@@ -68,6 +68,14 @@ except FlowIntegrityError as exc:
     raise RuntimeError(f"flow-integrity abort: {exc}") from exc
 ```
 
+Before executing a BUILT pipeline, also run the segment-preserving preflight
+(REQ-37) — presence of every phase, the post-deploy boundary
+(deploy < demo < archive < live_ops < monitor), and the loop tail
+(monitor → guardian_evaluate → [retester] → [optimizer]):
+`retester`/`optimizer` are optional only when their DSL blocks are
+unconfigured (`assert_flow_segments(stage_names, optional_phases=...)`).
+`STAGE_FOR_PHASE["live-ops"]` maps to the real `live_ops` stage.
+
 Binding rules (REQ-37):
 
 - The 14 phases plus the Guardian live flow MUST remain, in order, each gated

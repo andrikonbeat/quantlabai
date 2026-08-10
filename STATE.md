@@ -106,17 +106,21 @@ orquestado por IA con gates humanos. Modo orquestado **flag-gated**
 | Gate callbacks (decision-file IPC) | `gates/callbacks.py` |
 | DataManager Dukascopy-only | `data/{data_manager,symbol_registry}.py` |
 
-El bucle de 8 fases (`research → hypothesis → config → review → dispatch →
-monitor → retest → optimize`) **se detiene tras optimize con
-recomendaciones — NO hay deploy** (D1) y no hay feedback
-optimize → re-dispatch (D4). Cada fase devuelve el envelope Result Contract
-(`status`, `executive_summary`, `artifacts`, `next_recommended`, `risks`).
+El bucle de 14 fases (`research → hypothesis → config → review → dispatch →
+monitor → retest → optimize → portfolio → compile → deploy → demo → archive →
+live-ops`) recorre deploy, demo y archive hasta la fase terminal live-ops
+(Guardian observando la cuenta demo); **no se detiene en optimize** y no hay
+feedback optimize → re-dispatch (D4). Cada fase devuelve el envelope Result
+Contract (`status`, `executive_summary`, `artifacts`, `next_recommended`,
+`risks`).
 
 Gates humanos **fail-closed** (REQ-11): protocolo de archivo de decisión en
 `/tmp/sqx-gates/{campaign_id}/` con `question` tool como canal primario y
-stdin como fallback headless. Config review y re-dispatch de optimizer
-**siempre bloquean** en modo autónomo (D2); MODIFY exige confirmación humana
-antes de aplicar (D3); gate sin callback → **HOLD**, nunca auto-aprueba.
+stdin como fallback headless. Los gates `HUMAN_APPROVE_CONFIG`,
+`HUMAN_APPROVE_DEPLOY`, `HUMAN_APPROVE_DEMO` y `HUMAN_APPROVE_ARCHIVE`
+**siempre bloquean** en modo autónomo (D2/D3/REQ-38); MODIFY exige
+confirmación humana antes de aplicar (D3); gate sin callback → **HOLD**, nunca
+auto-aprueba.
 `DataManager` es **solo Dukascopy** (FX M1/M5/H1); crypto/CSV/yahoo lanzan
 `NotSupportedError` (D5); `_ensure_data` es pre-flight duro en modo
 orquestado (REQ-13).
