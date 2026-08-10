@@ -95,15 +95,50 @@ async def cmd_campaign_rollback(args: argparse.Namespace) -> int:
 
 
 async def cmd_campaign_status(args: argparse.Namespace) -> int:
-    """Show campaign status from Knowledge Lake."""
+    """Show campaign status from Knowledge Lake or the live snapshot (--live).
+
+    With ``--live`` (REQ-38): reads the snapshot persisted by
+    ``CampaignMonitor`` and returns ``current_snapshot`` plus a
+    continue/stop/reconfigure recommendation. The read is a single small file
+    read — it never blocks on or cancels the running campaign.
+    """
+    from quantlab.sqx.campaign_monitor import (
+        DEFAULT_SNAPSHOT_DIR,
+        heuristic_recommendation,
+        load_snapshot,
+    )
+
+    campaign_id = args.campaign_id
+
+    if getattr(args, "live", False):
+        try:
+            snapshot = load_snapshot(campaign_id, base_dir=DEFAULT_SNAPSHOT_DIR)
+        except (ValueError, FileNotFoundError) as e:
+            print_error(str(e))
+            return 1
+        recommendation = heuristic_recommendation(snapshot)
+        if args.json:
+            from dataclasses import asdict
+
+            print_json({
+                "campaign_id": campaign_id,
+                "current_snapshot": asdict(snapshot),
+                "recommendation": recommendation,
+            })
+        else:
+            print_human(f"Campaign: {campaign_id} (live)")
+            status = snapshot.status_text.strip() or "no status text yet"
+            print_human(f"Status: {status}")
+            print_human(f"Strategies generated: {snapshot.generated_count}")
+            print_human(f"Recommendation: {recommendation}")
+        return 0
+
     from quantlab.knowledge.store import KnowledgeStore
 
     try:
         knowledge_root = getattr(args, "knowledge_root", "knowledge")
         store = KnowledgeStore(root=knowledge_root)
         store.initialize()
-
-        campaign_id = args.campaign_id
 
         # Try to load campaign record from Knowledge Lake
         try:
@@ -373,6 +408,12 @@ def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_status = campaign_sub.add_parser("status", help="Show campaign status")
     p_status.add_argument("campaign_id", help="Campaign ID")
     p_status.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
+    p_status.add_argument(
+        "--live",
+        action="store_true",
+        help="Read the persisted live snapshot (REQ-38) instead of Knowledge Lake "
+             "— returns current_snapshot + continue/stop/reconfigure recommendation",
+    )
     p_status.add_argument("--json", action="store_true", help="Output JSON")
     p_status.set_defaults(func=cmd_campaign_status)
 
@@ -408,6 +449,66 @@ def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
              "failing closed (default: wait indefinitely)",
     )
     p_run.set_defaults(func=cmd_campaign_run_flow)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Generation Status Command (REQ-38, ADR-5/6)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+async def cmd_generation_status(args: argparse.Namespace) -> int:
+    """Show live generation status from the persisted snapshot (REQ-38).
+
+    Top-level ``generation status``: reads the snapshot written by
+    ``CampaignMonitor._persist_snapshot`` and returns ``current_snapshot``
+    plus a heuristic recommendation. With no ``llm_config`` the status makes
+    ZERO LLM calls (spec scenario: opt-in LLM means zero calls) and the read
+    never blocks the running campaign.
+    """
+    from dataclasses import asdict
+
+    from quantlab.sqx.campaign_monitor import (
+        DEFAULT_SNAPSHOT_DIR,
+        heuristic_recommendation,
+        load_snapshot,
+    )
+
+    campaign_id = args.campaign_id
+    try:
+        snapshot = load_snapshot(campaign_id, base_dir=DEFAULT_SNAPSHOT_DIR)
+    except (ValueError, FileNotFoundError) as e:
+        print_error(str(e))
+        return 1
+
+    recommendation = heuristic_recommendation(snapshot)
+    if args.json:
+        print_json({
+            "campaign_id": campaign_id,
+            "current_snapshot": asdict(snapshot),
+            "recommendation": recommendation,
+        })
+    else:
+        print_human(f"Campaign: {campaign_id}")
+        print_human(f"Strategies generated: {snapshot.generated_count}")
+        print_human(f"Recommendation: {recommendation}")
+    return 0
+
+
+def add_generation_subparser(subparsers: argparse._SubParsersAction) -> None:
+    """Add the top-level ``generation`` subcommand (status, REQ-38)."""
+    p_gen = subparsers.add_parser(
+        "generation",
+        help="Live strategy-generation status from the persisted snapshot",
+    )
+    gen_sub = p_gen.add_subparsers(dest="generation_cmd", required=True)
+
+    p_status = gen_sub.add_parser(
+        "status",
+        help="Show live generation status (current_snapshot + recommendation)",
+    )
+    p_status.add_argument("campaign_id", help="Campaign ID")
+    p_status.add_argument("--json", action="store_true", help="Output JSON")
+    p_status.set_defaults(func=cmd_generation_status)
 
 
 def dispatch_campaign(args: argparse.Namespace) -> int:

@@ -54,7 +54,10 @@ from quantlab.cli.pipeline_commands import (
 # Knowledge command handlers (Phase 5c)
 from quantlab.cli.knowledge_commands import add_knowledge_subparser
 from quantlab.cli.agent_commands import add_agent_subparser
-from quantlab.cli.campaign_commands import add_campaign_subparser
+from quantlab.cli.campaign_commands import (
+    add_campaign_subparser,
+    add_generation_subparser,
+)
 from quantlab.cli.monitor_commands import add_monitor_subparser
 
 # SQX KB command handlers (WU3, REQ-207)
@@ -1091,6 +1094,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ── campaign ───────────────────────────────────────────────────────────────
     add_campaign_subparser(subparsers)
+
+    # ── generation (live snapshot status, REQ-38) ───────────────────────────────
+    add_generation_subparser(subparsers)
 
     # ── dashboard ──────────────────────────────────────────────────────────────
     # Lazy: the dashboard package ships in Slice 2; the base CLI must not

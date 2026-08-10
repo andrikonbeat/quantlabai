@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import json
 import logging
 import math
 import re
@@ -27,6 +28,7 @@ from typing import Any, Callable, Literal
 
 import httpx
 
+from quantlab.gates.callbacks import sanitize_campaign_id
 from quantlab.sqx.llm_generation_monitor import MonitorSnapshot
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,12 @@ logger = logging.getLogger(__name__)
 
 _COMMAND_ENDPOINT = "/call?cmd="
 _STRATEGIES_CSV_FILENAME = "strategies.csv"
+
+# Persisted on-demand status snapshot (ADR-5/6, REQ-38): CampaignMonitor
+# writes ``current_snapshot()`` here per poll tick, and ``campaign status
+# --live`` / ``generation status`` read it. Path traversal is rejected via
+# ``sanitize_campaign_id`` (threat matrix: snapshot path sanitization).
+DEFAULT_SNAPSHOT_DIR: Path = Path("/tmp/sqx-status")
 
 # ── Data Models ─────────────────────────────────────────────────────────────
 
@@ -83,6 +91,87 @@ class BaselineConfig:
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable dictionary."""
         return asdict(self)
+
+
+# ── On-Demand Status Snapshot (REQ-38, ADR-5/6) ──────────────────────────────
+
+
+def snapshot_from_dict(data: dict[str, Any]) -> MonitorSnapshot:
+    """Rebuild a :class:`MonitorSnapshot` from a persisted JSON dict.
+
+    Unknown keys (added by future versions) are ignored so old snapshots
+    keep reading; missing keys fall back to the dataclass defaults.
+    """
+    fields = MonitorSnapshot.__dataclass_fields__
+    return MonitorSnapshot(**{k: v for k, v in data.items() if k in fields})
+
+
+def load_snapshot(
+    campaign_id: str,
+    base_dir: str | Path | None = None,
+) -> MonitorSnapshot:
+    """Read the persisted live snapshot for *campaign_id* (REQ-38).
+
+    The campaign id is sanitized via :func:`sanitize_campaign_id` BEFORE any
+    path is built, so ``../`` traversal is rejected (threat matrix). The
+    default base dir resolves at call time so tests can patch
+    ``DEFAULT_SNAPSHOT_DIR``.
+
+    Args:
+        campaign_id: The campaign whose snapshot to read.
+        base_dir: Snapshot root (default ``DEFAULT_SNAPSHOT_DIR``).
+
+    Returns:
+        The persisted :class:`MonitorSnapshot`.
+
+    Raises:
+        ValueError: If the campaign id is invalid (path traversal).
+        FileNotFoundError: If no snapshot has been persisted yet.
+    """
+    if base_dir is None:
+        base_dir = DEFAULT_SNAPSHOT_DIR
+    safe = sanitize_campaign_id(campaign_id)
+    path = Path(base_dir) / safe / "snapshot.json"
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"No live snapshot for campaign '{campaign_id}' at {path} — "
+            "start monitoring first (campaign run-flow / daemon)."
+        )
+    return snapshot_from_dict(json.loads(path.read_text(encoding="utf-8")))
+
+
+def heuristic_recommendation(
+    snapshot: MonitorSnapshot,
+) -> Literal["continue", "stop", "reconfigure"]:
+    """Recommend an action from a snapshot using rules only — zero LLM calls.
+
+    Heuristics mirror the monitor's own detection vocabulary:
+
+    - ``stop``: the status text shows config errors (the run cannot proceed),
+      or zero strategies were generated past the startup grace + expected
+      generation window (startup stall);
+    - ``reconfigure``: zero strategies after the startup grace window but
+      before a hard stall — the config may be wrong (e.g. bad databanks);
+    - ``continue``: still inside the startup grace window, or the campaign is
+      generating strategies.
+
+    Args:
+        snapshot: The current :class:`MonitorSnapshot`.
+
+    Returns:
+        ``"continue"``, ``"stop"``, or ``"reconfigure"``.
+    """
+    if extract_error_patterns(snapshot.status_text):
+        return "stop"
+    baseline = snapshot.baseline or {}
+    grace = float(baseline.get("startup_grace_s", 0.0))
+    expected = float(baseline.get("expected_gen_time_s", 0.0))
+    if snapshot.generated_count == 0:
+        if snapshot.elapsed_s > grace + expected:
+            return "stop"
+        if snapshot.elapsed_s > grace:
+            return "reconfigure"
+    return "continue"
 
 
 # ── Pure Helpers ────────────────────────────────────────────────────────────
@@ -739,10 +828,14 @@ class CampaignMonitor:
                         {"elapsed_s": round(elapsed, 1), "count": 0},
                     )
                 )
+            # REQ-38: surface the point-in-time state for status --live.
+            self._persist_snapshot(elapsed)
             return events
 
         # If errors were found, return early (no stall analysis)
         if errors:
+            # REQ-38: surface the point-in-time state for status --live.
+            self._persist_snapshot(elapsed)
             return events
 
         # 3. Zero-growth stall (established throughput then stopped).
@@ -785,8 +878,11 @@ class CampaignMonitor:
                 )
             )
             self._emitted_excessive_rejection = True
-
         self._last_count = count
+        # REQ-38: persist the point-in-time state on every poll tick so the
+        # on-demand status commands can read it without blocking the run.
+        self._persist_snapshot(elapsed)
+
         return events
 
     # ── Internal: Event Dispatch ────────────────────────────────────────
@@ -857,6 +953,43 @@ class CampaignMonitor:
                     self._campaign_id,
                     exc,
                 )
+
+    def _persist_snapshot(self, elapsed: float | None = None) -> None:
+        """Persist ``current_snapshot()`` for the on-demand status commands.
+
+        Writes ``{DEFAULT_SNAPSHOT_DIR}/{sanitize_campaign_id}/snapshot.json``
+        (ADR-5/6, REQ-38). When *elapsed* is provided (the value the current
+        poll tick computed), it overrides the wall-clock ``elapsed_s`` so the
+        persisted snapshot matches the exact view the tick's stall/error logic
+        used. Never raises: an invalid campaign id (path traversal) or an IO
+        error logs a warning and skips persistence, so monitoring continues
+        regardless.
+        """
+        try:
+            safe = sanitize_campaign_id(self._campaign_id)
+        except ValueError as exc:
+            logger.warning(
+                "CampaignMonitor('%s') snapshot skipped: %s",
+                self._campaign_id,
+                exc,
+            )
+            return
+        snapshot = asdict(self.current_snapshot())
+        if elapsed is not None:
+            snapshot["elapsed_s"] = elapsed
+        path = DEFAULT_SNAPSHOT_DIR / safe / "snapshot.json"
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                json.dumps(snapshot, default=str),
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            logger.warning(
+                "CampaignMonitor('%s') snapshot write failed: %s",
+                self._campaign_id,
+                exc,
+            )
 
     def _read_strategy_counts(self) -> dict[str, int] | None:
         """Read and parse the exported ``strategies.csv`` (REQ-21).
