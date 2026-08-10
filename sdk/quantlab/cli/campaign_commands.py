@@ -149,6 +149,17 @@ async def cmd_campaign_status(args: argparse.Namespace) -> int:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+# Stop-on-non-approved actions (ADR-7): mirror DispatchStage._APPROVED_ACTIONS.
+# ``GateDecision.is_approved()`` is True for APPROVE and FALLBACK only; every
+# other action (REJECT, HOLD, ABORT, ESCALATE-without-fallback, missing) stops
+# the flow. Values are the ``action`` strings written into
+# ``gate_decision_{gate_id}`` artifacts by GateInterceptorStage.
+_GATE_APPROVED_ACTIONS = frozenset({"approve", "approved", "fallback"})
+
+# Default base directory for the decision-file channel (REQ-38).
+_DEFAULT_GATE_EVENT_DIR = "/tmp/sqx-gates"
+
+
 def _load_run_flow_config(args: argparse.Namespace) -> Any:
     """Load the ``ResearchConfig`` for the full-campaign flow.
 
@@ -230,19 +241,97 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
         return 1
 
     campaign_id = getattr(args, "campaign_id", None) or config.campaign
-    ctx = PipelineContext(config={"campaign_id": campaign_id})
+    gate_event_dir = getattr(args, "gate_event_dir", None) or _DEFAULT_GATE_EVENT_DIR
+    gate_timeout = getattr(args, "gate_timeout", None)
+    decisions_file = getattr(args, "gate_decisions_file", None)
+
+    ctx = PipelineContext(config={
+        "campaign_id": campaign_id,
+        # The archive stage (WU-4) wires its internal HUMAN_APPROVE_ARCHIVE
+        # gate_fn from these keys — same channel as the pipeline gates.
+        "gate_event_dir": gate_event_dir,
+        "gate_decisions_file": decisions_file,
+        "gate_timeout": gate_timeout,
+    })
+
+    # Run-Flow Gate Execution (REQ) + Headless Gate Decisions (REQ): register
+    # a callback per HUMAN_* gate — the interactive decision-file channel
+    # (pending.json → poll → decision.json) by default, or the headless
+    # decisions-file channel with --gate-decisions-file (read-only, no prompt).
+    from quantlab.gates.callbacks import (
+        DecisionsFileGateCallback,
+        QuestionToolGateCallback,
+    )
+
+    def _gate_context_dict(gate_ctx: Any) -> dict[str, Any]:
+        """Bridge the pipeline ``GateContext`` dataclass to the callback dict.
+
+        Gate callbacks in ``quantlab.gates.callbacks`` follow the orchestrator
+        protocol (``ctx: dict``); ``GateInterceptorStage`` hands them its own
+        ``GateContext`` dataclass. ResearchDirector bridges the same way.
+        """
+        if isinstance(gate_ctx, dict):
+            return gate_ctx
+        return dict(gate_ctx.__dict__) if hasattr(gate_ctx, "__dict__") else dict(gate_ctx)
+
+    def _make_callback(gate_id: str) -> Any:
+        if decisions_file:
+            raw = DecisionsFileGateCallback(decisions_file)
+        else:
+            raw = QuestionToolGateCallback(
+                gate_event_dir=gate_event_dir,
+                campaign_id=campaign_id,
+                timeout=gate_timeout,
+            )
+
+        async def _wrapped(gate_ctx: Any, _raw: Any = raw) -> Any:
+            return await _raw(_gate_context_dict(gate_ctx))
+
+        return _wrapped
+
+    for stage in pipeline.stages:
+        gate_id = getattr(stage, "gate_id", "")
+        if gate_id.startswith("HUMAN_"):
+            stage.set_callback(_make_callback(gate_id))
+
     completed: list[str] = []
     failed: str | None = None
     for stage in pipeline.stages:
         name = getattr(stage, "name", "?")
-        if getattr(stage, "gate_id", "").startswith("HUMAN_"):
-            completed.append(name)
-            continue
+        gate_id = getattr(stage, "gate_id", "")
         try:
-            await stage.execute(ctx)
+            output = await stage.execute(ctx)
         except Exception as e:
             failed = name
             print_error(f"Stage '{name}' failed: {e}")
+            break
+        if gate_id.startswith("HUMAN_"):
+            # Stop-on-non-approved (REQ Run-Flow Gate Execution): REJECT,
+            # HOLD, ABORT, or a missing decision stops the flow with a
+            # non-zero exit — the system never auto-approves (REQ-11) and a
+            # blocked run never returns a false success.
+            decision = ctx.artifacts.get(f"gate_decision_{gate_id}")
+            action = (
+                decision.get("action") if isinstance(decision, dict) else None
+            )
+            if (action or "").lower() not in _GATE_APPROVED_ACTIONS:
+                failed = name
+                outcome = action or "missing"
+                print_error(
+                    f"Gate '{gate_id}' not approved (decision: {outcome}) — "
+                    "stopping the flow."
+                )
+                break
+            completed.append(name)
+            continue
+        # A blocked dispatch must surface as a visible failure, never a false
+        # success (REQ Run-Flow Gate Execution scenario 3).
+        if isinstance(output, dict) and output.get("dispatch_blocked"):
+            failed = name
+            print_error(
+                "Dispatch blocked: the HUMAN_APPROVE_CONFIG gate did not "
+                "approve — no dispatch was attempted."
+            )
             break
         completed.append(name)
 
@@ -298,6 +387,26 @@ def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_run.add_argument("--timeframe", default="H1", help="Timeframe (when --config is absent)")
     p_run.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
     p_run.add_argument("--json", action="store_true", help="Output JSON")
+    p_run.add_argument(
+        "--gate-decisions-file",
+        default=None,
+        help="Path to a JSON decisions file for headless gate approval "
+             "(maps gate_id to {action, reason, decided_by}); gates without "
+             "a decision fail closed and stop the flow",
+    )
+    p_run.add_argument(
+        "--gate-event-dir",
+        default=_DEFAULT_GATE_EVENT_DIR,
+        help="Base directory for the decision-file channel "
+             "(pending.json / decision.json); default /tmp/sqx-gates",
+    )
+    p_run.add_argument(
+        "--gate-timeout",
+        default=None,
+        type=float,
+        help="Seconds to wait for an interactive gate decision before "
+             "failing closed (default: wait indefinitely)",
+    )
     p_run.set_defaults(func=cmd_campaign_run_flow)
 
 

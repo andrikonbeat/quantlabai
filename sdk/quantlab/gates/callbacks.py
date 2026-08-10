@@ -13,6 +13,9 @@ The pipeline and the agent communicate through a decision-file channel (AD-4):
   fallback (HOLD for HUMAN_APPROVE_CONFIG) — never auto-approve.
 - ``StdinGateCallback`` is the headless fallback: one decision-envelope JSON
   line read from stdin.
+- ``DecisionsFileGateCallback`` is the headless decisions-file channel
+  (ADR-4, ``--gate-decisions-file``): reads a JSON ``{gate_id: envelope}``
+  file, re-read per gate; a missing file or key fails closed (HOLD, system).
 - ``fail_closed_callback`` returns HOLD — used when orchestrated mode has no
   callback registered. Legacy CLI behavior is unchanged (REQ-11): the legacy
   ``_auto_approve`` path is only replaced under the orchestrated flag.
@@ -126,6 +129,39 @@ def read_decision_file(path: str | Path) -> DecisionFile:
     return DecisionFile.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 
+def read_decisions_file(path: str | Path) -> dict[str, DecisionFile]:
+    """Parse a headless decisions file into ``{gate_id: DecisionFile}`` (ADR-4).
+
+    The file is a JSON object mapping each gate id to a decision envelope with
+    the same shape as the per-gate ``{gate_id}.decision.json`` files:
+
+        {"HUMAN_APPROVE_DEMO": {"action": "approve", "reason": "go"}}
+
+    The file is READ-ONLY input for the gate system — it is never written.
+
+    Args:
+        path: Path to the JSON decisions file.
+
+    Returns:
+        Mapping of gate id to its ``DecisionFile`` envelope.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the JSON root is not an object mapping gate ids.
+    """
+    raw = Path(path).read_text(encoding="utf-8")
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Decisions file {str(path)!r} must be a JSON object mapping "
+            "gate_id to a decision envelope."
+        )
+    return {
+        gate_id: DecisionFile.model_validate(envelope)
+        for gate_id, envelope in data.items()
+    }
+
+
 def decision_file_to_gate_decision(
     decision_file: DecisionFile,
     gate_id: str,
@@ -224,6 +260,85 @@ class StdinGateCallback:
         line = await self._reader()
         decision_file = DecisionFile.model_validate_json(line)
         return decision_file_to_gate_decision(decision_file, ctx.get("gate_id", ""))
+
+
+def _fail_closed(gate_id: str, reason: str) -> GateDecision:
+    """Fail-closed HOLD decision — never auto-approves (REQ-11)."""
+    return GateDecision(
+        gate_id=gate_id,
+        action=GateDecisionAction.HOLD,
+        reason=reason,
+        decided_by="system",
+    )
+
+
+class DecisionsFileGateCallback:
+    """Headless gate channel (ADR-4) — reads decisions from a JSON file.
+
+    ``--gate-decisions-file`` semantics: the file maps ``gate_id`` to a
+    decision envelope (same shape as the per-gate ``{gate_id}.decision.json``
+    files). The file is re-read for every gate so decisions can be added
+    while the flow runs. The system MUST NOT prompt interactively in headless
+    mode, and a missing file or a missing key fails closed (HOLD, system) —
+    the system never auto-approves (REQ-11). The file is read-only input.
+
+    Args:
+        path: Path to the JSON decisions file.
+        read_fn: Injectable reader for deterministic tests (defaults to
+            ``read_decisions_file``).
+    """
+
+    def __init__(
+        self,
+        path: str | Path,
+        read_fn: Callable[[str | Path], dict[str, DecisionFile]] | None = None,
+    ) -> None:
+        self._path = Path(path)
+        self._read_fn = read_fn or read_decisions_file
+
+    async def __call__(self, ctx: dict[str, Any]) -> GateDecision:
+        """Resolve the gate in ``ctx`` from the decisions file (fail closed).
+
+        Args:
+            ctx: Gate context with at least ``gate_id``.
+
+        Returns:
+            The gate decision: APPROVE when the file holds an approval for
+            the gate, otherwise a fail-closed HOLD (system) decision.
+
+        Raises:
+            ValueError: If ``ctx`` lacks ``gate_id`` or the file is malformed.
+        """
+        gate_id = ctx.get("gate_id", "")
+        if not gate_id:
+            raise ValueError("gate_id is required in the gate context")
+
+        try:
+            decisions = await asyncio.to_thread(self._read_fn, self._path)
+        except FileNotFoundError:
+            logger.warning(
+                "Decisions file %s not found for gate %s — failing closed.",
+                self._path,
+                gate_id,
+            )
+            return _fail_closed(
+                gate_id,
+                f"No decisions file at {self._path} — failing closed (headless).",
+            )
+
+        decision_file = decisions.get(gate_id)
+        if decision_file is None:
+            logger.warning(
+                "No decision for gate %s in %s — failing closed.",
+                gate_id,
+                self._path,
+            )
+            return _fail_closed(
+                gate_id,
+                f"No decision for {gate_id} in {self._path} — failing closed.",
+            )
+
+        return decision_file_to_gate_decision(decision_file, gate_id)
 
 
 async def fail_closed_callback(ctx: dict[str, Any]) -> GateDecision:
