@@ -233,10 +233,16 @@ class GateInterceptorStage(Stage, ABC):
 
 # ─── Predefined Gate IDs ──────────────────────────────────────────────────────
 
+# Synced with the canonical 8 IDs in ``quantlab.gates.models.HUMAN_GATE_IDS``
+# (OQ1): DEMO and ARCHIVE land after DEPLOY, CONFIG at the tail — the exact
+# ``DEFAULT_GATE_POLICIES`` order.
 HUMAN_GATE_IDS: list[str] = [
     "HUMAN_REVIEW_OBJECTIVES",
     "HUMAN_APPROVE_ITERATION",
     "HUMAN_APPROVE_PORTFOLIO",
     "HUMAN_APPROVE_DEPLOY",
+    "HUMAN_APPROVE_DEMO",
+    "HUMAN_APPROVE_ARCHIVE",
     "HUMAN_REVIEW_PERFORMANCE",
+    "HUMAN_APPROVE_CONFIG",
 ]

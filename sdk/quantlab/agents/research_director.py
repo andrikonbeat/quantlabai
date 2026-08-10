@@ -375,6 +375,21 @@ class ResearchDirector:
                     fallback="HOLD",
                 )
             )
+            # REQ-38 (s4/s5, ADR-5b): HUMAN_APPROVE_DEMO is a real pipeline
+            # interceptor on the demo stage's pending_gate marker. There is
+            # deliberately NO HUMAN_APPROVE_ARCHIVE pipeline gate — the runner
+            # injects ONE gate per after_stage, and ArchivePhase consumes its
+            # archive gate internally via a decision-file gate_fn; a second
+            # pipeline gate would double-fire (ADR-5b).
+            gates.append(
+                GateConfig(
+                    gate_id="HUMAN_APPROVE_DEMO",
+                    name="HUMAN_APPROVE_DEMO",
+                    after_stage="demo",
+                    timeout_hours=12,
+                    fallback="HOLD",
+                )
+            )
 
         # Build pipeline config
         pipeline_config = MultiAgentPipelineConfig(

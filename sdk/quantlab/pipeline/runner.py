@@ -18,7 +18,6 @@ from quantlab.pipeline.registry import StageRegistry
 from quantlab.pipeline.stages.gate_interceptor import (
     FallbackPolicy,
     GateInterceptorStage,
-    HUMAN_GATE_IDS,
 )
 
 

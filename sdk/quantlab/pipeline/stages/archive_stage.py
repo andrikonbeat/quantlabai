@@ -47,7 +47,35 @@ class ArchiveStage(Stage):
         if phase is None:  # pragma: no cover - exercised by integration
             from quantlab.phase4.campaign_archive import ArchivePhase
 
-            phase = ArchivePhase()
+            # REQ-38 (s4/s5, ADR-5b): when the run provides a gate event dir,
+            # wire a decision-file gate_fn into ArchivePhase so the internal
+            # HUMAN_APPROVE_ARCHIVE pending_gate marker is resolved through
+            # the same pending.json → decision.json protocol as the pipeline
+            # gates. Headless runs (--gate-decisions-file) resolve from the
+            # decisions file; otherwise the interactive channel polls for a
+            # decision file. With neither configured, ArchivePhase keeps its
+            # default HumanGateOrchestrator (fail-closed HOLD → DENIED).
+            gate_fn = None
+            if ctx.config:
+                gate_event_dir = ctx.config.get("gate_event_dir")
+                if gate_event_dir:
+                    from quantlab.gates.callbacks import (
+                        DecisionsFileGateCallback,
+                        QuestionToolGateCallback,
+                    )
+
+                    decisions_file = ctx.config.get("gate_decisions_file")
+                    timeout = ctx.config.get("gate_timeout")
+                    gate_fn = (
+                        DecisionsFileGateCallback(decisions_file)
+                        if decisions_file
+                        else QuestionToolGateCallback(
+                            gate_event_dir=gate_event_dir,
+                            campaign_id=campaign_id,
+                            timeout=timeout,
+                        )
+                    )
+            phase = ArchivePhase(gate_fn=gate_fn)
 
         bundle = await phase.run(campaign_id)
         ctx.artifacts["archive_bundle"] = bundle

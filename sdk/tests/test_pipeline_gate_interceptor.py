@@ -60,14 +60,17 @@ class TestGateInterceptorStage:
 
     def test_human_gate_ids(self) -> None:
         """GIVEN HUMAN_GATE_IDS
-        THEN all 5 gate IDs are defined.
-        """
-        assert len(HUMAN_GATE_IDS) == 5
+        THEN all 8 canonical gate IDs are defined (OQ1 sync with
+        quantlab.gates.models.HUMAN_GATE_IDS)."""
+        assert len(HUMAN_GATE_IDS) == 8
         assert "HUMAN_REVIEW_OBJECTIVES" in HUMAN_GATE_IDS
         assert "HUMAN_APPROVE_ITERATION" in HUMAN_GATE_IDS
         assert "HUMAN_APPROVE_PORTFOLIO" in HUMAN_GATE_IDS
         assert "HUMAN_APPROVE_DEPLOY" in HUMAN_GATE_IDS
         assert "HUMAN_REVIEW_PERFORMANCE" in HUMAN_GATE_IDS
+        assert "HUMAN_APPROVE_DEMO" in HUMAN_GATE_IDS
+        assert "HUMAN_APPROVE_ARCHIVE" in HUMAN_GATE_IDS
+        assert "HUMAN_APPROVE_CONFIG" in HUMAN_GATE_IDS
 
     def test_set_callback(self) -> None:
         """GIVEN a GateInterceptorStage

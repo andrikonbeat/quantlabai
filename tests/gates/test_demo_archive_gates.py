@@ -210,3 +210,139 @@ class TestDemoGateQuestionTool:
         decision = await asyncio.wait_for(task, timeout=10)
         assert decision.action == GateDecisionAction.REJECT
         assert decision.is_terminal()
+
+
+class TestDemoGatePipelineWiring:
+    """REQ-38 s4/s5: HUMAN_APPROVE_DEMO is a real pipeline interceptor."""
+
+    @staticmethod
+    def _orchestrated_pipeline():
+        from quantlab.agents.research_director import ResearchDirector
+        from quantlab.dsl.models import IterationConfig, ResearchConfig
+
+        cfg = ResearchConfig(
+            campaign="DemoGate",
+            market="EURUSD",
+            timeframe="H1",
+            iteration_config=IterationConfig(max_iterations=1),
+        )
+        return ResearchDirector().build_pipeline(cfg, orchestrated=True)
+
+    def test_pipeline_injects_demo_gate_after_demo(self) -> None:
+        """GIVEN the orchestrated pipeline
+        WHEN the demo stage completes
+        THEN a HUMAN_APPROVE_DEMO interceptor fires on the demo marker
+        (HOLD fail-closed, 12h — mirroring the DEPLOY gate posture)."""
+        pipeline = self._orchestrated_pipeline()
+        names = [s.name for s in pipeline.stages]
+        gates = [
+            s for s in pipeline.stages
+            if getattr(s, "gate_id", "") == HUMAN_APPROVE_DEMO
+        ]
+        assert len(gates) == 1
+        gate = gates[0]
+        assert names.index("demo") + 1 == names.index(gate.name)
+        assert gate.fallback == FallbackPolicy.HOLD
+        assert gate.timeout_hours == 12
+
+    def test_no_archive_pipeline_gate_avoids_double_fire(self) -> None:
+        """ADR-5b: no HUMAN_APPROVE_ARCHIVE pipeline gate — ArchivePhase
+        consumes its gate internally via gate_fn; a second pipeline gate
+        would double-fire on the same after_stage."""
+        pipeline = self._orchestrated_pipeline()
+        gate_ids = [getattr(s, "gate_id", "") for s in pipeline.stages]
+        assert HUMAN_APPROVE_ARCHIVE not in gate_ids
+
+
+class TestArchiveStageGateFnWiring:
+    """REQ-38 s4/s5: ArchiveStage passes a decision-file gate_fn into
+    ArchivePhase — the internal pending_gate marker is written for
+    resolution through the same pending.json → decision.json protocol."""
+
+    @pytest.mark.asyncio
+    async def test_archive_stage_wires_decision_file_gate_fn(self, tmp_path) -> None:
+        """GIVEN a run providing gate_event_dir in context
+        WHEN the archive stage executes
+        THEN the HUMAN_APPROVE_ARCHIVE pending marker is written and the
+        decision file resolves the gate (approve → archived)."""
+        from quantlab.pipeline.base import PipelineContext
+        from quantlab.pipeline.stages.archive_stage import ArchiveStage
+
+        stage = ArchiveStage()
+        ctx = PipelineContext(
+            config={"campaign_id": "camp-arch", "gate_event_dir": str(tmp_path)},
+            artifacts={"demo_result": {"status": "DEPLOYED"}},
+        )
+        task = asyncio.create_task(stage.execute(ctx))
+
+        pending = pending_path(str(tmp_path), "camp-arch", HUMAN_APPROVE_ARCHIVE)
+        for _ in range(200):
+            if pending.exists():
+                break
+            await asyncio.sleep(0.01)
+        assert pending.exists(), "archive gate_fn must write the pending marker"
+        assert json.loads(pending.read_text())["gate_id"] == HUMAN_APPROVE_ARCHIVE
+
+        decision_file = decision_path(
+            str(tmp_path), "camp-arch", HUMAN_APPROVE_ARCHIVE
+        )
+        decision_file.write_text(
+            json.dumps(
+                {"action": "approve", "reason": "archive ok", "decided_by": "human"}
+            ),
+            encoding="utf-8",
+        )
+
+        out = await asyncio.wait_for(task, timeout=10)
+        assert out["archive_bundle"].status == "ARCHIVED"
+
+    @pytest.mark.asyncio
+    async def test_archive_gate_denial_returns_to_maintenance(self, tmp_path) -> None:
+        """GIVEN a denial via the decision file
+        WHEN the archive stage executes
+        THEN the campaign returns to maintenance (DENIED) — denial blocks
+        the close (REQ-38 s3)."""
+        from quantlab.pipeline.base import PipelineContext
+        from quantlab.pipeline.stages.archive_stage import ArchiveStage
+
+        stage = ArchiveStage()
+        ctx = PipelineContext(
+            config={"campaign_id": "camp-arch", "gate_event_dir": str(tmp_path)},
+            artifacts={"demo_result": {"status": "DEPLOYED"}},
+        )
+        task = asyncio.create_task(stage.execute(ctx))
+
+        pending = pending_path(str(tmp_path), "camp-arch", HUMAN_APPROVE_ARCHIVE)
+        for _ in range(200):
+            if pending.exists():
+                break
+            await asyncio.sleep(0.01)
+        assert pending.exists()
+
+        decision_file = decision_path(
+            str(tmp_path), "camp-arch", HUMAN_APPROVE_ARCHIVE
+        )
+        decision_file.write_text(
+            json.dumps(
+                {"action": "reject", "reason": "keep running", "decided_by": "human"}
+            ),
+            encoding="utf-8",
+        )
+
+        out = await asyncio.wait_for(task, timeout=10)
+        assert out["archive_bundle"].status == "DENIED"
+        assert out["archive_bundle"].artifacts == []
+
+    @pytest.mark.asyncio
+    async def test_without_event_dir_preserves_default_orchestrator(self) -> None:
+        """GIVEN no gate_event_dir in context
+        WHEN the archive stage executes
+        THEN the default HumanGateOrchestrator applies — fail-closed DENIED,
+        never auto-archives."""
+        from quantlab.pipeline.base import PipelineContext
+        from quantlab.pipeline.stages.archive_stage import ArchiveStage
+
+        stage = ArchiveStage()
+        ctx = PipelineContext(config={"campaign_id": "camp-arch"})
+        out = await stage.execute(ctx)
+        assert out["archive_bundle"].status == "DENIED"

@@ -162,16 +162,19 @@ class TestOrchestratedGateWiring:
     def test_orchestrated_gates_gain_human_approve_config(self) -> None:
         """GIVEN orchestrated=True
         THEN the pipeline gains the HUMAN_APPROVE_CONFIG gate after
-        config_review and before dispatch.
-        """
+        config_review and before dispatch, plus the HUMAN_APPROVE_DEMO
+        interceptor after the demo stage (REQ-38 s4)."""
         pipeline = ResearchDirector().build_pipeline(_cfg(), orchestrated=True)
         names = _stage_names(pipeline)
         gate_ids = _gate_ids(pipeline)
 
         assert "HUMAN_APPROVE_CONFIG" in gate_ids
-        assert len(gate_ids) == 6
+        assert "HUMAN_APPROVE_DEMO" in gate_ids
+        assert len(gate_ids) == 7
         idx_gate = names.index("gate_HUMAN_APPROVE_CONFIG")
         assert names.index("config_review") < idx_gate < names.index("dispatch")
+        idx_demo = names.index("gate_HUMAN_APPROVE_DEMO")
+        assert names.index("demo") < idx_demo < names.index("archive")
 
     @pytest.mark.asyncio
     async def test_orchestrated_gate_fails_closed_without_callback(self) -> None:
