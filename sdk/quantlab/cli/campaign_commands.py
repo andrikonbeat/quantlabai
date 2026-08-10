@@ -191,7 +191,11 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
     auto-approve (REQ-11).
     """
     from quantlab.agents.research_director import ResearchDirector
-    from quantlab.campaign.flow import PHASES, missing_flow_stages
+    from quantlab.campaign.flow import (
+        PHASES,
+        FlowIntegrityError,
+        assert_flow_segments,
+    )
     from quantlab.pipeline.base import PipelineContext
 
     knowledge_root = getattr(args, "knowledge_root", "knowledge")
@@ -208,14 +212,21 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
         print_error(f"Failed to build the campaign flow: {e}")
         return 1
 
+    # REQ-37: segment-preserving preflight BEFORE execution begins. The
+    # conditional retester/optimizer stages are only required when their DSL
+    # blocks are configured (ADR-1); everything else must be present and in
+    # segment order (presence + post-deploy boundary + loop tail).
     stage_names = [s.name for s in pipeline.stages]
-    missing = missing_flow_stages(stage_names)
-    if missing:
-        # REQ-37: abort BEFORE execution begins when a phase is dropped.
-        print_error(
-            "Flow-integrity error: missing phases "
-            f"{', '.join(missing)} — aborting before execution (REQ-37)"
-        )
+    optional_phases: tuple[str, ...] = ()
+    if config.retest is None:
+        optional_phases += ("retester",)
+    if config.optimize is None:
+        optional_phases += ("optimizer",)
+    try:
+        assert_flow_segments(stage_names, optional_phases=optional_phases)
+    except FlowIntegrityError as exc:
+        # REQ-37: abort BEFORE execution begins when the invariant fails.
+        print_error(str(exc))
         return 1
 
     campaign_id = getattr(args, "campaign_id", None) or config.campaign
