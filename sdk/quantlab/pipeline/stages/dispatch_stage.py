@@ -89,6 +89,26 @@ class DispatchStage(Stage):
 
         build_config = ctx.artifacts.get("build_config")
         research_config = ctx.artifacts.get("research_config")
+
+        # Monitoring hooks (REQ-2): read from ctx.config and forward to the
+        # builder's dispatch boundary, which passes them into the substrate
+        # (cli_wrapper.dispatch_campaign). Only non-None keys are forwarded so
+        # the orchestrated default (no hooks configured) stays byte-identical.
+        # The run-flow CLI seeds gate_event_dir here (REQ-38), so the dispatch
+        # gate writer is wired end-to-end even without an LLM monitor.
+        ctx_config = ctx.config or {}
+        dispatch_hooks = {
+            key: ctx_config.get(key)
+            for key in (
+                "llm_config",
+                "on_watcher_event",
+                "on_llm_verdict",
+                "confirm_stop",
+                "gate_event_dir",
+            )
+        }
+        dispatch_hooks = {k: v for k, v in dispatch_hooks.items() if v is not None}
+
         try:
             result = await builder._dispatch_single(
                 cfx_bytes=ctx.artifacts["cfx_bytes"],
@@ -99,6 +119,7 @@ class DispatchStage(Stage):
                 # DispatchStage is the orchestrated dispatch boundary (AD-8):
                 # the data pre-flight is a HARD check (REQ-13).
                 orchestrated=True,
+                **dispatch_hooks,
             )
         except Exception as exc:
             # REQ-2 (builder-agent): the substrate handoff failed — fail safe.

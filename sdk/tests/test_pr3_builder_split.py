@@ -148,6 +148,13 @@ class TestEnsureDataPreFlight:
             config=None,
             force_mock=None,
             build_config=None,
+            # Monitoring hooks (REQ-2): the real dispatch_campaign accepts
+            # these; _dispatch_single must forward them (T-3.2).
+            llm_config=None,
+            on_watcher_event=None,
+            on_llm_verdict=None,
+            confirm_stop=None,
+            gate_event_dir=None,
         ):
             return {
                 "status": "completed",

@@ -15,7 +15,7 @@ import os
 import time
 import urllib.parse
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 import httpx
 
@@ -817,6 +817,11 @@ class BuilderAgent:
         campaign_id: str | None = None,
         build_config: Any = None,
         orchestrated: bool = False,
+        llm_config: Any = None,
+        on_watcher_event: Callable[[Any], None] | None = None,
+        on_llm_verdict: Callable[[Any], None] | None = None,
+        confirm_stop: Callable[[Any], Awaitable[bool]] | None = None,
+        gate_event_dir: str | None = None,
     ) -> DispatchResult:
         """Execute a single SQX dispatch attempt.
 
@@ -832,6 +837,17 @@ class BuilderAgent:
             build_config: In-flight ``BuildConfig`` for the dispatch.
             orchestrated: When True, ``_ensure_data`` is a HARD pre-flight
                 (REQ-13): data errors abort dispatch instead of being logged.
+            llm_config: Optional ``LLMConfig`` forwarded to the dispatch —
+                when set, the substrate wires an ``LLMGenerationMonitor``
+                sibling task (REQ-2). ``None`` keeps zero LLM calls.
+            on_watcher_event: Optional watcher-event callback forwarded to
+                the dispatch's ``CampaignMonitor``.
+            on_llm_verdict: Optional LLM-verdict callback forwarded to the
+                dispatch's ``LLMGenerationMonitor``.
+            confirm_stop: Optional async ``(verdict) -> bool`` confirmation
+                hook forwarded to the dispatch.
+            gate_event_dir: Base directory for gate decision files (REQ-20),
+                forwarded to the dispatch's gate writer.
 
         Returns:
             ``DispatchResult`` with dispatch results.
@@ -882,6 +898,13 @@ class BuilderAgent:
                     config=config,
                     force_mock=force_mock,
                     build_config=build_config,
+                    # Monitoring hooks (REQ-2): the substrate wires them into
+                    # the spawned monitors — forwarded unchanged.
+                    llm_config=llm_config,
+                    on_watcher_event=on_watcher_event,
+                    on_llm_verdict=on_llm_verdict,
+                    confirm_stop=confirm_stop,
+                    gate_event_dir=gate_event_dir,
                 )
                 result.sqcli_status = sqcli_result.get("status", "completed")
                 result.export_paths = sqcli_result.get("export_paths", [])
@@ -901,6 +924,14 @@ class BuilderAgent:
                                 campaign_id=f"{campaign_id}_fixture",
                                 config=config,
                                 build_config=build_config,
+                                # Monitoring hooks (REQ-2): forwarded on the
+                                # fallback dispatch too, so the substrate
+                                # wiring is identical on both sites.
+                                llm_config=llm_config,
+                                on_watcher_event=on_watcher_event,
+                                on_llm_verdict=on_llm_verdict,
+                                confirm_stop=confirm_stop,
+                                gate_event_dir=gate_event_dir,
                             )
                             result.sqcli_status = sqcli_result.get("status", "completed")
                             result.export_paths = sqcli_result.get("export_paths", [])
