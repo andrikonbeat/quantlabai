@@ -101,7 +101,10 @@ STAGE_FOR_PHASE: dict[str, str] = {
     "config": "builder",
     "review": "config_review",
     "dispatch": "dispatch",
-    "monitor": "monitor",
+    # ADR-3: the orchestrated tail binds the monitor phase to
+    # ExecutionMonitorStage ("execution_monitor"). The legacy "monitor"
+    # MonitoringAgent satisfies the phase via the alias below.
+    "monitor": "execution_monitor",
     "retest": "retester",
     "optimize": "optimizer",
     "portfolio": "portfolio",
@@ -114,10 +117,29 @@ STAGE_FOR_PHASE: dict[str, str] = {
 
 
 # Stage-name aliases that satisfy a canonical phase. The LLM-routed research
-# stage ("research_llm") satisfies the "research" phase.
+# stage ("research_llm") satisfies the "research" phase; the legacy
+# MonitoringAgent ("monitor") satisfies the "monitor" phase (ADR-3).
 _STAGE_ALIASES: dict[str, tuple[str, ...]] = {
     "research": ("research", "research_llm"),
+    "monitor": ("monitor", "execution_monitor"),
 }
+
+
+def _present_stage(canonical: str, names: Sequence[str]) -> str:
+    """Resolve *canonical* to the concrete stage name present in *names*.
+
+    Prefers the exact canonical name, then falls back to its aliases — e.g.
+    the orchestrated pipeline binds the monitor phase to ``execution_monitor``
+    (ADR-3) while legacy pipelines keep ``monitor``; both satisfy the phase.
+    Returns *canonical* unchanged when no alias matches, letting the caller's
+    ``index()`` raise a clear ``ValueError``.
+    """
+    if canonical in names:
+        return canonical
+    for alias in _STAGE_ALIASES.get(canonical, ()):
+        if alias in names:
+            return alias
+    return canonical
 
 
 def _optional_stage_names(optional_phases: Sequence[str]) -> set[str]:
@@ -179,9 +201,11 @@ def assert_flow_segments(
             f"({', '.join(missing)}) — aborting before execution (REQ-37)"
         )
 
-    # 2. Post-deploy boundary: deploy < demo < archive < live_ops < monitor.
+    # 2. Post-deploy boundary: deploy < demo < archive < live_ops < monitor
+    #    (the monitor phase resolves to its bound stage — ADR-3).
     boundary = ("deploy", "demo", "archive", "live_ops", "monitor")
-    for earlier, later in zip(boundary, boundary[1:]):
+    resolved_boundary = [_present_stage(s, names) for s in boundary]
+    for earlier, later in zip(resolved_boundary, resolved_boundary[1:]):
         if names.index(earlier) >= names.index(later):
             raise FlowIntegrityError(
                 "flow-integrity error: boundary reorder — "
@@ -189,7 +213,7 @@ def assert_flow_segments(
             )
 
     # 3. Loop tail: monitor < guardian_evaluate < [retester] < [optimizer].
-    tail = ["monitor", "guardian_evaluate"]
+    tail = [_present_stage("monitor", names), "guardian_evaluate"]
     for stage in ("retester", "optimizer"):
         if stage in present:
             tail.append(stage)

@@ -312,10 +312,14 @@ class ResearchDirector:
             stages.append({"name": "archive", "type": "agent"})
             # Canonical live-ops phase (REQ-01 phase 14, REQ-6): after the
             # archive, live-ops starts monitoring from the archive state,
-            # before the post-archive loop (monitor → guardian_evaluate →
-            # retester → optimizer).
+            # before the post-archive loop (execution_monitor →
+            # guardian_evaluate → retester → optimizer).
             stages.append({"name": "live_ops", "type": "agent"})
-            stages.append({"name": "monitor", "type": "agent"})
+            # ADR-3: the monitor phase binds to ExecutionMonitorStage in the
+            # orchestrated tail (registered as "execution_monitor"); the
+            # legacy "monitor" MonitoringAgent stays on the non-orchestrated
+            # path only (REQ-11 scope guard).
+            stages.append({"name": "execution_monitor", "type": "agent"})
             stages.append({"name": "guardian_evaluate", "type": "agent"})
             # REQ-07/08/09 (D4): bounded retest then optimize at the loop tail.
             if config.retest is not None:
@@ -358,7 +362,11 @@ class ResearchDirector:
             GateConfig(
                 gate_id="HUMAN_REVIEW_PERFORMANCE",
                 name="HUMAN_REVIEW_PERFORMANCE",
-                after_stage="monitor",
+                # ADR-3: the runner injects gates by after_stage, so the
+                # shared performance-review gate targets the stage the
+                # monitor phase binds to — ExecutionMonitorStage in the
+                # orchestrated tail, MonitoringAgent ("monitor") elsewhere.
+                after_stage="execution_monitor" if orchestrated else "monitor",
                 timeout_hours=48,
                 fallback="CONTINUE",
             ),

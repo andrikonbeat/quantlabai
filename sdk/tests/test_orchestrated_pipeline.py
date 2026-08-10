@@ -116,7 +116,8 @@ class TestOrchestratedStageWiring:
     def test_retester_optimizer_appended_after_monitor_when_configured(self) -> None:
         """GIVEN retest and optimize blocks in the ResearchConfig
         WHEN building the orchestrated pipeline
-        THEN retester then optimizer run after monitor (REQ-01 loop tail).
+        THEN retester then optimizer run after execution_monitor (REQ-01 loop
+        tail, ADR-3: the monitor phase binds to ExecutionMonitorStage).
         """
         retest = RetestBlock(strategy_id="S1", databanks=["EURUSD_H1"])
         optimize = OptimizeBlock(strategy_id="S1", databanks=["EURUSD_H1"])
@@ -125,7 +126,7 @@ class TestOrchestratedStageWiring:
         )
         names = _stage_names(pipeline)
 
-        assert names.index("monitor") < names.index("retester") < names.index("optimizer")
+        assert names.index("execution_monitor") < names.index("retester") < names.index("optimizer")
 
     def test_retester_optimizer_absent_without_blocks(self) -> None:
         """GIVEN no retest/optimize blocks

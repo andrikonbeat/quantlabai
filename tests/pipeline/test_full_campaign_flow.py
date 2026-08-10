@@ -102,7 +102,7 @@ class TestFullFlowCoversCanonicalPhases:
         names = _stage_names(_full_flow_pipeline())
         assert "live_ops" in names
         assert names.index("archive") < names.index("live_ops")
-        assert names.index("live_ops") < names.index("monitor")
+        assert names.index("live_ops") < names.index("execution_monitor")
 
 
 class TestFullFlowOrderSegments:
@@ -136,16 +136,35 @@ class TestFullFlowOrderSegments:
 
     def test_live_ops_loop_is_ordered(self) -> None:
         """GIVEN the full orchestrated pipeline
-        THEN the post-archive live-ops loop runs monitor → guardian_evaluate →
-        retester → optimizer in order (design boundary).
+        THEN the post-archive live-ops loop runs execution_monitor →
+        guardian_evaluate → retester → optimizer in order (design boundary,
+        ADR-3: the monitor phase binds to ExecutionMonitorStage).
         """
         names = _stage_names(_full_flow_pipeline())
         assert (
-            names.index("monitor")
+            names.index("execution_monitor")
             < names.index("guardian_evaluate")
             < names.index("retester")
             < names.index("optimizer")
         )
+
+    def test_orchestrated_tail_binds_execution_monitor_stage(self) -> None:
+        """GIVEN the full orchestrated pipeline
+        THEN the monitor phase binds to ExecutionMonitorStage (ADR-3, REQ-26)
+        and the legacy MonitoringAgent ("monitor") is absent from the tail.
+        """
+        from quantlab.pipeline.stages.execution_monitor_stage import (
+            ExecutionMonitorStage,
+        )
+
+        pipeline = _full_flow_pipeline()
+        names = _stage_names(pipeline)
+        assert "execution_monitor" in names
+        assert "monitor" not in names  # no legacy MonitoringAgent in tail
+        stage = next(
+            s for s in pipeline.stages if s.name == "execution_monitor"
+        )
+        assert isinstance(stage, ExecutionMonitorStage)
 
 
 class TestFullFlowScoping:
