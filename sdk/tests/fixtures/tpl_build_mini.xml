@@ -11,7 +11,7 @@
           </MoneyManagement>
         </RiskMoneyManagement>
         <Trading>
-          <MaximumTradesPerDay>3</MaximumTradesPerDay>
+          <MaxTradesPerDay>3</MaxTradesPerDay>
           <EntryCondition>Crossover</EntryCondition>
         </Trading>
     </Settings>

@@ -29,6 +29,20 @@ from quantlab.agents.parameter_matrix import (
 
 FIXTURE_TPL = Path(__file__).parent / "fixtures" / "tpl_build_mini.xml"
 
+# Real builder template shipped with the pinned SQX asset (repo-relative; the
+# test skips gracefully in environments without the pinned assets).
+REPO_ROOT = Path(__file__).resolve().parents[2]
+REAL_TPL = (
+    REPO_ROOT
+    / "assets"
+    / "SQX_144_2953_linux_20260601"
+    / "internal"
+    / "web"
+    / "BUILDER"
+    / "templates"
+    / "tpl_build.xml"
+)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fixtures
@@ -71,7 +85,7 @@ def tpl() -> Path:
 def params() -> list[KbParameter]:
     """Two seeded params: one template-backed, one not."""
     return [
-        make_param("Maximum Trades Per Day", sqx_name="MaximumTradesPerDay"),
+        make_param("Maximum Trades Per Day", sqx_name="Maximum Trades Per Day"),
         make_param("Custom Doc Only", sqx_name="CustomDocOnly"),
     ]
 
@@ -102,7 +116,7 @@ class TestTableGeneration:
         tpl_data = parse_tpl_build(tpl)
         records = build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP)
         record = next(r for r in records if r.name == "Maximum Trades Per Day")
-        # Template has MaximumTradesPerDay=3; chosen config must reflect it.
+        # Real template key is MaxTradesPerDay; chosen config must reflect it.
         assert "3" in (record.chosen_config or "")
         assert record.template_status == "matched"
 
@@ -194,8 +208,8 @@ class TestDeterministicRegeneration:
 class TestParseTplBuild:
     def test_scalar_builder_tags_collected(self, tpl: Path) -> None:
         data = parse_tpl_build(tpl)
-        assert "MaximumTradesPerDay" in data
-        assert data["MaximumTradesPerDay"]["default"] == "3"
+        assert "MaxTradesPerDay" in data
+        assert data["MaxTradesPerDay"]["default"] == "3"
 
     def test_param_tags_collected(self, tpl: Path) -> None:
         data = parse_tpl_build(tpl)
@@ -224,7 +238,7 @@ class TestCommittedFixtures:
 
     def test_committed_tpl_fixture_parses(self) -> None:
         data = parse_tpl_build(FIXTURE_TPL)
-        assert data["MaximumTradesPerDay"]["default"] == "3"
+        assert data["MaxTradesPerDay"]["default"] == "3"
         assert data["Size"]["className"] == "FixedSize"
 
     def test_committed_config_fixture_is_well_formed_xml(self) -> None:
@@ -452,3 +466,49 @@ class TestRunMatrixDatasetRationale:
         dataset = [_dataset_record("monte_carlo_runs", "Retest")]
         with pytest.raises(ParameterMatrixError):
             generate_run_matrix(config, run_type="retest", dataset=dataset)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# WARNING 1 remediation — real-template cross-reference fidelity (REQ-205)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestRealTemplateCrossReference:
+    """Prove TPL_KEY_MAP cross-references the REAL tpl_build.xml, not the
+    mini fixture with wrong spellings (verify WARNING 1: 2/82 matched)."""
+
+    def test_real_template_resolves_from_repo(self) -> None:
+        assert REAL_TPL.is_file(), f"missing real template: {REAL_TPL}"
+
+    def test_real_template_matches_spec_named_param(self) -> None:
+        """The spec example "Maximum Trades Per Day" MUST match the real
+        template key MaxTradesPerDay with a non-empty chosen config cell."""
+        if not REAL_TPL.is_file():
+            pytest.skip("pinned SQX asset absent; real-template test skipped")
+        from quantlab.knowledge.kb.store import KbStore
+
+        tpl = parse_tpl_build(REAL_TPL)
+        params = KbStore(REPO_ROOT / "knowledge").list(sqx_version="144.2953")
+        assert len(params) == 82
+        records = build_educational_dataset(params, tpl=tpl)
+        record = next(r for r in records if r.name == "Maximum Trades Per Day")
+        assert record.template_status == "matched", (
+            "'Maximum Trades Per Day' must resolve to the real "
+            "MaxTradesPerDay key"
+        )
+        assert record.chosen_config  # non-empty "Chosen config" cell
+
+    def test_real_template_cross_reference_count_above_baseline(self) -> None:
+        """Curated map must match meaningfully more than the 2/82 baseline.
+        Lower bound >= 10 keeps the fidelity gate honest but not brittle."""
+        if not REAL_TPL.is_file():
+            pytest.skip("pinned SQX asset absent; real-template test skipped")
+        from quantlab.knowledge.kb.store import KbStore
+
+        tpl = parse_tpl_build(REAL_TPL)
+        params = KbStore(REPO_ROOT / "knowledge").list(sqx_version="144.2953")
+        records = build_educational_dataset(params, tpl=tpl)
+        matched = [r for r in records if r.template_status == "matched"]
+        assert len(matched) >= 10, (
+            f"real-template match count too low: {len(matched)}/82 matched"
+        )

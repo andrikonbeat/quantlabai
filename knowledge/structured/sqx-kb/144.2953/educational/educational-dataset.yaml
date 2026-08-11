@@ -570,8 +570,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '5'
+  template_status: matched
 - name: Initial population size required
   sqx_name: Initial population size required
   tab: Genetic options
@@ -604,8 +604,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '10'
+  template_status: matched
 - name: 'Max # of Generations'
   sqx_name: 'Max # of Generations'
   tab: Genetic options
@@ -621,8 +621,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '10'
+  template_status: matched
 - name: Migrate every Xth generation, X =
   sqx_name: Migrate every Xth generation, X =
   tab: Genetic options
@@ -638,8 +638,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '50'
+  template_status: matched
 - name: Mutation Probability
   sqx_name: Mutation Probability
   tab: Genetic options
@@ -673,8 +673,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '5'
+  template_status: matched
 - name: Population migration rate
   sqx_name: Population migration rate
   tab: Genetic options
@@ -690,8 +690,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '20'
+  template_status: matched
 - name: Profit factor > 1 (initial population filter)
   sqx_name: Profit factor > 1
   tab: Genetic options
@@ -813,8 +813,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '10000'
+  template_status: matched
 - name: Order size
   sqx_name: Order size
   tab: Money management
@@ -833,8 +833,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '0.1'
+  template_status: matched
 - name: Compute from
   sqx_name: Compute from
   tab: Ranking
@@ -922,8 +922,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '500'
+  template_status: matched
 - name: Optimizer block
   sqx_name: Optimizer block
   tab: Ranking
@@ -1048,8 +1048,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '82800'
+  template_status: matched
 - name: Exit At End Of Day
   sqx_name: Exit At End Of Day
   tab: Trading options
@@ -1065,8 +1065,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: 'false'
+  template_status: matched
 - name: Exit On Friday
   sqx_name: Exit On Friday
   tab: Trading options
@@ -1084,8 +1084,8 @@
   when_choose: Always for small accounts.
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: 'false'
+  template_status: matched
 - name: Friday Close Time
   sqx_name: Friday Close Time
   tab: Trading options
@@ -1101,8 +1101,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '82800'
+  template_status: matched
 - name: Limit Time Range
   sqx_name: Limit Time Range
   tab: Trading options
@@ -1119,8 +1119,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: 'false'
+  template_status: matched
 - name: Max distance from market
   sqx_name: Max distance from market
   tab: Trading options
@@ -1154,8 +1154,8 @@
   when_choose: Small-account campaigns.
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '1'
+  template_status: matched
 - name: Minimum / Maximum PT
   sqx_name: Minimum / Maximum PT
   tab: Trading options
@@ -1241,8 +1241,8 @@
   when_choose: null
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: 'false'
+  template_status: matched
 - name: Sunday Open Time
   sqx_name: Sunday Open Time
   tab: Trading options
@@ -1405,8 +1405,8 @@
   when_choose: Always required.
   status: verified
   evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
-  chosen_config: null
-  template_status: template-missing
+  chosen_config: '100'
+  template_status: matched
 - name: Strategy style
   sqx_name: Strategy style
   tab: What to build

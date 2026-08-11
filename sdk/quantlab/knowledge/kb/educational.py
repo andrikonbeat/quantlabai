@@ -25,25 +25,36 @@ from pydantic import BaseModel
 from quantlab.knowledge.kb.models import KbParameter, SQX_VERSION
 from quantlab.knowledge.kb.teaching import TABLE_HEADERS
 
-# Spanish-doc / KB name → tpl_build.xml camelCase key mapping. Curated from
-# the real builder surface (tpl_build.xml + Configs/*.cfx). Unmapped params
-# render ⚠ template-missing retaining their KB status (design AD-6).
+# Spanish-doc / KB name → tpl_build.xml camelCase key mapping. Curated against
+# the REAL pinned template (assets/SQX_144_2953_linux_20260601/internal/web/
+# BUILDER/templates/tpl_build.xml, 104 parseable keys). Each value was verified
+# to exist verbatim in that file; keys are the exact KB param names. Unmapped
+# params render ⚠ template-missing retaining their KB status (design AD-6) —
+# no invented values (verify WARNING 1 remediation).
 TPL_KEY_MAP: dict[str, str] = {
-    "Maximum Trades Per Day": "MaximumTradesPerDay",
-    "Minimum / Maximum SL": "MinimumMaximumSL",
-    "Stop / Limit entry blocks": "StopLimitEntryBlocks",
-    "Initial Capital": "InitialCapital",
-    "FixedSize": "Size",
-    "Risk (per trade)": "Risk",
+    # Money management
+    "Initial capital": "InitialCapital",
+    "Order size": "Size",
+    # Trading options
+    "Maximum Trades Per Day": "MaxTradesPerDay",
+    "Exit At End Of Day": "ExitAtEndOfDay",
+    "Exit On Friday": "ExitOnFriday",
+    "Limit Time Range": "LimitTimeRange",
+    "Store Chart Data": "StoreChartData",
+    "Stop Loss": "StopLoss",
+    "End Of Day Exit Time": "EODExitTime",
+    "Friday Close Time": "FridayExitTime",
+    # Genetic options
     "Crossover Probability": "CrossoverProbability",
-    "Population Size (per island)": "PopulationSizePerIsland",
-    "Number of generations": "MaxGenerations",
     "Mutation Probability": "MutationProbability",
-    "Islands (separate evolution)": "IslandsSeparateEvolution",
-    "Use strategies from Initial population databank as evolution start": "UseInitialPopulationAsEvolutionStart",
-    "Start again when finished (continuous repeating evolution)": "StartAgainWhenFinished",
-    "Replace % of weakest strategies with newly generated": "ReplaceWeakestStrategiesPct",
-    "Initial population size required": "InitialPopulationSizeRequired",
+    "Max # of Generations": "MaxGenerations",
+    "Population Size (per island)": "PopulationSize",
+    "Islands (separate evolution)": "Islands",
+    "Migrate every Xth generation, X =": "MigrationModulo",
+    "Population migration rate": "MigrationRate",
+    "Generated decimation coefficient": "DecimationCoef",
+    # Ranking
+    "Maximum strategies to store in databank": "MaxStrategies",
 }
 
 TemplateStatus = Literal["matched", "template-missing"]
