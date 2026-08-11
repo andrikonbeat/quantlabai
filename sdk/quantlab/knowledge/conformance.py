@@ -15,6 +15,7 @@ REQ-101 capture taxonomy:
     embedding_writer    embeddings/
     training_exporter   datasets/
     kb_seeder           structured/sqx-kb/{ver}/parameters/{tab}/
+    educational_generator structured/sqx-kb/{ver}/educational/**
     version_events      structured/sqx-version/{old}→{new}/
     ==================  ============================================
 
@@ -37,6 +38,7 @@ WRITER_DESTINATIONS: dict[str, list[str]] = {
     "embedding_writer": ["embeddings/**"],
     "training_exporter": ["datasets/**"],
     "kb_seeder": ["structured/sqx-kb/*/parameters/**"],
+    "educational_generator": ["structured/sqx-kb/*/educational/**"],
     "version_events": ["structured/sqx-version/*/**"],
 }
 

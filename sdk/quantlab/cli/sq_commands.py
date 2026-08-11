@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from quantlab.knowledge.kb.models import KB_TABS, SQX_VERSION
 from quantlab.knowledge.kb.seeding_flow import (
@@ -21,6 +22,11 @@ from quantlab.knowledge.kb.seeding_flow import (
     run_seed_flow,
 )
 from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH
+from quantlab.knowledge.kb.educational import (
+    build_educational_dataset,
+    build_educational_table,
+    parse_tpl_build,
+)
 from quantlab.knowledge.kb.store import KbParamNotFoundError, KbStore
 from quantlab.knowledge.kb.validation import validate_seed
 
@@ -222,6 +228,69 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
         return 1
 
 
+# ── builder template path: real install templates dir, on the lake root's
+# project. CLI default: repo `assets/SQX_*/.../tpl_build.xml`; tests
+# monkeypatch this factory.
+_DEFAULT_TPL_PATH_FACTORY = lambda knowledge_root: Path(  # noqa: E731
+    knowledge_root
+).parent / "assets" / "SQX_144_2953_linux_20260601" / "internal" / "web" / "BUILDER" / "templates" / "tpl_build.xml"
+
+
+async def cmd_kb_table(args: argparse.Namespace) -> int:
+    """Generate the educational table + shared dataset (parameter-educational-table).
+
+    Reads the seeded KB for ``--sqx-version``, cross-references the real
+    ``tpl_build.xml`` template, emits ``educational-table.md`` and
+    ``educational-dataset.yaml`` under
+    ``structured/sqx-kb/{ver}/educational/`` (conformance writer
+    ``educational_generator``), and prints a summary. Exit 0 on success.
+    """
+    try:
+        store = _kb_store(args)
+        params = store.list(sqx_version=args.sqx_version)
+        if args.tpl:
+            tpl_path = Path(args.tpl)
+        else:
+            tpl_path = _DEFAULT_TPL_PATH_FACTORY(store.root)
+        if not tpl_path.exists():
+            print_error(f"Template not found: {tpl_path}")
+            return 1
+        tpl = parse_tpl_build(tpl_path)
+        records = build_educational_dataset(params, tpl=tpl)
+        table = build_educational_table(records)
+
+        import yaml
+
+        edu_dir = (
+            store.root
+            / "structured"
+            / "sqx-kb"
+            / args.sqx_version
+            / "educational"
+        )
+        edu_dir.mkdir(parents=True, exist_ok=True)
+        dataset_path = edu_dir / "educational-dataset.yaml"
+        table_path = edu_dir / "educational-table.md"
+
+        dataset_path.write_text(
+            yaml.safe_dump(
+                [r.model_dump() for r in records],
+                default_flow_style=False,
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+        table_path.write_text(table + "\n", encoding="utf-8")
+        print_human(
+            f"Educational table generated: {len(records)} parameter(s) → "
+            f"{table_path} + {dataset_path}"
+        )
+        return 0
+    except Exception as e:  # pragma: no cover - defensive
+        print_error(f"KB table failed: {e}")
+        return 1
+
+
 async def cmd_sqx_check_version(args: argparse.Namespace) -> int:
     """Print installed build vs pinned build and status (REQ-304).
 
@@ -338,6 +407,22 @@ def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_status = kb_sub.add_parser("status", help="Show KB status counts")
     _add_common(p_status)
     p_status.set_defaults(func=cmd_kb_status)
+
+    # ── sqx kb table ─────────────────────────────────────────────────────────
+    p_table = kb_sub.add_parser(
+        "table",
+        help="Generate the educational table + shared dataset from the seeded KB",
+    )
+    _add_common(p_table)
+    p_table.add_argument(
+        "--tpl",
+        default=None,
+        help=(
+            "Path to SQX tpl_build.xml (default: assets/SQX_144_2953_linux_20260601/"
+            "internal/web/BUILDER/templates/tpl_build.xml)"
+        ),
+    )
+    p_table.set_defaults(func=cmd_kb_table)
 
     # ── sqx check-version ────────────────────────────────────────────────────
     p_check = sqx_sub.add_parser(

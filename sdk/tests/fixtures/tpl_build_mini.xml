@@ -1,0 +1,18 @@
+<Task type="Build" name="Build" templateFile="tpl_build.xml">
+    <Settings>
+        <RiskMoneyManagement>
+          <MoneyManagement>
+            <Method type="FixedSize" use="true">
+              <Params>
+                <Param key="Size" className="FixedSize">0.1</Param>
+              </Params>
+            </Method>
+            <InitialCapital>10000</InitialCapital>
+          </MoneyManagement>
+        </RiskMoneyManagement>
+        <Trading>
+          <MaximumTradesPerDay>3</MaximumTradesPerDay>
+          <EntryCondition>Crossover</EntryCondition>
+        </Trading>
+    </Settings>
+</Task>

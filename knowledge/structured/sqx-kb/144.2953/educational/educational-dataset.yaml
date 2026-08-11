@@ -1,0 +1,1465 @@
+- name: ATM tab
+  sqx_name: ATM tab
+  tab: Building blocks
+  section: 7. ATM tab (experimental)
+  type: unknown
+  default: null
+  range: null
+  what_it_does: "Not documented \u2014 doc gap; semantics pending review (no invented\
+    \ content)"
+  how_it_works_in_sqx: "Not documented \u2014 doc gap; pending review"
+  quant_trading_role: "Not documented \u2014 doc gap; pending review"
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: needs_review
+  evidence_ref: doc_dev/SQX Builder Config.md#Building blocks
+  chosen_config: null
+  template_status: template-missing
+- name: Calibrate indicators
+  sqx_name: Calibrate indicators
+  tab: Building blocks
+  section: 6. Calibration
+  type: enum
+  default: On (calibrate before start)
+  range: On | Off
+  what_it_does: Calibrate indicator parameters before generation starts (on) so blocks
+    fit the selected market.
+  how_it_works_in_sqx: Pre-generation indicator calibration.
+  quant_trading_role: Adapts indicators to the market.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Exit types
+  sqx_name: Exit types
+  tab: Building blocks
+  section: 5. Exit types
+  type: selection
+  default: All selected
+  range: 'Required: Profit Target, Stop Loss; others: Exit After Bars, Move SL 2 BE,
+    Trailing Stop, ExitRule'
+  what_it_does: Exit blocks enabled; Profit Target and Stop Loss are always required
+    for capital survival.
+  how_it_works_in_sqx: Exit-rule blocks available to strategies.
+  quant_trading_role: Guarantees every strategy has risk controls.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Indicators
+  sqx_name: Indicators
+  tab: Building blocks
+  section: 2. Indicators
+  type: selection
+  default: 69 of 106 blocks selected
+  range: Excludes {Indicator Crosses Above MA, Indicator Crosses Below MA, Indicator
+    Below MA, Indicator Above MA}
+  what_it_does: Indicator blocks combined with operators; 69 of 106 selected; MA-cross
+    family excluded (no Java JForex conversion).
+  how_it_works_in_sqx: Indicator/price/operator composition blocks.
+  quant_trading_role: Avoids blocks that cannot translate to JForex Java.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Order types
+  sqx_name: Order types
+  tab: Building blocks
+  section: 4. Order types
+  type: selection
+  default: All selected
+  range: (MKT) Enter at market; (MKT) Enter/reverse at market; (STOP) Enter at stop;
+    (LMT) Enter at limit
+  what_it_does: Order types enabled for generation (all selected).
+  how_it_works_in_sqx: Order-entry blocks available to rules.
+  quant_trading_role: Entry-style variety.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Signals (Predefined conditions)
+  sqx_name: Signals (Predefined conditions)
+  tab: Building blocks
+  section: 1. Signals
+  type: selection
+  default: 188 of 339 blocks selected
+  range: null
+  what_it_does: Predefined complete conditions combining indicators with comparisons;
+    188 of 339 selected (ADX, ATR, Awesome Oscillator, Bollinger Bands, CCI, Directional
+    Index, Ichimoku, MACD, RSI, Stochastic, Bar And Time).
+  how_it_works_in_sqx: Ready-to-use condition blocks for rules.
+  quant_trading_role: Core rule material for hypotheses.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Stop/Limit entry blocks
+  sqx_name: Stop/Limit entry blocks
+  tab: Building blocks
+  section: 3. Stop/Limit entry blocks
+  type: selection
+  default: 41 of 58 blocks selected
+  range: 'Formula: Price level +/- Multiplicator * Price Range'
+  what_it_does: Blocks defining entry price for Stop/Limit orders (41 of 58 selected);
+    base formula Price level +/- Multiplicator * Price Range.
+  how_it_works_in_sqx: Entry-price construction blocks (levels like Bollinger/Ichimoku/MAs;
+    ranges like ATR/BarRange/Fixed pips).
+  quant_trading_role: Determines order-entry precision.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Backtests on additional markets
+  sqx_name: Backtests on additional markets
+  tab: Cross checks
+  section: 2. STANDARD (SLOW)
+  type: config
+  default: GBPUSD_M1_dukas
+  range: Spread 0.6; commission $7 per lot
+  what_it_does: Retests on a similar symbol to confirm the logic captures a general
+    pattern, not pair-specific noise.
+  how_it_works_in_sqx: Cross-market retest.
+  quant_trading_role: Generality of the edge across correlated pairs.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Cross Checks vs Retester
+  sqx_name: Cross checks vs Retester
+  tab: Cross checks
+  section: "Intro \u2014 Retester block vs builder cross checks"
+  type: unknown
+  default: null
+  range: null
+  what_it_does: "Not documented \u2014 doc gap; semantics pending review (no invented\
+    \ content)"
+  how_it_works_in_sqx: "Not documented \u2014 doc gap; pending review"
+  quant_trading_role: "Not documented \u2014 doc gap; pending review"
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: needs_review
+  evidence_ref: doc_dev/SQX Builder Config.md#Cross checks
+  chosen_config: null
+  template_status: template-missing
+- name: Higher backtest precision
+  sqx_name: Higher backtest precision
+  tab: Cross checks
+  section: 1. BASIC (FAST)
+  type: config
+  default: 1-minute tick simulation, 3 conditions
+  range: Spread 3 pips
+  what_it_does: Slower, precise backtest with wider spread (3 pips) to confirm viability
+    under costlier conditions.
+  how_it_works_in_sqx: High-precision re-simulation.
+  quant_trading_role: Net profit and trade count must stay >= 80% of the original.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Monte Carlo retest methods
+  sqx_name: Monte Carlo retest methods
+  tab: Cross checks
+  section: 2. STANDARD (SLOW)
+  type: config
+  default: 6 tests, 10 simulations, 2 conditions
+  range: Net Profit >= 50% of original; Max DD % <= 200% of original (80% confidence)
+  what_it_does: 'Hardest test: varies historical data, spread, slippage and strategy
+    parameters simultaneously.'
+  how_it_works_in_sqx: Joint Monte Carlo perturbation.
+  quant_trading_role: Stress-tests the edge under combined shocks.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Monte Carlo trades manipulation
+  sqx_name: Monte Carlo trades manipulation
+  tab: Cross checks
+  section: 1. BASIC (FAST)
+  type: config
+  default: 2 tests, 30 simulations, 2 conditions
+  range: Net profit >= 60% of original at 80% confidence
+  what_it_does: Resamples trade sequence and randomly omits 10% of trades to verify
+    equity-curve stability.
+  how_it_works_in_sqx: Monte Carlo order/selection perturbation.
+  quant_trading_role: Stability of results under trade noise.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Opt. Profile / Sys. Param. Permutation
+  sqx_name: Opt. Profile / Sys. Param. Permutation
+  tab: Cross checks
+  section: 3. EXTENSIVE (SLOWEST)
+  type: config
+  default: Max 1,000 optimizations, 4 conditions
+  range: null
+  what_it_does: Analyzes the optimization profile to ensure chosen parameters sit
+    in a broad profitable zone, not isolated peaks.
+  how_it_works_in_sqx: Optimization-surface analysis.
+  quant_trading_role: Robustness of the parameter neighborhood.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Sequential Optimization
+  sqx_name: Sequential Optimization
+  tab: Cross checks
+  section: 2. STANDARD (SLOW)
+  type: config
+  default: Up/Down 50%, 50 steps
+  range: '>= 80% of parameters must pass stability'
+  what_it_does: Optimizes parameters sequentially to find stability ranges.
+  how_it_works_in_sqx: Per-parameter stability scan.
+  quant_trading_role: Rejects spike-dependent parameters.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Walk-Forward Matrix
+  sqx_name: Walk-Forward Matrix
+  tab: Cross checks
+  section: 3. EXTENSIVE (SLOWEST)
+  type: config
+  default: OOS 10% - 40%, 5 - 20 runs
+  range: '>= 1 2x2 zone at 80% robustness; WF Net Profit (OOS) > 0'
+  what_it_does: Matrix of walk-forward tests hunting the ideal optimization/test period
+    combination.
+  how_it_works_in_sqx: Grid of walk-forward runs.
+  quant_trading_role: Finds stable optimization windows.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Walk-Forward Optimization
+  sqx_name: Walk-Forward Optimization
+  tab: Cross checks
+  section: 3. EXTENSIVE (SLOWEST)
+  type: config
+  default: 10 runs, 20% Out of sample
+  range: Robustness score >= 50%
+  what_it_does: Simulates periodic re-optimization over rolling OOS windows.
+  how_it_works_in_sqx: Walk-forward validation loop.
+  quant_trading_role: Simulates live re-optimization behavior.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: What If simulations
+  sqx_name: What If simulations
+  tab: Cross checks
+  section: 1. BASIC (FAST)
+  type: config
+  default: 15 simulations, 3 filter conditions
+  range: 'Filters: Profit factor > 1.3 AND Ret/DD Ratio > 4'
+  what_it_does: Scenario tests (e.g. selected days only, exclude best/worst trades)
+    to check profit dependence on isolated events.
+  how_it_works_in_sqx: What-If robustness simulations.
+  quant_trading_role: Detects event-dependent profitability.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Commissions & swap
+  sqx_name: Commissions & swap
+  tab: Data
+  section: 3. Test parameters
+  type: str
+  default: $7 per full lot; EUR/USD swap long -0.707, short 0.37
+  range: null
+  what_it_does: Execution costs modeled in backtests ($7/full lot; EUR/USD swap values).
+  how_it_works_in_sqx: Cost model applied per trade.
+  quant_trading_role: Costs are decisive on nano accounts.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Data range parts (OOS)
+  sqx_name: Data range parts
+  tab: Data
+  section: 4. Data range parts
+  type: config
+  default: "ISV1-ISV10 (~3% each); OOS1 final 30% (2019.03.02 \u2192 2025.12.19)"
+  range: null
+  what_it_does: "Not documented \u2014 doc gap; whether generation should include\
+    \ OOS data at all is the author's open question."
+  how_it_works_in_sqx: "Not documented \u2014 doc gap; pending review"
+  quant_trading_role: "Not documented \u2014 doc gap; pending review"
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: needs_review
+  evidence_ref: doc_dev/SQX Builder Config.md#Data
+  chosen_config: null
+  template_status: template-missing
+- name: End day
+  sqx_name: End day
+  tab: Data
+  section: 2. Backtest data settings
+  type: date
+  default: 2025.12.19
+  range: null
+  what_it_does: End of the backtest history (2025.12.19).
+  how_it_works_in_sqx: Data window end for generation.
+  quant_trading_role: Recent regime coverage.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Engine
+  sqx_name: Engine
+  tab: Data
+  section: 1. Trading engine
+  type: enum
+  default: JForex
+  range: null
+  what_it_does: Selects the trading engine; JForex because final execution is JForex
+    4 / Dukascopy.
+  how_it_works_in_sqx: Chooses the backtest/execution engine family.
+  quant_trading_role: Aligns simulation with the live platform.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Min. distance
+  sqx_name: Min. distance
+  tab: Data
+  section: 3. Test parameters
+  type: float
+  default: 0.0
+  range: pips
+  what_it_does: Minimum distance enforced for orders (0 pips).
+  how_it_works_in_sqx: Order-placement constraint.
+  quant_trading_role: Keeps orders executable.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Precision
+  sqx_name: Precision
+  tab: Data
+  section: 3. Test parameters
+  type: enum
+  default: Selected timeframe only (fastest)
+  range: Selected timeframe only | 1 minute data tick simulation
+  what_it_does: Backtest precision; fastest mode speeds initial generation; 1-minute
+    tick simulation builds candles more realistically and makes strategies fail more
+    often.
+  how_it_works_in_sqx: Controls simulation granularity.
+  quant_trading_role: Fastest mode during generation; tick simulation for validation.
+  small_account_recommendation: null
+  why_choose: Switching this alone can flip generation from producing to producing
+    nothing.
+  when_choose: Fastest for search, tick for confirmation.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Slippage
+  sqx_name: Slippage
+  tab: Data
+  section: 3. Test parameters
+  type: float
+  default: 0.5
+  range: pips
+  what_it_does: Simulated price gap between order and execution (0.5 pips).
+  how_it_works_in_sqx: Execution realism model.
+  quant_trading_role: Prevents phantom fill quality.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Spread
+  sqx_name: Spread
+  tab: Data
+  section: 3. Test parameters
+  type: float
+  default: 1.0
+  range: pips
+  what_it_does: Conservative 1-pip spread to keep strategies viable under liquidity
+    shifts.
+  how_it_works_in_sqx: Spread model in backtests.
+  quant_trading_role: Conservative cost buffer.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Start day
+  sqx_name: Start day
+  tab: Data
+  section: 2. Backtest data settings
+  type: date
+  default: 2003.05.05
+  range: null
+  what_it_does: Start of the backtest history (2003.05.05).
+  how_it_works_in_sqx: Data window start for generation.
+  quant_trading_role: Historical depth for statistical relevance.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Symbol
+  sqx_name: Symbol
+  tab: Data
+  section: 2. Backtest data settings
+  type: str
+  default: EURUSD_M1_dukas
+  range: null
+  what_it_does: Backtest symbol (e.g. EURUSD_M1_dukas); alternates per portfolio slot.
+  how_it_works_in_sqx: Data feed used for generation and backtests.
+  quant_trading_role: The market the strategy must trade.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Timeframe
+  sqx_name: Timeframe
+  tab: Data
+  section: 2. Backtest data settings
+  type: enum
+  default: M15
+  range: null
+  what_it_does: Base timeframe (M15) chosen to allow solid technical stops on small
+    accounts.
+  how_it_works_in_sqx: Bars used for rule evaluation and backtests.
+  quant_trading_role: M15 balances signal quality with trade frequency.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Crossover Probability
+  sqx_name: Crossover Probability
+  tab: Genetic options
+  section: 1. Genetic options
+  type: int
+  default: 93
+  range: 0 - 100 (%)
+  what_it_does: Chance two parent strategies exchange logic parts to create a child
+    (93%).
+  how_it_works_in_sqx: Crossover rate of the genetic algorithm.
+  quant_trading_role: Exploration intensity of the search.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: '50'
+  template_status: matched
+- name: Detect same strategies in population and replace them with newly generated
+    ones
+  sqx_name: Detect same strategies in population and replace them with newly generated
+    ones
+  tab: Genetic options
+  section: 5. Fresh blood
+  type: bool
+  default: true
+  range: null
+  what_it_does: Detect identical strategies and replace duplicates with fresh ones
+    (on).
+  how_it_works_in_sqx: Deduplicates the population to keep genetic diversity.
+  quant_trading_role: Prevents wasted generations on clones.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Every generation(s)
+  sqx_name: Every generation(s)
+  tab: Genetic options
+  section: 5. Fresh blood
+  type: int
+  default: 2
+  range: null
+  what_it_does: Weakest-replacement runs every N generations (2).
+  how_it_works_in_sqx: Cadence of the fresh-blood culling.
+  quant_trading_role: Cadence control for diversity refresh.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Generated decimation coefficient
+  sqx_name: Generated decimation coefficient
+  tab: Genetic options
+  section: 3. Initial population generation
+  type: int
+  default: 1
+  range: null
+  what_it_does: Over-generation factor filtered before evolution starts (1 = none).
+  how_it_works_in_sqx: Controls how many extra candidates are generated then decimated.
+  quant_trading_role: Quality pre-filtering of the start pool.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Initial population size required
+  sqx_name: Initial population size required
+  tab: Genetic options
+  section: 3. Initial population generation
+  type: int
+  default: 400
+  range: null
+  what_it_does: Total strategies required to start evolution (400 = 100 x 4 islands).
+  how_it_works_in_sqx: Seeds the first generation pool.
+  quant_trading_role: Startup pool for the search.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Islands (separate evolution)
+  sqx_name: Islands (separate evolution)
+  tab: Genetic options
+  section: 2. Islands options
+  type: int
+  default: 4
+  range: null
+  what_it_does: Independent evolution environments used to foster diversity (4).
+  how_it_works_in_sqx: Island-model evolution with separate gene pools.
+  quant_trading_role: Keeps divergent lineages alive.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: 'Max # of Generations'
+  sqx_name: 'Max # of Generations'
+  tab: Genetic options
+  section: 1. Genetic options
+  type: int
+  default: 100
+  range: null
+  what_it_does: Maximum number of evolutionary cycles the builder runs (100).
+  how_it_works_in_sqx: Evolution stops after this many generations unless restarted.
+  quant_trading_role: Budget for the search; 100 per protocol.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Migrate every Xth generation, X =
+  sqx_name: Migrate every Xth generation, X =
+  tab: Genetic options
+  section: 2. Islands options
+  type: int
+  default: 87
+  range: null
+  what_it_does: Best strategies migrate between islands every X generations (87).
+  how_it_works_in_sqx: Periodic island migration of elite individuals.
+  quant_trading_role: Shares progress across islands.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Mutation Probability
+  sqx_name: Mutation Probability
+  tab: Genetic options
+  section: 1. Genetic options
+  type: int
+  default: 30
+  range: 0 - 100 (%)
+  what_it_does: Chance of random rule changes per strategy to introduce variability
+    (30%).
+  how_it_works_in_sqx: Mutation rate of the genetic algorithm.
+  quant_trading_role: Injects novelty into the population.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: '20'
+  template_status: matched
+- name: Population Size (per island)
+  sqx_name: Population Size (per island)
+  tab: Genetic options
+  section: 1. Genetic options
+  type: int
+  default: 100
+  range: null
+  what_it_does: Strategies coexisting in each island per generation (100).
+  how_it_works_in_sqx: Per-island population pool for the genetic search.
+  quant_trading_role: Diversity pool per island.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Population migration rate
+  sqx_name: Population migration rate
+  tab: Genetic options
+  section: 2. Islands options
+  type: int
+  default: 6
+  range: 0 - 100 (%)
+  what_it_does: Share of the population moved between islands during migration (6%).
+  how_it_works_in_sqx: Migration volume per event.
+  quant_trading_role: Balances diversity vs convergence.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Profit factor > 1 (initial population filter)
+  sqx_name: Profit factor > 1
+  tab: Genetic options
+  section: 4. Filter generated initial population
+  type: filter
+  default: '> 1'
+  range: null
+  what_it_does: Only strategies with profit factor above 1 enter the initial population.
+  how_it_works_in_sqx: Initial-population acceptance filter.
+  quant_trading_role: Excludes outright losers from the start.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Replace % of weakest strategies with newly generated
+  sqx_name: Replace % of weakest strategies with newly generated
+  tab: Genetic options
+  section: 5. Fresh blood
+  type: int
+  default: 10
+  range: 0 - 100 (%)
+  what_it_does: Replace the weakest 10% of strategies with brand-new ones.
+  how_it_works_in_sqx: Periodic culling of the worst individuals.
+  quant_trading_role: Refreshes the gene pool.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Restart evolution if fitness stagnates for X generation(s)
+  sqx_name: Restart evolution if fitness stagnates for X generation(s)
+  tab: Genetic options
+  section: 6. Evolution management
+  type: int
+  default: 30
+  range: null
+  what_it_does: Restart evolution if fitness does not improve for 30 consecutive generations.
+  how_it_works_in_sqx: Stagnation watchdog of the search.
+  quant_trading_role: Escapes local optima.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Start again when finished (continuous repeating evolution)
+  sqx_name: Start again when finished (continuous repeating evolution)
+  tab: Genetic options
+  section: 6. Evolution management
+  type: bool
+  default: true
+  range: null
+  what_it_does: Restart evolution automatically after the generation budget is reached
+    (on).
+  how_it_works_in_sqx: Continuous evolution loop.
+  quant_trading_role: Keeps searching for better candidates.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Use strategies from Initial population databank as evolution start
+  sqx_name: Use strategies from Initial population databank as evolution start
+  tab: Genetic options
+  section: 3. Initial population generation
+  type: bool
+  default: true
+  range: null
+  what_it_does: Start evolution from pre-existing databank strategies when available
+    (on).
+  how_it_works_in_sqx: Reuses prior good strategies as seed individuals.
+  quant_trading_role: Warms up the search with proven logic.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Choose Money Management method
+  sqx_name: Choose Money Management method
+  tab: Money management
+  section: 2. Money management method
+  type: enum
+  default: Fixed size
+  range: Fixed size | Risk fixed % balance | (other SQX methods)
+  what_it_does: Money management method; Fixed size selected because percentage risk
+    distorts results on nano capital.
+  how_it_works_in_sqx: Determines how order size is derived per trade.
+  quant_trading_role: Fixed lots keep nano-account results undistorted.
+  small_account_recommendation: 'Fixed size (default Fixed size): Percent-based risk
+    distorts generation results on $100 accounts.'
+  why_choose: Doc explicitly rejects Risk fixed % balance for nano capital.
+  when_choose: Always for small accounts.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Initial capital
+  sqx_name: Initial capital
+  tab: Money management
+  section: 1. Initial capital
+  type: int
+  default: 100
+  range: USD
+  what_it_does: Base account capital for simulations and survival metrics ($100).
+  how_it_works_in_sqx: Account model for the simulation.
+  quant_trading_role: Nano-capital anchor for all sizing.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Order size
+  sqx_name: Order size
+  tab: Money management
+  section: 3. Order size
+  type: float
+  default: 0.01
+  range: lots (0.01 = 1,000 units)
+  what_it_does: Fixed order volume of 0.01 lots (1,000 units) keeping per-trade risk
+    at $1.50-$2.50.
+  how_it_works_in_sqx: Lot size applied per trade under Fixed size.
+  quant_trading_role: Minimum tradable unit; risk-per-trade stays in the $1.50-$2.50
+    band.
+  small_account_recommendation: '0.01 (default 0.01): Minimum allowed lot keeps per-trade
+    risk within the $1.50-$2.50 band on $100.'
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Compute from
+  sqx_name: Compute from
+  tab: Ranking
+  section: 2. Strategy Quality ranking
+  type: enum
+  default: Weighted Fitness (multiple goals)
+  range: null
+  what_it_does: Fitness formula; weighted multiple-goal fitness.
+  how_it_works_in_sqx: Combines ranking criteria into one fitness score.
+  quant_trading_role: Multi-objective selection driver.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Custom filters
+  sqx_name: Custom filters
+  tab: Ranking
+  section: 3. Custom filters
+  type: config
+  default: PF(IST) > 1.2; PF(OOS1) > 1.1; PF(ISV) > 1.01; Ret/DD > 3; Avg Trades/Month
+    > 5; Expectancy > 5; Max Consec Losses < 10
+  range: null
+  what_it_does: Mandatory minimum thresholds a strategy must pass to be stored.
+  how_it_works_in_sqx: Hard acceptance filters after fitness ranking.
+  quant_trading_role: Guarantees statistical and risk floors for stored strategies.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Dismiss strategies with these problems
+  sqx_name: Dismiss strategies with these problems
+  tab: Ranking
+  section: 4. Automatic filters
+  type: config
+  default: No trades / Too little trades; Zero PL trades / Zero duration trades; Too
+    many ambiguous trades; Outlier trade
+  range: null
+  what_it_does: Automatically discard strategies with operational problems.
+  how_it_works_in_sqx: Automatic dismissal filters.
+  quant_trading_role: Removes untradeable or outlier-dependent logic.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Fit to existing portfolio filter
+  sqx_name: Fit to existing portfolio filter
+  tab: Ranking
+  section: 5. Fit to existing portfolio filter
+  type: config
+  default: 'Existing portfolio databank: Grove; filter out correlation > 0.3'
+  range: Correlation by Day (or Hour) of Profit/Loss
+  what_it_does: Rejects candidates too correlated with strategies already in the portfolio
+    (correlation > 0.3).
+  how_it_works_in_sqx: Portfolio correlation gate.
+  quant_trading_role: Keeps the portfolio genuinely diversified.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Maximum strategies to store in databank
+  sqx_name: Maximum strategies to store in databank
+  tab: Ranking
+  section: 1. Capacity & stop
+  type: int
+  default: 100
+  range: null
+  what_it_does: Keep only the best strategies passing all filters; 100 slots for the
+    target portfolio slot.
+  how_it_works_in_sqx: Databank capacity cap.
+  quant_trading_role: Focuses the search on slot-filling quality.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Optimizer block
+  sqx_name: Optimizer block
+  tab: Ranking
+  section: 6. Optimizer block (undeveloped)
+  type: unknown
+  default: null
+  range: null
+  what_it_does: "Not documented \u2014 doc gap; semantics pending review (no invented\
+    \ content)"
+  how_it_works_in_sqx: "Not documented \u2014 doc gap; pending review"
+  quant_trading_role: "Not documented \u2014 doc gap; pending review"
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: needs_review
+  evidence_ref: doc_dev/SQX Builder Config.md#Ranking
+  chosen_config: null
+  template_status: template-missing
+- name: Portfolio Master vs Portfolio Composer
+  sqx_name: Portfolio Master / Portfolio Composer
+  tab: Ranking
+  section: 7. Portfolio Master vs Portfolio Composer
+  type: unknown
+  default: null
+  range: null
+  what_it_does: "Not documented \u2014 doc gap; semantics pending review (no invented\
+    \ content)"
+  how_it_works_in_sqx: "Not documented \u2014 doc gap; pending review"
+  quant_trading_role: "Not documented \u2014 doc gap; pending review"
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: needs_review
+  evidence_ref: doc_dev/SQX Builder Config.md#Ranking
+  chosen_config: null
+  template_status: template-missing
+- name: Ranking Criterium
+  sqx_name: Ranking Criterium
+  tab: Ranking
+  section: 2. Strategy Quality ranking
+  type: config
+  default: Ret/DD Ratio Maximize (40); Max DD % Minimize (25); Profit factor Maximize
+    (15); R Expectancy Maximize (10); Ambiguous Trades % Minimize (5); Complexity
+    Minimize (5)
+  range: Weights sum to 100
+  what_it_does: 'Fitness goals and weights: Ret/DD 40, Max DD 25, Profit factor 15,
+    R Expectancy 10, Ambiguous 5, Complexity 5.'
+  how_it_works_in_sqx: Weighted multi-goal ranking.
+  quant_trading_role: Prioritizes risk-adjusted return over raw profit; penalizes
+    complexity.
+  small_account_recommendation: null
+  why_choose: Ret/DD is the dominant quality signal for survival.
+  when_choose: Default protocol weights.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Stop generation when
+  sqx_name: Stop generation when
+  tab: Ranking
+  section: 1. Capacity & stop
+  type: enum
+  default: Databank is full (reached maximum capacity)
+  range: null
+  what_it_does: Generation stops automatically when the databank reaches its quality/capacity
+    threshold.
+  how_it_works_in_sqx: Stop condition of the generation loop.
+  quant_trading_role: Avoids endless generation once the slot is filled.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Use
+  sqx_name: Use
+  tab: Ranking
+  section: 2. Strategy Quality ranking
+  type: enum
+  default: Main data backtest
+  range: null
+  what_it_does: Data source used for fitness computation (main data backtest).
+  how_it_works_in_sqx: Selects the dataset for quality ranking.
+  quant_trading_role: Bases selection on the primary backtest.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: needs_review
+  evidence_ref: doc_dev/SQX Builder Config.md#Ranking
+  chosen_config: null
+  template_status: template-missing
+- name: Don't trade on weekends
+  sqx_name: Don't trade on weekends
+  tab: Trading options
+  section: 1. Trading options
+  type: bool
+  default: false
+  range: null
+  what_it_does: Weekend trading enabled/disabled (off).
+  how_it_works_in_sqx: Time-gates market entry.
+  quant_trading_role: Avoids thin-market execution.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: End Of Day Exit Time
+  sqx_name: End Of Day Exit Time
+  tab: Trading options
+  section: 1. Trading options
+  type: time
+  default: '23:04'
+  range: null
+  what_it_does: Daily exit time when End Of Day exit is active (23:04).
+  how_it_works_in_sqx: Daily close time gate.
+  quant_trading_role: Overnight risk control.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Exit At End Of Day
+  sqx_name: Exit At End Of Day
+  tab: Trading options
+  section: 1. Trading options
+  type: bool
+  default: false
+  range: null
+  what_it_does: Positions may be held overnight during the week (off).
+  how_it_works_in_sqx: Daily exit gate.
+  quant_trading_role: Allows intra-week swing holding.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Exit On Friday
+  sqx_name: Exit On Friday
+  tab: Trading options
+  section: 1. Trading options
+  type: bool
+  default: true
+  range: null
+  what_it_does: "Close all positions Friday at 20:40 \u2014 a $100 account lacks margin\
+    \ for a weekend gap."
+  how_it_works_in_sqx: Friday forced-flat gate.
+  quant_trading_role: Protects nano capital from weekend gap risk.
+  small_account_recommendation: 'True (default False): A $100 account cannot absorb
+    an adverse weekend gap; flatten before the close.'
+  why_choose: Weekend gap protection on nano capital.
+  when_choose: Always for small accounts.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Friday Close Time
+  sqx_name: Friday Close Time
+  tab: Trading options
+  section: 1. Trading options
+  type: time
+  default: 00:38
+  range: null
+  what_it_does: Weekly trading closes Friday at 00:38.
+  how_it_works_in_sqx: Week close time gate.
+  quant_trading_role: Weekend exposure control.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Limit Time Range
+  sqx_name: Limit Time Range
+  tab: Trading options
+  section: 1. Trading options
+  type: bool
+  default: false
+  range: From 08:00 / To 16:00 (when enabled)
+  what_it_does: Restrict trading to a daily time window (off; window 08:00-16:00 when
+    enabled).
+  how_it_works_in_sqx: Daily time-range gate.
+  quant_trading_role: Optional liquidity alignment.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Max distance from market
+  sqx_name: Max distance from market
+  tab: Trading options
+  section: 1. Trading options
+  type: bool
+  default: false
+  range: Max distance percent 6 (when enabled)
+  what_it_does: Cap on how far pending orders may sit from market (off; 6% when enabled).
+  how_it_works_in_sqx: Pending-order distance guard.
+  quant_trading_role: Avoids stale pending orders.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Maximum Trades Per Day
+  sqx_name: Maximum Trades Per Day
+  tab: Trading options
+  section: 1. Trading options
+  type: int
+  default: 0
+  range: 0 = no limit
+  what_it_does: Daily trade cap; 0 means no limit in the general config.
+  how_it_works_in_sqx: Caps entries per trading day.
+  quant_trading_role: Prevents overtrading and excess commissions on a small account.
+  small_account_recommendation: '1 (default 0): Protocol recommends 1 per day to avoid
+    overtrading and excess commissions on a $100 account.'
+  why_choose: Generation protocol recommends 1 for small accounts.
+  when_choose: Small-account campaigns.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Minimum / Maximum PT
+  sqx_name: Minimum / Maximum PT
+  tab: Trading options
+  section: 1. Trading options
+  type: range
+  default: 0 / 0
+  range: null
+  what_it_does: No extra PT bounds here; PT is controlled in the What to build tab
+    (0/0).
+  how_it_works_in_sqx: Builder-level PT constraint override.
+  quant_trading_role: Avoids double constraint conflicts.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Minimum / Maximum SL
+  sqx_name: Minimum / Maximum SL
+  tab: Trading options
+  section: 1. Trading options
+  type: range
+  default: 0 / 0
+  range: null
+  what_it_does: No extra SL bounds here; SL is controlled in the What to build tab
+    (0/0).
+  how_it_works_in_sqx: Builder-level SL constraint override.
+  quant_trading_role: Avoids double constraint conflicts.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Order Types To Close
+  sqx_name: Order Types To Close
+  tab: Trading options
+  section: 1. Trading options
+  type: enum
+  default: All
+  range: null
+  what_it_does: Which order types are closed at the end of the allowed range (All).
+  how_it_works_in_sqx: Close-order selection at range end.
+  quant_trading_role: Guarantees flat state at range end.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Realistic Gaps Handling
+  sqx_name: Realistic Gaps Handling
+  tab: Trading options
+  section: 1. Trading options
+  type: bool
+  default: true
+  range: null
+  what_it_does: Backtest accounts for price gaps realistically (on).
+  how_it_works_in_sqx: Gap-aware simulation model.
+  quant_trading_role: Improves robustness of results.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Store Chart Data
+  sqx_name: Store Chart Data
+  tab: Trading options
+  section: 2. Build options
+  type: bool
+  default: false
+  range: null
+  what_it_does: Persist chart data during builds (off to save space and speed processing).
+  how_it_works_in_sqx: Chart storage toggle in builds.
+  quant_trading_role: Storage/perf tradeoff.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Sunday Open Time
+  sqx_name: Sunday Open Time
+  tab: Trading options
+  section: 1. Trading options
+  type: time
+  default: 00:38
+  range: null
+  what_it_does: Weekly trading reopens Sunday at 00:38.
+  how_it_works_in_sqx: Week open time gate.
+  quant_trading_role: Defines when exposure resumes.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Build mode
+  sqx_name: Build mode
+  tab: What to build
+  section: 2. Additional build config
+  type: enum
+  default: Genetic evolution
+  range: max 100 generations; 4 islands x 100 strategies; initial population used;
+    restart on finish
+  what_it_does: Sets the build engine; Genetic evolution with generation/island/population
+    limits and restart policy.
+  how_it_works_in_sqx: Drives the evolutionary search parameters of the builder.
+  quant_trading_role: Core generation engine that finds candidate strategies.
+  small_account_recommendation: null
+  why_choose: Genetic search over the block space.
+  when_choose: Default build mode.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Conditions in entry rule
+  sqx_name: Conditions in entry rule
+  tab: What to build
+  section: 2. Additional build config
+  type: range
+  default: null
+  range: 1 - 2
+  what_it_does: Min/max number of conditions allowed inside the entry rule.
+  how_it_works_in_sqx: Bounds how many blocks can compose one entry condition.
+  quant_trading_role: Fewer conditions reduce overfitting on small accounts.
+  small_account_recommendation: null
+  why_choose: Simple entry logic survives nano-account costs.
+  when_choose: Default 1-2 per protocol.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Conditions in exit rule
+  sqx_name: Conditions in exit rule
+  tab: What to build
+  section: 2. Additional build config
+  type: range
+  default: null
+  range: 1 - 2 (if enabled)
+  what_it_does: Min/max number of conditions allowed inside the exit rule.
+  how_it_works_in_sqx: Bounds exit-condition composition when exit rules are enabled.
+  quant_trading_role: Keeps exit logic simple and robust.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Global Indicators period
+  sqx_name: Global Indicators period
+  tab: What to build
+  section: 2. Additional build config
+  type: range
+  default: null
+  range: 5 - 50
+  what_it_does: Allowed range for indicator periods used across generated rules.
+  how_it_works_in_sqx: Constrains the periods the builder may assign to indicator
+    blocks.
+  quant_trading_role: Avoids absurdly long/short indicator lookbacks.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Global Lookback period (Shift)
+  sqx_name: Global Lookback period (Shift)
+  tab: What to build
+  section: 2. Additional build config
+  type: range
+  default: null
+  range: max 3
+  what_it_does: Maximum lookback shift allowed for indicator references.
+  how_it_works_in_sqx: Limits how far back in bars a rule may look.
+  quant_trading_role: Keeps rules aligned to current market state.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Number of Exit Types (SL/PT/etc...)
+  sqx_name: Number of Exit Types (SL/PT/etc...)
+  tab: What to build
+  section: 2. Additional build config
+  type: range
+  default: null
+  range: max 3
+  what_it_does: Maximum number of distinct exit types (SL, PT, trailing, ...) a strategy
+    may combine.
+  how_it_works_in_sqx: Caps exit-type variety per generated strategy.
+  quant_trading_role: Bounds exit complexity per strategy.
+  small_account_recommendation: null
+  why_choose: null
+  when_choose: null
+  status: needs_review
+  evidence_ref: doc_dev/SQX Builder Config.md#What to build
+  chosen_config: null
+  template_status: template-missing
+- name: Profit Target
+  sqx_name: Profit Target
+  tab: What to build
+  section: 4. Profit Target configuration
+  type: config
+  default: ATR-based
+  range: ATR Multiple 1.2 - 2.2; ATR Period 14 - 20 (Fixed pips 15-50 and Percent
+    1.5%-5% disabled)
+  what_it_does: Required profit-target rule; ATR-based mode active; Limit Risk-Reward
+    (SL vs PT) ratio disabled.
+  how_it_works_in_sqx: Builder attaches a PT with ranges independent from the SL.
+  quant_trading_role: Defines the reward side; flexible risk-reward keeps edges viable.
+  small_account_recommendation: null
+  why_choose: Required; separate SL/PT ranges let risk-reward breathe.
+  when_choose: Always required.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Stop Loss
+  sqx_name: Stop Loss
+  tab: What to build
+  section: 3. Stop Loss configuration
+  type: config
+  default: ATR-based
+  range: ATR Multiple 1.2 - 1.8; ATR Period 14 - 20 (Fixed pips 15-25 and Percent
+    1.5%-2.5% disabled)
+  what_it_does: Required stop-loss rule; ATR-based mode active (Multiple 1.2-1.8,
+    Period 14-20).
+  how_it_works_in_sqx: Builder must attach an SL; ATR-based stops scale with volatility
+    on M15.
+  quant_trading_role: Mandatory capital-survival control for a $100 account.
+  small_account_recommendation: 'ATR-based (Multiple 1.2-1.8, Period 14-20) (default
+    ATR-based): ATR-based SL adapts to volatility; fixed pips/percent risk mis-calibrate
+    on nano capital.'
+  why_choose: Required by protocol; ATR adapts to market conditions.
+  when_choose: Always required.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Strategy style
+  sqx_name: Strategy style
+  tab: What to build
+  section: 2. Additional build config
+  type: enum
+  default: SQX Signals Style
+  range: SQX Signals Style | Fuzzy Logic | SQ3 (legacy)
+  what_it_does: "Chooses the rule-generation style; SQX Signals Style is used \u2014\
+    \ not Fuzzy Logic, not legacy SQ3."
+  how_it_works_in_sqx: Determines the block language the builder uses to express rules.
+  quant_trading_role: Signals style produces block rules that translate to Java JForex.
+  small_account_recommendation: null
+  why_choose: Fuzzy logic / SQ3 generation is out of protocol.
+  when_choose: Always per protocol.
+  status: needs_review
+  evidence_ref: doc_dev/SQX Builder Config.md#What to build
+  chosen_config: null
+  template_status: template-missing
+- name: Strategy type
+  sqx_name: Strategy type
+  tab: What to build
+  section: 1. Output config & strategy type
+  type: enum
+  default: Simple strategy
+  range: null
+  what_it_does: Selects the generation mode; Simple strategy builds a strategy for
+    a single symbol and timeframe.
+  how_it_works_in_sqx: 'Builder output mode: Simple strategy [default] produces one
+    strategy per symbol/timeframe.'
+  quant_trading_role: One symbol/timeframe per portfolio slot keeps generated scope
+    tight.
+  small_account_recommendation: null
+  why_choose: Slot-filling campaigns run one market per slot.
+  when_choose: Default per protocol.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
+- name: Trading directions
+  sqx_name: Trading directions
+  tab: What to build
+  section: 2. Additional build config
+  type: enum
+  default: Both (Long & Short)
+  range: Long only | Short only | Both
+  what_it_does: Sets allowed trade direction(s); Entry Symmetry and Exit Symmetry
+    apply when Both is selected.
+  how_it_works_in_sqx: Filters generated logic to the selected direction(s) and symmetry.
+  quant_trading_role: Keeps long/short behavior balanced for the slot.
+  small_account_recommendation: null
+  why_choose: Set per the empty slot's need.
+  when_choose: Default Both unless the hypothesis is directional.
+  status: verified
+  evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+  chosen_config: null
+  template_status: template-missing
