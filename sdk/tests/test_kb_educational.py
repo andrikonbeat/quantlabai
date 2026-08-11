@@ -21,6 +21,11 @@ from quantlab.knowledge.kb.educational import (
 )
 from quantlab.knowledge.kb.models import KbParameter
 from quantlab.knowledge.kb.teaching import TABLE_HEADERS
+from quantlab.agents.parameter_matrix import (
+    DEFAULT_RATIONALE,
+    ParameterMatrixError,
+    generate_run_matrix,
+)
 
 FIXTURE_TPL = Path(__file__).parent / "fixtures" / "tpl_build_mini.xml"
 
@@ -306,3 +311,144 @@ class TestEducationalDatasetLoader:
         from quantlab.knowledge.kb.educational import load_educational_dataset
 
         assert load_educational_dataset(tmp_path, sqx_version="144.2953") == []
+
+
+def _retest_config(**overrides: object) -> object:
+    """A RetesterConfig at its documented defaults (RETESTER_DEFAULTS)."""
+    from quantlab.phase4.retester import RetesterConfig
+
+    defaults: dict[str, object] = {
+        "strategy_id": "S1",
+        "databanks": [],
+        "monte_carlo_runs": 100,
+        "mc_percentile": 95,
+        "walkforward_cycles": 5,
+        "min_trades": 30,
+        "confidence_level": 0.95,
+        "broker_profile": None,
+        "cost_config": None,
+    }
+    defaults.update(overrides)
+    return RetesterConfig(**defaults)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# T-2.7 RED — generate_run_matrix lazy dataset rationale (REQ-205 hook)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestRunMatrixDatasetRationale:
+    """Matrix default entries source rationale from the KB dataset (name+tab)."""
+
+    def test_default_classified_entry_sources_dataset_rationale(self) -> None:
+        """GIVEN a retest entry at its config default AND a dataset record for
+        (parameter, tab) WHEN the matrix runs THEN the default entry's
+        rationale references dataset fields instead of DEFAULT_RATIONALE."""
+        config = _retest_config()
+        dataset = [
+            _dataset_record(
+                "monte_carlo_runs",
+                "Retest",
+                what_it_does="simulate randomized trades",
+                quant_role="sets the capital-at-risk percentile",
+            )
+        ]
+        entries = generate_run_matrix(config, run_type="retest", dataset=dataset)
+        entry = next(e for e in entries if e["parameter"] == "monte_carlo_runs")
+        assert entry["source"] == "default"
+        assert entry["rationale"] != DEFAULT_RATIONALE
+        assert "simulate randomized trades" in entry["rationale"]
+        assert "sets the capital-at-risk percentile" in entry["rationale"]
+        assert "monte_carlo_runs" in entry["rationale"]  # references record name
+        assert entry["tab"] == "Retest"  # entry carries the tab key
+
+    def test_dataset_match_requires_name_and_tab(self) -> None:
+        """Same name, different tab → no match → generic default rationale."""
+        config = _retest_config()
+        dataset = [
+            _dataset_record("monte_carlo_runs", "Trading options")
+        ]
+        entries = generate_run_matrix(config, run_type="retest", dataset=dataset)
+        entry = next(e for e in entries if e["parameter"] == "monte_carlo_runs")
+        assert entry["source"] == "default"
+        assert entry["rationale"] == DEFAULT_RATIONALE
+
+    def test_lazy_load_via_kb_loader_when_dataset_not_injected(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """dataset=None → generate_run_matrix lazily loads through the KB loader."""
+        import quantlab.agents.parameter_matrix as pm
+
+        records = [
+            _dataset_record(
+                "walkforward_cycles",
+                "Retest",
+                what_it_does="evolve walk-forward windows",
+            )
+        ]
+        monkeypatch.setattr(
+            pm,
+            "load_educational_dataset",
+            lambda **_: [EducationalRecord.model_validate(r) for r in records],
+        )
+        entries = generate_run_matrix(_retest_config(), run_type="retest")
+        entry = next(e for e in entries if e["parameter"] == "walkforward_cycles")
+        assert "evolve walk-forward windows" in entry["rationale"]
+
+    def test_missing_dataset_falls_back_without_blocking(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """No dataset available → default classification, no error, no invention."""
+        import quantlab.agents.parameter_matrix as pm
+
+        monkeypatch.setattr(pm, "load_educational_dataset", lambda **_: [])
+        entries = generate_run_matrix(_retest_config(), run_type="retest")
+        entry = next(e for e in entries if e["parameter"] == "monte_carlo_runs")
+        assert entry["source"] == "default"
+        assert entry["rationale"] == DEFAULT_RATIONALE
+        assert "controls a trading behavior" not in entry["rationale"]
+
+    def test_manual_override_wins_over_dataset(self) -> None:
+        """Manual overrides keep their rationale even when dataset matches."""
+        config = _retest_config(monte_carlo_runs=123)
+        dataset = [
+            _dataset_record(
+                "monte_carlo_runs",
+                "Retest",
+                what_it_does="simulate randomized trades",
+            )
+        ]
+        entries = generate_run_matrix(
+            config,
+            run_type="retest",
+            rationale_overrides={"monte_carlo_runs": "manual choice"},
+            dataset=dataset,
+        )
+        entry = next(e for e in entries if e["parameter"] == "monte_carlo_runs")
+        assert entry["source"] == "manual"
+        assert entry["rationale"] == "manual choice"
+        assert "simulate randomized trades" not in entry["rationale"]
+
+    def test_optimized_entries_unchanged_with_dataset_present(self) -> None:
+        """Optimizer entries stay optimized; dataset text is never injected."""
+        from quantlab.phase4.optimizer import OptimizerConfig
+
+        config = OptimizerConfig(
+            strategy_id="S1", method="Genetic", objective="SharpeRatio", databanks=["EURUSD_H1"]
+        )
+        dataset = [_dataset_record("databanks", "Optimization")]
+        entries = generate_run_matrix(config, run_type="optimize", dataset=dataset)
+        assert entries
+        assert all(e["source"] == "optimized" for e in entries)
+        assert all(
+            "optimization objective: SharpeRatio" in e["rationale"] for e in entries
+        )
+        assert not any("controls a trading behavior" in e["rationale"] for e in entries)
+
+    def test_deviation_still_raises_with_matchable_dataset(self) -> None:
+        """A value deviating from its default still raises — dataset never
+        fabricates a justification for a non-default value."""
+        config = _retest_config(monte_carlo_runs=999)
+        dataset = [_dataset_record("monte_carlo_runs", "Retest")]
+        with pytest.raises(ParameterMatrixError):
+            generate_run_matrix(config, run_type="retest", dataset=dataset)
