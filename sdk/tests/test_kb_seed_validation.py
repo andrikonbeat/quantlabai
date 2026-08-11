@@ -22,6 +22,12 @@ from pathlib import Path
 import pytest
 import yaml
 
+from quantlab.knowledge.kb.educational import (
+    TPL_KEY_MAP,
+    build_educational_dataset,
+    load_educational_dataset,
+    parse_tpl_build,
+)
 from quantlab.knowledge.kb.models import KbParameter
 from quantlab.knowledge.kb.seeder import iter_seed_entries
 from quantlab.knowledge.kb.seeding_flow import CFX_EVIDENCE_MAP, run_seed_flow
@@ -36,6 +42,8 @@ from quantlab.knowledge.kb.validation import (
     validate_seed,
 )
 from quantlab.knowledge.store import KnowledgeStore
+
+FIXTURE_TPL = Path(__file__).parent / "fixtures" / "tpl_build_mini.xml"
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -504,3 +512,158 @@ class TestKbValidateCliExitCodes:
         )
         code = await cmd_kb_validate(_kb_args(tmp_path))
         assert code == 1
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# WU5 (PR3, T-3.1): integration layer — .cfx spot-checks, synthetic install
+# tree E2E, and matrix rationale fallback composing the WU1-WU4 seams
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def _write_synthetic_cfx_tree(
+    tmp_path: Path, make_cfx: object
+) -> None:
+    """Place a real ``.cfx`` ZIP at every CFX_EVIDENCE_MAP path (T-3.1).
+
+    ``make_cfx`` wraps the committed ``config_mini.xml`` into a real ZIP
+    container (AD-9); this helper drops one at each of the two distinct
+    evidence paths the curated map references, so a synthetic install
+    tree drives the same ``_bulk_verify`` existence checks as the real
+    pinned install.
+    """
+    for ref in sorted(set(CFX_EVIDENCE_MAP.values())):
+        target = tmp_path / ref
+        target.parent.mkdir(parents=True, exist_ok=True)
+        make_cfx(target.parent, name=target.name)
+
+
+class TestCfxIntegration:
+    """WU5 integration: cfx spot-checks, synthetic install tree E2E, matrix falls back."""
+
+    def test_cfx_zip_maps_known_param_and_dataset_loads(
+        self, tmp_path: Path, make_cfx: object
+    ) -> None:
+        """A synthetic .cfx ZIP maps a known (name, tab) to a verified KB
+        record, and the educational dataset round-trips over the seeded lake."""
+        doc = _full_doc(tmp_path)
+        _write_synthetic_cfx_tree(tmp_path, make_cfx)
+
+        result = run_seed_flow(
+            KbStore(root=tmp_path / "lake"),
+            doc_path=doc,
+            sqx_version="144.2953",
+            evidence_base=tmp_path,
+        )
+        assert result.ok is True
+
+        store = KbStore(root=tmp_path / "lake")
+        param = store.get("Genetic options", "Max # of Generations")
+        assert param.status == "verified"
+        assert param.evidence_ref and param.evidence_ref.endswith(".cfx")
+
+        records = build_educational_dataset(
+            store.list(),
+            tpl=parse_tpl_build(FIXTURE_TPL),
+            tpl_key_map=TPL_KEY_MAP,
+        )
+        rec = next(
+            r
+            for r in records
+            if r.name == "Max # of Generations" and r.tab == "Genetic options"
+        )
+        assert rec.status == "verified"
+        assert rec.evidence_ref and rec.evidence_ref.endswith(".cfx")
+
+        edu = (
+            tmp_path
+            / "lake"
+            / "structured"
+            / "sqx-kb"
+            / "144.2953"
+            / "educational"
+        )
+        edu.mkdir(parents=True)
+        (edu / "educational-dataset.yaml").write_text(
+            yaml.safe_dump([r.model_dump() for r in records], sort_keys=False),
+            encoding="utf-8",
+        )
+        loaded = load_educational_dataset(
+            tmp_path / "lake", sqx_version="144.2953"
+        )
+        assert len(loaded) == SEED_TOTAL
+        loaded_rec = next(
+            r
+            for r in loaded
+            if r.name == "Max # of Generations" and r.tab == "Genetic options"
+        )
+        assert loaded_rec.status == "verified"
+
+    @pytest.mark.asyncio
+    async def test_seed_cli_on_synthetic_install_tree_reproduces_band(
+        self, tmp_path: Path, make_cfx: object, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """CLI seed over a synthetic install tree reproduces the T-1.5 band
+        (74 verified + 8 needs_review) and exits 0 — same distribution as the
+        real first seed, proving the seams compose end-to-end."""
+        from quantlab.cli.sq_commands import cmd_kb_seed
+
+        doc = _full_doc(tmp_path)
+        _write_synthetic_cfx_tree(tmp_path, make_cfx)
+        args = _kb_args(tmp_path, doc=str(doc))
+        monkeypatch.setattr(
+            "quantlab.cli.sq_commands._DEFAULT_EVIDENCE_BASE_FACTORY",
+            lambda root: tmp_path,
+        )
+
+        code = await cmd_kb_seed(args)
+
+        assert code == 0
+        store = KbStore(root=tmp_path)
+        statuses = store.status(sqx_version="144.2953")
+        assert statuses["total"] == SEED_TOTAL
+        assert statuses["verified"] == len(CFX_EVIDENCE_MAP)
+        assert statuses["needs_review"] == SEED_TOTAL - len(CFX_EVIDENCE_MAP)
+        # frozen band: verified in [71,77], needs_review in [5,11]
+        assert VERIFIED_MIN <= statuses["verified"] <= VERIFIED_MAX
+        assert NEEDS_REVIEW_MIN <= statuses["needs_review"] <= NEEDS_REVIEW_MAX
+
+    def test_matrix_manual_rationale_honored_when_dataset_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """rationale_overrides still win when the dataset is absent; the
+        fallback never invents KB-sourced text (T-3.1 AC)."""
+        from quantlab.agents.parameter_matrix import (
+            DEFAULT_RATIONALE,
+            generate_run_matrix,
+        )
+        from quantlab.phase4.retester import RetesterConfig
+
+        monkeypatch.setattr(
+            "quantlab.agents.parameter_matrix.load_educational_dataset",
+            lambda **_: [],
+        )
+        config = RetesterConfig(
+            strategy_id="S1",
+            monte_carlo_runs=123,
+            mc_percentile=95,
+            walkforward_cycles=5,
+            min_trades=30,
+            confidence_level=0.95,
+            databanks=[],
+        )
+
+        entries = generate_run_matrix(
+            config,
+            run_type="retest",
+            rationale_overrides={"monte_carlo_runs": "manual choice"},
+        )
+
+        manual = next(e for e in entries if e["parameter"] == "monte_carlo_runs")
+        assert manual["source"] == "manual"
+        assert manual["rationale"] == "manual choice"
+        defaults = [e for e in entries if e["source"] == "default"]
+        assert defaults  # non-overridden fields still classified default
+        assert all(e["rationale"] == DEFAULT_RATIONALE for e in defaults)
+        assert not any(
+            "controls a trading behavior" in e["rationale"] for e in entries
+        )
