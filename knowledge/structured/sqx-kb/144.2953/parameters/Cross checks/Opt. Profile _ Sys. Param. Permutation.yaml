@@ -1,0 +1,13 @@
+name: Opt. Profile / Sys. Param. Permutation
+sqx_name: Opt. Profile / Sys. Param. Permutation
+tab: Cross checks
+section: 3. EXTENSIVE (SLOWEST)
+type: config
+default: Max 1,000 optimizations, 4 conditions
+what_it_does: Analyzes the optimization profile to ensure chosen parameters sit in
+  a broad profitable zone, not isolated peaks.
+how_it_works_in_sqx: Optimization-surface analysis.
+quant_trading_role: Robustness of the parameter neighborhood.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

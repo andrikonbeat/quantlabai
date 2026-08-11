@@ -1,0 +1,13 @@
+name: Slippage
+sqx_name: Slippage
+tab: Data
+section: 3. Test parameters
+type: float
+default: 0.5
+range: pips
+what_it_does: Simulated price gap between order and execution (0.5 pips).
+how_it_works_in_sqx: Execution realism model.
+quant_trading_role: Prevents phantom fill quality.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

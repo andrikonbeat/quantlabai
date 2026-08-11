@@ -1,0 +1,25 @@
+name: Stop Loss
+sqx_name: Stop Loss
+tab: What to build
+section: 3. Stop Loss configuration
+type: config
+default: ATR-based
+range: ATR Multiple 1.2 - 1.8; ATR Period 14 - 20 (Fixed pips 15-25 and Percent 1.5%-2.5%
+  disabled)
+what_it_does: Required stop-loss rule; ATR-based mode active (Multiple 1.2-1.8, Period
+  14-20).
+how_it_works_in_sqx: Builder must attach an SL; ATR-based stops scale with volatility
+  on M15.
+quant_trading_role: Mandatory capital-survival control for a $100 account.
+small_account_recommendation:
+  recommended_value: ATR-based (Multiple 1.2-1.8, Period 14-20)
+  default_value: ATR-based
+  reason: ATR-based SL adapts to volatility; fixed pips/percent risk mis-calibrate
+    on nano capital.
+why_choose: Required by protocol; ATR adapts to market conditions.
+when_choose: Always required.
+related_parameters:
+- Profit Target
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

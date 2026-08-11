@@ -1,0 +1,12 @@
+name: Conditions in exit rule
+sqx_name: Conditions in exit rule
+tab: What to build
+section: 2. Additional build config
+type: range
+range: 1 - 2 (if enabled)
+what_it_does: Min/max number of conditions allowed inside the exit rule.
+how_it_works_in_sqx: Bounds exit-condition composition when exit rules are enabled.
+quant_trading_role: Keeps exit logic simple and robust.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

@@ -1,0 +1,20 @@
+name: Exit On Friday
+sqx_name: Exit On Friday
+tab: Trading options
+section: 1. Trading options
+type: bool
+default: true
+what_it_does: "Close all positions Friday at 20:40 \u2014 a $100 account lacks margin\
+  \ for a weekend gap."
+how_it_works_in_sqx: Friday forced-flat gate.
+quant_trading_role: Protects nano capital from weekend gap risk.
+small_account_recommendation:
+  recommended_value: true
+  default_value: false
+  reason: A $100 account cannot absorb an adverse weekend gap; flatten before the
+    close.
+why_choose: Weekend gap protection on nano capital.
+when_choose: Always for small accounts.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

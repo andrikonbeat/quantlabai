@@ -1,0 +1,12 @@
+name: Islands (separate evolution)
+sqx_name: Islands (separate evolution)
+tab: Genetic options
+section: 2. Islands options
+type: int
+default: 4
+what_it_does: Independent evolution environments used to foster diversity (4).
+how_it_works_in_sqx: Island-model evolution with separate gene pools.
+quant_trading_role: Keeps divergent lineages alive.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

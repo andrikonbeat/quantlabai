@@ -1,0 +1,12 @@
+name: Restart evolution if fitness stagnates for X generation(s)
+sqx_name: Restart evolution if fitness stagnates for X generation(s)
+tab: Genetic options
+section: 6. Evolution management
+type: int
+default: 30
+what_it_does: Restart evolution if fitness does not improve for 30 consecutive generations.
+how_it_works_in_sqx: Stagnation watchdog of the search.
+quant_trading_role: Escapes local optima.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

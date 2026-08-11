@@ -1,0 +1,12 @@
+name: Friday Close Time
+sqx_name: Friday Close Time
+tab: Trading options
+section: 1. Trading options
+type: time
+default: 00:38
+what_it_does: Weekly trading closes Friday at 00:38.
+how_it_works_in_sqx: Week close time gate.
+quant_trading_role: Weekend exposure control.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx

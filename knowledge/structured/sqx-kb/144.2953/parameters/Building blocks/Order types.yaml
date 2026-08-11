@@ -1,0 +1,14 @@
+name: Order types
+sqx_name: Order types
+tab: Building blocks
+section: 4. Order types
+type: selection
+default: All selected
+range: (MKT) Enter at market; (MKT) Enter/reverse at market; (STOP) Enter at stop;
+  (LMT) Enter at limit
+what_it_does: Order types enabled for generation (all selected).
+how_it_works_in_sqx: Order-entry blocks available to rules.
+quant_trading_role: Entry-style variety.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

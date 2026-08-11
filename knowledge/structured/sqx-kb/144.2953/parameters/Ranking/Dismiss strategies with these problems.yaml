@@ -1,0 +1,13 @@
+name: Dismiss strategies with these problems
+sqx_name: Dismiss strategies with these problems
+tab: Ranking
+section: 4. Automatic filters
+type: config
+default: No trades / Too little trades; Zero PL trades / Zero duration trades; Too
+  many ambiguous trades; Outlier trade
+what_it_does: Automatically discard strategies with operational problems.
+how_it_works_in_sqx: Automatic dismissal filters.
+quant_trading_role: Removes untradeable or outlier-dependent logic.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

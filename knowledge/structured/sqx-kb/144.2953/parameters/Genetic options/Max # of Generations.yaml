@@ -1,0 +1,12 @@
+name: 'Max # of Generations'
+sqx_name: 'Max # of Generations'
+tab: Genetic options
+section: 1. Genetic options
+type: int
+default: 100
+what_it_does: Maximum number of evolutionary cycles the builder runs (100).
+how_it_works_in_sqx: Evolution stops after this many generations unless restarted.
+quant_trading_role: Budget for the search; 100 per protocol.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

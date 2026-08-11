@@ -1,0 +1,17 @@
+name: Strategy type
+sqx_name: Strategy type
+tab: What to build
+section: 1. Output config & strategy type
+type: enum
+default: Simple strategy
+what_it_does: Selects the generation mode; Simple strategy builds a strategy for a
+  single symbol and timeframe.
+how_it_works_in_sqx: 'Builder output mode: Simple strategy [default] produces one
+  strategy per symbol/timeframe.'
+quant_trading_role: One symbol/timeframe per portfolio slot keeps generated scope
+  tight.
+why_choose: Slot-filling campaigns run one market per slot.
+when_choose: Default per protocol.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

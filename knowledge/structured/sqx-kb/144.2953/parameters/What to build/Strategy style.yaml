@@ -1,0 +1,16 @@
+name: Strategy style
+sqx_name: Strategy style
+tab: What to build
+section: 2. Additional build config
+type: enum
+default: SQX Signals Style
+range: SQX Signals Style | Fuzzy Logic | SQ3 (legacy)
+what_it_does: "Chooses the rule-generation style; SQX Signals Style is used \u2014\
+  \ not Fuzzy Logic, not legacy SQ3."
+how_it_works_in_sqx: Determines the block language the builder uses to express rules.
+quant_trading_role: Signals style produces block rules that translate to Java JForex.
+why_choose: Fuzzy logic / SQ3 generation is out of protocol.
+when_choose: Always per protocol.
+status: needs_review
+sqx_version: '144.2953'
+evidence_ref: doc_dev/SQX Builder Config.md#What to build

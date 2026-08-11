@@ -1,0 +1,12 @@
+name: Global Indicators period
+sqx_name: Global Indicators period
+tab: What to build
+section: 2. Additional build config
+type: range
+range: 5 - 50
+what_it_does: Allowed range for indicator periods used across generated rules.
+how_it_works_in_sqx: Constrains the periods the builder may assign to indicator blocks.
+quant_trading_role: Avoids absurdly long/short indicator lookbacks.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

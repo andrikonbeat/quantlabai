@@ -1,0 +1,13 @@
+name: Start again when finished (continuous repeating evolution)
+sqx_name: Start again when finished (continuous repeating evolution)
+tab: Genetic options
+section: 6. Evolution management
+type: bool
+default: true
+what_it_does: Restart evolution automatically after the generation budget is reached
+  (on).
+how_it_works_in_sqx: Continuous evolution loop.
+quant_trading_role: Keeps searching for better candidates.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

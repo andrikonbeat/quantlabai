@@ -1,0 +1,14 @@
+name: Conditions in entry rule
+sqx_name: Conditions in entry rule
+tab: What to build
+section: 2. Additional build config
+type: range
+range: 1 - 2
+what_it_does: Min/max number of conditions allowed inside the entry rule.
+how_it_works_in_sqx: Bounds how many blocks can compose one entry condition.
+quant_trading_role: Fewer conditions reduce overfitting on small accounts.
+why_choose: Simple entry logic survives nano-account costs.
+when_choose: Default 1-2 per protocol.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

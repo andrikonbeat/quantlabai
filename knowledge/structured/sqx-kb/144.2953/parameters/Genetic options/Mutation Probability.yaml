@@ -1,0 +1,14 @@
+name: Mutation Probability
+sqx_name: Mutation Probability
+tab: Genetic options
+section: 1. Genetic options
+type: int
+default: 30
+range: 0 - 100 (%)
+what_it_does: Chance of random rule changes per strategy to introduce variability
+  (30%).
+how_it_works_in_sqx: Mutation rate of the genetic algorithm.
+quant_trading_role: Injects novelty into the population.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

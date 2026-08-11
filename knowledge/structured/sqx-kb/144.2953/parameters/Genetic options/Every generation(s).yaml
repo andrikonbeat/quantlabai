@@ -1,0 +1,12 @@
+name: Every generation(s)
+sqx_name: Every generation(s)
+tab: Genetic options
+section: 5. Fresh blood
+type: int
+default: 2
+what_it_does: Weakest-replacement runs every N generations (2).
+how_it_works_in_sqx: Cadence of the fresh-blood culling.
+quant_trading_role: Cadence control for diversity refresh.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

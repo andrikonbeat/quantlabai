@@ -1,0 +1,509 @@
+_generated: '2026-08-11T00:42:13.463610+00:00'
+_version: '4'
+directories: {}
+agent_memory:
+  agent-memory/quantlab-campaign/invest-100usd/memory.yaml:
+    agent_name: quantlab-campaign
+    campaign_id: invest-100usd
+    memory_path: agent-memory/quantlab-campaign/invest-100usd/memory.yaml
+    checkpoint_paths: []
+    last_updated: '2026-08-11T00:42:13.464905+00:00'
+    embedding_ref: null
+kb_parameters:
+  structured/sqx-kb/144.2953/parameters/Building blocks/ATM tab.yaml:
+    sqx_version: '144.2953'
+    tab: Building blocks
+    parameter: ATM tab
+    size: 443
+    sha256: 190241747e12a3530823ffc2a598e5ef2c486f75966d147d35aa91c1b9c57a80
+  structured/sqx-kb/144.2953/parameters/Building blocks/Calibrate indicators.yaml:
+    sqx_version: '144.2953'
+    tab: Building blocks
+    parameter: Calibrate indicators
+    size: 515
+    sha256: f108fd18233836cb186a5fc4f555a13a9cdbde0b3c3df7a677ead7f5f4d36201
+  structured/sqx-kb/144.2953/parameters/Building blocks/Exit types.yaml:
+    sqx_version: '144.2953'
+    tab: Building blocks
+    parameter: Exit types
+    size: 589
+    sha256: 1bd80bf5a8ddefdde8750b9afb4ef52a69f812923e8db13de19767b592f7784e
+  structured/sqx-kb/144.2953/parameters/Building blocks/Indicators.yaml:
+    sqx_version: '144.2953'
+    tab: Building blocks
+    parameter: Indicators
+    size: 642
+    sha256: 93269dac05ec997e489cdf042ef3ad2160e3f641a8e24c2790c6420f2930b8ae
+  structured/sqx-kb/144.2953/parameters/Building blocks/Order types.yaml:
+    sqx_version: '144.2953'
+    tab: Building blocks
+    parameter: Order types
+    size: 519
+    sha256: 005c9c125b60f6bf4777cbf3a197445c263d70870f414d04606256eaca7cf922
+  structured/sqx-kb/144.2953/parameters/Building blocks/Signals (Predefined conditions).yaml:
+    sqx_version: '144.2953'
+    tab: Building blocks
+    parameter: Signals (Predefined conditions)
+    size: 642
+    sha256: 11a480b3e6370a94598ae5353f46e6ceead325d6e7f0a7eb5ea0b88857cd9605
+  structured/sqx-kb/144.2953/parameters/Building blocks/Stop_Limit entry blocks.yaml:
+    sqx_version: '144.2953'
+    tab: Building blocks
+    parameter: Stop_Limit entry blocks
+    size: 686
+    sha256: f5ade8cabbdb48d6fb73ca6d9f7d84c84b486663e69a24df0f930a17e190f2d8
+  structured/sqx-kb/144.2953/parameters/Cross checks/Backtests on additional markets.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Backtests on additional markets
+    size: 557
+    sha256: 63c0ab909d200121d87b71a173e89cfc6531ec5fda99e70ae541ae003bb9bc59
+  structured/sqx-kb/144.2953/parameters/Cross checks/Cross Checks vs Retester.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Cross Checks vs Retester
+    size: 499
+    sha256: f8b04bd9ecdbf014ccf8bc92d7a1b6fdc07a9da80b5f62d03711da792791acf1
+  structured/sqx-kb/144.2953/parameters/Cross checks/Higher backtest precision.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Higher backtest precision
+    size: 565
+    sha256: e6da5ee368b02117442f0d260ce122d732e8607b784bdcfc840360554d38f372
+  structured/sqx-kb/144.2953/parameters/Cross checks/Monte Carlo retest methods.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Monte Carlo retest methods
+    size: 615
+    sha256: f72c00927073d7541327337ce6b69272f499e2cd3fc3d0b6a721396201d545e0
+  structured/sqx-kb/144.2953/parameters/Cross checks/Monte Carlo trades manipulation.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Monte Carlo trades manipulation
+    size: 593
+    sha256: 9acf1307c76595d64392601ac567064d0941fd00ba50a398cd3cb5bbd0b9016c
+  structured/sqx-kb/144.2953/parameters/Cross checks/Opt. Profile _ Sys. Param. Permutation.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Opt. Profile _ Sys. Param. Permutation
+    size: 572
+    sha256: 969a45ab208cc00edee4d9f76fd90c6657536652507cf64175f71339d958aaca
+  structured/sqx-kb/144.2953/parameters/Cross checks/Sequential Optimization.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Sequential Optimization
+    size: 511
+    sha256: caf26bb6cbd24211dec89711274f8be7ff828410b177b43ad640c778a2a0d807
+  structured/sqx-kb/144.2953/parameters/Cross checks/Walk-Forward Matrix.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Walk-Forward Matrix
+    size: 549
+    sha256: 053b1e50ad275bbd83ac75d3be127d2b1a1927ef858be0e7c80c43846ef4ac13
+  structured/sqx-kb/144.2953/parameters/Cross checks/Walk-Forward Optimization.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: Walk-Forward Optimization
+    size: 509
+    sha256: a38bdf176053da4b9308a02097ee8b2da247384e3453ac2a986fdbba1d659185
+  structured/sqx-kb/144.2953/parameters/Cross checks/What If simulations.yaml:
+    sqx_version: '144.2953'
+    tab: Cross checks
+    parameter: What If simulations
+    size: 583
+    sha256: a6df02aee139b695e65b83bfd8b14ef83250a6733b4fc40c64234b3b17f45e62
+  structured/sqx-kb/144.2953/parameters/Data/Commissions & swap.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Commissions & swap
+    size: 484
+    sha256: e1ab902f55c13da6e1c74814060624f64892eff7c0d5985b220d75b159bf4fcf
+  structured/sqx-kb/144.2953/parameters/Data/Data range parts (OOS).yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Data range parts (OOS)
+    size: 552
+    sha256: ac4563e62d7db84c50be3061a1b00ef78e7fcf12b3e74bd4d67c59e9add847c0
+  structured/sqx-kb/144.2953/parameters/Data/End day.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: End day
+    size: 385
+    sha256: 42a31584cd7ac27b46562d55888f733bc830036881c88dfb3adeb0ac98809d90
+  structured/sqx-kb/144.2953/parameters/Data/Engine.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Engine
+    size: 447
+    sha256: 69fbdb1fd8f8e313ca34293508b3c00ab6386f715d7a1992eb65cd69a95579bc
+  structured/sqx-kb/144.2953/parameters/Data/Min. distance.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Min. distance
+    size: 398
+    sha256: d36a4b552e0dd7054217bd6a1123dd8262aa631013511083c17b8a3eb459b2a7
+  structured/sqx-kb/144.2953/parameters/Data/Precision.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Precision
+    size: 774
+    sha256: 74762cb100a3997fbf1177b2c5608db5da5f72fe0bd783a283151a0829c7a1bb
+  structured/sqx-kb/144.2953/parameters/Data/Slippage.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Slippage
+    size: 404
+    sha256: 591349a1697995ba4e9e56117aece763a5161fd13c81eafec822f1f9ebf1f10c
+  structured/sqx-kb/144.2953/parameters/Data/Spread.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Spread
+    size: 415
+    sha256: a86562e2482005fc30fa46339addc447108cf6ae29e7ca322118512fb1a4efda
+  structured/sqx-kb/144.2953/parameters/Data/Start day.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Start day
+    size: 413
+    sha256: 4d64724cb2b9f23a14e5c2b57c9b2e46f40f42f2187b786396a632fbad110ccc
+  structured/sqx-kb/144.2953/parameters/Data/Symbol.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Symbol
+    size: 441
+    sha256: b8a22e9bcb49b271e4a6378b1a3b22c3dc421933be2382a3f0043250feafd310
+  structured/sqx-kb/144.2953/parameters/Data/Timeframe.yaml:
+    sqx_version: '144.2953'
+    tab: Data
+    parameter: Timeframe
+    size: 459
+    sha256: df8676656caaa33493d3023ada983948fadfeba7db89ebf5d4d82fbd34d29905
+  structured/sqx-kb/144.2953/parameters/Genetic options/Crossover Probability.yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Crossover Probability
+    size: 484
+    sha256: 16f81ab890f8b1c8b7e1210d09d65fa5bd2bd358ac7b8b1186ce65729f5b90a8
+  ? structured/sqx-kb/144.2953/parameters/Genetic options/Detect same strategies in
+    population and replace them with newly generated ones.yaml
+  : sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Detect same strategies in population and replace them with newly generated
+      ones
+    size: 594
+    sha256: fd9794c4ed68d8249f9cd69599aefa59a92023f065d986d3a011a182b2b491d1
+  structured/sqx-kb/144.2953/parameters/Genetic options/Every generation(s).yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Every generation(s)
+    size: 426
+    sha256: a6ffde5abde3915c11e7b2d44b14aad5e299dc2a179f5ad2bb2ea337df58fcf9
+  structured/sqx-kb/144.2953/parameters/Genetic options/Generated decimation coefficient.yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Generated decimation coefficient
+    size: 519
+    sha256: 217ba6e1c672d537d1cd0dfd143738bbcfb51dfa36dd7a79d80454530164bd3b
+  structured/sqx-kb/144.2953/parameters/Genetic options/Initial population size required.yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Initial population size required
+    size: 479
+    sha256: 8e56bb89fb8ebb29506dad8b080d5968b7ed9381e866ab32f6b68d10339a6daf
+  structured/sqx-kb/144.2953/parameters/Genetic options/Islands (separate evolution).yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Islands (separate evolution)
+    size: 469
+    sha256: 3da2b7131e47becc89e4bc3809e6cb17b365912aeda9e4044e18fdcf16d897d6
+  'structured/sqx-kb/144.2953/parameters/Genetic options/Max # of Generations.yaml':
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: 'Max # of Generations'
+    size: 478
+    sha256: ffa2937ab1413f25cda899fad302522a6fc1d0076770485e46f5d18d5562923d
+  structured/sqx-kb/144.2953/parameters/Genetic options/Migrate every Xth generation, X =.yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Migrate every Xth generation, X =
+    size: 480
+    sha256: bd2b3e9909afed74897adf573cc89ded0feefe03b427e5bc3ad829bde5961942
+  structured/sqx-kb/144.2953/parameters/Genetic options/Mutation Probability.yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Mutation Probability
+    size: 481
+    sha256: 3011781bbd84a091961ebaadda407c930bc6098b8af4fb5c1c58bf599b3880c6
+  structured/sqx-kb/144.2953/parameters/Genetic options/Population Size (per island).yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Population Size (per island)
+    size: 462
+    sha256: daf5773ec196d9f9c79502fcb9e6fd04fa6a568eadf6fbd316514c4496785288
+  structured/sqx-kb/144.2953/parameters/Genetic options/Population migration rate.yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Population migration rate
+    size: 468
+    sha256: 15a63dd2f0c14b6dbff9ede93827fdd7160207550520cbee5799707fca7481a2
+  structured/sqx-kb/144.2953/parameters/Genetic options/Profit factor > 1 (initial population filter).yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Profit factor > 1 (initial population filter)
+    size: 508
+    sha256: 9d1c23aa53dddf1a9006569c87802be84f38cb3362a65485a5dc1e600fb03281
+  structured/sqx-kb/144.2953/parameters/Genetic options/Replace % of weakest strategies with newly generated.yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Replace % of weakest strategies with newly generated
+    size: 514
+    sha256: 05b586308d21679a4c6230fea8dc4fac8ed93d859bb6d8298361c8e2fb26b3fb
+  structured/sqx-kb/144.2953/parameters/Genetic options/Restart evolution if fitness stagnates for X generation(s).yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Restart evolution if fitness stagnates for X generation(s)
+    size: 524
+    sha256: 14174de9fa3b2710a3acbcc68dbdc05fb4914861f1f0893065fd07de56935c69
+  structured/sqx-kb/144.2953/parameters/Genetic options/Start again when finished (continuous repeating evolution).yaml:
+    sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Start again when finished (continuous repeating evolution)
+    size: 537
+    sha256: a93d2dce8b9357c91d7c4a92946751683047f8f882c522022ea5433de59a171b
+  ? structured/sqx-kb/144.2953/parameters/Genetic options/Use strategies from Initial
+    population databank as evolution start.yaml
+  : sqx_version: '144.2953'
+    tab: Genetic options
+    parameter: Use strategies from Initial population databank as evolution start
+    size: 583
+    sha256: e99e8a84ebdcbaf03abfa4f8e73612c809b4805f7aad3738f6fe74c642f36829
+  structured/sqx-kb/144.2953/parameters/Money management/Choose Money Management method.yaml:
+    sqx_version: '144.2953'
+    tab: Money management
+    parameter: Choose Money Management method
+    size: 891
+    sha256: 6dc472603cb5e06ba2f189a4e56e89065ca7e328b3cb47c8b0553c5a9673b018
+  structured/sqx-kb/144.2953/parameters/Money management/Initial capital.yaml:
+    sqx_version: '144.2953'
+    tab: Money management
+    parameter: Initial capital
+    size: 447
+    sha256: 50c4b16991cab95f79133abc5426dd8dbe43438eeb28185b540b66308d2144f4
+  structured/sqx-kb/144.2953/parameters/Money management/Order size.yaml:
+    sqx_version: '144.2953'
+    tab: Money management
+    parameter: Order size
+    size: 694
+    sha256: db4214079989ae8f95e7c6f0e3ea8d427cdafb22b68fed2dde9ab57b69e8e9a0
+  structured/sqx-kb/144.2953/parameters/Ranking/Compute from.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Compute from
+    size: 458
+    sha256: fc78b3720a2864df36b45531dad631d76f9d5cee3fa3bd88b756fd70f248df9d
+  structured/sqx-kb/144.2953/parameters/Ranking/Custom filters.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Custom filters
+    size: 582
+    sha256: 12e837a0b477f00c22b0f1d32fa9c016d412a682c821b28e501a668a48c1ec7a
+  structured/sqx-kb/144.2953/parameters/Ranking/Dismiss strategies with these problems.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Dismiss strategies with these problems
+    size: 588
+    sha256: e2b4019efb5d5c170db6b60c7e1f8a43c6cae475233abf4903e1b05e8ed23ee7
+  structured/sqx-kb/144.2953/parameters/Ranking/Fit to existing portfolio filter.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Fit to existing portfolio filter
+    size: 628
+    sha256: 74c302c913321338d5504d6fef7efc1273aea7e0ad85aba0e5dfe39e00b183a6
+  structured/sqx-kb/144.2953/parameters/Ranking/Maximum strategies to store in databank.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Maximum strategies to store in databank
+    size: 500
+    sha256: 64144c419fb15c172b55702121c134fcb720fb344e673e02bf6a286d6fcb4a42
+  structured/sqx-kb/144.2953/parameters/Ranking/Optimizer block.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Optimizer block
+    size: 450
+    sha256: c98c3b6e26567727fa3ad820275ed16c9c0d28b7cb74fd8d5d8e73ac6815b187
+  structured/sqx-kb/144.2953/parameters/Ranking/Portfolio Master vs Portfolio Composer.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Portfolio Master vs Portfolio Composer
+    size: 504
+    sha256: 2e67e6f7c61fcffb7540e2a8da2555d2dd4cf80c55456f64f6cc409bb4968825
+  structured/sqx-kb/144.2953/parameters/Ranking/Ranking Criterium.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Ranking Criterium
+    size: 818
+    sha256: 8b1dc825091c0c0a980bea2f14966f192426dff2ba079897b39ee92fea319463
+  structured/sqx-kb/144.2953/parameters/Ranking/Stop generation when.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Stop generation when
+    size: 523
+    sha256: ac0fa92808be68f92f6db3590a5841f909858ee89b45cb70e87a30d1d357b256
+  structured/sqx-kb/144.2953/parameters/Ranking/Use.yaml:
+    sqx_version: '144.2953'
+    tab: Ranking
+    parameter: Use
+    size: 410
+    sha256: 785fedcc39af96225105b6bdc060b0470d8e541ca97d47612a5df522676dfd63
+  structured/sqx-kb/144.2953/parameters/Trading options/Don't trade on weekends.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Don't trade on weekends
+    size: 415
+    sha256: 3b78f8fa5d94c2143c72e667fce6c66fdbddc86235dae13e380e8c4e0698ccee
+  structured/sqx-kb/144.2953/parameters/Trading options/End Of Day Exit Time.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: End Of Day Exit Time
+    size: 417
+    sha256: 58f02e955e08fef7658484c65e6b4d9c51f5a47e65a5c86cfd83188a7265beb3
+  structured/sqx-kb/144.2953/parameters/Trading options/Exit At End Of Day.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Exit At End Of Day
+    size: 413
+    sha256: b1fc4280db54226714663c40e0c6cee300d90a7885fe974316d349ea409c7536
+  structured/sqx-kb/144.2953/parameters/Trading options/Exit On Friday.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Exit On Friday
+    size: 730
+    sha256: 15e501be9628849d9125e31b46fb21b625f1ea438dfe4e09571ef00e4c6bc6b9
+  structured/sqx-kb/144.2953/parameters/Trading options/Friday Close Time.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Friday Close Time
+    size: 395
+    sha256: aecb21bd91b5697ede32dc28edfe96b6392aa97e7ca3a950f85bf2325733f271
+  structured/sqx-kb/144.2953/parameters/Trading options/Limit Time Range.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Limit Time Range
+    size: 483
+    sha256: 25d4b050cf284ad13e75b1b3e3292b7bdea6da78f239a50cb1ee3935d0620089
+  structured/sqx-kb/144.2953/parameters/Trading options/Max distance from market.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Max distance from market
+    size: 500
+    sha256: e568f748d9ea22c487263b6fcfcb066d34c116a873cf056b81c5d2b6e4b4bfd1
+  structured/sqx-kb/144.2953/parameters/Trading options/Maximum Trades Per Day.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Maximum Trades Per Day
+    size: 764
+    sha256: 5b8d0104cb7deac16a9797ec8e11e36b69287915a016d2f47ff02fef90c3fee6
+  structured/sqx-kb/144.2953/parameters/Trading options/Minimum _ Maximum PT.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Minimum _ Maximum PT
+    size: 461
+    sha256: 0e9b6accf2c6a42cc0f12d0e1305d79b553116fb29152443e36221cfb2c89aff
+  structured/sqx-kb/144.2953/parameters/Trading options/Minimum _ Maximum SL.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Minimum _ Maximum SL
+    size: 461
+    sha256: 85b24d2e92f2ac3ad49efb32622d37cb7e64f6b1e7b9c4bc19d379183687d38c
+  structured/sqx-kb/144.2953/parameters/Trading options/Order Types To Close.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Order Types To Close
+    size: 452
+    sha256: e5a44e031aa9a018827994aa29404fc32d7c5a38195828a83c334eb903c5e95e
+  structured/sqx-kb/144.2953/parameters/Trading options/Realistic Gaps Handling.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Realistic Gaps Handling
+    size: 432
+    sha256: 9ae1cca201495ebb1c08dfeef42982f5669456f7e8bd643132ec53256df4a72a
+  structured/sqx-kb/144.2953/parameters/Trading options/Store Chart Data.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Store Chart Data
+    size: 432
+    sha256: d1cc7ef9c0574522e515190551f5ddce9edf69ce2f1bcf8d0eec93d4de35eb63
+  structured/sqx-kb/144.2953/parameters/Trading options/Sunday Open Time.yaml:
+    sqx_version: '144.2953'
+    tab: Trading options
+    parameter: Sunday Open Time
+    size: 398
+    sha256: b344d03d1cb1afde885a779a1b7c3e827e44f0588ff0f44654f0534ca4bf48e0
+  structured/sqx-kb/144.2953/parameters/What to build/Build mode.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Build mode
+    size: 711
+    sha256: 444fd7dbf0654cef28ac5cd3be1c6db608965a1330a55cec0b5e811c24a1405f
+  structured/sqx-kb/144.2953/parameters/What to build/Conditions in entry rule.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Conditions in entry rule
+    size: 595
+    sha256: b3acc0ceaf2489129b13e9837d42e0a9ad34911900b71c31e436ecadb35fb3c8
+  structured/sqx-kb/144.2953/parameters/What to build/Conditions in exit rule.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Conditions in exit rule
+    size: 494
+    sha256: 0f18715929a5e240ad4a5efd0417b02239392aba74f23a2de5add34cfd473b6d
+  structured/sqx-kb/144.2953/parameters/What to build/Global Indicators period.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Global Indicators period
+    size: 506
+    sha256: c05c63a2c0ecbb29f3c314ea794aca57109c4942eeed214ee33b7d2c60b92d00
+  structured/sqx-kb/144.2953/parameters/What to build/Global Lookback period (Shift).yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Global Lookback period (Shift)
+    size: 484
+    sha256: c4a6af03390e12aa182202277b45693eb303d08054177eff9215c36c6402dabb
+  structured/sqx-kb/144.2953/parameters/What to build/Number of Exit Types (SL_PT_etc...).yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Number of Exit Types (SL_PT_etc...)
+    size: 498
+    sha256: 9cd588bcc4e0aaf1900713200a2be4afbff53526a3c7682e8c354acd59f0417e
+  structured/sqx-kb/144.2953/parameters/What to build/Profit Target.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Profit Target
+    size: 769
+    sha256: 3731a8e704275accb3c4ce2fc739a9568c19a6d61cd5fff6049d80ee99c1ad69
+  structured/sqx-kb/144.2953/parameters/What to build/Stop Loss.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Stop Loss
+    size: 975
+    sha256: a2869e02f15f5e0e38a3b6c13c454159837e1fe46d093cbdee2e971cb8ee72bb
+  structured/sqx-kb/144.2953/parameters/What to build/Strategy style.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Strategy style
+    size: 685
+    sha256: f092149fcc890091108c49fec5990fe323dfed3eb9784143765d0c91e0e1532b
+  structured/sqx-kb/144.2953/parameters/What to build/Strategy type.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Strategy type
+    size: 681
+    sha256: 9732d6e5bb6fd825d83223134f50b3584bb069ae4c2c9255e7a7baaeb9e0552d
+  structured/sqx-kb/144.2953/parameters/What to build/Trading directions.yaml:
+    sqx_version: '144.2953'
+    tab: What to build
+    parameter: Trading directions
+    size: 685
+    sha256: 73893f448b1901edd3faf4365294a427a395c48659c415dd215c48846e1732a8
+version_events: {}
+campaigns: {}

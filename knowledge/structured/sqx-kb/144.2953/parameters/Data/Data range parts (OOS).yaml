@@ -1,0 +1,13 @@
+name: Data range parts (OOS)
+sqx_name: Data range parts
+tab: Data
+section: 4. Data range parts
+type: config
+default: "ISV1-ISV10 (~3% each); OOS1 final 30% (2019.03.02 \u2192 2025.12.19)"
+what_it_does: "Not documented \u2014 doc gap; whether generation should include OOS\
+  \ data at all is the author's open question."
+how_it_works_in_sqx: "Not documented \u2014 doc gap; pending review"
+quant_trading_role: "Not documented \u2014 doc gap; pending review"
+status: needs_review
+sqx_version: '144.2953'
+evidence_ref: doc_dev/SQX Builder Config.md#Data

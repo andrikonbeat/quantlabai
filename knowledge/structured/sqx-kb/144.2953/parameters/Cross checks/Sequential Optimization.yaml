@@ -1,0 +1,13 @@
+name: Sequential Optimization
+sqx_name: Sequential Optimization
+tab: Cross checks
+section: 2. STANDARD (SLOW)
+type: config
+default: Up/Down 50%, 50 steps
+range: '>= 80% of parameters must pass stability'
+what_it_does: Optimizes parameters sequentially to find stability ranges.
+how_it_works_in_sqx: Per-parameter stability scan.
+quant_trading_role: Rejects spike-dependent parameters.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx

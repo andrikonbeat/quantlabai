@@ -1,0 +1,13 @@
+name: Custom filters
+sqx_name: Custom filters
+tab: Ranking
+section: 3. Custom filters
+type: config
+default: PF(IST) > 1.2; PF(OOS1) > 1.1; PF(ISV) > 1.01; Ret/DD > 3; Avg Trades/Month
+  > 5; Expectancy > 5; Max Consec Losses < 10
+what_it_does: Mandatory minimum thresholds a strategy must pass to be stored.
+how_it_works_in_sqx: Hard acceptance filters after fitness ranking.
+quant_trading_role: Guarantees statistical and risk floors for stored strategies.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

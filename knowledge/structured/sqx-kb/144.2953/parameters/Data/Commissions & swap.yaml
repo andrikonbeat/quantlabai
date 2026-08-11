@@ -1,0 +1,12 @@
+name: Commissions & swap
+sqx_name: Commissions & swap
+tab: Data
+section: 3. Test parameters
+type: str
+default: $7 per full lot; EUR/USD swap long -0.707, short 0.37
+what_it_does: Execution costs modeled in backtests ($7/full lot; EUR/USD swap values).
+how_it_works_in_sqx: Cost model applied per trade.
+quant_trading_role: Costs are decisive on nano accounts.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

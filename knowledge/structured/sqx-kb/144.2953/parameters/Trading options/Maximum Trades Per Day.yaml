@@ -1,0 +1,20 @@
+name: Maximum Trades Per Day
+sqx_name: Maximum Trades Per Day
+tab: Trading options
+section: 1. Trading options
+type: int
+default: 0
+range: 0 = no limit
+what_it_does: Daily trade cap; 0 means no limit in the general config.
+how_it_works_in_sqx: Caps entries per trading day.
+quant_trading_role: Prevents overtrading and excess commissions on a small account.
+small_account_recommendation:
+  recommended_value: 1
+  default_value: 0
+  reason: Protocol recommends 1 per day to avoid overtrading and excess commissions
+    on a $100 account.
+why_choose: Generation protocol recommends 1 for small accounts.
+when_choose: Small-account campaigns.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

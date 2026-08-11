@@ -1,0 +1,13 @@
+name: Detect same strategies in population and replace them with newly generated ones
+sqx_name: Detect same strategies in population and replace them with newly generated
+  ones
+tab: Genetic options
+section: 5. Fresh blood
+type: bool
+default: true
+what_it_does: Detect identical strategies and replace duplicates with fresh ones (on).
+how_it_works_in_sqx: Deduplicates the population to keep genetic diversity.
+quant_trading_role: Prevents wasted generations on clones.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

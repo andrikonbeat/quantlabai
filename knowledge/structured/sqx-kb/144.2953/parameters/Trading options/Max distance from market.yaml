@@ -1,0 +1,13 @@
+name: Max distance from market
+sqx_name: Max distance from market
+tab: Trading options
+section: 1. Trading options
+type: bool
+default: false
+range: Max distance percent 6 (when enabled)
+what_it_does: Cap on how far pending orders may sit from market (off; 6% when enabled).
+how_it_works_in_sqx: Pending-order distance guard.
+quant_trading_role: Avoids stale pending orders.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx

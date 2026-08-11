@@ -1,0 +1,12 @@
+name: Minimum / Maximum PT
+sqx_name: Minimum / Maximum PT
+tab: Trading options
+section: 1. Trading options
+type: range
+default: 0 / 0
+what_it_does: No extra PT bounds here; PT is controlled in the What to build tab (0/0).
+how_it_works_in_sqx: Builder-level PT constraint override.
+quant_trading_role: Avoids double constraint conflicts.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

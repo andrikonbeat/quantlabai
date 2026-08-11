@@ -1,0 +1,14 @@
+name: Higher backtest precision
+sqx_name: Higher backtest precision
+tab: Cross checks
+section: 1. BASIC (FAST)
+type: config
+default: 1-minute tick simulation, 3 conditions
+range: Spread 3 pips
+what_it_does: Slower, precise backtest with wider spread (3 pips) to confirm viability
+  under costlier conditions.
+how_it_works_in_sqx: High-precision re-simulation.
+quant_trading_role: Net profit and trade count must stay >= 80% of the original.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

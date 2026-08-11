@@ -1,0 +1,14 @@
+name: What If simulations
+sqx_name: What If simulations
+tab: Cross checks
+section: 1. BASIC (FAST)
+type: config
+default: 15 simulations, 3 filter conditions
+range: 'Filters: Profit factor > 1.3 AND Ret/DD Ratio > 4'
+what_it_does: Scenario tests (e.g. selected days only, exclude best/worst trades)
+  to check profit dependence on isolated events.
+how_it_works_in_sqx: What-If robustness simulations.
+quant_trading_role: Detects event-dependent profitability.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

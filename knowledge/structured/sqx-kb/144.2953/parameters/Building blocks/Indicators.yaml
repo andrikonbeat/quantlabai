@@ -1,0 +1,15 @@
+name: Indicators
+sqx_name: Indicators
+tab: Building blocks
+section: 2. Indicators
+type: selection
+default: 69 of 106 blocks selected
+range: Excludes {Indicator Crosses Above MA, Indicator Crosses Below MA, Indicator
+  Below MA, Indicator Above MA}
+what_it_does: Indicator blocks combined with operators; 69 of 106 selected; MA-cross
+  family excluded (no Java JForex conversion).
+how_it_works_in_sqx: Indicator/price/operator composition blocks.
+quant_trading_role: Avoids blocks that cannot translate to JForex Java.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

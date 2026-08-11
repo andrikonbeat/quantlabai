@@ -1,0 +1,18 @@
+name: Ranking Criterium
+sqx_name: Ranking Criterium
+tab: Ranking
+section: 2. Strategy Quality ranking
+type: config
+default: Ret/DD Ratio Maximize (40); Max DD % Minimize (25); Profit factor Maximize
+  (15); R Expectancy Maximize (10); Ambiguous Trades % Minimize (5); Complexity Minimize
+  (5)
+range: Weights sum to 100
+what_it_does: 'Fitness goals and weights: Ret/DD 40, Max DD 25, Profit factor 15,
+  R Expectancy 10, Ambiguous 5, Complexity 5.'
+how_it_works_in_sqx: Weighted multi-goal ranking.
+quant_trading_role: Prioritizes risk-adjusted return over raw profit; penalizes complexity.
+why_choose: Ret/DD is the dominant quality signal for survival.
+when_choose: Default protocol weights.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx

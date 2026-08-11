@@ -1,0 +1,12 @@
+name: Symbol
+sqx_name: Symbol
+tab: Data
+section: 2. Backtest data settings
+type: str
+default: EURUSD_M1_dukas
+what_it_does: Backtest symbol (e.g. EURUSD_M1_dukas); alternates per portfolio slot.
+how_it_works_in_sqx: Data feed used for generation and backtests.
+quant_trading_role: The market the strategy must trade.
+status: verified
+sqx_version: '144.2953'
+evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
