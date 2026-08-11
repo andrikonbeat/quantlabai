@@ -467,7 +467,11 @@ class TestKbCli:
         assert code == 1
         assert "not found" in err.lower()
 
-    def test_kb_seed_exit_0(self, tmp_path: Path, sample_doc: Path, capsys: pytest.CaptureFixture) -> None:
+    def test_kb_seed_gate_fails_exit_1_on_partial_doc(self, tmp_path: Path, sample_doc: Path, capsys: pytest.CaptureFixture) -> None:
+        # REQ-209: seed now runs the full flow + gate (D2). A partial sample
+        # doc (12 of 82 params, no install assets) cannot reach the frozen
+        # distribution band → the gate fails → exit 1. Exit 0 requires a full
+        # doc + real install evidence (covered by test_kb_seed_validation.py).
         store = make_kb_dir(tmp_path)
         code = self._main(
             [
@@ -477,8 +481,9 @@ class TestKbCli:
             ]
         )
         out = capsys.readouterr().out
-        assert code == 0
+        assert code == 1
         assert "seeded" in out.lower()
+        assert "FAIL" in out or "distribution" in out.lower()
 
     def test_kb_status_exit_0(self, tmp_path: Path, sample_doc: Path, capsys: pytest.CaptureFixture) -> None:
         store = make_kb_dir(tmp_path)

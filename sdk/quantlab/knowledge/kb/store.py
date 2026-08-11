@@ -32,6 +32,19 @@ def _format_param_path(tab: str, param: str) -> str:
     return f"{tab}/{param}"
 
 
+def _safe_param_filename(param: str) -> str:
+    """Make a parameter name safe as a single file name.
+
+    Some SEED_SPEC names contain ``/`` (e.g. "Stop/Limit entry blocks",
+    "Minimum / Maximum SL", "Opt. Profile / Sys. Param. Permutation").
+    Naive ``f"{param}.yaml"`` would create NESTED directories instead of
+    one file, breaking the documented ``parameters/{tab}/{param}.yaml``
+    layout. Slashes are replaced so the golden tree stays flat
+    (REQ-202 layout contract); the YAML still carries the real name.
+    """
+    return param.replace("/", "_")
+
+
 class KbStore:
     """Filesystem store for KB parameters over a Knowledge Lake."""
 
@@ -60,7 +73,11 @@ class KbStore:
         return self.root / "structured" / "sqx-kb" / sqx_version / "parameters"
 
     def _param_path(self, tab: str, param: str, sqx_version: str) -> Path:
-        return self._version_dir(sqx_version) / tab / f"{param}.yaml"
+        return (
+            self._version_dir(sqx_version)
+            / tab
+            / f"{_safe_param_filename(param)}.yaml"
+        )
 
     def _resolve_version(self, sqx_version: str | None) -> str:
         return sqx_version or SQX_VERSION
@@ -106,8 +123,10 @@ class KbStore:
             return []
 
         results: list[KbParameter] = []
-        for param_file in sorted(version_dir.glob("*/*.yaml")):
-            if tab is not None and param_file.parent.name != tab:
+        for param_file in sorted(version_dir.rglob("*.yaml")):
+            rel = param_file.relative_to(version_dir)
+            file_tab = rel.parts[0]
+            if tab is not None and file_tab != tab:
                 continue
             try:
                 param = self._load_file(param_file)
@@ -240,7 +259,7 @@ class KbStore:
         if not version_dir.is_dir():
             return 0
         count = 0
-        for path in version_dir.glob("*/*.yaml"):
+        for path in version_dir.rglob("*.yaml"):
             try:
                 entry = self._load_file(path)
             except Exception:

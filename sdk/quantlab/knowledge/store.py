@@ -754,10 +754,12 @@ class KnowledgeStore:
             return {}
 
         entries: dict[str, object] = {}
-        for param_file in sorted(kb_root.glob("*/parameters/*/*.yaml")):
+        for param_file in sorted(kb_root.rglob("parameters/**/*.yaml")):
             rel = str(param_file.relative_to(self.root))
-            # parts = (ver, "parameters", tab, filename)
-            ver, _, tab, _ = param_file.relative_to(kb_root).parts
+            # parts = (ver, "parameters", tab, *rest, filename)
+            parts = param_file.relative_to(kb_root).parts
+            ver = parts[0]
+            tab = parts[2]
             entries[rel] = {
                 "sqx_version": ver,
                 "tab": tab,

@@ -1,12 +1,13 @@
 """SQX KB CLI commands — ``quantlab sqx kb`` (REQ-207) + ``sqx check-version`` (REQ-304).
 
 Subcommands: ``list [--tab] [--status]``, ``get {tab}/{param}``,
-``seed [--doc]``, ``verify {tab}/{param} --evidence-ref``, ``status``,
-``check-version``.
+``seed [--doc]`` (full flow + REQ-209 gate), ``validate`` (gate re-check),
+``verify {tab}/{param} --evidence-ref``, ``status``, ``check-version``.
 
 Exit contract: 0 on success; 1 with a "not found" message for unknown
-parameters (REQ-207 scenario), and 1 on any operational failure.
-``check-version`` exits 0 in-sync, 1 drift, 0 unknown (fail-open).
+parameters (REQ-207 scenario), and 1 on any operational failure or when the
+REQ-209 gate fails (REQ-209 scenarios). ``check-version`` exits 0 in-sync,
+1 drift, 0 unknown (fail-open).
 """
 
 from __future__ import annotations
@@ -15,8 +16,17 @@ import argparse
 import sys
 
 from quantlab.knowledge.kb.models import KB_TABS, SQX_VERSION
-from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH, seed_from_doc
+from quantlab.knowledge.kb.seeding_flow import (
+    _default_evidence_base,
+    run_seed_flow,
+)
+from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH
 from quantlab.knowledge.kb.store import KbParamNotFoundError, KbStore
+from quantlab.knowledge.kb.validation import validate_seed
+
+# Evidence-base derivation hook (D2). Tests monkeypatch this to point at a
+# synthetic install tree; production derives the project root from the lake.
+_DEFAULT_EVIDENCE_BASE_FACTORY = _default_evidence_base
 
 
 def print_human(message: str, *, error: bool = False) -> None:
@@ -106,21 +116,66 @@ async def cmd_kb_get(args: argparse.Namespace) -> int:
 
 
 async def cmd_kb_seed(args: argparse.Namespace) -> int:
-    """Seed the KB from doc_dev/SQX Builder Config.md (REQ-203)."""
+    """Seed + verify + index + run the REQ-209 gate (REQ-203/REQ-209).
+
+    ``seed`` is the FULL flow: parameters are seeded from the doc, bulk
+    verified against the real install's ``.cfx`` evidence, leftover doc-only
+    entries demoted to needs_review, the index rebuilt, and the REQ-209 gate
+    run. Exit 0 only when every gate check passes (spec-faithful; no
+    ``--no-gate`` escape hatch per design open question default).
+    """
     try:
         store = _kb_store(args)
-        result = seed_from_doc(store, doc_path=args.doc, sqx_version=args.sqx_version)
+        evidence_base = _DEFAULT_EVIDENCE_BASE_FACTORY(args.knowledge_root)
+        result = run_seed_flow(
+            store,
+            doc_path=args.doc,
+            sqx_version=args.sqx_version,
+            evidence_base=evidence_base,
+        )
         if result.total == 0:
             print_error(f"Seed failed: document not found or unreadable: {args.doc}")
             return 1
         print_human(
-            f"Seeded {result.seeded} parameter(s) "
-            f"({result.needs_review} needs_review) from {args.doc} "
-            f"into sqx-kb/{args.sqx_version}"
+            f"Seeded {result.total} parameter(s) into sqx-kb/{args.sqx_version}: "
+            f"{result.verified} verified, {result.needs_review} needs_review"
         )
-        return 0
+        _print_gate_report(result.report)
+        return 0 if result.ok else 1
     except Exception as e:  # pragma: no cover - defensive
         print_error(f"KB seed failed: {e}")
+        return 1
+
+
+def _print_gate_report(report: object) -> None:
+    """Print the REQ-209 gate report in a compact, operator-readable form."""
+    checks = getattr(report, "checks", {})
+    errors = getattr(report, "errors", [])
+    counts = getattr(report, "counts", {})
+    if counts:
+        print_human(
+            f"Gate counts: total {counts.get('total')}, "
+            f"verified {counts.get('verified')}, "
+            f"needs_review {counts.get('needs_review')}, "
+            f"seeded {counts.get('seeded')}"
+        )
+    for name, ok in checks.items():
+        print_human(f"  [{('PASS' if ok else 'FAIL')}] {name}")
+    for err in errors:
+        print_error(f"  {err}")
+
+
+async def cmd_kb_validate(args: argparse.Namespace) -> int:
+    """Run the REQ-209 gate against an existing seed (idempotent re-check)."""
+    try:
+        report = validate_seed(args.knowledge_root, sqx_version=args.sqx_version)
+        _print_gate_report(report)
+        if not report.checks.get("schema", False):
+            print_error("KB validate failed: schema violations present")
+            return 1
+        return 0 if report.ok else 1
+    except Exception as e:  # pragma: no cover - defensive
+        print_error(f"KB validate failed: {e}")
         return 1
 
 
@@ -255,6 +310,13 @@ def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Path to the SQX Builder Config doc (default: doc_dev/SQX Builder Config.md)",
     )
     p_seed.set_defaults(func=cmd_kb_seed)
+
+    # ── sqx kb validate ─────────────────────────────────────────────────────
+    p_validate = kb_sub.add_parser(
+        "validate", help="Run the REQ-209 gate against the seeded KB"
+    )
+    _add_common(p_validate)
+    p_validate.set_defaults(func=cmd_kb_validate)
 
     # ── sqx kb verify ────────────────────────────────────────────────────────
     p_verify = kb_sub.add_parser(
