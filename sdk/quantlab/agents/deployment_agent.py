@@ -7,11 +7,13 @@ manifest, and supports dry-run mode that validates without uploading.
 
 from __future__ import annotations
 
+import abc
 import json
 import logging
 import os
 import zipfile
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -115,6 +117,88 @@ class DeploymentResult:
     errors: list[str] = field(default_factory=list)
     artifact_paths: list[str] = field(default_factory=list)
     pending_gate: str = ""
+
+
+class DeploymentStatus(Enum):
+    """Lifecycle state of a JCloud deployment (REQ-612)."""
+
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    STOPPED = "STOPPED"
+
+
+class JCloudDeployClient(abc.ABC):
+    """Abstract interface for JCloud deployment (REQ-612).
+
+    The real implementation is deferred; a simulation-first client ships
+    with this change so the pipeline can exercise the deploy path without
+    network calls.
+    """
+
+    @abc.abstractmethod
+    async def deploy(
+        self,
+        jfx_path: str | Path,
+        strategy_id: str,
+        config: dict[str, Any],
+    ) -> DeploymentResult:
+        """Package and deploy *jfx_path* for *strategy_id*.
+
+        Returns:
+            DeploymentResult with instance_ids populated on success.
+        """
+
+    @abc.abstractmethod
+    async def status(self, deployment_id: str) -> DeploymentStatus:
+        """Return the current lifecycle state of *deployment_id*."""
+
+
+class SimulatedJCloudDeployClient(JCloudDeployClient):
+    """Deterministic simulation of JCloud with zero network calls.
+
+    Instance IDs follow the pattern ``sim-<strategy_id>-<n>`` where *n*
+    increments per deploy for the same strategy. Status transitions are
+    deterministic: PENDING → RUNNING → STOPPED.
+    """
+
+    def __init__(self) -> None:
+        self._counters: dict[str, int] = {}
+        self._status_map: dict[str, DeploymentStatus] = {}
+
+    async def deploy(
+        self,
+        jfx_path: str | Path,
+        strategy_id: str,
+        config: dict[str, Any],
+    ) -> DeploymentResult:
+        count = self._counters.get(strategy_id, 0) + 1
+        self._counters[strategy_id] = count
+        instance_id = f"sim-{strategy_id}-{count}"
+        self._status_map[instance_id] = DeploymentStatus.PENDING
+        return DeploymentResult(
+            status="DEPLOYED",
+            instance_ids=[instance_id],
+            endpoint_url=f"https://jcloud.quantlab.ai/{strategy_id}",
+            artifact_paths=[str(jfx_path)],
+        )
+
+    async def status(self, deployment_id: str) -> DeploymentStatus:
+        if deployment_id not in self._status_map:
+            raise InstanceNotFoundError(deployment_id)
+        current = self._status_map[deployment_id]
+        if current is DeploymentStatus.PENDING:
+            current = DeploymentStatus.RUNNING
+        elif current is DeploymentStatus.RUNNING:
+            current = DeploymentStatus.STOPPED
+        self._status_map[deployment_id] = current
+        return current
+
+
+class InstanceNotFoundError(Exception):
+    """Raised when status() is called for an unknown deployment_id."""
+
+    def __init__(self, deployment_id: str) -> None:
+        super().__init__(f"Unknown deployment_id: {deployment_id}")
 
 
 class DeploymentAgent(DeployStage):
