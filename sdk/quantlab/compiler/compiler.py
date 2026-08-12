@@ -120,8 +120,9 @@ class CompilerPipeline:
 
     @staticmethod
     def compile(
-        src: str | Path,
+        src: str | Path | dict[str, Path],
         *,
+        strategy_ids: list[str] | None = None,
         jdk_home: Optional[str | Path] = None,
         env: Optional[dict[str, str]] = None,
         fixer: Optional[Fixer] = None,
@@ -129,18 +130,34 @@ class CompilerPipeline:
         timeout: float = 60.0,
         classes_dir: Optional[str | Path] = None,
         sqx_install_path: Optional[str | Path] = None,
-    ) -> JfxArtifact:
+    ) -> JfxArtifact | dict[str, JfxArtifact | CompileError]:
         """Compile *src* with the external JDK and package the result.
+
+        When *strategy_ids* is provided, *src* must be a mapping of
+        ``strategy_id -> source_path``. The method compiles each strategy
+        independently and returns a dict keyed by strategy_id. Failures for
+        one strategy do not block the others; they are recorded in the result
+        dict as :class:`CompileError` instances (REQ-602/603).
 
         Raises:
             CompilerConfigError: JDK/javac missing or non-executable — raised
                 BEFORE javac runs; no partial ``.jfx`` (REQ-29 s2, threat
                 matrix row "subprocess: javac").
-            CompileError: javac failed — carrying the structured error report
-                (REQ-29 s1); when a fixer is configured and the loop exhausts
-                its bound, carrying the full per-iteration history (REQ-30 s2).
-                The failing source is never packaged nor deployed.
+            CompileError: raised only when *strategy_ids* is ``None`` and
+                compilation fails.
         """
+        if strategy_ids is not None:
+            return CompilerPipeline._compile_many(
+                src=src,
+                strategy_ids=strategy_ids,
+                jdk_home=jdk_home,
+                env=env,
+                fixer=fixer,
+                max_fix_iterations=max_fix_iterations,
+                timeout=timeout,
+                sqx_install_path=sqx_install_path,
+            )
+
         env = os.environ if env is None else env
         javac = resolve_javac(jdk_home=jdk_home, env=env)
         if javac is None:
@@ -198,3 +215,98 @@ class CompilerPipeline:
                 )
 
         return package_classes(classes, src)
+
+    @staticmethod
+    def _compile_many(
+        src: dict[str, Path],
+        strategy_ids: list[str],
+        *,
+        jdk_home: Optional[str | Path] = None,
+        env: Optional[dict[str, str]] = None,
+        fixer: Optional[Fixer] = None,
+        max_fix_iterations: int = DEFAULT_MAX_FIX_ITERATIONS,
+        timeout: float = 60.0,
+        sqx_install_path: Optional[str | Path] = None,
+    ) -> dict[str, JfxArtifact | CompileError]:
+        """Compile multiple strategies independently.
+
+        Missing strategy_ids fall back to ``<id>.java`` filename inference
+        with a warning log. Partial failures are captured in the returned
+        dict instead of raising.
+        """
+        env = os.environ if env is None else env
+        javac = resolve_javac(jdk_home=jdk_home, env=env)
+        if javac is None:
+            raise CompilerConfigError(
+                "javac not found — an external JDK is required (REQ-29). "
+                f"Set {JDK_ENV_VAR} to a JDK (Java 25-compatible) whose "
+                "bin/javac exists and is executable. Missing or non-executable "
+                "javac fails closed: no partial .jfx is produced."
+            )
+
+        classpath: list[Path] | None = None
+        if sqx_install_path is not None:
+            libs = Path(sqx_install_path) / "internal" / "libs"
+            jars = sorted(libs.glob("*.jar")) if libs.is_dir() else []
+            classpath = jars or None
+
+        compiled: dict[str, JfxArtifact | CompileError] = {}
+        for sid in strategy_ids:
+            source = src.get(sid)
+            if source is None:
+                source = Path(f"{sid}.java")
+                logger.warning(
+                    "strategy_id %r missing from source map — falling back to "
+                    "filename inference: %s",
+                    sid,
+                    source,
+                )
+
+            try:
+                classes = source.parent / ".classes"
+                report = run_javac(
+                    javac, source, classes, timeout=timeout, classpath=classpath
+                )
+                if not report.ok:
+                    if fixer is not None and max_fix_iterations > 0:
+                        from quantlab.compiler.fixloop import run_fix_loop
+
+                        result = run_fix_loop(
+                            src=source,
+                            compile_fn=lambda s: run_javac(
+                                javac, s, classes, timeout=timeout, classpath=classpath
+                            ),
+                            fix_fn=fixer,
+                            max_fix_iterations=max_fix_iterations,
+                            initial_report=report,
+                        )
+                        if not result.success:
+                            compiled[sid] = CompileError(
+                                f"compilation failed after {max_fix_iterations} fix "
+                                "iterations (REQ-30 bound)",
+                                report=result.final_report,
+                                history=result.iterations,
+                            )
+                            continue
+                        report = result.final_report
+                    else:
+                        compiled[sid] = CompileError(
+                            "javac compilation failed",
+                            report=report,
+                            history=[],
+                        )
+                        continue
+
+                compiled[sid] = package_classes(classes, source)
+            except CompilerConfigError:
+                raise
+            except CompileError as exc:
+                compiled[sid] = exc
+            except Exception as exc:  # noqa: BLE001
+                compiled[sid] = CompileError(
+                    f"unexpected compile error for {sid}: {exc}",
+                    report=None,
+                    history=[],
+                )
+
+        return compiled
