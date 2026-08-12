@@ -14,6 +14,7 @@ from quantlab.phase4.http_client import (
 from quantlab.phase4.errors import (
     JForexConnectionError,
     JForexServerError,
+    JForexStrategyNotFoundError,
     SQXBindingError,
     SQXSessionLockError,
 )
@@ -271,6 +272,121 @@ class TestAsyncSQXClient:
             mock_get.side_effect = Exception("connection refused")
             result = await client.health_check()
             assert result is False
+
+
+class TestAsyncSQXClientExportSourcecode:
+    """REQ-601: AsyncSQXClient.export_sourcecode()."""
+
+    @pytest.mark.asyncio
+    async def test_export_returns_source_string(self):
+        """GIVEN SQX server with strategy "s1"
+        WHEN export_sourcecode("s1") is called
+        THEN HTTP GET /sourcecode/print?id=s1 is issued
+        AND the response body is returned as a string.
+        """
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "public class S1 {}"
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            result = await client.export_sourcecode("s1")
+            assert result == "public class S1 {}"
+            call_url = mock_get.call_args[0][0]
+            assert "/sourcecode/print?id=s1" in call_url
+
+    @pytest.mark.asyncio
+    async def test_export_404_raises_not_found(self):
+        """GIVEN SQX returns 404 for strategy "missing"
+        WHEN export_sourcecode("missing") is called
+        THEN JForexStrategyNotFoundError is raised.
+        """
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.text = "Not found"
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            with pytest.raises(JForexStrategyNotFoundError, match="missing"):
+                await client.export_sourcecode("missing")
+
+    @pytest.mark.asyncio
+    async def test_export_5xx_raises_server_error(self):
+        """GIVEN SQX returns 500
+        WHEN export_sourcecode("s1") is called
+        THEN JForexServerError is raised with the response body preserved.
+        """
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_resp.text = "Internal server error"
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            with pytest.raises(JForexServerError, match="500"):
+                await client.export_sourcecode("s1")
+
+    @pytest.mark.asyncio
+    async def test_export_network_failure_raises_connection_error(self):
+        """GIVEN SQX is unreachable
+        WHEN export_sourcecode("s1") is called
+        THEN JForexConnectionError is raised.
+        """
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.side_effect = httpx.ConnectError("connection refused")
+
+            with pytest.raises(JForexConnectionError, match="Connection failed"):
+                await client.export_sourcecode("s1")
+
+    @pytest.mark.asyncio
+    async def test_export_quotes_strategy_id_in_url(self):
+        """GIVEN a strategy_id with special characters
+        WHEN export_sourcecode() is called
+        THEN the strategy_id is URL-encoded in the request path.
+        """
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = "source"
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            await client.export_sourcecode("strategy with spaces")
+            call_url = mock_get.call_args[0][0]
+            assert "strategy%20with%20spaces" in call_url
+
+    @pytest.mark.asyncio
+    async def test_export_other_4xx_raises_http_error(self):
+        """GIVEN SQX returns 403
+        WHEN export_sourcecode("s1") is called
+        THEN raise_for_status raises an HTTP error.
+        """
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_resp.text = "Forbidden"
+        mock_resp.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "403 Forbidden", request=None, response=mock_resp
+        )
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            with pytest.raises(httpx.HTTPStatusError):
+                await client.export_sourcecode("s1")
 
 
 class TestSQXSessionLockIntegration:

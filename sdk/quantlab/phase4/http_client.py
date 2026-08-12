@@ -16,6 +16,7 @@ import httpx
 from quantlab.phase4.errors import (
     JForexConnectionError,
     JForexServerError,
+    JForexStrategyNotFoundError,
     SQXBindingError,
     SQXSessionLockError,
 )
@@ -284,6 +285,44 @@ class AsyncSQXClient:
             return "Usage" in result
         except Exception:
             return False
+
+    async def export_sourcecode(self, strategy_id: str) -> str:
+        """Export source code for *strategy_id* via ``/sourcecode/print``.
+
+        Args:
+            strategy_id: SQX strategy identifier.
+
+        Returns:
+            The Java source code as a string.
+
+        Raises:
+            JForexStrategyNotFoundError: If SQX returns HTTP 404.
+            JForexConnectionError: If the connection fails.
+            JForexServerError: If SQX returns HTTP 5xx.
+        """
+        client = await self._ensure_client()
+        url = f"/sourcecode/print?id={urllib.parse.quote(strategy_id)}"
+
+        try:
+            resp = await client.get(url)
+        except httpx.TimeoutException as exc:
+            raise JForexConnectionError(
+                self.bind_address, DEFAULT_PORT,
+                f"Timeout exporting source for {strategy_id}: {exc}",
+            ) from exc
+        except httpx.ConnectError as exc:
+            raise JForexConnectionError(
+                self.bind_address, DEFAULT_PORT,
+                f"Connection failed exporting source for {strategy_id}: {exc}",
+            ) from exc
+
+        if resp.status_code == 404:
+            raise JForexStrategyNotFoundError(strategy_id)
+        if 500 <= resp.status_code < 600:
+            raise JForexServerError(resp.status_code, resp.text)
+
+        resp.raise_for_status()
+        return resp.text
 
     async def close(self) -> None:
         if self._client:
