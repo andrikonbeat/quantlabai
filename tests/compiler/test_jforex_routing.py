@@ -188,3 +188,51 @@ class TestCompilerRollbackFlag:
 
         assert result == java_path
         assert list(tmp_path.rglob("*.jfx")) == []
+
+
+class TestExportSourcecodeWiring:
+    """REQ-601/39: export_and_compile chains export_sourcecode then compile."""
+
+    async def test_export_and_compile_calls_export_sourcecode_first(
+        self, tmp_path, jdk_ok
+    ):
+        """GIVEN JForexDeployer with a client that tracks calls
+        WHEN export_and_compile() is called
+        THEN export_sourcecode is called with the strategy_id before compile.
+        """
+        from unittest.mock import AsyncMock, MagicMock
+
+        from quantlab.phase4.http_client import AsyncSQXClient
+
+        mock_client = MagicMock(spec=AsyncSQXClient)
+        mock_client.export_sourcecode = AsyncMock(
+            return_value="public class WiredStrategy {}\n"
+        )
+
+        deployer = JForexDeployer(mock_client)
+        artifact = await deployer.export_and_compile(
+            "wired-1", tmp_path, env={"QUANTLAB_JDK_HOME": str(jdk_ok)}
+        )
+
+        mock_client.export_sourcecode.assert_awaited_once_with("wired-1")
+        assert isinstance(artifact, JfxArtifact)
+
+    async def test_dry_run_export_uses_client_export_sourcecode(self):
+        """GIVEN JForexDeployer with a client that tracks calls
+        WHEN dry_run_export() is called
+        THEN the client's export_sourcecode is called with the strategy_id.
+        """
+        from unittest.mock import AsyncMock, MagicMock
+
+        from quantlab.phase4.http_client import AsyncSQXClient
+
+        mock_client = MagicMock(spec=AsyncSQXClient)
+        mock_client.export_sourcecode = AsyncMock(
+            return_value="public class DryStrategy {}\n"
+        )
+
+        deployer = JForexDeployer(mock_client)
+        source = await deployer.dry_run_export("dry-1")
+
+        mock_client.export_sourcecode.assert_awaited_once_with("dry-1")
+        assert "DryStrategy" in source
