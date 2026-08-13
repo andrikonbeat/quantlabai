@@ -17,8 +17,10 @@ from __future__ import annotations
 import pytest
 
 from quantlab.campaign.flow import (
+    PHASES,
     STAGE_FOR_PHASE,
     FlowIntegrityError,
+    assert_flow,
     assert_flow_segments,
 )
 
@@ -190,3 +192,43 @@ class TestRealOrchestratedPipeline:
             [s.name for s in pipeline.stages],
             optional_phases=("retester", "optimizer"),
         )
+
+
+class TestAgentRunFlowIntegrity:
+    """REQ-37: the guardian agent run leaves the canonical flow untouched.
+
+    The ``quantlab-guardian`` agent wraps existing stages (REQ-641) — it MUST
+    NOT introduce a 15th phase, mutate ``STAGE_FOR_PHASE``/the registry, or
+    import gate machinery (REQ-643). Post-run the canonical asserts still hold.
+    """
+
+    @pytest.mark.asyncio
+    async def test_agent_run_keeps_14_phases_and_mapping(self) -> None:
+        """GIVEN the canonical flow before a full guardian agent run
+        WHEN an evaluate directive executes with no live points
+        THEN len(PHASES) is still 14, STAGE_FOR_PHASE is unchanged,
+        live-ops still maps to live_ops, and assert_flow(PHASES) passes."""
+        from quantlab.guardian.agent import execute_guardian_directive
+        from quantlab.guardian.feedback import GuardianDirective
+
+        mapping_before = dict(STAGE_FOR_PHASE)
+
+        await execute_guardian_directive(
+            GuardianDirective(kind="evaluate", campaign_id="camp-seg", points=[])
+        )
+
+        assert len(PHASES) == 14
+        assert STAGE_FOR_PHASE == mapping_before
+        assert STAGE_FOR_PHASE["live-ops"] == "live_ops"
+        assert_flow(PHASES)  # must not raise
+
+    def test_campaign_flow_module_imports_no_gate_machinery(self) -> None:
+        """GIVEN the campaign flow module
+        WHEN it is imported
+        THEN it exposes no gate machinery — the flow cannot be reordered or
+        auto-approved by the agent path (REQ-643)."""
+        import quantlab.campaign.flow as flow
+
+        assert not hasattr(flow, "HumanGateOrchestrator")
+        assert not hasattr(flow, "GateDecision")
+        assert not hasattr(flow, "on_gate")

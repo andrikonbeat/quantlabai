@@ -11,6 +11,7 @@ from quantlab.pipeline.stages.agent_stages import (
     AnalysisStage,
     BuilderStage,
     DeployStage,
+    GuardianEvaluationAgentStage,
     MonitorStage,
     PortfolioStage,
     ResearchStage,
@@ -262,3 +263,28 @@ class TestFullChainContract:
                 )
 
         assert not violations, "\n".join(violations)
+
+
+class TestGuardianEvaluationAgentStage:
+    """GuardianEvaluationAgentStage.execute() behavior — REQ-641 (PR1)."""
+
+    @pytest.mark.asyncio
+    async def test_execute_produces_guardian_state(self) -> None:
+        """GIVEN a pipeline context with a research config artifact
+        WHEN GuardianEvaluationAgentStage.execute() runs
+        THEN it produces guardian_state and portfolio_state in the outcome
+        dict and writes them into the context artifacts."""
+        ctx = PipelineContext(
+            config={},
+            artifacts={"research_config": {}},
+        )
+        stage = GuardianEvaluationAgentStage()
+
+        outcome = await stage.execute(ctx)
+
+        assert "guardian_state" in outcome
+        assert "portfolio_state" in outcome
+        assert "guardian_state" in ctx.artifacts
+        assert "portfolio_state" in ctx.artifacts
+        assert isinstance(outcome["guardian_state"], dict)
+        assert "portfolio_state" in outcome["guardian_state"]
