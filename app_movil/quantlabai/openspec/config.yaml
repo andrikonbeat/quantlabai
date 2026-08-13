@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Android (AGP 9.1.1), Kotlin 2.2.10, Jetpack Compose BOM 2024.09.00
+  Architecture: Single Activity + Compose Navigation, ViewModel + Repository (in-memory mock data)
+  Package: com.example (applicationId: com.aistudio.quantlabai.controlplane)
+  Testing: JUnit 4, Robolectric, Compose UI test, Espresso, Roborazzi screenshots
+  Backend: QuantLab AI ecosystem, Flask API at ../../sdk/quantlab/dashboard/app.py
+  Persistence: No local persistence layer yet (Room included but unused)
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Document navigation/routing impact for new screens
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Cover Compose semantics and test tags for UI scenarios
+  design:
+    - Include sequence diagrams for complex flows
+    - Document ViewModel state and Repository contract changes
+    - Document navigation graph changes
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Mark Compose preview and test tag additions as explicit tasks
+  apply:
+    guidelines:
+      - Follow existing ViewModel + Repository pattern
+      - Preserve in-memory mock data structure unless backend integration is in scope
+    tdd: true
+    test_command: "./gradlew test"
+  verify:
+    test_command: "./gradlew test"
+    build_command: "./gradlew assembleDebug"
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas

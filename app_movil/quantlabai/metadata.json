@@ -1,0 +1,6 @@
+{
+  "name": "QuantLab AI",
+  "description": "Mobile AI Quantitative Trading Control Center & Agent Orchestration Control Plane",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
