@@ -39,15 +39,15 @@ Chain strategy: pending
 
 ## Phase 3: Routing + Delegation RED Tests (threat matrix)
 
-- [ ] 3.1 RED routing-table test: GUARDIAN intents map to `quantlab-guardian`; non-guardian intents do NOT; unknown kind rejected (routing authority, REQ-642)
-- [ ] 3.2 RED config-parse test: `opencode.json` registers agent; `"*":"deny"` first; explicit `"quantlab-guardian":"allow"` on orchestrator task (delegation ownership)
+- [x] 3.1 RED routing-table test: GUARDIAN intents map to `quantlab-guardian`; non-guardian intents do NOT; unknown kind rejected (routing authority, REQ-642)
+- [x] 3.2 RED config-parse test: `opencode.json` registers agent; `"*":"deny"` first; explicit `"quantlab-guardian":"allow"` on orchestrator task (delegation ownership)
 
 ## Phase 4: Orchestration Surface Production (GREEN)
 
-- [ ] 4.1 Create `~/.config/opencode/prompts/quantlab/guardian.md`: directive intake, report envelope, ack via ops_surface, NO-phase rule
-- [ ] 4.2 Modify `~/.config/opencode/opencode.json`: add `quantlab-guardian` agent (campaign pattern incl. task allowlist); orchestrator task explicit allow
-- [ ] 4.3 Modify `~/.config/opencode/prompts/quantlab/orchestrator.md`: GUARDIAN route — dispatch via `task`; non-guardian stays with orchestrator
-- [ ] 4.4 Modify `~/.config/opencode/prompts/quantlab/campaign.md`: phase 14 delegates Guardian flow to agent; folds `GuardianReport`; gates/`PHASES` untouched
+- [x] 4.1 Create `~/.config/opencode/prompts/quantlab/guardian.md`: directive intake, report envelope, ack via ops_surface, NO-phase rule
+- [x] 4.2 Modify `~/.config/opencode/opencode.json`: add `quantlab-guardian` agent (campaign pattern incl. task allowlist); orchestrator task explicit allow
+- [x] 4.3 Modify `~/.config/opencode/prompts/quantlab/orchestrator.md`: GUARDIAN route — dispatch via `task`; non-guardian stays with orchestrator
+- [x] 4.4 Modify `~/.config/opencode/prompts/quantlab/campaign.md`: phase 14 delegates Guardian flow to agent; folds `GuardianReport`; gates/`PHASES` untouched
 
 ## Phase 5: Verification / Cleanup
 
