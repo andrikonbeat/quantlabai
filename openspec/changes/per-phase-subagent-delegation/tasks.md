@@ -29,17 +29,17 @@ Chain strategy: stacked-to-main
 
 ## PR 3 — Registry 7 + routing
 
-- [ ] 2b.1 Register `quantlab-phase-{config,monitor,compile,deploy,demo,archive,live-ops}` (same deny-first shape). REQ-805/808.
-- [ ] 2b.2 Create 7 thin prompts; only live-ops delegates (→ `quantlab-guardian`); none wait on long ops. REQ-805/809.
-- [ ] 2b.3 REQ-814 note in live `orchestrator.md`: CAMPAIGN → quantlab-campaign; no direct phase routing; long ops on orchestrator shell. REQ-814/809.
-- [ ] 2b.4 `campaign.md` delegation map: task `quantlab-phase-<phase>` in PHASES order; no inline fallback (fold mechanics in PR 5). REQ-811.
-- [ ] 2b.5 Extend tests: 14 registrations == PHASES; routing-note + map asserts. REQ-814/811/810.
+- [x] 2b.1 Register `quantlab-phase-{config,monitor,compile,deploy,demo,archive,live-ops}` (same deny-first shape). REQ-805/808.
+- [x] 2b.2 Create 7 thin prompts; only live-ops delegates (→ `quantlab-guardian`); none wait on long ops. REQ-805/809.
+- [x] 2b.3 REQ-814 note in live `orchestrator.md`: CAMPAIGN → quantlab-campaign; no direct phase routing; long ops on orchestrator shell. REQ-814/809.
+- [x] 2b.4 `campaign.md` delegation map: task `quantlab-phase-<phase>` in PHASES order; no inline fallback (fold mechanics in PR 5). REQ-811.
+- [x] 2b.5 Extend tests: 14 registrations == PHASES; routing-note + map asserts. REQ-814/811/810.
 
 ## PR 4 — Delegation glue
 
-- [ ] 3a.1 RED `tests/campaign/test_delegation.py`: envelope; unknown phase rejected; `status!=success` halts; authority violation; long-op script no-wait; `PHASE_AGENTS==PHASES`; `validate_phase_result()`. REQ-801-804/809.
-- [ ] 3a.2 Create `sdk/quantlab/campaign/delegation.py`: frozen `PhaseDirective`/`PhaseResult` (Result Contract + phase_id/evidence/handoff_payload); `PHASE_AGENTS` from PHASES; `execute_phase()` validate → scope-check → envelope; long op → script spec `{command, log_path, expected, timeout>=240, cleanup}`; alias guard (`substrate/executor`, `phase4/models`). REQ-801-804/809.
-- [ ] 3a.3 Re-export in `sdk/quantlab/campaign/__init__.py`. Non-goal: no flow.py/agents/ changes.
+- [x] 3a.1 RED `tests/campaign/test_delegation.py`: envelope; unknown phase rejected; `status!=success` halts; authority violation; long-op script no-wait; `PHASE_AGENTS==PHASES`; `validate_phase_result()`. REQ-801-804/809.
+- [x] 3a.2 Create `sdk/quantlab/campaign/delegation.py`: frozen `PhaseDirective`/`PhaseResult` (Result Contract + phase_id/evidence/handoff_payload); `PHASE_AGENTS` from PHASES; `execute_phase()` validate → scope-check → envelope; long op → script spec `{command, log_path, expected, timeout>=240, cleanup}`; alias guard (`substrate/executor`, `phase4/models`). REQ-801-804/809.
+- [x] 3a.3 Re-export in `sdk/quantlab/campaign/__init__.py`. Non-goal: no flow.py/agents/ changes.
 
 ## PR 5 — Gates + loop + integrity
 
