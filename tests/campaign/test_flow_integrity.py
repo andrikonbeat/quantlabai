@@ -18,7 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from quantlab.campaign.flow import PHASES, FlowIntegrityError, assert_flow
+from quantlab.campaign.delegation import PHASE_AGENTS
+from quantlab.campaign.flow import PHASES, STAGE_FOR_PHASE, FlowIntegrityError, assert_flow
 
 CANONICAL_14 = (
     "research",
@@ -154,3 +155,30 @@ class TestCampaignDoc:
         doc = Path("AI/opencode/agents/campaign.md").read_text(encoding="utf-8")
         assert "assert_flow" in doc
         assert "FlowIntegrityError" in doc
+
+
+class TestDelegationIntegrity:
+    """REQ-804: the delegation layer wraps PHASES without mutation."""
+
+    def test_phase_agents_keys_equal_phases(self) -> None:
+        """GIVEN the delegation registry
+        THEN PHASE_AGENTS keys are exactly the canonical PHASES (wrap-only)."""
+        assert tuple(PHASE_AGENTS.keys()) == PHASES
+        assert len(PHASE_AGENTS) == len(PHASES) == 14
+
+    def test_phase_agents_values_are_quantlab_phase_names(self) -> None:
+        """GIVEN the delegation registry
+        THEN every value is the expected quantlab-phase-<phase> name."""
+        for phase, agent in PHASE_AGENTS.items():
+            assert agent == f"quantlab-phase-{phase}", (
+                f"phase '{phase}' maps to '{agent}', expected 'quantlab-phase-{phase}'"
+            )
+
+    def test_flow_python_unchanged(self) -> None:
+        """GIVEN the flow module
+        THEN PHASES, STAGE_FOR_PHASE, and assert_flow are unchanged
+        (REQ-804 wrap-only invariant)."""
+        assert PHASES == CANONICAL_14
+        assert "research" in STAGE_FOR_PHASE
+        assert "live-ops" in STAGE_FOR_PHASE
+        assert_flow(PHASES)  # must not raise

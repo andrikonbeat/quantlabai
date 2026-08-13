@@ -88,11 +88,59 @@ Binding rules (REQ-37):
 
 ## Campaign Loop (14 phases)
 
-Dispatch each phase via the `task` tool to the corresponding
-`quantlab-phase-<phase>` subagent, in `PHASES` order. Each dispatch passes a
-`PhaseDirective` for its own phase only and MUST NOT run long-running operations
-inline. Fold each returned `PhaseResult` envelope before dispatching the next
-phase.
+The campaign loop is a strict, sequential dispatcher. You own the full 14-phase
+lifecycle; do not stop at optimize. Each phase is delegated to its dedicated
+`quantlab-phase-<phase>` subagent via the `task` tool. You MUST construct a
+`PhaseDirective` for each phase, consume the returned `PhaseResult`, fold the
+envelope into campaign state, and dispatch the next phase — or halt if the
+envelope signals failure.
+
+### Loop algorithm
+
+```text
+state = initial_campaign_state
+for phase in PHASES:
+    directive = PhaseDirective(
+        phase_id=phase,
+        scope="bounded authority — no flow.py mutation, no gate skip, no long-op wait",
+        payload={
+            "campaign_id": campaign_id,
+            "artifacts": state.artifacts,
+            "prior_context": compose_prior_context(campaign_id, phase),
+        },
+        previous_result=state.last_result,
+    )
+    result = task(agent=f"quantlab-phase-{phase}", input=directive)
+
+    # Validate and fold the envelope (REQ-802).
+    validate_phase_result(result)
+    state.last_result = result
+    state.artifacts.extend(result.artifacts)
+
+    # Non-success halts the loop for human decision (REQ-802).
+    if result.status != "success":
+        halt_and_escalate(result)
+        break
+
+    # If the phase returned a handoff_payload, hand it to the orchestrator
+    # shell for nohup/poll/cancel execution (REQ-809). Do NOT wait inline.
+    if result.handoff_payload:
+        orchestrator_shell_execute(result.handoff_payload)
+```
+
+Rules:
+- Dispatch order MUST match `PHASES` exactly — no skip, reorder, or inline fallback (REQ-811).
+- Each `PhaseDirective` is scoped to its own phase only.
+- Human gates remain primary and fail-closed: the phase agent presents gates
+  through the `question` tool; a HOLD or unanswered gate MUST fail closed
+  (REQ-11). The decision-file protocol (`pending.json` → `decision.json`) is
+  the resolution channel; stdin is the headless fallback.
+- Long-running operations (real daemon generation, full backtests, real
+  deploy, compile with real JDK) MUST be returned as a runnable script spec in
+  `handoff_payload` and executed by the orchestrator shell, never waited on
+  inside a subagent session (REQ-809).
+- Phase failure (`status=failed`) halts the loop and surfaces the
+  `PhaseResult` to the human. Do not auto-continue past a failed phase.
 
 | Phase | Subagent |
 |---|---|

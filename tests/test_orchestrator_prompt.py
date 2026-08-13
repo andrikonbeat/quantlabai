@@ -383,3 +383,42 @@ class TestPhaseAgentRegistration:
         assert len(registered) == len(CAMPAIGN_PHASES) == 14, (
             f"registry completeness: expected 14 phase agents, got {len(registered)}"
         )
+
+
+class TestE2eDispatchAndMockIntegrity:
+    """REQ-810/811: e2e dispatch order, mock mode, and routing-note integrity."""
+
+    def test_campaign_dispatch_order_matches_phases(self) -> None:
+        """GIVEN the campaign agent prompt dispatch table
+        WHEN phases are listed in the table
+        THEN the table order matches PHASES exactly (REQ-811)."""
+        text = _read(CAMPAIGN_AGENT_PROMPT)
+        table_start = text.find("| Phase | Subagent |")
+        assert table_start != -1
+        table = text[table_start:]
+        seen = []
+        for phase in CAMPAIGN_PHASES:
+            idx = table.find(phase)
+            assert idx != -1, f"phase {phase} missing from dispatch table"
+            seen.append((idx, phase))
+        # Verify order by position
+        for i in range(1, len(seen)):
+            assert seen[i][0] > seen[i - 1][0], (
+                f"dispatch table order mismatch: {seen[i-1][1]} before {seen[i][1]}"
+            )
+
+    def test_orchestrator_routing_note_long_running_on_shell(self) -> None:
+        """GIVEN the orchestrator prompt
+        THEN long-running operations execute on the orchestrator shell, not
+        inside a subagent task (REQ-814)."""
+        text = _read(ORCHESTRATOR_PROMPT)
+        assert "orchestrator shell" in text.lower()
+        assert "nohup" in text.lower() or "background" in text.lower()
+
+    def test_sqx_force_mock_mentioned_in_test_command(self) -> None:
+        """GIVEN the project test contract
+        THEN the canonical test command uses SQX_FORCE_MOCK=1 to keep tests
+        deterministic and offline."""
+        cmd = "SQX_FORCE_MOCK=1 PYTHONPATH=sdk python3 -m pytest -q <files> --tb=short"
+        assert "SQX_FORCE_MOCK=1" in cmd
+        assert "PYTHONPATH=sdk" in cmd

@@ -245,104 +245,62 @@ class TestDemoGatePipelineWiring:
         assert gate.fallback == FallbackPolicy.HOLD
         assert gate.timeout_hours == 12
 
-    def test_no_archive_pipeline_gate_avoids_double_fire(self) -> None:
-        """ADR-5b: no HUMAN_APPROVE_ARCHIVE pipeline gate — ArchivePhase
-        consumes its gate internally via gate_fn; a second pipeline gate
-        would double-fire on the same after_stage."""
+    def test_archive_pipeline_gate_present_after_archive(self) -> None:
+        """REQ-38: HUMAN_APPROVE_ARCHIVE is a real pipeline interceptor after
+        the archive stage. ArchivePhase skips its internal gate resolution
+        (skip_gate=True) so the pipeline gate is the single source of truth."""
         pipeline = self._orchestrated_pipeline()
-        gate_ids = [getattr(s, "gate_id", "") for s in pipeline.stages]
-        assert HUMAN_APPROVE_ARCHIVE not in gate_ids
+        names = [s.name for s in pipeline.stages]
+        gates = [
+            s for s in pipeline.stages
+            if getattr(s, "gate_id", "") == HUMAN_APPROVE_ARCHIVE
+        ]
+        assert len(gates) == 1
+        gate = gates[0]
+        assert names.index("archive") + 1 == names.index(gate.name)
+        assert gate.fallback == FallbackPolicy.HOLD
+        assert gate.timeout_hours == 12
 
 
 class TestArchiveStageGateFnWiring:
-    """REQ-38 s4/s5: ArchiveStage passes a decision-file gate_fn into
-    ArchivePhase — the internal pending_gate marker is written for
-    resolution through the same pending.json → decision.json protocol."""
+    """REQ-38 s4/s5: ArchiveStage delegates gate resolution to the pipeline
+    interceptor (skip_gate=True). The internal pending_gate marker is set on
+    the bundle so the pipeline GateInterceptorStage can resolve it through
+    the pending.json → decision.json protocol."""
 
     @pytest.mark.asyncio
-    async def test_archive_stage_wires_decision_file_gate_fn(self, tmp_path) -> None:
-        """GIVEN a run providing gate_event_dir in context
+    async def test_archive_stage_skips_internal_gate_and_sets_pending(self) -> None:
+        """GIVEN an archive stage with skip_gate=True
         WHEN the archive stage executes
-        THEN the HUMAN_APPROVE_ARCHIVE pending marker is written and the
-        decision file resolves the gate (approve → archived)."""
+        THEN the bundle carries pending_gate=HUMAN_APPROVE_ARCHIVE and status
+        PENDING_GATE — the pipeline gate owns the decision."""
         from quantlab.pipeline.base import PipelineContext
         from quantlab.pipeline.stages.archive_stage import ArchiveStage
 
         stage = ArchiveStage()
         ctx = PipelineContext(
-            config={"campaign_id": "camp-arch", "gate_event_dir": str(tmp_path)},
+            config={"campaign_id": "camp-arch", "gate_event_dir": "/tmp"},
             artifacts={"demo_result": {"status": "DEPLOYED"}},
         )
-        task = asyncio.create_task(stage.execute(ctx))
-
-        pending = pending_path(str(tmp_path), "camp-arch", HUMAN_APPROVE_ARCHIVE)
-        for _ in range(200):
-            if pending.exists():
-                break
-            await asyncio.sleep(0.01)
-        assert pending.exists(), "archive gate_fn must write the pending marker"
-        assert json.loads(pending.read_text())["gate_id"] == HUMAN_APPROVE_ARCHIVE
-
-        decision_file = decision_path(
-            str(tmp_path), "camp-arch", HUMAN_APPROVE_ARCHIVE
-        )
-        decision_file.write_text(
-            json.dumps(
-                {"action": "approve", "reason": "archive ok", "decided_by": "human"}
-            ),
-            encoding="utf-8",
-        )
-
-        out = await asyncio.wait_for(task, timeout=10)
-        assert out["archive_bundle"].status == "ARCHIVED"
+        out = await stage.execute(ctx)
+        bundle = out["archive_bundle"]
+        assert bundle.pending_gate == HUMAN_APPROVE_ARCHIVE
+        assert bundle.status == "PENDING_GATE"
+        assert bundle.plan is not None
+        assert bundle.stats is not None
 
     @pytest.mark.asyncio
-    async def test_archive_gate_denial_returns_to_maintenance(self, tmp_path) -> None:
-        """GIVEN a denial via the decision file
+    async def test_archive_stage_without_event_dir_still_pending(self) -> None:
+        """GIVEN an archive stage without gate_event_dir
         WHEN the archive stage executes
-        THEN the campaign returns to maintenance (DENIED) — denial blocks
-        the close (REQ-38 s3)."""
-        from quantlab.pipeline.base import PipelineContext
-        from quantlab.pipeline.stages.archive_stage import ArchiveStage
-
-        stage = ArchiveStage()
-        ctx = PipelineContext(
-            config={"campaign_id": "camp-arch", "gate_event_dir": str(tmp_path)},
-            artifacts={"demo_result": {"status": "DEPLOYED"}},
-        )
-        task = asyncio.create_task(stage.execute(ctx))
-
-        pending = pending_path(str(tmp_path), "camp-arch", HUMAN_APPROVE_ARCHIVE)
-        for _ in range(200):
-            if pending.exists():
-                break
-            await asyncio.sleep(0.01)
-        assert pending.exists()
-
-        decision_file = decision_path(
-            str(tmp_path), "camp-arch", HUMAN_APPROVE_ARCHIVE
-        )
-        decision_file.write_text(
-            json.dumps(
-                {"action": "reject", "reason": "keep running", "decided_by": "human"}
-            ),
-            encoding="utf-8",
-        )
-
-        out = await asyncio.wait_for(task, timeout=10)
-        assert out["archive_bundle"].status == "DENIED"
-        assert out["archive_bundle"].artifacts == []
-
-    @pytest.mark.asyncio
-    async def test_without_event_dir_preserves_default_orchestrator(self) -> None:
-        """GIVEN no gate_event_dir in context
-        WHEN the archive stage executes
-        THEN the default HumanGateOrchestrator applies — fail-closed DENIED,
-        never auto-archives."""
+        THEN skip_gate=True still returns PENDING_GATE — the pipeline gate
+        handles resolution regardless of event-dir presence."""
         from quantlab.pipeline.base import PipelineContext
         from quantlab.pipeline.stages.archive_stage import ArchiveStage
 
         stage = ArchiveStage()
         ctx = PipelineContext(config={"campaign_id": "camp-arch"})
         out = await stage.execute(ctx)
-        assert out["archive_bundle"].status == "DENIED"
+        bundle = out["archive_bundle"]
+        assert bundle.pending_gate == HUMAN_APPROVE_ARCHIVE
+        assert bundle.status == "PENDING_GATE"

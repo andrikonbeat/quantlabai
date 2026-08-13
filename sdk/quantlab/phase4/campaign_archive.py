@@ -241,8 +241,9 @@ class ArchivePhase:
             never auto-finalizes.
     """
 
-    def __init__(self, *, gate_fn: GateCallback | None = None) -> None:
+    def __init__(self, *, gate_fn: GateCallback | None = None, skip_gate: bool = False) -> None:
         self._gate_fn = gate_fn
+        self._skip_gate = skip_gate
 
     async def run(
         self,
@@ -277,10 +278,25 @@ class ArchivePhase:
             feedback=feedback,
         )
 
-        decision = await self._resolve_gate(campaign_id, plan)
+        decision = None
+        if not self._skip_gate:
+            decision = await self._resolve_gate(campaign_id, plan)
 
         # Gate on the EXPLICIT action — never is_approved() (returns True for
-        # FALLBACK; see PR-4 finding).
+        # FALLBACK; see PR-4 finding). When skip_gate=True the pipeline gate
+        # owns the decision, so the bundle stays PENDING_GATE for the interceptor.
+        if decision is None:
+            return ArchiveBundle(
+                campaign_id=campaign_id,
+                status="PENDING_GATE",
+                plan=plan,
+                stats=stats,
+                artifacts=list(artifacts),
+                feedback=feedback,
+                decision_action="",
+                archived_at=None,
+            )
+
         if decision.action != GateDecisionAction.APPROVE:
             logger.warning(
                 "Archive gate for %s resolved %s — campaign returns to "

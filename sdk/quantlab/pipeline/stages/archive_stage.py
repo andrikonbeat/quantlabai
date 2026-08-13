@@ -55,27 +55,11 @@ class ArchiveStage(Stage):
             # decisions file; otherwise the interactive channel polls for a
             # decision file. With neither configured, ArchivePhase keeps its
             # default HumanGateOrchestrator (fail-closed HOLD → DENIED).
-            gate_fn = None
-            if ctx.config:
-                gate_event_dir = ctx.config.get("gate_event_dir")
-                if gate_event_dir:
-                    from quantlab.gates.callbacks import (
-                        DecisionsFileGateCallback,
-                        QuestionToolGateCallback,
-                    )
-
-                    decisions_file = ctx.config.get("gate_decisions_file")
-                    timeout = ctx.config.get("gate_timeout")
-                    gate_fn = (
-                        DecisionsFileGateCallback(decisions_file)
-                        if decisions_file
-                        else QuestionToolGateCallback(
-                            gate_event_dir=gate_event_dir,
-                            campaign_id=campaign_id,
-                            timeout=timeout,
-                        )
-                    )
-            phase = ArchivePhase(gate_fn=gate_fn)
+            # REQ-38 (s4/s5): the pipeline now injects HUMAN_APPROVE_ARCHIVE
+            # as a GateInterceptorStage after the archive stage. Tell ArchivePhase
+            # to skip its internal gate resolution so the pipeline gate is the
+            # single source of truth (no double-fire).
+            phase = ArchivePhase(skip_gate=True)
 
         bundle = await phase.run(campaign_id)
         ctx.artifacts["archive_bundle"] = bundle
