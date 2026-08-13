@@ -145,7 +145,7 @@ class TestOpencodeJsonRegistration:
         assert agent is not None, "opencode.json must register quantlab-campaign"
         assert agent.get("mode") == "subagent"
         prompt = agent.get("prompt", "")
-        assert "AI/opencode/agents/campaign.md" in prompt
+        assert "{file:~/.config/opencode/prompts/quantlab/campaign.md}" in prompt
 
     def test_orchestrator_task_allowlist_includes_campaign(self) -> None:
         cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
