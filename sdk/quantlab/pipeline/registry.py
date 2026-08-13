@@ -154,6 +154,7 @@ class StageRegistry:
         from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage
         from quantlab.pipeline.stages.demo_stage import DemoStage
         from quantlab.pipeline.stages.deploy_stage import DeployStage as DeployPackageStage
+        from quantlab.pipeline.stages.indicator_export_stage import IndicatorExportStage
         from quantlab.pipeline.stages.portfolio_stage import (
             PortfolioStage as PortfolioComposeStage,
         )
@@ -342,6 +343,8 @@ class StageRegistry:
             "portfolio": PortfolioComposeStage,
             "compile": CompileStage,
             "deploy": DeployPackageStage,
+            # Ciclo 4 (REQ-05): inject IndicatorExporter into .jfx after compile.
+            "indicator_export": IndicatorExportStage,
             "demo": DemoStage,
             "archive": ArchiveStage,
             # Live-ops monitoring & archive adapters (PR 3/4): execution_monitor
