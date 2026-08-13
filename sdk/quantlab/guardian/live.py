@@ -11,6 +11,7 @@ REQ-40 scenario 2).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -69,7 +70,7 @@ class LiveEvaluation:
 
 
 def evaluate_live(
-    points: Sequence[EquityPoint],
+    points: Sequence[EquityPoint] | Iterable[EquityPoint],
     *,
     campaign_id: str = "campaign",
     drawdown_threshold: float = DEFAULT_LIVE_DRAWDOWN_THRESHOLD,
@@ -79,7 +80,9 @@ def evaluate_live(
 
     Args:
         points: Live equity points streamed by the autonomous monitor
-            (REQ-41). Empty when the stream is unavailable.
+            (REQ-41), or any iterable of equity points (e.g. a
+            :class:`quantlab.jforex.live_feed.JForexLiveFeed`). Empty when
+            the stream is unavailable.
         campaign_id: Campaign identifier for feedback records.
         drawdown_threshold: Drawdown fraction above which the state
             transitions to DEFENSIVE (default 0.10 = 10%, REQ-40).
@@ -89,7 +92,8 @@ def evaluate_live(
         A :class:`LiveEvaluation`. When ``points`` is empty the evaluation
         holds with a STREAM_LOST reason — no live-based transition occurs.
     """
-    if not points:
+    points_list = list(points)
+    if not points_list:
         return LiveEvaluation(
             campaign_id=campaign_id,
             drawdown=0.0,
@@ -100,7 +104,7 @@ def evaluate_live(
             reason="STREAM_LOST — no live account data to evaluate",
         )
 
-    dd = max_drawdown(points)
+    dd = max_drawdown(points_list)
     if dd > drawdown_threshold:
         feedback = record(
             campaign_id,
