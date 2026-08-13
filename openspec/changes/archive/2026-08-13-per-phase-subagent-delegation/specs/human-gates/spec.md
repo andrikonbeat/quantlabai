@@ -1,10 +1,6 @@
-# Human Gates Specification
+# Delta for Human Gates
 
-## Purpose
-
-Human confirmation gates for the campaign flow. The pipeline adds `HUMAN_APPROVE_DEPLOY`, `HUMAN_APPROVE_DEMO`, and `HUMAN_APPROVE_ARCHIVE` to `HUMAN_GATE_IDS`, mirroring `HUMAN_APPROVE_CONFIG`: fail-closed in autonomous mode, resolvable via the OpenCode `question`-tool callback with stdin fallback.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Demo-Flow Human Gates (REQ-38)
 
@@ -46,20 +42,9 @@ The pipeline MUST add `HUMAN_APPROVE_DEPLOY`, `HUMAN_APPROVE_DEMO`, and `HUMAN_A
 - THEN the gate resolves to the human decision
 - AND the flow proceeds or halts accordingly
 
-### Requirement: Headless Gate Decisions
+#### Scenario: Phase agent presents gate fail-closed
 
-The system MUST support a headless gate channel via the `--gate-decisions-file` flag. In headless mode, gate decisions SHALL be read from a JSON decision file via `StdinGateCallback`; the system MUST NOT prompt interactively. A missing or non-approved decision SHALL fail closed.
-
-#### Scenario: Headless file resolves approval
-
-- GIVEN a run-flow invoked with `--gate-decisions-file decisions.json`
-- WHEN the decision file contains an approval for the pending gate
-- THEN the gate resolves approved
-- AND the flow continues without any interactive prompt
-
-#### Scenario: Missing decision fails closed
-
-- GIVEN a headless run-flow with no decision for the pending gate
-- WHEN the gate resolves
-- THEN the gate fails closed
-- AND the flow stops with a non-zero exit
+- GIVEN a phase agent at HUMAN_APPROVE_DEPLOY
+- WHEN it presents the gate via the `question` tool
+- THEN the flow blocks until a human decision arrives
+- AND a HOLD or unanswered gate fails closed without auto-approval

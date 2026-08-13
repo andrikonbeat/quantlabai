@@ -43,10 +43,10 @@ Chain strategy: stacked-to-main
 
 ## PR 5 — Gates + loop + integrity
 
-- [ ] 3b.1 `research_director.py`: wire HUMAN_APPROVE_ARCHIVE interceptor on archive `pending_gate` (`phase4/campaign_archive.py`); DEMO stays fail-closed. MOD REQ-38/REQ-11.
-- [ ] 3b.2 `campaign.md` loop rewrite: fold each PhaseResult before next dispatch; failure halts; no inline long ops; no inline fallback. REQ-01/811/802.
-- [ ] 3b.3 Extend `test_flow_integrity.py`/`test_flow_segments.py`: `PHASE_AGENTS` keys == PHASES; asserts unchanged. REQ-804/810.
-- [ ] 3b.4 Extend e2e: dispatch order == PHASES; SQX_FORCE_MOCK intact. REQ-810/811.
+- [x] 3b.1 `research_director.py`: wire HUMAN_APPROVE_ARCHIVE interceptor on archive `pending_gate` (`phase4/campaign_archive.py`); DEMO stays fail-closed. MOD REQ-38/REQ-11.
+- [x] 3b.2 `campaign.md` loop rewrite: fold each PhaseResult before next dispatch; failure halts; no inline long ops; no inline fallback. REQ-01/811/802.
+- [x] 3b.3 Extend `test_flow_integrity.py`/`test_flow_segments.py`: `PHASE_AGENTS` keys == PHASES; asserts unchanged. REQ-804/810.
+- [x] 3b.4 Extend e2e: dispatch order == PHASES; SQX_FORCE_MOCK intact. REQ-810/811.
 
 ## Non-Goals
 
