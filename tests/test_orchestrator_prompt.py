@@ -162,6 +162,48 @@ class TestOpenSpecConfigRouting:
         assert "quantlab-campaign" in text
 
 
+class TestRequir814RoutingNote:
+    """REQ-814: orchestrator.md documents no direct phase routing and long-running
+    operations execute on the orchestrator shell."""
+
+    def test_orchestrator_routing_note_mentions_no_direct_phase_routing(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT)
+        assert "no direct phase routing" in text.lower(), (
+            "REQ-814 note must state that orchestrator does not route phase intents directly"
+        )
+
+    def test_orchestrator_routing_note_long_running_on_shell(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT)
+        assert "orchestrator shell" in text.lower(), (
+            "REQ-814 note must state long-running operations execute on orchestrator shell"
+        )
+
+    def test_orchestrator_campaign_route_delegates_via_task(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT)
+        assert "quantlab-campaign" in text
+        assert "task" in text
+
+
+class TestCampaignDispatchMap:
+    """REQ-811: campaign.md dispatches per phase in PHASES order."""
+
+    def test_campaign_prompt_declares_dispatch_table(self) -> None:
+        text = _read(CAMPAIGN_AGENT_PROMPT)
+        for phase in CAMPAIGN_PHASES:
+            agent_name = f"quantlab-phase-{phase}"
+            assert agent_name in text, f"campaign.md dispatch table must list {agent_name}"
+
+    def test_campaign_prompt_dispatch_order_matches_phases(self) -> None:
+        text = _read(CAMPAIGN_AGENT_PROMPT)
+        # Verify PHASES order by checking each phase appears in the dispatch table
+        # in the same order as CAMPAIGN_PHASES.
+        table_start = text.find("| Phase | Subagent |")
+        assert table_start != -1, "campaign.md must contain dispatch table"
+        table = text[table_start:]
+        for phase in CAMPAIGN_PHASES:
+            assert phase in table, f"dispatch table must include phase {phase}"
+
+
 class TestGuardianRouting:
     """REQ-642 (PR 2): guardian intents route to ``quantlab-guardian``;
     non-guardian intents do NOT match the GUARDIAN route.
@@ -227,9 +269,10 @@ class TestPhaseAgentRegistration:
     """REQ-805/808/812/813: 14 phase subagents registered deny-first.
 
     PR 2 covers the first 7 phases from PHASES: research, hypothesis, config,
-    review, dispatch, monitor, retest. Each entry MUST be mode=subagent,
-    deny-first task permissions, question allowed, prompt ref present, and
-    bash scoped to sdk/quantlab/pipeline/* + sdk/quantlab/campaign/*.
+    review, dispatch, monitor, retest. PR 3 covers the remaining 7: optimize,
+    portfolio, compile, deploy, demo, archive, live-ops. Each entry MUST be
+    mode=subagent, deny-first task permissions, question allowed, prompt ref
+    present, and bash scoped to sdk/quantlab/pipeline/* + sdk/quantlab/campaign/*.
     """
 
     FIRST_7_PHASES = [
@@ -241,6 +284,18 @@ class TestPhaseAgentRegistration:
         "monitor",
         "retest",
     ]
+
+    REMAINING_7_PHASES = [
+        "optimize",
+        "portfolio",
+        "compile",
+        "deploy",
+        "demo",
+        "archive",
+        "live-ops",
+    ]
+
+    ALL_14_PHASES = FIRST_7_PHASES + REMAINING_7_PHASES
 
     def test_first_7_phase_agents_registered(self) -> None:
         cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
@@ -281,3 +336,50 @@ class TestPhaseAgentRegistration:
             assert perms.get("*") == "deny", f"{phase} bash wildcard must deny"
             assert perms.get("sdk/quantlab/pipeline/*") == "allow"
             assert perms.get("sdk/quantlab/campaign/*") == "allow"
+
+    def test_remaining_7_phase_agents_registered(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.REMAINING_7_PHASES:
+            name = f"quantlab-phase-{phase}"
+            assert name in cfg.get("agent", {}), f"opencode.json must register {name}"
+
+    def test_remaining_7_phase_agents_are_subagents(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.REMAINING_7_PHASES:
+            agent = cfg["agent"][f"quantlab-phase-{phase}"]
+            assert agent.get("mode") == "subagent", f"{phase} agent must be subagent"
+
+    def test_remaining_7_phase_agents_have_deny_first_task_permissions(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.REMAINING_7_PHASES:
+            perms = cfg["agent"][f"quantlab-phase-{phase}"]["permission"]["task"]
+            assert perms.get("*") == "deny", f"{phase} task wildcard must deny"
+            assert perms.get("quantlab-*") == "allow", f"{phase} quantlab wildcard must allow"
+
+    def test_remaining_7_phase_agents_allow_question_tool(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.REMAINING_7_PHASES:
+            perms = cfg["agent"][f"quantlab-phase-{phase}"]["permission"]
+            assert perms.get("question") == "allow", f"{phase} must allow question tool"
+
+    def test_remaining_7_phase_agents_have_prompt_references(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.REMAINING_7_PHASES:
+            prompt = cfg["agent"][f"quantlab-phase-{phase}"].get("prompt", "")
+            expected = f"{{file:~/.config/opencode/prompts/quantlab/phase-{phase}.md}}"
+            assert prompt == expected, f"{phase} prompt ref must be {expected}, got {prompt}"
+
+    def test_remaining_7_phase_agents_have_scoped_bash_allowlist(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.REMAINING_7_PHASES:
+            perms = cfg["agent"][f"quantlab-phase-{phase}"]["permission"]["bash"]
+            assert perms.get("*") == "deny", f"{phase} bash wildcard must deny"
+            assert perms.get("sdk/quantlab/pipeline/*") == "allow"
+            assert perms.get("sdk/quantlab/campaign/*") == "allow"
+
+    def test_all_14_phase_agents_registered_matches_phases_length(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        registered = [k for k in cfg.get("agent", {}) if k.startswith("quantlab-phase-")]
+        assert len(registered) == len(CAMPAIGN_PHASES) == 14, (
+            f"registry completeness: expected 14 phase agents, got {len(registered)}"
+        )

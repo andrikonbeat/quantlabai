@@ -88,6 +88,29 @@ Binding rules (REQ-37):
 
 ## Campaign Loop (14 phases)
 
+Dispatch each phase via the `task` tool to the corresponding
+`quantlab-phase-<phase>` subagent, in `PHASES` order. Each dispatch passes a
+`PhaseDirective` for its own phase only and MUST NOT run long-running operations
+inline. Fold each returned `PhaseResult` envelope before dispatching the next
+phase.
+
+| Phase | Subagent |
+|---|---|
+| research | `quantlab-phase-research` |
+| hypothesis | `quantlab-phase-hypothesis` |
+| config | `quantlab-phase-config` |
+| review | `quantlab-phase-review` |
+| dispatch | `quantlab-phase-dispatch` |
+| monitor | `quantlab-phase-monitor` |
+| retest | `quantlab-phase-retest` |
+| optimize | `quantlab-phase-optimize` |
+| portfolio | `quantlab-phase-portfolio` |
+| compile | `quantlab-phase-compile` |
+| deploy | `quantlab-phase-deploy` |
+| demo | `quantlab-phase-demo` |
+| archive | `quantlab-phase-archive` |
+| live-ops | `quantlab-phase-live-ops` |
+
 Run the phases in order. Each phase MUST return the Result Contract envelope
 (`status`, `executive_summary`, `artifacts`, `next_recommended`, `risks`); the
 envelope of one phase feeds the next.
