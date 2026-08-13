@@ -12,7 +12,12 @@ wired from the OpenCode config (``~/.config/opencode/``).  These tests assert:
   as primary and stdin as headless fallback;
 - ``opencode.json`` registers ``quantlab-campaign`` by ``{file:...}``
   reference and the orchestrator's task allowlist includes it (REQ-02, REQ-16);
-- ``openspec/config.yaml`` routing gains the campaign row (REQ-16).
+- ``openspec/config.yaml`` routing gains the campaign row (REQ-16);
+- guardian intents route to ``quantlab-guardian`` while non-guardian intents
+  stay with the orchestrator (REQ-642, PR 2);
+- ``opencode.json`` registers ``quantlab-guardian`` deny-first and the
+  orchestrator task allowlist explicitly permits it (delegation ownership,
+  PR 2).
 
 The OpenCode config files live outside the repo (``~/.config/opencode/``);
 they are asserted here because REQ-16 scenario text names the exact path.
@@ -155,3 +160,64 @@ class TestOpenSpecConfigRouting:
         text = _read(CONFIG_YAML)
         assert "campaign" in text
         assert "quantlab-campaign" in text
+
+
+class TestGuardianRouting:
+    """REQ-642 (PR 2): guardian intents route to ``quantlab-guardian``;
+    non-guardian intents do NOT match the GUARDIAN route.
+
+    Routing authority (threat matrix): the orchestrator routing table MUST
+    contain a GUARDIAN row dispatching via ``task``, guardian keywords MUST
+    classify as GUARDIAN, and an intent that is not guardian-related MUST
+    stay with the orchestrator — never misrouted to the agent.
+    """
+
+    def test_prompt_declares_guardian_route_dispatching_via_task(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT)
+        assert "GUARDIAN" in text  # routing-table classification exists
+        assert "quantlab-guardian" in text  # routing-table target exists
+        assert "task" in text  # dispatch via the task tool
+
+    def test_guardian_intent_keywords_classify_as_guardian(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT).lower()
+        for keyword in ("guardian", "evaluate", "live-ops", "feedback"):
+            assert keyword in text, f"GUARDIAN classification must match {keyword}"
+
+    def test_non_guardian_intents_stay_with_orchestrator(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT)
+        # REQ-642 scenario 2: an intent that is not guardian-related MUST NOT
+        # be dispatched to the guardian agent; the orchestrator handles it.
+        assert "MUST NOT" in text
+        assert "stays with the orchestrator" in text
+        # Neighboring routes are not hijacked by the GUARDIAN row.
+        assert "quantlab-campaign" in text
+        assert "gentle-orchestrator" in text
+
+
+class TestGuardianAgentRegistration:
+    """Delegation ownership (PR 2): ``opencode.json`` registers
+    ``quantlab-guardian`` with a deny-first task allowlist, and the
+    orchestrator task allowlist explicitly permits it.
+
+    Threat matrix: typo agent names or a denied task bypass MUST NOT silently
+    invent a fallback — the allowlist entry is explicit under ``"*": "deny"``.
+    """
+
+    def test_opencode_json_registers_guardian_subagent(self) -> None:
+        assert OPENCODE_JSON.exists(), f"expected opencode.json at {OPENCODE_JSON}"
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        agent = cfg.get("agent", {}).get("quantlab-guardian")
+        assert agent is not None, "opencode.json must register quantlab-guardian"
+        assert agent.get("mode") == "subagent"
+        assert "guardian.md" in agent.get("prompt", "")
+
+    def test_guardian_agent_task_allowlist_is_deny_first(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        task_perms = cfg["agent"]["quantlab-guardian"]["permission"]["task"]
+        assert task_perms.get("*") == "deny"  # wildcard deny guards the agent
+        assert task_perms.get("quantlab-*") == "allow"
+
+    def test_orchestrator_task_allowlist_explicitly_allows_guardian(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        task_perms = cfg["agent"]["quantlab-orchestrator"]["permission"]["task"]
+        assert task_perms.get("quantlab-guardian") == "allow"
