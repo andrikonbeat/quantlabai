@@ -5,6 +5,10 @@ loop can compose it with ``guardian_evaluate`` / ``retester`` / ``optimizer``
 stages. The stage is config-driven (no upstream artifact requirements): it
 reads ``campaign_id``, ``monitor_phase`` and monitor tuning from
 ``ctx.config`` and publishes ``monitor_result`` to the context artifacts.
+
+REQ-06 Scenario 2: when ``progress_fn`` is injected (e.g. a JForex live-feed
+source built by :func:`quantlab.jforex.live_feed.jforex_progress_fn`), the
+stage routes it into the monitor instead of the default SQX HTTP poller.
 """
 
 from __future__ import annotations
@@ -25,9 +29,15 @@ class ExecutionMonitorStage(Stage):
     requires: list[str] = []
     provides: list[str] = ["monitor_result"]
 
-    def __init__(self, monitor: Any | None = None) -> None:
+    def __init__(
+        self,
+        monitor: Any | None = None,
+        *,
+        progress_fn: Any | None = None,
+    ) -> None:
         # Injectable for tests; the real ExecutionMonitor is constructed lazily.
         self._monitor = monitor
+        self._progress_fn = progress_fn
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         """Run the monitor for the configured campaign and phase.
@@ -51,7 +61,7 @@ class ExecutionMonitorStage(Stage):
         if monitor is None:  # pragma: no cover - exercised by integration
             from quantlab.agents.execution_monitor import ExecutionMonitor
 
-            monitor = ExecutionMonitor()
+            monitor = ExecutionMonitor(progress_fn=self._progress_fn)
 
         result = await monitor.monitor(campaign_id, phase, None)
         ctx.artifacts["monitor_result"] = result
