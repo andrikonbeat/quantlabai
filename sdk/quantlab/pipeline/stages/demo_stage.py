@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from quantlab.data.demo.store import DemoWindowStore, StateCorruptionError
 from quantlab.pipeline.base import PipelineContext, Stage
 
 
@@ -26,9 +27,14 @@ class DemoStage(Stage):
     requires: list[str] = ["deployment_result"]
     provides: list[str] = ["demo_result"]
 
-    def __init__(self, deployer: Any | None = None) -> None:
+    def __init__(
+        self,
+        deployer: Any | None = None,
+        store: DemoWindowStore | None = None,
+    ) -> None:
         # Injectable for tests; the real DemoDeployer is constructed lazily.
         self._deployer = deployer
+        self._store = store
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         """Run the demo deployment, honouring the window status.
@@ -55,4 +61,42 @@ class DemoStage(Stage):
 
         result = await deployer.deploy(deployment, None, now=now)
         ctx.artifacts["demo_result"] = result
+
+        # Persist window state after deploy (WU7b persistence wiring).
+        self._persist_window_state(ctx)
+
         return {"demo_result": result}
+
+    def _persist_window_state(self, ctx: PipelineContext) -> None:
+        """Persist demo window state via DemoWindowStore if configured.
+
+        Loads existing state when available; creates a minimal window record
+        when missing. Corrupt state is skipped so the pipeline continues.
+        """
+        if self._store is None:
+            return
+        campaign_id = (
+            ctx.config.get("campaign_id") if ctx.config else None
+        )
+        if not campaign_id:
+            return
+        window: dict[str, object] | None = None
+        try:
+            window = self._store.load(str(campaign_id))
+        except StateCorruptionError:
+            window = {
+                "campaign_id": str(campaign_id),
+                "started_at": (
+                    ctx.config.get("demo_now")
+                    if ctx.config and ctx.config.get("demo_now")
+                    else "2026-01-01"
+                ),
+                "expires_at": "2026-01-15",
+                "renewal_count": 0,
+            }
+        if window is None:
+            return
+        try:
+            self._store.persist(window)
+        except Exception:
+            pass
