@@ -1,18 +1,20 @@
-"""DataManager — Dukascopy-only market data manager (REQ-12, REQ-13, D5).
+"""DataManager — registry-based market data manager (REQ-12, REQ-13, REQ-04).
 
 Rebuilt to the recovered ``.pyc`` contract: ``ensure_symbol``,
 ``update_data``, ``import_csv``, ``list_symbols``, ``get_symbol_info``.
-The manager wraps the sqcli ``-symbol action=add`` and
+Datasources are selected through a :class:`DatasourceRegistry`: the
+launch path wraps the sqcli ``-symbol action=add`` and
 ``-data action=update`` commands with SQX naming (``EURUSD_M1_dukas``),
-records every ensured/updated symbol in a deterministic SQLite registry
-(``SymbolRegistry``) so cache hits avoid re-downloading, and is the
-component ``BuilderAgent._ensure_data`` consumes in orchestrated mode
-(REQ-13 — replacing the temporary hard-raise).
+and ``datasource="jforex"`` (REQ-04) routes to :class:`JForexProvider`,
+which reads history the local JForex4 platform already downloaded. The
+manager records every ensured/updated symbol in a deterministic SQLite
+registry (``SymbolRegistry``) so cache hits avoid re-running the source,
+and is the component ``BuilderAgent._ensure_data`` consumes in
+orchestrated mode (REQ-13 — replacing the temporary hard-raise).
 
-Launch scope is Dukascopy-only (D5): crypto, CSV, and yahoo datasources
-raise ``NotSupportedError`` before any command is built. Symbol names are
-validated (threat-matrix boundary 1) so no metacharacter can reach the
-sqcli argv.
+Deferred datasources (D5: crypto, CSV, yahoo) raise ``NotSupportedError``
+before any source is touched. Symbol names are validated (threat-matrix
+boundary 1) so no metacharacter can reach the sqcli argv.
 """
 
 from __future__ import annotations
@@ -24,8 +26,10 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from quantlab.data.datasource_registry import DatasourceHandler, DatasourceRegistry
 from quantlab.data.exceptions import DataManagerError, NotSupportedError
 from quantlab.data.symbol_registry import SymbolRegistry, resolve_symbol
+from quantlab.jforex.provider import JForexProvider
 
 logger = logging.getLogger(__name__)
 
@@ -100,33 +104,48 @@ async def _run_sqcli_command(sqcli_path: str, args: list[str], timeout: float = 
 # ── DataManager ─────────────────────────────────────────────────────────────
 
 
-class DataManager:
-    """Dukascopy-only data manager with a deterministic SQLite cache.
+class SqcliDukascopyHandler(DatasourceHandler):
+    """Dukascopy datasource handler — the existing sqcli path (REQ-04 S2).
 
-    Args:
-        sqx_install_path: Optional SQX installation root used to discover
-            the sqcli binary. When ``None``, discovery falls back to the
-            ``SQX_INSTALL_PATH`` env var, then ``SQCLI_PATH``.
-        sqcli_path: Optional explicit sqcli binary path (highest priority).
-        registry: Optional injected ``SymbolRegistry`` (tests).
-        registry_path: Path for the registry database (default in-memory).
+    Owns sqcli discovery and the exact ``-symbol action=add`` /
+    ``-data action=update`` argv defined by the recovered ``.pyc``
+    contract. Lives in this module so it shares the module-level
+    ``_run_sqcli_command`` runner.
     """
+
+    name = "dukascopy"
 
     def __init__(
         self,
-        sqx_install_path: str | None = None,
         sqcli_path: str | None = None,
-        registry: SymbolRegistry | None = None,
-        registry_path: str | None = None,
+        sqx_install_path: str | None = None,
     ) -> None:
-        self._sqx_install_path = sqx_install_path
         self._sqcli_path = sqcli_path
-        self._registry = registry or SymbolRegistry(db_path=registry_path)
+        self._sqx_install_path = sqx_install_path
 
-    @property
-    def registry(self) -> SymbolRegistry:
-        """The symbol registry backing this manager."""
-        return self._registry
+    def sqx_name(self, symbol: str, datatype: str) -> str:
+        """Build ``EURUSD_M1_dukas`` with the shared validation."""
+        return resolve_symbol(symbol, datatype, "dukascopy")
+
+    async def ensure(self, symbol: str, datatype: str, sqx_name: str) -> None:
+        sqcli = self._require_sqcli()
+        await _run_sqcli_command(
+            sqcli,
+            [
+                "-symbol",
+                "action=add",
+                f"name={sqx_name}",
+                "datasource=dukascopy",
+                f"datatype={datatype}",
+            ],
+        )
+
+    async def update(self, symbol: str, datatype: str, sqx_name: str) -> None:
+        sqcli = self._require_sqcli()
+        await _run_sqcli_command(
+            sqcli,
+            ["-data", "action=update", f"name={sqx_name}"],
+        )
 
     # ── sqcli resolution ────────────────────────────────────────────────
 
@@ -160,6 +179,78 @@ class DataManager:
             )
         return sqcli
 
+
+class DataManager:
+    """Registry-based data manager with a deterministic SQLite cache.
+
+    Args:
+        sqx_install_path: Optional SQX installation root used to discover
+            the sqcli binary. When ``None``, discovery falls back to the
+            ``SQX_INSTALL_PATH`` env var, then ``SQCLI_PATH``.
+        sqcli_path: Optional explicit sqcli binary path (highest priority).
+        registry: Optional injected ``SymbolRegistry`` (tests).
+        registry_path: Path for the registry database (default in-memory).
+        datasources: Optional injected :class:`DatasourceRegistry` (tests).
+            Defaults to dukascopy/sqcli + jforex (REQ-04).
+        jforex_state_dir: JForex4 local state directory consumed by the
+            default ``jforex`` datasource handler.
+    """
+
+    def __init__(
+        self,
+        sqx_install_path: str | None = None,
+        sqcli_path: str | None = None,
+        registry: SymbolRegistry | None = None,
+        registry_path: str | None = None,
+        datasources: DatasourceRegistry | None = None,
+        jforex_state_dir: str | None = None,
+    ) -> None:
+        self._datasources = datasources or self._default_datasources(
+            sqcli_path=sqcli_path,
+            sqx_install_path=sqx_install_path,
+            jforex_state_dir=jforex_state_dir,
+        )
+        self._registry = registry or SymbolRegistry(db_path=registry_path)
+
+    @staticmethod
+    def _default_datasources(
+        sqcli_path: str | None,
+        sqx_install_path: str | None,
+        jforex_state_dir: str | None,
+    ) -> DatasourceRegistry:
+        """Build the default registry: dukascopy/sqcli + jforex (REQ-04)."""
+        reg = DatasourceRegistry()
+        reg.register(
+            SqcliDukascopyHandler(
+                sqcli_path=sqcli_path, sqx_install_path=sqx_install_path
+            )
+        )
+        reg.register(JForexProvider(state_dir=jforex_state_dir))
+        return reg
+
+    @property
+    def registry(self) -> SymbolRegistry:
+        """The symbol registry backing this manager."""
+        return self._registry
+
+    @property
+    def datasources(self) -> DatasourceRegistry:
+        """The datasource registry this manager routes through."""
+        return self._datasources
+
+    # ── Datasource routing ───────────────────────────────────────────────
+
+    def _handler_for(self, datasource: str) -> DatasourceHandler:
+        """Look up a datasource handler, rejecting unregistered sources."""
+        handler = self._datasources.get(datasource)
+        if handler is None:
+            raise NotSupportedError(
+                f"datasource '{datasource}' is not supported at launch — "
+                f"registered: {self._datasources.names()!r} "
+                "(D5: crypto/CSV/yahoo deferred)"
+            )
+        return handler
+
     # ── .pyc contract API (REQ-12) ──────────────────────────────────────
 
     async def ensure_symbol(
@@ -168,15 +259,16 @@ class DataManager:
         datasource: str = "dukascopy",
         datatype: str = "M1",
     ) -> dict[str, Any]:
-        """Register a symbol via ``-symbol action=add`` and record it.
+        """Register a symbol via its datasource handler and record it.
 
-        Cache-first: when the symbol+timeframe is already registered with
-        status ``ok``, no sqcli command runs (deterministic cache, no
-        re-download).
+        Cache-first: when the symbol+timeframe+datasource is already
+        registered with status ``ok``, no datasource operation runs
+        (deterministic cache, no re-download).
 
         Args:
             symbol: Base symbol (e.g. ``EURUSD``).
-            datasource: Data source — only ``dukascopy`` at launch (D5).
+            datasource: Data source — ``dukascopy`` (sqcli) or ``jforex``
+                (local JForex state, REQ-04).
             datatype: FX timeframe (``M1``/``M5``/``H1``).
 
         Returns:
@@ -184,13 +276,16 @@ class DataManager:
             ``datasource``, and ``cached``.
 
         Raises:
-            NotSupportedError: Deferred datasource (D5).
+            NotSupportedError: Unregistered/unknown datasource (D5).
             ValueError: Invalid symbol (boundary 1).
-            DataManagerError: sqcli missing or the command failed.
+            DataManagerError: The datasource handler failed (missing
+                sqcli, missing JForex state, command error, timeout).
         """
-        sqx_name = resolve_symbol(symbol, datatype, datasource)
+        handler = self._handler_for(datasource)
 
-        existing = await self._registry.get(symbol, datatype)
+        sqx_name = handler.sqx_name(symbol, datatype)
+
+        existing = await self._registry.get(symbol, datatype, datasource=datasource)
         if existing is not None and existing.get("status") == "ok":
             return {
                 "status": "ok",
@@ -201,21 +296,11 @@ class DataManager:
                 "sqx_name": sqx_name,
             }
 
-        sqcli = self._require_sqcli()
-        await _run_sqcli_command(
-            sqcli,
-            [
-                "-symbol",
-                "action=add",
-                f"name={sqx_name}",
-                f"datasource={datasource}",
-                f"datatype={datatype}",
-            ],
-        )
+        await handler.ensure(symbol, datatype, sqx_name)
         await self._registry.record(
             sqx_name, symbol, datatype, datasource, status="ok"
         )
-        logger.info("DataManager: ensured symbol '%s' via sqcli", sqx_name)
+        logger.info("DataManager: ensured symbol '%s' via '%s'", sqx_name, datasource)
         return {
             "status": "ok",
             "cached": False,
@@ -231,27 +316,26 @@ class DataManager:
         datasource: str = "dukascopy",
         datatype: str = "M1",
     ) -> dict[str, Any]:
-        """Refresh market data via ``-data action=update`` (SQX download).
+        """Refresh market data via the datasource handler.
 
         Args:
             symbol: Base symbol (e.g. ``EURUSD``).
-            datasource: Data source — only ``dukascopy`` at launch (D5).
+            datasource: Data source — ``dukascopy`` (sqcli) or ``jforex``
+                (local JForex state, REQ-04).
             datatype: FX timeframe (``M1``/``M5``/``H1``).
 
         Returns:
             Dict with ``status``, ``action``, ``sqx_name``, ``symbol``.
 
         Raises:
-            NotSupportedError: Deferred datasource (D5).
+            NotSupportedError: Unregistered/unknown datasource (D5).
             ValueError: Invalid symbol (boundary 1).
-            DataManagerError: sqcli missing or the command failed.
+            DataManagerError: The datasource handler failed.
         """
-        sqx_name = resolve_symbol(symbol, datatype, datasource)
-        sqcli = self._require_sqcli()
-        await _run_sqcli_command(
-            sqcli,
-            ["-data", "action=update", f"name={sqx_name}"],
-        )
+        handler = self._handler_for(datasource)
+
+        sqx_name = handler.sqx_name(symbol, datatype)
+        await handler.update(symbol, datatype, sqx_name)
         await self._registry.record(
             sqx_name, symbol, datatype, datasource, status="ok"
         )
@@ -280,8 +364,8 @@ class DataManager:
             NotSupportedError: Always — CSV datasource deferred (D5).
         """
         raise NotSupportedError(
-            f"CSV datasource is deferred (D5) — only 'dukascopy' is "
-            f"supported at launch (symbol={symbol!r})"
+            f"CSV datasource is deferred (D5) — use 'dukascopy' or 'jforex' "
+            f"(symbol={symbol!r})"
         )
 
     async def list_symbols(self) -> list[dict[str, Any]]:

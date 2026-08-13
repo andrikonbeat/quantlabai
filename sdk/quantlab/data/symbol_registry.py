@@ -29,9 +29,13 @@ from quantlab.data.exceptions import NotSupportedError
 _SYMBOL_RE = re.compile(r"^[A-Z]{6}(_[A-Z]+\d*)?$")
 
 # Datasource → SQX name suffix. Dukascopy is abbreviated "dukas" per the
-# recovered .pyc contract and project_builder naming. Launch scope is
-# Dukascopy-only (D5); future datasources map here when added.
-_DATASOURCE_SUFFIX: dict[str, str] = {"dukascopy": "dukas"}
+# recovered .pyc contract and project_builder naming; JForex uses its own
+# name (REQ-04). Launch scope is dukascopy + jforex (D5); future
+# datasources map here when added.
+_DATASOURCE_SUFFIX: dict[str, str] = {
+    "dukascopy": "dukas",
+    "jforex": "jforex",
+}
 _SUFFIX_DATASOURCE: dict[str, str] = {
     suffix: name for name, suffix in _DATASOURCE_SUFFIX.items()
 }
@@ -51,10 +55,12 @@ def resolve_symbol(symbol: str, timeframe: str = "M1", datasource: str = "dukasc
     Args:
         symbol: Base symbol, e.g. ``EURUSD``.
         timeframe: FX timeframe, e.g. ``M1``/``M5``/``H1`` (launch scope).
-        datasource: Data source; only ``dukascopy`` is supported at launch.
+        datasource: Data source — ``dukascopy`` (sqcli) or ``jforex``
+            (local JForex state, REQ-04).
 
     Returns:
-        The SQX symbol name, e.g. ``EURUSD_M1_dukas``.
+        The SQX symbol name, e.g. ``EURUSD_M1_dukas`` or
+        ``EURUSD_M1_jforex``.
 
     Raises:
         NotSupportedError: The datasource is not supported at launch (D5).
@@ -211,23 +217,38 @@ class SymbolRegistry:
             "updated_at": now,
         }
 
-    async def get(self, symbol: str, timeframe: str | None = None) -> dict[str, Any] | None:
-        """Return the most recent row for a base symbol (optionally per-timeframe)."""
+    async def get(
+        self,
+        symbol: str,
+        timeframe: str | None = None,
+        datasource: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Return the most recent row for a symbol (optionally filtered).
+
+        Args:
+            symbol: Base symbol.
+            timeframe: Optional timeframe filter (e.g. ``M1``).
+            datasource: Optional datasource filter (e.g. ``jforex``) so
+                multi-datasource managers can key their cache per source
+                (REQ-04).
+        """
         conn = await self._init_db()
 
         def _get() -> dict[str, Any] | None:
-            if timeframe is None:
-                cur = conn.execute(
-                    "SELECT * FROM symbols WHERE symbol = ?"
-                    " ORDER BY updated_at DESC LIMIT 1",
-                    (symbol,),
-                )
-            else:
-                cur = conn.execute(
-                    "SELECT * FROM symbols WHERE symbol = ? AND timeframe = ?"
-                    " ORDER BY updated_at DESC LIMIT 1",
-                    (symbol, timeframe),
-                )
+            clauses = ["symbol = ?"]
+            params: list[Any] = [symbol]
+            if timeframe is not None:
+                clauses.append("timeframe = ?")
+                params.append(timeframe)
+            if datasource is not None:
+                clauses.append("datasource = ?")
+                params.append(datasource)
+            cur = conn.execute(
+                "SELECT * FROM symbols WHERE "
+                + " AND ".join(clauses)
+                + " ORDER BY updated_at DESC LIMIT 1",
+                tuple(params),
+            )
             row = cur.fetchone()
             return self._row_to_dict(row) if row is not None else None
 
