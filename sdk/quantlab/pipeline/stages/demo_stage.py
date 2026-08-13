@@ -49,6 +49,17 @@ class DemoStage(Stage):
         """
         deployment = ctx.artifacts.get("deployment_result")
 
+        # Fail-closed expiry guard (WU7a): an expired window BLOCKS with
+        # pending_gate=HUMAN_APPROVE_DEMO and the backend is never invoked.
+        if not self._is_window_open(ctx):
+            return {
+                "demo_result": {
+                    "status": "BLOCKED_EXPIRED",
+                    "pending_gate": "HUMAN_APPROVE_DEMO",
+                    "errors": ["Demo window expired"],
+                }
+            }
+
         deployer = self._deployer
         if deployer is None:  # pragma: no cover - exercised by integration
             from quantlab.phase4.demo_deploy import DemoDeployer
@@ -66,6 +77,41 @@ class DemoStage(Stage):
         self._persist_window_state(ctx)
 
         return {"demo_result": result}
+
+    def _is_window_open(self, ctx: PipelineContext) -> bool:
+        """Return True when the demo window is open or dry-run is enabled.
+
+        Dry-run mode bypasses the expiry check so previews are always
+        allowed. A missing campaign, a window without ``expires_at``, or
+        corrupt state does not block (treated as untracked).
+        """
+        if ctx.config and ctx.config.get("demo_dry_run"):
+            return True
+        if self._store is None:
+            return True
+        campaign_id = ctx.config.get("campaign_id") if ctx.config else None
+        if not campaign_id:
+            return True
+        try:
+            window = self._store.load(str(campaign_id))
+        except StateCorruptionError:
+            return True
+        expires_at = window.get("expires_at")
+        if not expires_at:
+            return True
+        try:
+            expires = date.fromisoformat(str(expires_at))
+        except (TypeError, ValueError):
+            return True
+        now: date | None = None
+        if ctx.config and ctx.config.get("demo_now"):
+            try:
+                now = date.fromisoformat(str(ctx.config["demo_now"]))
+            except (TypeError, ValueError):
+                now = None
+        if now is None:
+            now = date.today()
+        return now <= expires
 
     def _persist_window_state(self, ctx: PipelineContext) -> None:
         """Persist demo window state via DemoWindowStore if configured.
