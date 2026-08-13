@@ -13,10 +13,13 @@ because it never touches ``quantlab.gates``. Persistence is the caller's job
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal, Sequence
 from uuid import uuid4
+
+from quantlab.readers.models import EquityPoint
 
 
 @dataclass(frozen=True)
@@ -124,6 +127,107 @@ def flag_matrix_deltas(
         name
         for name, confidence in confidence_map.items()
         if isinstance(confidence, (int, float)) and confidence < threshold
+    )
+
+
+# Bounded orchestrator→guardian directive kinds (REQ-643). Directives are
+# limited to evaluation and advice — none can auto-approve, reorder, or
+# gate the flow, and any other kind is rejected at construction.
+DIRECTIVE_KINDS: tuple[str, ...] = (
+    "evaluate",
+    "live_ops_status",
+    "escalation_ack",
+)
+
+
+@dataclass(frozen=True)
+class GuardianDirective:
+    """An orchestrator→guardian directive, bounded to evaluation + advice (REQ-643).
+
+    The guardian agent accepts exactly three directive kinds — ``evaluate``
+    (run a Guardian evaluation), ``live_ops_status`` (report current live-ops
+    state), and ``escalation_ack`` (acknowledge an ops-surface escalation,
+    REQ-36). Any other kind raises :class:`ValueError` BEFORE any execution
+    begins, so a directive can never mutate the 14-phase flow (REQ-37) or
+    bypass a human gate.
+
+    Attributes:
+        kind: The bounded directive kind.
+        campaign_id: Campaign the directive applies to.
+        alert_id: Escalation alert id to acknowledge (``escalation_ack``).
+        points: Live equity points for the evaluation (``evaluate``); ``None``
+            or empty means no live signal is available (feedback stays None).
+        research_config: Research config handed to the evaluation stage.
+    """
+
+    kind: Literal["evaluate", "live_ops_status", "escalation_ack"]
+    campaign_id: str
+    alert_id: str | None = None
+    points: Sequence[EquityPoint] | Iterable[EquityPoint] | None = None
+    research_config: dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.kind not in DIRECTIVE_KINDS:
+            raise ValueError(
+                f"unknown GuardianDirective kind {self.kind!r} — bounded to "
+                f"{', '.join(DIRECTIVE_KINDS)} (REQ-643)"
+            )
+
+
+@dataclass(frozen=True)
+class GuardianReport:
+    """Guardian→orchestrator report envelope (REQ-644, REQ-34 envelope).
+
+    The feedback channel from the guardian agent back to the orchestrator:
+    it carries the evaluation ``guardian_state`` plus the :class:`FeedbackRecord`
+    whose ``next_cycle_inputs()`` reshape is consumed by next-cycle generation
+    (REQ-34). The report carries NO gate or flow fields (REQ-643) and claims
+    only escalation alert ids that were actually acknowledged (REQ-36).
+
+    Attributes:
+        guardian_state: Evaluation state produced by the guardian stage
+            (e.g. ``portfolio_state``), always carried even without signals.
+        feedback: The FeedbackRecord payload, or ``None`` when the evaluation
+            produced no live signals (REQ-644 scenario 2).
+        live_ops_status: Current live-ops status, or ``None``.
+        escalations_acked: Escalation alert ids acknowledged via the ops
+            surface — never fabricated (REQ-36).
+    """
+
+    guardian_state: dict[str, Any] | None
+    feedback: FeedbackRecord | None = None
+    live_ops_status: dict[str, Any] | None = None
+    escalations_acked: tuple[str, ...] = ()
+
+
+def build_report(
+    *,
+    guardian_state: dict[str, Any] | None,
+    feedback: FeedbackRecord | None = None,
+    live_ops_status: dict[str, Any] | None = None,
+    escalations_acked: tuple[str, ...] = (),
+) -> GuardianReport:
+    """Build the guardian→orchestrator report envelope (REQ-644).
+
+    Pure constructor. The envelope REUSES the :class:`FeedbackRecord` — the
+    next-cycle generation flow consumes ``report.feedback.next_cycle_inputs()``
+    (REQ-34), so the reshape stays canonical. ``escalations_acked`` records
+    only ids the ops surface actually returned as acknowledged (REQ-36).
+
+    Args:
+        guardian_state: Evaluation state (``None`` when no evaluation ran).
+        feedback: FeedbackRecord payload, or ``None`` when no live signals.
+        live_ops_status: Live-ops status dict, or ``None``.
+        escalations_acked: Acknowledged alert ids — never fabricated.
+
+    Returns:
+        A new :class:`GuardianReport`.
+    """
+    return GuardianReport(
+        guardian_state=guardian_state,
+        feedback=feedback,
+        live_ops_status=live_ops_status,
+        escalations_acked=tuple(escalations_acked),
     )
 
 

@@ -13,13 +13,18 @@ import asyncio
 
 import pytest
 
+from dataclasses import fields
+
 from quantlab.gates.models import GateDecisionAction, HUMAN_GATE_IDS
 from quantlab.gates.orchestrator import HumanGateOrchestrator
 from quantlab.guardian import feedback
 from quantlab.guardian.feedback import (
     FeedbackRecord,
     FeedbackSignals,
+    GuardianDirective,
+    GuardianReport,
     LiveDemoFeed,
+    build_report,
     flag_matrix_deltas,
     record,
     record_demo_feedback,
@@ -222,3 +227,113 @@ class TestLiveDemoFeed:
         backtest = LiveDemoFeed(equity=99_000.0, positions=2, costs=0.0, source="backtest")
         with pytest.raises(ValueError):
             record_demo_feedback("camp-live-2", backtest)
+
+
+class TestGuardianDirective:
+    """REQ-643: orchestrator→guardian directives are bounded.
+
+    Directives MUST be limited to evaluate, live-ops status, and escalation
+    ack. Any other kind is rejected BEFORE execution — a directive can never
+    auto-approve, reorder, or gate the flow.
+    """
+
+    def test_unknown_kind_raises_value_error_pre_execution(self) -> None:
+        """GIVEN a directive kind outside the bounded set
+        WHEN GuardianDirective is constructed
+        THEN ValueError is raised before anything can execute (REQ-643)."""
+        with pytest.raises(ValueError) as exc:
+            GuardianDirective(kind="restructure_pipeline", campaign_id="camp-d")
+        assert "kind" in str(exc.value)
+
+    def test_all_bounded_kinds_are_accepted(self) -> None:
+        """GIVEN the three bounded directive kinds
+        WHEN GuardianDirective is constructed
+        THEN each is accepted (evaluate | live_ops_status | escalation_ack)."""
+        for kind in ("evaluate", "live_ops_status", "escalation_ack"):
+            directive = GuardianDirective(kind=kind, campaign_id="camp-d")
+            assert directive.kind == kind
+            assert directive.campaign_id == "camp-d"
+
+    def test_escalation_ack_carries_alert_id(self) -> None:
+        """GIVEN an escalation ack directive with an alert id
+        WHEN GuardianDirective is constructed
+        THEN the alert id is preserved for the ops-surface round-trip."""
+        directive = GuardianDirective(
+            kind="escalation_ack",
+            campaign_id="camp-d",
+            alert_id="alert-42",
+        )
+        assert directive.alert_id == "alert-42"
+
+
+class TestGuardianReportBoundedness:
+    """REQ-643: the guardian→orchestrator report carries NO gate/flow fields."""
+
+    def test_report_has_no_gate_or_flow_fields(self) -> None:
+        """GIVEN the GuardianReport envelope
+        WHEN its dataclass fields are inspected
+        THEN no field names gate, phase, or flow — the report cannot carry
+        gate decisions or flow order by construction."""
+        field_names = [f.name for f in fields(GuardianReport)]
+        assert not any("gate" in name for name in field_names)
+        assert not any("phase" in name for name in field_names)
+        assert not any("flow" in name for name in field_names)
+
+    def test_report_carries_guardian_state_and_feedback(self) -> None:
+        """GIVEN a report built from a live evaluation
+        THEN it exposes guardian_state and the FeedbackRecord payload."""
+        report = build_report(
+            guardian_state={"portfolio_state": "NORMAL"},
+            feedback=record("camp-d", FeedbackSignals(drawdown=0.03)),
+        )
+        assert report.guardian_state == {"portfolio_state": "NORMAL"}
+        assert isinstance(report.feedback, FeedbackRecord)
+        assert report.feedback.campaign_id == "camp-d"
+
+
+class TestBuildReport:
+    """REQ-34/REQ-644: build_report() reuses next_cycle_inputs() — the
+    FeedbackRecord reshape stays the single next-cycle surface."""
+
+    def test_build_report_reuses_next_cycle_inputs(self) -> None:
+        """GIVEN a feedback record carrying every REQ-34 signal
+        WHEN build_report() wraps it in an envelope
+        THEN report.feedback.next_cycle_inputs() exposes degradation,
+        drawdown, regime, cost, and parameter-matrix deltas unchanged."""
+        rec = record(
+            "camp-d",
+            FeedbackSignals(
+                degradation=True,
+                drawdown=0.15,
+                regime="TREND",
+                cost=1.2,
+                parameter_matrix_delta=("sl_atr",),
+            ),
+        )
+        report = build_report(
+            guardian_state={"portfolio_state": "DEFENSIVE"},
+            feedback=rec,
+        )
+
+        inputs = report.feedback.next_cycle_inputs()
+        assert inputs["degradation"] is True
+        assert inputs["drawdown"] == 0.15
+        assert inputs["regime"] == "TREND"
+        assert inputs["cost"] == 1.2
+        assert inputs["parameter_matrix_delta"] == ["sl_atr"]
+        assert inputs["campaign_id"] == "camp-d"
+
+    def test_build_report_without_feedback_still_carries_state(self) -> None:
+        """GIVEN an evaluation with no live signals (feedback=None)
+        WHEN build_report() runs
+        THEN the envelope still carries guardian_state (REQ-644 s2)."""
+        report = build_report(guardian_state={"portfolio_state": "NORMAL"})
+        assert report.feedback is None
+        assert report.guardian_state == {"portfolio_state": "NORMAL"}
+
+    def test_build_report_never_fabricates_acked_ids(self) -> None:
+        """GIVEN no acknowledgements performed
+        WHEN build_report() runs
+        THEN escalations_acked defaults to an empty tuple — nothing invented."""
+        report = build_report(guardian_state=None)
+        assert report.escalations_acked == ()
