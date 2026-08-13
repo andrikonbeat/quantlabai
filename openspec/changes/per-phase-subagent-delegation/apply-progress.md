@@ -1,7 +1,7 @@
 ---
 status: success
 executive_summary: PR 1+2+3+4+5 applied and verified; stacked-to-main auto-chain slice.
-artifacts: commits 2fcb68d 0fb2b86 63c7f4f ed16281 1c46079 6578ecc cfe3f5b 7da41b6 <PR5-SHA>
+artifacts: commits 2fcb68d 0fb2b86 63c7f4f ed16281 1c46079 6578ecc cfe3f5b 7da41b6 2903a78
 next_recommended: verify
 risks: None blocking
 ---
@@ -108,7 +108,7 @@ PR 5 = gates + loop + integrity (tasks 3b.1–3b.4).
 | `6578ecc` | `feat(delegation): create 7 thin phase prompts for optimize portfolio compile deploy demo archive live-ops (PR3)` | 2b.2 seven thin prompts |
 | `cfe3f5b` | `feat(delegation): add per-phase dispatch table and REQ-814 routing note to campaign prompt (PR3)` | 2b.3 + 2b.4 + 2b.5 (orchestrator note + campaign dispatch + tests) |
 | `7da41b6` | `feat(delegation): add delegation glue layer and PhaseResult envelope (PR4)` | 3a.1 + 3a.2 + 3a.3 (delegation.py + test_delegation.py + __init__.py re-export) |
-| `<PR5-SHA>` | `feat(delegation): wire archive gate interceptor, rewrite campaign loop, add integrity tests (PR5)` | 3b.1 + 3b.2 + 3b.3 + 3b.4 |
+| `2903a78` | `feat(delegation): wire archive gate interceptor, rewrite campaign loop, add integrity tests (PR5)` | 3b.1 + 3b.2 + 3b.3 + 3b.4 |
 
 Each commit verified via `git show --stat HEAD` to contain exactly the intended files (repo index holds ~277 files staged from other sessions; never `git add .`).
 
