@@ -1043,6 +1043,27 @@ class BuilderAgent:
                           "gate_decision_HUMAN_REVIEW_PERFORMANCE"]},
         ]
 
+        # Append extended 14-phase stages when QUANTLAB_14PHASE is enabled.
+        if os.environ.get("QUANTLAB_14PHASE") == "1":
+            stages.extend([
+                {"name": "compile", "type": "agent",
+                 "agent": "compiler-agent",
+                 "requires": ["deployment_result"],
+                 "provides": ["compiled_strategies", "compilation_failed"]},
+                {"name": "demo", "type": "agent",
+                 "agent": "demo-agent",
+                 "requires": ["compiled_strategies", "deployment_result"],
+                 "provides": ["demo_result"]},
+                {"name": "archive", "type": "agent",
+                 "agent": "archive-agent",
+                 "requires": ["demo_result", "portfolio_result"],
+                 "provides": ["campaign_archive"]},
+                {"name": "live_ops", "type": "agent",
+                 "agent": "live-ops-agent",
+                 "requires": ["campaign_archive", "deployment_result"],
+                 "provides": ["live_equity", "performance_alerts"]},
+            ])
+
         # Build gate list
         gates = [
             {"gate_id": "HUMAN_REVIEW_OBJECTIVES",
