@@ -23,9 +23,9 @@ Chain strategy: stacked-to-main
 
 ## PR 2 — Registry 7 + judgment prompts
 
-- [ ] 2a.1 Register `quantlab-phase-{research,hypothesis,review,retest,optimize,portfolio,dispatch}` in `~/.config/opencode/opencode.json`: subagent; prompt ref; perms `{"question":"allow","task":{"*":"deny","quantlab-*":"allow"}}`; bash `pipeline/*`+`campaign/*`. Names = PHASES ids verbatim. REQ-805/808/812/813.
-- [ ] 2a.2 Create 6 full prompts (research/hypothesis/review/retest/optimize/portfolio) + thin dispatch. Skeleton: bounded authority (no flow.py/gate-skip/long-op waits), gate protocol, Result Contract; full prompts add glue calls + SDK examples. REQ-805/809.
-- [ ] 2a.3 Extend `tests/test_orchestrator_prompt.py` (never replace): 7 registrations, mode, deny-first, prompt refs. REQ-805/808/810.
+- [x] 2a.1 Register `quantlab-phase-{research,hypothesis,review,retest,optimize,portfolio,dispatch}` in `~/.config/opencode/opencode.json`: subagent; prompt ref; perms `{"question":"allow","task":{"*":"deny","quantlab-*":"allow"}}`; bash `pipeline/*`+`campaign/*`. Names = PHASES ids verbatim. REQ-805/808/812/813.
+- [x] 2a.2 Create 6 full prompts (research/hypothesis/review/retest/optimize/portfolio) + thin dispatch. Skeleton: bounded authority (no flow.py/gate-skip/long-op waits), gate protocol, Result Contract; full prompts add glue calls + SDK examples. REQ-805/809.
+- [x] 2a.3 Extend `tests/test_orchestrator_prompt.py` (never replace): 7 registrations, mode, deny-first, prompt refs. REQ-805/808/810.
 
 ## PR 3 — Registry 7 + routing
 

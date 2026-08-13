@@ -221,3 +221,63 @@ class TestGuardianAgentRegistration:
         cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
         task_perms = cfg["agent"]["quantlab-orchestrator"]["permission"]["task"]
         assert task_perms.get("quantlab-guardian") == "allow"
+
+
+class TestPhaseAgentRegistration:
+    """REQ-805/808/812/813: 14 phase subagents registered deny-first.
+
+    PR 2 covers the first 7 phases from PHASES: research, hypothesis, config,
+    review, dispatch, monitor, retest. Each entry MUST be mode=subagent,
+    deny-first task permissions, question allowed, prompt ref present, and
+    bash scoped to sdk/quantlab/pipeline/* + sdk/quantlab/campaign/*.
+    """
+
+    FIRST_7_PHASES = [
+        "research",
+        "hypothesis",
+        "config",
+        "review",
+        "dispatch",
+        "monitor",
+        "retest",
+    ]
+
+    def test_first_7_phase_agents_registered(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.FIRST_7_PHASES:
+            name = f"quantlab-phase-{phase}"
+            assert name in cfg.get("agent", {}), f"opencode.json must register {name}"
+
+    def test_first_7_phase_agents_are_subagents(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.FIRST_7_PHASES:
+            agent = cfg["agent"][f"quantlab-phase-{phase}"]
+            assert agent.get("mode") == "subagent", f"{phase} agent must be subagent"
+
+    def test_first_7_phase_agents_have_deny_first_task_permissions(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.FIRST_7_PHASES:
+            perms = cfg["agent"][f"quantlab-phase-{phase}"]["permission"]["task"]
+            assert perms.get("*") == "deny", f"{phase} task wildcard must deny"
+            assert perms.get("quantlab-*") == "allow", f"{phase} quantlab wildcard must allow"
+
+    def test_first_7_phase_agents_allow_question_tool(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.FIRST_7_PHASES:
+            perms = cfg["agent"][f"quantlab-phase-{phase}"]["permission"]
+            assert perms.get("question") == "allow", f"{phase} must allow question tool"
+
+    def test_first_7_phase_agents_have_prompt_references(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.FIRST_7_PHASES:
+            prompt = cfg["agent"][f"quantlab-phase-{phase}"].get("prompt", "")
+            expected = f"{{file:~/.config/opencode/prompts/quantlab/phase-{phase}.md}}"
+            assert prompt == expected, f"{phase} prompt ref must be {expected}, got {prompt}"
+
+    def test_first_7_phase_agents_have_scoped_bash_allowlist(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for phase in self.FIRST_7_PHASES:
+            perms = cfg["agent"][f"quantlab-phase-{phase}"]["permission"]["bash"]
+            assert perms.get("*") == "deny", f"{phase} bash wildcard must deny"
+            assert perms.get("sdk/quantlab/pipeline/*") == "allow"
+            assert perms.get("sdk/quantlab/campaign/*") == "allow"
