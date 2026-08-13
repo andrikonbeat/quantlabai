@@ -127,9 +127,14 @@ envelope of one phase feeds the next.
     statistics, and artifact bundle (`ArchivePhase`); finalize only on
     explicit `HUMAN_APPROVE_ARCHIVE` approval (REQ-38, denial → back to
     maintenance).
-14. **live-ops** — wire the Guardian live flow over the demo account
-    (`AutonomousMonitorDaemon` stream → MetaGuardian eval → feedback); the
-    campaign terminates here with a maintenance plan and statistics.
+14. **live-ops** — delegate the Guardian live flow over the demo account to
+    the `quantlab-guardian` subagent via the `task` tool: it wraps the
+    existing `AutonomousMonitorDaemon` stream → MetaGuardian eval → feedback
+    flow (REQ-641) without adding a phase (REQ-37) and returns a
+    `GuardianReport` envelope (`guardian_state` + `FeedbackRecord` via
+    `next_cycle_inputs()`, REQ-644). Fold that report into this phase's
+    Result Contract; all human gates remain in force (REQ-34). The campaign
+    terminates here with a maintenance plan and statistics.
 
 ### Phase failure
 
