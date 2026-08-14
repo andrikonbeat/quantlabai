@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic, idempotent sync of repo-canonical QuantLab prompts to live.
 
-REQ-806: the repo directory ``AI/opencode/agents/`` is the single source of
+REQ-806: the repo directory ``ai/opencode/agents/`` is the single source of
 truth for the campaign prompt and all phase prompts. The live copies under
 ``~/.config/opencode/prompts/quantlab/`` are generated from it by this
 script; hand-editing live prompts is not permitted.
@@ -12,9 +12,9 @@ Non-managed live files (``deploy.md``, ``guardian.md``, ``monitor.md``,
 
 Usage::
 
-    python3 AI/opencode/sync_prompts.py             # copy repo -> live
-    python3 AI/opencode/sync_prompts.py --dry-run   # report, write nothing
-    python3 AI/opencode/sync_prompts.py --check     # exit 1 on any drift
+    python3 ai/opencode/sync_prompts.py             # copy repo -> live
+    python3 ai/opencode/sync_prompts.py --dry-run   # report, write nothing
+    python3 ai/opencode/sync_prompts.py --check     # exit 1 on any drift
 
 Idempotent: identical bytes are never rewritten; a second run is a no-op.
 """

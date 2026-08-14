@@ -190,8 +190,8 @@ halts the loop for a human decision.
 
 Assets are versioned in-repo:
 
-- `AI/opencode/agents/campaign.md` — the campaign agent prompt
-- `AI/opencode/skills/quantlab-run-campaign/SKILL.md` — the seed skill
+- `ai/opencode/agents/campaign.md` — the campaign agent prompt
+- `ai/opencode/skills/quantlab-run-campaign/SKILL.md` — the seed skill
 
 ### Human Gates (fail-closed)
 
