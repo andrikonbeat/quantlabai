@@ -143,12 +143,4 @@ dependencies {
 }
 
 tasks.withType<Test>().configureEach {
-  // Compose screen tests (LazyColumn + collectAsState) require an instrumented
-  // environment. They are excluded from unit tests and should be run via
-  // connectedAndroidTest on an emulator/device.
-  exclude(
-    "**/DashboardScreenTest*",
-    "**/ErrorBoundaryTest*",
-    "**/CampaignsScreenTest*"
-  )
 }
