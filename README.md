@@ -39,7 +39,7 @@ research.yaml ──→ [dsl/parser] ──→ ResearchConfig ──→ [transla
 
 ```bash
 # Clone the repository
-git clone <repo-url>
+git clone https://github.com/andrikonbeat/quantlabai
 cd quantlab-ai
 
 # Install with uv (recommended)
@@ -221,6 +221,8 @@ datasources raise `NotSupportedError` (D5).
 ```
 quantlab-ai/
 ├── README.md
+├── LICENSE
+├── SECURITY.md
 ├── sdk/
 │   ├── pyproject.toml
 │   └── quantlab/
@@ -231,17 +233,20 @@ quantlab-ai/
 │       ├── readers/              # Databank CSV/XLSX result readers
 │       ├── stats/                # Trading metrics computation
 │       ├── knowledge/            # Knowledge Lake management
+│       ├── data/                 # Market data providers
+│       ├── agents/               # Multi-agent research pipeline agents
 │       └── tools/                # Platform, errors, utilities
-├── tests/
+├── tests/                        # Root test suite
 │   ├── conftest.py
 │   ├── fixtures/                 # Sample CSV, YAML files
-│   ├── test_dsl_*.py
-│   ├── test_translator.py
-│   ├── test_cfx.py
-│   ├── test_cli.py
-│   ├── test_readers.py
-│   ├── test_stats.py
-│   └── test_knowledge.py
+│   └── ...                       # Unit + integration tests
+├── sdk/tests/                    # SDK test suite
+├── app_movil/                    # Android companion app (Kotlin, Jetpack Compose)
+├── AI/opencode/                  # Agent prompts, skills, and orchestrator config
+├── docs/                         # PRD, STATE, changelog, reference guides
+│   └── sqx-builder-config/       # SQX Builder config reference (KB seed source)
+├── infra/                        # Infrastructure assets (DB init schema)
+├── docker-compose.yml            # API, SQX daemon, Postgres, Redis
 ├── knowledge/                    # Knowledge Lake (data)
 │   ├── index.yaml
 │   ├── raw/
@@ -249,9 +254,22 @@ quantlab-ai/
 │   ├── graph/
 │   ├── embeddings/
 │   └── datasets/
+├── openspec/                     # Spec-driven development artifacts
+├── sdd/                          # SDD change planning artifacts
+├── pipelines/                    # Pipeline YAML definitions
 └── strategies/
     └── HelloWorldStrategy.java   # JForex 4 strategy template
 ```
+
+> The `assets/` directory holds the local StrategyQuant X distribution and is
+> git-ignored — it is not part of the public repository.
+
+## Companion Mobile App
+
+`app_movil/` contains an Android companion app (Kotlin + Jetpack Compose) for
+monitoring campaigns. It is versioned in this repository but is a separate
+build unit from the Python SDK (see `app_movil/quantlabai/` for its Gradle
+project).
 
 ## Commands
 
@@ -351,4 +369,9 @@ See [Knowledge Query Reference](docs/knowledge-query.md) for filter syntax, API,
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+## Security
+
+Report vulnerabilities privately via GitHub Private vulnerability reporting —
+see [SECURITY.md](SECURITY.md) for the policy and response expectations.
