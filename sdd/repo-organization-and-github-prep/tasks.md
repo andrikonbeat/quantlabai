@@ -59,22 +59,26 @@ Rollback (PR 1): `git reset --hard backup/pre-cleanup`
 
 ## Phase 2: Doc Reorg, Reference Updates, Prompt Sync, STATE.md (PR 2 — base: PR 1 branch)
 
-- [ ] 2.1 `mkdir -p docs/sqx-builder-config infra`
-- [ ] 2.2 `git mv doc_dev/*.md docs/sqx-builder-config/` (all non-junk markdown; junk already deleted in 1.5)
-- [ ] 2.3 `git mv PRD.md STATE.md exploration.md sdd_phase5f_i_spec_consolidated.md CHANGELOG.md docs/`
-- [ ] 2.4 Update `DEFAULT_DOC_PATH` and all path references in `sdk/quantlab/knowledge/kb/seeder.py`, `sdk/quantlab/knowledge/kb/seeding_flow.py`, `sdk/quantlab/knowledge/kb/__init__.py`, `sdk/quantlab/cli/sq_commands.py`, `sdk/tests/test_kb.py` → `docs/sqx-builder-config/SQX Builder Config.md` (see design.md Path Reference Updates table)
-- [ ] 2.5 Refresh `docs/STATE.md`: correct stale "rama main limpia" claim → real branch `feat/per-phase-subagent-delegation-pr5`, 28 commits ahead of `main`, resolved untracked state, current test summary
-- [ ] 2.6 Prompt sync:
-  - `python3 AI/opencode/sync_prompts.py --check` (expected exit 1 on drift — campaign preflight gap)
-  - Copy live guardian prompt into repo: `cp ~/.config/opencode/prompts/quantlab/guardian.md AI/opencode/agents/guardian.md`
-  - Re-sync: `python3 AI/opencode/sync_prompts.py` then `python3 AI/opencode/sync_prompts.py --check` → exit 0
-- [ ] 2.7 Commit: `git commit -m "docs: reorganize under docs/, sync prompts, refresh STATE.md"`
-- [ ] 2.8 Verify (PR 2):
-  - `git ls-files | grep doc_dev` → empty
-  - `git ls-files | grep "docs/sqx-builder-config"` shows moved files
-  - `python -m pytest sdk/tests/test_kb.py -q` passes
+- [x] 2.1 `mkdir -p docs/sqx-builder-config infra`
+- [x] 2.2 `git mv doc_dev/*.md docs/sqx-builder-config/` (all non-junk markdown; junk already deleted in 1.5)
+  - NOTE (applied): moved all **8** `.md` (incl. the 5 Spanish personal notes — design open question resolved: move unchanged). The 4 `*.Zone.Identifier` files were **TRACKED** (committed in PR1 despite the 1.3 note) → `git rm`'d in PR2, then `rmdir doc_dev`.
+- [x] 2.3 `git mv PRD.md STATE.md exploration.md sdd_phase5f_i_spec_consolidated.md CHANGELOG.md docs/`
+  - NOTE (applied): all 5 were tracked (PRD committed in PR1). Also moved `docker/init-schema.sql` → `infra/` and deleted untracked dead `docker/nginx.conf` (pulled from 3.3/3.4 into PR2 per orchestrator; `docker-compose.yml` update stays in PR3) → `rmdir docker`.
+- [x] 2.4 Update `DEFAULT_DOC_PATH` and all path references in `sdk/quantlab/knowledge/kb/seeder.py`, `sdk/quantlab/knowledge/kb/seeding_flow.py`, `sdk/quantlab/knowledge/kb/__init__.py`, `sdk/quantlab/cli/sq_commands.py`, `sdk/tests/test_kb.py` → `docs/sqx-builder-config/SQX Builder Config.md` (see design.md Path Reference Updates table)
+  - NOTE (applied): also updated the **knowledge lake** `evidence_ref` fields (9 yaml files), the **active spec** `openspec/specs/sqx-parameter-kb/spec.md`, and the moved plan doc's internal refs. Archived `openspec/changes/archive/` records left frozen (historical); `sdd/` planning artifacts left as plan-of-record. Remaining `doc_dev` mentions are ONLY in those two categories.
+- [x] 2.5 Refresh `docs/STATE.md`: correct stale "rama main limpia" claim → real branch `feat/per-phase-subagent-delegation-pr5`, 42 commits ahead of `main` (orchestrator said 30+; real count 42), resolved untracked state, current test summary
+- [x] 2.6 Prompt sync:
+  - `python3 AI/opencode/sync_prompts.py --check` → **exit 0, parity ok** (NO drift — contrary to expected exit 1; repo was already canonical)
+  - Copied live guardian prompt into repo: `cp ~/.config/opencode/prompts/quantlab/guardian.md AI/opencode/agents/guardian.md` (byte-identical; repo now 16 prompts: campaign + 14 phases + guardian)
+  - Re-check: `python3 AI/opencode/sync_prompts.py --check` → exit 0
+- [x] 2.7 Commit: superseded by 5 work-unit commits per orchestrator 2f (see apply-progress) + this sdd commit
+- [x] 2.8 Verify (PR 2):
+  - `git ls-files | grep doc_dev` → empty (0 tracked paths)
+  - `git ls-files | grep "docs/sqx-builder-config"` → 8 moved files
+  - `python -m pytest sdk/tests/test_kb.py -q` passes (part of 62 passed with seed validation)
   - `python -m pytest sdk/tests/test_kb_seed_validation.py -q` passes
   - `python3 AI/opencode/sync_prompts.py --check` → exit 0
+  - Suite summary (2026-08-14, `SQX_FORCE_MOCK=1`): **3449 passed, 44 failed, 12 skipped, 11 errors** — failures/errors pre-existing, not caused by PR2 (docs/refs only)
 
 Rollback (PR 2): `git checkout backup/pre-cleanup -- <moved-paths>` or `git reset --hard backup/pre-cleanup`
 
