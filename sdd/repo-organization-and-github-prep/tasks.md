@@ -23,24 +23,26 @@
 
 ## Phase 1: Untracked Triage + Dead Code Deletion (PR 1 — base: feature branch)
 
-- [ ] 1.1 Refresh backup ref (already exists from aborted first plan run): `git branch -f backup/pre-cleanup HEAD`
-- [ ] 1.2 [CONSERVE] Stage valuable untracked modules and tests:
+- [x] 1.1 Refresh backup ref (already exists from aborted first plan run): `git branch -f backup/pre-cleanup HEAD`
+- [x] 1.2 [CONSERVE] Stage valuable untracked modules and tests:
   - `git add sdk/quantlab/data/market/ sdk/quantlab/agents/adaptive_retest_agent.py sdk/quantlab/customproject/templates.py sdk/quantlab/phase4/template_registry.py sdk/quantlab/dashboard/tests/`
   - `git add sdk/tests/data/test_market.py sdk/tests/agents/test_analysis_agent_frame.py sdk/tests/jforex/test_config.py sdk/tests/contract/ tests/agents/test_adaptive_retest_agent.py tests/customproject/test_templates.py`
-- [ ] 1.3 [CONSERVE] Stage valuable untracked docs/artifacts:
+- [x] 1.3 [CONSERVE] Stage valuable untracked docs/artifacts:
   - `git add PRD.md "doc_dev/" knowledge/agent-memory/ knowledge/structured/ knowledge/timeseries/ openspec/specs/ openspec/changes/archive/ openspec/changes/compiler-deploy-demo/ sdd/repo-organization-and-github-prep/`
   - NOTE: do NOT stage `doc_dev/*.Zone.Identifier` junk (delete instead, step 1.5)
-- [ ] 1.4 [BROKEN/DELETE] Remove broken module and its test:
+  - NOTE (applied): orchestrator's PR1 scope committed `openspec/specs/` (14 new specs) + `sdd/`; `openspec/changes/` left untracked for a later decision — not in the binding commit list.
+- [x] 1.4 [BROKEN/DELETE] Remove broken module and its test:
   - `rm sdk/quantlab/pipeline/stages/market_analysis_stage.py sdk/tests/pipeline/test_market_analysis_stage.py`
   - (NOT staged/committed — the audit's explicit decision is delete, overriding its ambiguous test listing)
-- [ ] 1.5 [DUPLICATE/DELETE] Remove stale knowledge duplicate and untracked junk:
+- [x] 1.5 [DUPLICATE/DELETE] Remove stale knowledge duplicate and untracked junk:
   - `rm -rf sdk/knowledge/`
   - `rm -f ".classes/missing.class" "doc_dev/"*.Zone.Identifier`
-- [ ] 1.6 [DEAD/DELETE] `git rm` confirmed dead tracked code:
+- [x] 1.6 [DEAD/DELETE] `git rm` confirmed dead tracked code:
   - `git rm sdk/quantlab/phase4/lock.py sdk/quantlab/phase4/daemon_manager.py sdk/quantlab/jforex/llm_agent.py sdk/quantlab/knowledge/training.py sdk/quantlab/agents/ops_surface.py demo_multi_agent.py`
-- [ ] 1.7 Remove empty dir: `rmdir sdk/quantlab/regime`
-- [ ] 1.8 Commit: `git commit -m "chore: triage untracked work, delete dead and broken code"`
-- [ ] 1.9 Verify (PR 1):
+  - NOTE (applied): `demo_multi_agent.py` was untracked → `rm`; additionally removed orphaned `tests/agents/test_ops_surface.py` and repaired the 3 tracked test files broken by the deletions (see apply-progress).
+- [x] 1.7 Remove empty dir: `rmdir sdk/quantlab/regime`
+- [x] 1.8 Commit: 9 work-unit commits (see apply-progress for hashes) — supersedes single-commit suggestion per orchestrator 1d
+- [x] 1.9 Verify (PR 1):
   - `git status --porcelain` — no unresolved untracked triage paths (docs still pending PR2 moves, but staged here)
   - `git ls-files | grep -E "market_analysis_stage|lock\.py|daemon_manager|llm_agent|training\.py|ops_surface|demo_multi_agent"` → empty
   - `test -d sdk/knowledge` → false; `test -d sdk/quantlab/regime` → false
