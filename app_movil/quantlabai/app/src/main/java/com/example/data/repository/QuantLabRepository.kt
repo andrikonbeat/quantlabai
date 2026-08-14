@@ -182,7 +182,7 @@ class QuantLabRepository internal constructor(
         } catch (e: Exception) {
             val cached = cacheReader()
             if (cached != null) {
-                UiState.Success(cached)
+                return UiState.Success(cached)
             } else {
                 UiState.Error("No cached data available")
             }
@@ -236,7 +236,7 @@ class QuantLabRepository internal constructor(
         } catch (e: Exception) {
             val cached = cacheReader()
             if (cached != null) {
-                UiState.Success(cached)
+                return UiState.Success(cached)
             } else {
                 UiState.Error("No cached data available")
             }
