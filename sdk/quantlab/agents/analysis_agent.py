@@ -16,6 +16,7 @@ import logging
 from typing import Any, Optional
 
 from quantlab.analysis.engine import AnalysisEngine, AnalysisThresholds
+from quantlab.analysis.frame import Frame
 from quantlab.analysis.models import SelectionResult, StrategyAnalysis
 from quantlab.analysis.reader import AnalysisReader
 from quantlab.analysis.selection import SelectionEngine
@@ -208,9 +209,35 @@ class AnalysisAgent(AnalysisStage):
             len(selection.warnings),
         )
 
-        return {
+        result = {
             "strategy_analysis": strategy_analysis_list,
             "selected_strategies": selection.selected,
             "strategy_verdicts": selection.verdicts,
             "wf_cycles": wf_cycles,
         }
+
+        # Additive Frame consumption (REQ-307): when a Frame artifact is
+        # present, include its market context; absent → original output only.
+        frame_raw = context.artifacts.get("frame")
+        if frame_raw is not None:
+            try:
+                frame = (
+                    Frame.from_json(frame_raw)
+                    if isinstance(frame_raw, str)
+                    else frame_raw
+                )
+            except Exception as exc:  # pragma: no cover - malformed artifact
+                logger.warning("AnalysisAgent: invalid frame artifact skipped: %s", exc)
+            else:
+                result["market_context"] = {
+                    "regime": frame.regime,
+                    "regime_confidence": frame.regime_confidence,
+                    "sentiment": frame.sentiment,
+                    "timeframe": frame.timeframe,
+                    "edge": frame.edge,
+                    "instruments": frame.instruments,
+                    "guardian_hints": frame.guardian_hints,
+                    "data_quality": frame.data_quality,
+                }
+
+        return result
