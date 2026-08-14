@@ -8,12 +8,23 @@ build/
 .venv/
 .uv/
 venv/
+.coverage
+coverage.xml
+.pytest_cache/
 
 # Java
 *.class
 *.jar
 target/
 *.war
+
+# Android
+app_movil/**/build/
+app_movil/**/.gradle/
+.kotlin/
+.classes/
+*.apk
+*.aab
 
 # IDE
 .vscode/
@@ -22,9 +33,10 @@ target/
 *.swo
 *~
 
-# OS
+# OS / Windows
 .DS_Store
 Thumbs.db
+*.Zone.Identifier
 
 # Knowledge Lake raw data (potentially large)
 knowledge/raw/*
@@ -35,8 +47,9 @@ knowledge/raw/*
 *.sqx
 *.sqxc
 databanks/
-# SQX distribution archives (kept on external volume; see HGN-02)
+# SQX distribution (local tool dependency, kept on external volume; see HGN-02)
 assets/SQX_*.zip
+assets/SQX_*/
 
 # Logs
 *.log
@@ -59,11 +72,13 @@ assets/**/user/data/*.lock.db
 assets/**/user/data/*.version
 assets/**/user/settings/wizard.txt
 
+# Runtime databases
+**/monitor.db
+
 # Deployment scratch / run artifacts
 deploy/
 notifications.jsonl
 analysis/
 
 # Stray junk
-=3.0
-_run_campaign.py
+missing.jfx
