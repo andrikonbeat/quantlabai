@@ -214,7 +214,20 @@ class CfxReader:
                     task = _parse_settings_xml(zf, xml_file)
                     task_mapping[xml_file] = task
 
-        project = CfxProject(name=name, tasks=task_mapping, schema_version=version)
+        metadata: dict[str, str] = {}
+        metadata_el = root.find("Metadata")
+        if metadata_el is not None:
+            for entry in metadata_el.findall("Entry"):
+                key = entry.get("key")
+                if key is not None:
+                    metadata[key] = entry.get("value", "")
+
+        project = CfxProject(
+            name=name,
+            tasks=task_mapping,
+            schema_version=version,
+            metadata=metadata or None,
+        )
         return CfxArchive(config=project, task_files=task_mapping)
 
 

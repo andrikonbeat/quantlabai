@@ -9,6 +9,7 @@ never triggers a dispatch or deploy.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from quantlab.dsl.models import ResearchConfig, RetestBlock
@@ -32,12 +33,14 @@ class RetesterStage(Stage):
         retester: Retester | None = None,
         sqx_install_path: str | None = None,
         output_dir: str | None = None,
+        cfx_path: str | Path | None = None,
     ) -> None:
         # Injectable for tests; the real Retester is constructed lazily so
         # registry instantiation stays side-effect free.
         self._retester = retester
         self._sqx_install_path = sqx_install_path
         self._output_dir = output_dir
+        self._cfx_path = Path(cfx_path) if cfx_path else None
 
     def _build_config(self, block: RetestBlock) -> RetesterConfig:
         """Mirror the DSL ``retest`` block into a ``RetesterConfig``."""
@@ -64,7 +67,7 @@ class RetesterStage(Stage):
         """
         research_config: ResearchConfig = ctx.artifacts["research_config"]
         block = getattr(research_config, "retest", None)
-        if block is None:
+        if block is None and self._cfx_path is None:
             ctx.artifacts["retest_result"] = None
             return {"retest_result": None}
 
@@ -72,7 +75,12 @@ class RetesterStage(Stage):
         if retester is None:  # pragma: no cover - exercised by integration
             retester = Retester(sqx_install_path=self._sqx_install_path)
 
-        config = self._build_config(block)
+        # DSL retest block takes precedence; a CFX path (no DSL block) sources
+        # the config from the archive's RetesterData section.
+        if block is not None:
+            config = self._build_config(block)
+        else:
+            config = RetesterConfig.from_cfx(self._cfx_path)
         # REQ-1 (parameter-justification-matrix): the retest run produces a
         # matrix; a parameter deviating from its retest default without a
         # rationale raises ParameterMatrixError and blocks the run (spec:

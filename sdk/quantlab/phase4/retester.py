@@ -123,6 +123,88 @@ class RetesterConfig:
             raise ValueError("confidence_level must be in (0.5, 0.99)")
         self.confidence_level = confidence_level
 
+    # ── CFX-sourced config ───────────────────────────────────────────────
+
+    @staticmethod
+    def _element_value(raw_xml: str, tag: str) -> str | None:
+        """Extract a RetesterData element value (attribute or text form).
+
+        Supports both ``<Tag value="200"/>`` (writer dialect) and
+        ``<Tag>200</Tag>`` (agent dialect), case-insensitively.
+        """
+        attr = re.search(rf"<{tag}\b[^>]*value=\"([^\"]+)\"", raw_xml, re.IGNORECASE)
+        if attr:
+            return attr.group(1)
+        text = re.search(rf"<{tag}\b[^>]*>([^<]+)</{tag}>", raw_xml, re.IGNORECASE)
+        if text:
+            return text.group(1).strip()
+        return None
+
+    @classmethod
+    def from_cfx(cls, cfx_path: str | Path) -> "RetesterConfig":
+        """Build a ``RetesterConfig`` from a CFX archive's RetesterData section.
+
+        Reads the archive with :class:`~quantlab.cfx.reader.CfxReader`, extracts
+        the retest task's ``<RetesterData>`` section, and maps its values onto
+        the configuration. Missing elements fall back to the constructor
+        defaults; a missing section raises ``ValueError``.
+
+        Args:
+            cfx_path: Path to the .cfx archive.
+
+        Returns:
+            A ``RetesterConfig`` populated from the archive.
+
+        Raises:
+            ValueError: The archive contains no ``RetesterData`` section.
+        """
+        from quantlab.cfx.reader import CfxReader
+
+        archive = CfxReader.read(cfx_path)
+        config = archive.config
+
+        if hasattr(config, "task"):
+            task = config.task
+        elif hasattr(config, "tasks") and config.tasks:
+            task = next(iter(config.tasks.values()))
+        else:
+            task = None
+
+        retester_data = getattr(task, "retester_data", None) if task is not None else None
+        raw_xml = retester_data.raw_xml if retester_data is not None else None
+        if not raw_xml:
+            raise ValueError("No RetesterData section found in CFX archive")
+
+        databanks = re.findall(r'<Databank\s[^>]*name="([^"]+)"', raw_xml)
+
+        def _int(tag: str, default: int) -> int:
+            value = cls._element_value(raw_xml, tag)
+            if value is None:
+                return default
+            try:
+                return int(float(value))
+            except ValueError:
+                return default
+
+        def _float(tag: str, default: float) -> float:
+            value = cls._element_value(raw_xml, tag)
+            if value is None:
+                return default
+            try:
+                return float(value)
+            except ValueError:
+                return default
+
+        return cls(
+            strategy_id="",
+            databanks=databanks,
+            monte_carlo_runs=_int("MonteCarloRuns", 100),
+            mc_percentile=_int("MCPercentile", 95),
+            walkforward_cycles=_int("WalkforwardCycles", 5),
+            min_trades=_int("MinTrades", 30),
+            confidence_level=_float("ConfidenceLevel", 0.95),
+        )
+
 
 class Retester:
     """Runs Monte Carlo / Walk-Forward retesting via sqcli.

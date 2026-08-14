@@ -470,6 +470,14 @@ def _write_project_archive(zf: zipfile.ZipFile, project: CfxProject) -> None:
             )
         lines.append("  </Databanks>")
 
+    if project.metadata:
+        lines.append("  <Metadata>")
+        for key, value in project.metadata.items():
+            lines.append(
+                f"    <Entry key={quoteattr(str(key))} value={quoteattr(str(value))} />"
+            )
+        lines.append("  </Metadata>")
+
     lines.append("</Project>")
     zf.writestr("config.xml", "\n".join(lines).encode("utf-8"))
 
