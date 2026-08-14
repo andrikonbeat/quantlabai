@@ -47,6 +47,11 @@
   - `git ls-files | grep -E "market_analysis_stage|lock\.py|daemon_manager|llm_agent|training\.py|ops_surface|demo_multi_agent"` → empty
   - `test -d sdk/knowledge` → false; `test -d sdk/quantlab/regime` → false
   - Run newly committed tests: `python -m pytest sdk/tests/data/test_market.py sdk/tests/agents/test_analysis_agent_frame.py sdk/tests/jforex/test_config.py sdk/tests/contract/ tests/agents/test_adaptive_retest_agent.py tests/customproject/test_templates.py -q`
+- [x] 1.10 Gatekeeper correction (post-PR1): repair the 3 red committed suites (see apply-progress):
+  - `fix(customproject)` d3bbe9c: `CustomProject.template_name` + `<Template>` metadata injection + dedicated `render_automatic_retest`
+  - `fix(cfx)` 25035be: CfxProject metadata round-trip + `RetesterConfig.from_cfx` + `RetesterStage(cfx_path=...)`
+  - `fix(agents)` 4efcc58: `AnalysisAgent` adds `market_context` when Frame artifact present
+  - Result: all 3 suites green except env-gated `test_passes_golden_validation` (3 tests, need `assets/.../sqcli` binary — same pre-existing env gate as `test_validator.py`/`test_e2e_loadconfig.py`)
 
 Rollback (PR 1): `git reset --hard backup/pre-cleanup`
 
