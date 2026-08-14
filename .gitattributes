@@ -1,0 +1,12 @@
+# Normalize line endings across platforms
+* text=auto
+
+# Large/binary artifacts via Git LFS
+*.pdf filter=lfs diff=lfs merge=lfs -text
+assets/** filter=lfs diff=lfs merge=lfs -text
+
+# Binary media (tracked screenshots, images)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
