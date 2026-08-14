@@ -319,7 +319,7 @@ Manage pipeline YAML files and execute campaigns.
 | `quantlab pipeline validate <file>` | Validate pipeline YAML syntax |
 | `quantlab pipeline config <name>` | Show pipeline configuration |
 
-See [Pipeline YAML Reference](docs/pipeline-yaml.md) for complete YAML schema, stage types, and examples.
+See [Pipeline YAML Reference](docs/configuration/pipeline-yaml.md) for complete YAML schema, stage types, and examples.
 
 ## Report Commands
 
@@ -348,7 +348,7 @@ timestamp,equity
 2024-01-02 00:00:00,10100
 ```
 
-See [Reporting Reference](docs/reporting.md) for template variables, themes, API, and exit codes.
+See [Reporting Reference](docs/guides/reporting.md) for template variables, themes, API, and exit codes.
 
 ## Knowledge Commands
 
@@ -365,7 +365,7 @@ Query, tag, link, and export campaigns from the Knowledge Lake.
 | `quantlab knowledge export --format csv|json --output file.csv` | Export query results |
 | `quantlab knowledge rebuild-index` | Rebuild knowledge index |
 
-See [Knowledge Query Reference](docs/knowledge-query.md) for filter syntax, API, and schema details.
+See [Knowledge Query Reference](docs/guides/knowledge-query.md) for filter syntax, API, and schema details.
 
 ## License
 
