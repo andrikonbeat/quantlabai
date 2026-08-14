@@ -13,7 +13,7 @@ the modules under `sdk/quantlab/knowledge/kb/`, and the CLI commands under
 ## 1. Background and Frozen Band
 
 The KB is seeded from the SQX Builder Config reference document
-(`doc_dev/SQX Builder Config.md`, the default at `DEFAULT_DOC_PATH`) with
+(`docs/sqx-builder-config/SQX Builder Config.md`, the default at `DEFAULT_DOC_PATH`) with
 **82 parameters** (77 SEED_SPEC + 5 GAP_SPEC). After seeding, the flow bulk
 verifies parameters against the pinned real install's `.cfx` config files using
 the curated `CFX_EVIDENCE_MAP` (74 entries pointing at exactly two distinct
@@ -43,7 +43,7 @@ when the seed composition changes.
 
 Prerequisites: the pinned install tree exists at
 `assets/SQX_144_2953_linux_20260601/` (with `user/projects/Builder/project.cfx`
-and `user/settings/Configs/DJ CFD H1.cfx`), and `doc_dev/SQX Builder Config.md`
+and `user/settings/Configs/DJ CFD H1.cfx`), and `docs/sqx-builder-config/SQX Builder Config.md`
 is present.
 
 Work from `sdk/` so the SDK is importable:
