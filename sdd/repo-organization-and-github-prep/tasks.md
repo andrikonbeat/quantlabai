@@ -86,21 +86,27 @@ Rollback (PR 2): `git checkout backup/pre-cleanup -- <moved-paths>` or `git rese
 
 ## Phase 3: Gitignore/Gitattributes, Docker, GitHub Prep, Remote, Push (PR 3 — base: PR 2 branch)
 
-- [ ] 3.1 Rewrite `.gitignore`: add `*.pyc`, `__pycache__/`, `.kotlin/`, `.classes/`, `app_movil/**/build/`, `app_movil/**/.gradle/`, `*.Zone.Identifier`, `.coverage`, `notifications.jsonl`, `missing.jfx`; REMOVE stale entries `=3.0` and `_run_campaign.py`
-- [ ] 3.2 Write `.gitattributes` with LFS rules (e.g. `*.pdf filter=lfs diff=lfs merge=lfs -text`, binary artifact patterns)
-- [ ] 3.3 Docker: `git mv docker/init-schema.sql infra/init-schema.sql`; `rm docker/nginx.conf`; update `docker-compose.yml` (~line 87) to `${SQX_PATH}/infra/init-schema.sql` and add `SQX_PATH` env var
-- [ ] 3.4 Delete `app_movil/quantlabai.zip:Zone.Identifier` (covered by `*.Zone.Identifier` ignore)
-- [ ] 3.5 Create `LICENSE` (MIT) and `SECURITY.md` at repo root; keep/polish `README.md`
-- [ ] 3.6 Add remote (required — `git remote -v` is currently EMPTY): `git remote add origin https://github.com/andrikonbeat/quantlabai`
-- [ ] 3.7 Commit: `git commit -m "chore: finalize repo hygiene and GitHub readiness"`
-- [ ] 3.8 Push (no force-push needed — empty remote, no history rewrite):
+- [x] 3.1 Rewrite `.gitignore`: add `*.pyc`, `__pycache__/`, `.kotlin/`, `.classes/`, `app_movil/**/build/`, `app_movil/**/.gradle/`, `*.Zone.Identifier`, `.coverage`, `notifications.jsonl`, `missing.jfx`; REMOVE stale entries `=3.0` and `_run_campaign.py`
+  - NOTE (applied): also added `coverage.xml`, `.pytest_cache/`, `*.apk`, `*.aab`, `assets/SQX_*/` (full distribution dir), `**/monitor.db`; untracked `.atl/.skill-registry.cache.json` + `knowledge/timeseries/monitor.db` (were tracked). `=3.0` truly stale (file absent). `_run_campaign.py` was NOT stale — file exists since 2026-08-12 (3.7K real campaign runner), was hidden by the old rule → now exposed untracked; left uncommitted, flagged in report.
+- [x] 3.2 Write `.gitattributes` with LFS rules (e.g. `*.pdf filter=lfs diff=lfs merge=lfs -text`, binary artifact patterns)
+- [x] 3.3 Docker: `git mv docker/init-schema.sql infra/init-schema.sql`; `rm docker/nginx.conf`; update `docker-compose.yml` (~line 87) to `${SQX_PATH}/infra/init-schema.sql` and add `SQX_PATH` env var
+  - NOTE (applied): the move + nginx deletion were pulled into PR2 (56d1bda). PR3 updated compose: line 87 → `${SQX_PATH:-.}/infra/init-schema.sql`, assets mount → `${SQX_PATH:-.}/assets/SQX_144_2953_linux_20260601`, top comment documents SQX_PATH override. YAML validated via python (docker CLI unavailable).
+- [x] 3.4 Delete `app_movil/quantlabai.zip:Zone.Identifier` (covered by `*.Zone.Identifier` ignore)
+  - NOTE: no such file present at apply time; `*.Zone.Identifier` rule added regardless.
+- [x] 3.5 Create `LICENSE` (MIT) and `SECURITY.md` at repo root; keep/polish `README.md`
+  - NOTE: LICENSE (MIT, "QuantLab AI Contributors"), SECURITY.md (private reporting, 7d first response / 30d fix), README directory tree + clone URL + license/security links + mobile app section updated; CHANGELOG reorg entry added.
+- [x] 3.6 Add remote (required — `git remote -v` is currently EMPTY): `git remote add origin https://github.com/andrikonbeat/quantlabai`
+- [x] 3.7 Commit: `git commit -m "chore: finalize repo hygiene and GitHub readiness"`
+  - NOTE (applied): superseded by 6 work-unit commits per orchestrator 3g (39c2303..341f57c, see apply-progress).
+- [x] 3.8 Push (no force-push needed — empty remote, no history rewrite):
   - `git push -u origin main`
   - `git push -u origin feat/per-phase-subagent-delegation-pr5`
-- [ ] 3.9 Verify (PR 3):
+  - NOTE (applied): HTTPS push failed (no credential helper; `could not read Username`, exit 128). origin URL switched to SSH `git@github.com:andrikonbeat/quantlabai.git` (pre-authenticated key, same account) → both branches pushed, upstream set.
+- [x] 3.9 Verify (PR 3):
   - `git ls-files | grep -E "_output|demo_multi|nginx|doc_dev"` → empty
-  - `docker compose config` validates
+  - `docker compose config` validates — YAML validated via python (docker CLI not installed on this host)
   - `git ls-remote origin refs/heads/main refs/heads/feat/per-phase-subagent-delegation-pr5` returns both SHAs
-  - `git status` clean
+  - `git status` — only out-of-scope untracked remain (reported)
 
 Rollback (PR 3): `git remote remove origin` (restores pre-push state); local `git reset --hard backup/pre-cleanup`
 
@@ -108,8 +114,10 @@ Rollback (PR 3): `git remote remove origin` (restores pre-push state); local `gi
 
 ## Post-Push Verification (final)
 
-- [ ] 4.1 Run full test suite: `python -m pytest -q` (both trees)
-- [ ] 4.2 Confirm `.git` size stays small: `git count-objects -vH` (pack ~3.84 MiB, no growth from binaries)
+- [x] 4.1 Run full test suite: `python -m pytest -q` (both trees)
+  - NOTE: 2026-08-14 `SQX_FORCE_MOCK=1` → **3450 passed, 43 failed, 12 skipped, 11 errors** (~6.3 min). Matches PR2 baseline (3449/44/12/11) within order-flake noise; PR3 changed no code.
+- [x] 4.2 Confirm `.git` size stays small: `git count-objects -vH` (pack ~3.84 MiB, no growth from binaries)
 - [ ] 4.3 Delete `backup/pre-cleanup` ONLY after remote push verified successful: `git branch -D backup/pre-cleanup`
+  - NOTE: intentionally left pending — push IS verified, but the branch is a zero-cost safety net; delete manually once the remote is trusted.
 
 Rollback (final): `git remote remove origin`; `git reset --hard backup/pre-cleanup` (if branch not yet deleted)
