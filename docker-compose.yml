@@ -1,5 +1,9 @@
 version: '3.8'
 
+# Volume mounts are relative to the repository root by default. Override
+# SQX_PATH to run from a different checkout location, e.g.:
+#   SQX_PATH=/home/user/quantlab-ai docker compose up
+
 services:
   # ============================================================
   # QuantLab API Service
@@ -52,7 +56,7 @@ services:
       - "5050:5050"
       - "5051:5051"  # WebSocket
     volumes:
-      - ./assets/SQX_144_2953_linux_20260601:/opt/StrategyQuantX:ro
+      - ${SQX_PATH:-.}/assets/SQX_144_2953_linux_20260601:/opt/StrategyQuantX:ro
       - ./knowledge:/opt/StrategyQuantX/user:rw
     networks:
       - quantlab-network
@@ -84,7 +88,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-quantlab_dev}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/init-schema.sql:/docker-entrypoint-initdb.d/init-schema.sql:ro
+      - ${SQX_PATH:-.}/infra/init-schema.sql:/docker-entrypoint-initdb.d/init-schema.sql:ro
     networks:
       - quantlab-network
     ports:
