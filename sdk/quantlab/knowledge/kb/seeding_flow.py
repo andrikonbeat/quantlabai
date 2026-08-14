@@ -1,7 +1,7 @@
 """SQX Parameter KB seeding flow (REQ-209, D1/D2).
 
 ``run_seed_flow`` is the full ``sqx kb seed`` pipeline: seed the curated
-parameters from ``doc_dev/SQX Builder Config.md`` (REQ-203), bulk-verify
+parameters from ``docs/sqx-builder-config/SQX Builder Config.md`` (REQ-203), bulk-verify
 every parameter the real install can prove against ``CFX_EVIDENCE_MAP``
 (promoting entries to ``verified`` with the real ``.cfx`` evidence path),
 demote any remaining doc-only entries to ``needs_review`` (REQ-203 never
@@ -192,7 +192,7 @@ def run_seed_flow(
 
     Args:
         store: KbStore over the target Knowledge Lake.
-        doc_path: source doc (defaults to ``doc_dev/SQX Builder Config.md``).
+        doc_path: source doc (defaults to ``docs/sqx-builder-config/SQX Builder Config.md``).
         sqx_version: target version bucket (defaults to pinned version).
         evidence_base: directory the map's relative evidence paths resolve
             against. Defaults to the project root when it has ``assets/``.

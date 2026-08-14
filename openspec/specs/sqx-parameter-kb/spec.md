@@ -34,11 +34,11 @@ The system MUST isolate KB by SQX version (`structured/sqx-kb/{sqx_version}/`). 
 
 ### Requirement: REQ-203 Seed and Verify Process
 
-The system MUST seed all 8 tabs from `doc_dev/SQX Builder Config.md` with `status: seeded` and `evidence_ref` to the doc. Parameters MUST be verified against real `.cfx`/config evidence, promoting to `verified`. Doc gaps MUST become `needs_review`; the system MUST NOT invent parameter semantics.
+The system MUST seed all 8 tabs from `docs/sqx-builder-config/SQX Builder Config.md` with `status: seeded` and `evidence_ref` to the doc. Parameters MUST be verified against real `.cfx`/config evidence, promoting to `verified`. Doc gaps MUST become `needs_review`; the system MUST NOT invent parameter semantics.
 
 #### Scenario: Seed from documentation
 
-- GIVEN `doc_dev/SQX Builder Config.md`
+- GIVEN `docs/sqx-builder-config/SQX Builder Config.md`
 - WHEN the seed command runs
 - THEN one YAML per documented parameter is created with status seeded
 

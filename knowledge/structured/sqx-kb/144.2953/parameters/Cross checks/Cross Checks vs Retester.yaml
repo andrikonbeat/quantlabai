@@ -9,4 +9,4 @@ how_it_works_in_sqx: "Not documented \u2014 doc gap; pending review"
 quant_trading_role: "Not documented \u2014 doc gap; pending review"
 status: needs_review
 sqx_version: '144.2953'
-evidence_ref: doc_dev/SQX Builder Config.md#Cross checks
+evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#Cross checks

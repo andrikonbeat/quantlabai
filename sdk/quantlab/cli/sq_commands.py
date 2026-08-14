@@ -376,7 +376,7 @@ def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_seed.add_argument(
         "--doc",
         default=DEFAULT_DOC_PATH,
-        help="Path to the SQX Builder Config doc (default: doc_dev/SQX Builder Config.md)",
+        help="Path to the SQX Builder Config doc (default: docs/sqx-builder-config/SQX Builder Config.md)",
     )
     p_seed.set_defaults(func=cmd_kb_seed)
 

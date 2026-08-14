@@ -1,6 +1,6 @@
 """SQX Parameter KB seeder (REQ-203, D7).
 
-Extracts the documented builder parameters from ``doc_dev/SQX Builder Config.md``
+Extracts the documented builder parameters from ``docs/sqx-builder-config/SQX Builder Config.md``
 into one YAML per parameter with ``status: seeded`` and an ``evidence_ref``
 pointing back at the doc. The extraction is CURATED: ``SEED_SPEC`` holds the
 meaningful documented subset per tab (the full builder surface — 339 signals
@@ -25,7 +25,7 @@ from quantlab.knowledge.kb.models import KbParameter
 from quantlab.knowledge.kb.store import KbStore
 
 # Default source document (relative to the project root).
-DEFAULT_DOC_PATH = "doc_dev/SQX Builder Config.md"
+DEFAULT_DOC_PATH = "docs/sqx-builder-config/SQX Builder Config.md"
 
 # Marker used for doc-gap entries: no invented semantics (REQ-203).
 GAP_WHAT_IT_DOES = "Not documented — doc gap; semantics pending review (no invented content)"
@@ -61,7 +61,7 @@ class SeedResult:
         )
 
 
-# ── Curated documented subset per tab (source: doc_dev/SQX Builder Config.md) ──
+# ── Curated documented subset per tab (source: docs/sqx-builder-config/SQX Builder Config.md) ──
 # Each entry maps 1:1 to the KbParameter schema plus ``doc_keys`` (distinctive
 # substrings that must appear in the tab's section for the entry to be seeded).
 
@@ -835,7 +835,7 @@ GAP_SPEC: list[dict[str, object]] = [
 
 
 def parse_doc(doc_path: str | Path) -> dict[str, str]:
-    """Split ``doc_dev/SQX Builder Config.md`` into per-tab sections.
+    """Split ``docs/sqx-builder-config/SQX Builder Config.md`` into per-tab sections.
 
     Returns a mapping tab → normalized (lowercased) section text. Tabs are
     detected by their heading markers; the section accumulates every line
@@ -899,7 +899,7 @@ def seed_from_doc(
     doc_path: str | Path = DEFAULT_DOC_PATH,
     sqx_version: str | None = None,
 ) -> SeedResult:
-    """Seed the KB from ``doc_dev/SQX Builder Config.md`` (REQ-203).
+    """Seed the KB from ``docs/sqx-builder-config/SQX Builder Config.md`` (REQ-203).
 
     Writes one YAML per curated documented parameter (status ``seeded``,
     evidence_ref to the doc) plus explicit doc-gap entries (status

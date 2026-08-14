@@ -1,7 +1,7 @@
 """SQX Parameter Knowledge Base (REQ-201..208, REQ-502, D7).
 
 Version-isolated, evidence-backed parameter KB seeded from
-``doc_dev/SQX Builder Config.md`` and verified against real configs.
+``docs/sqx-builder-config/SQX Builder Config.md`` and verified against real configs.
 """
 
 from quantlab.knowledge.kb.models import (

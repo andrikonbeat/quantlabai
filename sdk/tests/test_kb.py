@@ -3,7 +3,7 @@
 The KB is version-isolated: each parameter lives at
 ``structured/sqx-kb/{sqx_version}/parameters/{tab}/{param}.yaml`` with a
 22-field pydantic schema. Parameters are seeded from
-``doc_dev/SQX Builder Config.md`` (status ``seeded`` + evidence_ref), doc
+``docs/sqx-builder-config/SQX Builder Config.md`` (status ``seeded`` + evidence_ref), doc
 gaps become ``needs_review`` (never inventing semantics), and verification
 against real configs promotes entries to ``verified``.
 """
@@ -25,7 +25,7 @@ from quantlab.knowledge.kb.models import (
 from quantlab.knowledge.kb.seeder import GAP_WHAT_IT_DOES, seed_from_doc
 from quantlab.knowledge.kb.store import KbParamNotFoundError, KbStore
 
-# ── Fixture: a small stand-in for doc_dev/SQX Builder Config.md ─────────────
+# ── Fixture: a small stand-in for docs/sqx-builder-config/SQX Builder Config.md ─────────────
 # Contains one distinctive documented parameter per tab plus one explicit gap
 # (ATM). Deterministic and CI-safe: never depends on the untracked real doc.
 
@@ -344,7 +344,7 @@ class TestKbStore:
 
 
 class TestSeeder:
-    """Seeder from doc_dev/SQX Builder Config.md."""
+    """Seeder from docs/sqx-builder-config/SQX Builder Config.md."""
 
     def test_seed_from_doc_creates_seeded_yamls_with_evidence(self, tmp_path: Path, sample_doc: Path) -> None:
         # REQ-203 scenario: one YAML per documented parameter, status seeded.

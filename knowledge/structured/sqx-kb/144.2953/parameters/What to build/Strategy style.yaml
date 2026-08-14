@@ -13,4 +13,4 @@ why_choose: Fuzzy logic / SQ3 generation is out of protocol.
 when_choose: Always per protocol.
 status: needs_review
 sqx_version: '144.2953'
-evidence_ref: doc_dev/SQX Builder Config.md#What to build
+evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#What to build

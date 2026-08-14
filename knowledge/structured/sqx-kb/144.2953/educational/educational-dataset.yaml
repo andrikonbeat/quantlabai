@@ -13,7 +13,7 @@
   why_choose: null
   when_choose: null
   status: needs_review
-  evidence_ref: doc_dev/SQX Builder Config.md#Building blocks
+  evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#Building blocks
   chosen_config: null
   template_status: template-missing
 - name: Calibrate indicators
@@ -161,7 +161,7 @@
   why_choose: null
   when_choose: null
   status: needs_review
-  evidence_ref: doc_dev/SQX Builder Config.md#Cross checks
+  evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#Cross checks
   chosen_config: null
   template_status: template-missing
 - name: Higher backtest precision
@@ -338,7 +338,7 @@
   why_choose: null
   when_choose: null
   status: needs_review
-  evidence_ref: doc_dev/SQX Builder Config.md#Data
+  evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#Data
   chosen_config: null
   template_status: template-missing
 - name: End day
@@ -939,7 +939,7 @@
   why_choose: null
   when_choose: null
   status: needs_review
-  evidence_ref: doc_dev/SQX Builder Config.md#Ranking
+  evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#Ranking
   chosen_config: null
   template_status: template-missing
 - name: Portfolio Master vs Portfolio Composer
@@ -957,7 +957,7 @@
   why_choose: null
   when_choose: null
   status: needs_review
-  evidence_ref: doc_dev/SQX Builder Config.md#Ranking
+  evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#Ranking
   chosen_config: null
   template_status: template-missing
 - name: Ranking Criterium
@@ -1013,7 +1013,7 @@
   why_choose: null
   when_choose: null
   status: needs_review
-  evidence_ref: doc_dev/SQX Builder Config.md#Ranking
+  evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#Ranking
   chosen_config: null
   template_status: template-missing
 - name: Don't trade on weekends
@@ -1363,7 +1363,7 @@
   why_choose: null
   when_choose: null
   status: needs_review
-  evidence_ref: doc_dev/SQX Builder Config.md#What to build
+  evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#What to build
   chosen_config: null
   template_status: template-missing
 - name: Profit Target
@@ -1422,7 +1422,7 @@
   why_choose: Fuzzy logic / SQ3 generation is out of protocol.
   when_choose: Always per protocol.
   status: needs_review
-  evidence_ref: doc_dev/SQX Builder Config.md#What to build
+  evidence_ref: docs/sqx-builder-config/SQX Builder Config.md#What to build
   chosen_config: null
   template_status: template-missing
 - name: Strategy type
