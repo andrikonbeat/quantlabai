@@ -88,6 +88,12 @@ class CustomProject:
             derives one from the tasks' source/target databanks.
         schema_version: CFX schema version — the pinned SQX build
             (``PINNED_SQX_VERSION``, verified golden).
+        phase_type: Optional pipeline phase marker propagated to archive metadata.
+        checkpoint_metadata: Optional checkpoint bookkeeping propagated to archive
+            metadata.
+        template_name: When set (template-generated project), every packaged task
+            XML carries a ``<Template name= profile=/>`` element identifying the
+            originating template; ``None`` (ad-hoc project) emits no such element.
     """
 
     name: str
@@ -96,3 +102,4 @@ class CustomProject:
     schema_version: str = PINNED_SQX_VERSION
     phase_type: str | None = None
     checkpoint_metadata: dict | None = None
+    template_name: str | None = None

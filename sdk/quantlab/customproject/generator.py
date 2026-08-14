@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 
-from quantlab.cfx.models import BuildTask, CfxArchive, CfxProject, TaskMeta
+from quantlab.cfx.models import BuildTask, CfxArchive, CfxProject, RawXmlSection, TaskMeta
 from quantlab.customproject.catalog import render_task
 from quantlab.customproject.models import CustomProject, DatabankSpec
 
@@ -55,6 +55,20 @@ def generate_cfx_archive(project: CustomProject) -> CfxArchive:
 
     for task in project.tasks:
         rendered = render_task(task)
+
+        # Template provenance (REQ-22 extended): every task XML of a
+        # template-generated project carries a <Template name= profile=/>
+        # element; ad-hoc projects (template_name=None) emit none.
+        if project.template_name:
+            rendered.unknown_sections.append(
+                RawXmlSection(
+                    name="Template",
+                    raw_xml=(
+                        f'<Template name="{project.template_name}" '
+                        f'profile="{project.template_name}" />'
+                    ),
+                )
+            )
 
         if task.taskXMLFile:
             filename = task.taskXMLFile
