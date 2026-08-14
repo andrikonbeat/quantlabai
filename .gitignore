@@ -57,6 +57,7 @@ assets/SQX_*/
 # Generated output files
 _output/
 reports/
+_evolution_pool/
 
 # Local tooling / caches
 .codegraph/
