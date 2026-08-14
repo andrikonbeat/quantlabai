@@ -18,7 +18,6 @@ from datetime import datetime, timezone
 
 import pytest
 
-from quantlab.agents.ops_surface import OpsSurface
 from quantlab.campaign.flow import PHASES, STAGE_FOR_PHASE, assert_flow
 from quantlab.guardian.agent import execute_guardian_directive
 from quantlab.guardian.feedback import FeedbackRecord, GuardianDirective
@@ -26,6 +25,42 @@ from quantlab.guardian.models import PortfolioState
 from quantlab.readers.models import EquityPoint
 
 import quantlab.pipeline.stages as stages_pkg
+
+
+class OpsSurface:
+    """Minimal in-file double for the REQ-36 escalation-ack surface.
+
+    The original ``quantlab.agents.ops_surface`` module was removed as dead
+    code (repo-organization PR 1); the guardian agent only needs the
+    duck-typed ``escalate_record``/``ack``/``get`` contract, so this stub
+    preserves the ack round-trip tests without the deleted module.
+    """
+
+    def __init__(self, dispatcher=None) -> None:
+        self._alerts: dict[str, _AlertRecord] = {}
+
+    def escalate_record(self, campaign_id, state, reason=""):
+        record = _AlertRecord(campaign_id)
+        self._alerts[record.alert_id] = record
+        return record
+
+    def ack(self, alert_id):
+        record = self._alerts.get(alert_id)
+        if record is not None:
+            record.acked = True
+        return record
+
+    def get(self, alert_id):
+        return self._alerts.get(alert_id)
+
+
+class _AlertRecord:
+    _seq = 0
+
+    def __init__(self, campaign_id: str) -> None:
+        _AlertRecord._seq += 1
+        self.alert_id = f"alert-{campaign_id}-{_AlertRecord._seq}"
+        self.acked = False
 
 
 def _point(equity: float) -> EquityPoint:

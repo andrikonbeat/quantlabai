@@ -1,8 +1,7 @@
 """Tests for Ciclo 4 — LLM Indicator Export (REQ-05).
 
-Covers the export round-trip (Java helper JSON schema <-> Python reader),
-``LLMTechnicalAgent`` summarization + prompt construction, and the pipeline
-step that injects the helper into generated ``.jfx`` archives.
+Covers the export round-trip (Java helper JSON schema <-> Python reader) and
+the pipeline step that injects the helper into generated ``.jfx`` archives.
 """
 
 from __future__ import annotations
@@ -12,7 +11,6 @@ import json
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -24,7 +22,6 @@ from quantlab.jforex.exporter import (
     inject_indicator_exporter,
     read_indicator_export,
 )
-from quantlab.jforex.llm_agent import EMPTY_SUMMARY_PREFIX, LLMTechnicalAgent
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.indicator_export_stage import IndicatorExportStage
 
@@ -116,73 +113,6 @@ class TestExportRoundTrip:
         path.write_text(json.dumps({"indicators": []}), encoding="utf-8")
         with pytest.raises(ValueError):
             read_indicator_export(path)
-
-
-# ── T4.2: LLMTechnicalAgent ──────────────────────────────────────────────────
-
-
-class TestLLMTechnicalAgent:
-    """Agent reads exports, builds prompts, and summarizes via an injectable client."""
-
-    def test_build_prompt_contains_strategy_and_indicator_values(self):
-        """Prompt construction embeds strategy name and every indicator value."""
-        prompt = LLMTechnicalAgent.build_prompt(_sample_export())
-        assert "BullEyes_M15" in prompt
-        assert "RSI" in prompt
-        assert "41.7" in prompt
-        assert "EMA20" in prompt
-        assert "1.0802" in prompt
-
-    def test_analyze_missing_export_fails_closed_without_client(self, tmp_path: Path):
-        """No export file -> empty summary, client never invoked (REQ-05 failure mode)."""
-        client = MagicMock()
-        agent = LLMTechnicalAgent(llm_client=client, export_dir=tmp_path / "exports")
-
-        summary = asyncio.run(agent.analyze("Ghost_M5"))
-
-        assert summary.startswith(EMPTY_SUMMARY_PREFIX)
-        client.chat.completions.create.assert_not_called()
-
-    def test_analyze_reads_export_and_returns_client_summary(self, tmp_path: Path):
-        """Present export -> prompt sent to client; client content returned."""
-        exports = tmp_path / "exports"
-        exports.mkdir(exist_ok=True)
-        export = _sample_export()
-        (exports / "quantlab-indicators-BullEyes_M15.json").write_text(
-            export.model_dump_json(), encoding="utf-8"
-        )
-
-        response = MagicMock()
-        response.choices = [MagicMock()]
-        response.choices[0].message.content = "Momentum fading; range-bound regime."
-        client = MagicMock()
-        client.chat.completions.create = AsyncMock(return_value=response)
-        agent = LLMTechnicalAgent(
-            llm_client=client, export_dir=exports, model="gpt-4o-mini"
-        )
-
-        summary = asyncio.run(agent.analyze("BullEyes_M15"))
-
-        assert summary == "Momentum fading; range-bound regime."
-        call = client.chat.completions.create.await_args
-        kwargs = call.kwargs
-        assert kwargs["model"] == "gpt-4o-mini"
-        assert "RSI" in kwargs["messages"][0]["content"]
-
-    def test_analyze_handles_unparseable_export_fail_closed(self, tmp_path: Path):
-        """Corrupt export -> empty summary, no crash, no client call."""
-        exports = tmp_path / "exports"
-        exports.mkdir(exist_ok=True)
-        (exports / "quantlab-indicators-BullEyes_M15.json").write_text(
-            "corrupted", encoding="utf-8"
-        )
-        client = MagicMock()
-        agent = LLMTechnicalAgent(llm_client=client, export_dir=exports)
-
-        summary = asyncio.run(agent.analyze("BullEyes_M15"))
-
-        assert summary.startswith(EMPTY_SUMMARY_PREFIX)
-        client.chat.completions.create.assert_not_called()
 
 
 # ── T4.3: pipeline injection step ────────────────────────────────────────────
