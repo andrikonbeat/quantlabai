@@ -1,0 +1,21 @@
+- status: success
+  executive_summary: 'Research phase completed for campaign invest-100usd: 100 USD
+    is learning capital, not income capital; QuantLab supports only Dukascopy FX (M1/M5/H1);
+    passive savings/ETF likely beat live algo FX at this size.'
+  artifacts:
+  - research/research_findings.md
+  - research/research_config.yaml
+  next_recommended: hypothesis
+  risks:
+  - 'Subcapitalization: 0.01 lot forces ~3% risk per trade'
+  - Cost drag 5-20% of risk budget
+  - 74-89% retail FX accounts lose
+  - 'QuantLab D5: FX Dukascopy only'
+  timestamp: '2026-08-09T16:01:51.470487+00:00'
+  agent_name: quantlab-campaign
+  campaign_id: invest-100usd
+  phase: research
+  config:
+    market: EURUSD
+    timeframe: H1
+    capital_usd: 100
