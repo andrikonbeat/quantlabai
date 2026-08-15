@@ -2,7 +2,7 @@
 
 > **Actualizado**: 2026-08-14
 > Proyecto: `/home/ogzuz/Proyectos/QuantLab AI`
-> Rama: `feat/per-phase-subagent-delegation-pr5` (**42 commits** por delante de `main` — no es `main` limpia; `main` quedó congelado en el flujo 14-fases pre-delegación)
+> Rama: `feat/per-phase-subagent-delegation-pr5` — sincronizada con `origin/main` (ambas en `fe49a6f` tras el push a GitHub, 2026-08-14)
 > Test suite (ambos árboles, `SQX_FORCE_MOCK=1`): **3449 passed, 44 failed, 12 skipped, 11 errors** en ~390s
 > Los 44 fallos y los 11 errores son pre-existentes y fuera del alcance de la reorganización actual (ver §Tests)
 

@@ -117,7 +117,7 @@ Rollback (PR 3): `git remote remove origin` (restores pre-push state); local `gi
 - [x] 4.1 Run full test suite: `python -m pytest -q` (both trees)
   - NOTE: 2026-08-14 `SQX_FORCE_MOCK=1` → **3450 passed, 43 failed, 12 skipped, 11 errors** (~6.3 min). Matches PR2 baseline (3449/44/12/11) within order-flake noise; PR3 changed no code.
 - [x] 4.2 Confirm `.git` size stays small: `git count-objects -vH` (pack ~3.84 MiB, no growth from binaries)
-- [ ] 4.3 Delete `backup/pre-cleanup` ONLY after remote push verified successful: `git branch -D backup/pre-cleanup`
-  - NOTE: intentionally left pending — push IS verified, but the branch is a zero-cost safety net; delete manually once the remote is trusted.
+- [x] 4.3 Delete `backup/pre-cleanup` ONLY after remote push verified successful: `git branch -D backup/pre-cleanup`
+  - DONE at archive (2026-08-14): remote push verified (`git ls-remote origin` shows main + feat branch both at fe49a6f); branch 769a3d4 fully contained in HEAD history — deleted per spec HGN-09 acceptance and plan Phase 4.3.
 
 Rollback (final): `git remote remove origin`; `git reset --hard backup/pre-cleanup` (if branch not yet deleted)
