@@ -8,11 +8,14 @@ the campaign prompt and all phase prompts (REQ-806). The live copies under
 These tests assert:
 
 - the sync script is deterministic and idempotent: a second run is a no-op;
-- managed prompts (``campaign.md`` + ``phase-*.md``) propagate byte-exact to
-  the live dir, and parity holds after sync (REQ-807 "Parity holds");
+- managed prompts (``campaign.md`` + ``phase-*.md`` +
+  ``guardian-orchestrator.md``) propagate byte-exact to the live dir, and
+  parity holds after sync (REQ-807 "Parity holds");
 - non-managed live files (``guardian.md``, ``orchestrator.md``, ...) are
   NEVER written or deleted — the allowlist is the classification boundary
-  (threat matrix "Documentation-like paths");
+  (threat matrix "Documentation-like paths"); ``guardian-orchestrator.md``
+  is managed (REQ-821) while ``guardian.md`` / ``orchestrator.md`` stay
+  non-managed;
 - drift names the drifted file (REQ-807 "Drift detected"): ``check()``
   reports the file, sync restores parity (RED on drift -> sync -> green);
 - the real repo-canonical ``campaign.md`` matches the real live copy
@@ -82,16 +85,30 @@ class TestAllowlistClassification:
 
     def test_sync_copies_campaign_and_phase_files_only(self, tmp_path: Path) -> None:
         repo = _make_repo(tmp_path, "phase-research.md", "phase-archive.md")
+        (repo / "guardian-orchestrator.md").write_text(
+            "# Guardian Orchestrator\n", encoding="utf-8"
+        )
         # A non-managed file in the repo dir must NOT be treated as managed.
         (repo / "notes.md").write_text("not a prompt\n", encoding="utf-8")
         live = tmp_path / "live"
         sync_mod.sync(repo, live)
         assert sorted(p.name for p in live.iterdir()) == [
             "campaign.md",
+            "guardian-orchestrator.md",
             "phase-archive.md",
             "phase-research.md",
         ]
         assert (live / "notes.md").exists() is False
+
+    def test_guardian_orchestrator_allowlisted(self, tmp_path: Path) -> None:
+        """REQ-821: the allowlist includes the guardian-orchestrator prompt."""
+        repo = _make_repo(tmp_path)
+        (repo / "guardian-orchestrator.md").write_text(
+            "# Guardian Orchestrator\n", encoding="utf-8"
+        )
+        names = sync_mod.managed_prompt_names(repo)
+        assert "guardian-orchestrator.md" in names
+        assert "campaign.md" in names
 
     def test_non_managed_live_file_untouched(self, tmp_path: Path) -> None:
         repo = _make_repo(tmp_path)
@@ -103,14 +120,30 @@ class TestAllowlistClassification:
         assert (live / "orchestrator.md").read_text(encoding="utf-8") == sentinel
 
     def test_guardian_live_prompt_never_synced(self, tmp_path: Path) -> None:
-        """guardian.md is non-managed: never written, never deleted."""
+        """REQ-821 contract: guardian-orchestrator.md IS managed.
+
+        The allowlist extends to the guardian-orchestrator prompt (REQ-806)
+        while ``guardian.md`` and ``orchestrator.md`` stay non-managed:
+        never written, never deleted.
+        """
         repo = _make_repo(tmp_path)
+        (repo / "guardian-orchestrator.md").write_text(
+            "# Guardian Orchestrator\n", encoding="utf-8"
+        )
         live = tmp_path / "live"
         live.mkdir()
         guardian = "GUARDIAN — belongs to quantlab-guardian, not the allowlist"
+        orchestrator = "ORCHESTRATOR — hand-edited live routing table"
         (live / "guardian.md").write_text(guardian, encoding="utf-8")
+        (live / "orchestrator.md").write_text(orchestrator, encoding="utf-8")
         sync_mod.sync(repo, live)
+        # guardian-orchestrator.md propagates byte-for-byte (REQ-806).
+        assert (live / "guardian-orchestrator.md").read_bytes() == (
+            repo / "guardian-orchestrator.md"
+        ).read_bytes()
+        # guardian.md / orchestrator.md remain untouched (REQ-821).
         assert (live / "guardian.md").read_text(encoding="utf-8") == guardian
+        assert (live / "orchestrator.md").read_text(encoding="utf-8") == orchestrator
 
 
 class TestDriftDetection:
@@ -164,7 +197,10 @@ class TestLiveParity:
     def test_non_managed_live_prompts_outside_allowlist(self) -> None:
         """Existing live prompts not in the allowlist are never managed."""
         managed = set(sync_mod.managed_prompt_names(REPO_AGENTS))
-        for path in LIVE_PROMPTS.glob("*.md"):
-            assert path.name not in managed or path.name in managed
-        # Allowlist is exactly campaign.md + phase-*.md.
-        assert all(name == "campaign.md" or name.startswith("phase-") for name in managed)
+        # Allowlist is exactly campaign.md + phase-*.md + guardian-orchestrator.md.
+        assert all(
+            name == "campaign.md"
+            or name.startswith("phase-")
+            or name == "guardian-orchestrator.md"
+            for name in managed
+        )
