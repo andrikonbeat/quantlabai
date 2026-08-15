@@ -24,6 +24,16 @@ MUST NOT:
 3. Renewal after expiry requires `HUMAN_APPROVE_DEMO` (fail-closed block).
 4. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Grounded instructions with window reasoning where it adds value (REQ-819):
+
+1. **Window decision**: resolve the `DemoWindow` status on today — `ACTIVE` (deploy proceeds), `REMINDER_DUE` (renewal reminder fires), `EXPIRED` (renewal blocked pending `HUMAN_APPROVE_DEMO`). State the resolved status and the decision rationale in `evidence.details`.
+2. **Fail-closed renewal**: expiry blocks renewal until explicit `HUMAN_APPROVE_DEMO`; HOLD/unanswered MUST NOT proceed.
+3. **Handoff when long**: demo deployment hands off via `handoff_payload` (`timeout >= 240`, cleanup) — never wait (REQ-809/818).
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -47,6 +57,20 @@ Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign
 ```
 
 `status != success` halts the campaign loop awaiting a human decision.
+
+## SDK Examples
+
+```python
+from datetime import date
+from quantlab.phase4.demo_deploy import DemoWindow, DemoWindowStatus
+
+window = DemoWindow(started_at=date(2026, 8, 1))  # 14 business days (REQ-31)
+status = window.status(today=date.today())
+# ACTIVE -> deploy proceeds; REMINDER_DUE -> reminder fires; EXPIRED -> blocked
+if status is DemoWindowStatus.EXPIRED:
+    # renewal blocked pending HUMAN_APPROVE_DEMO (fail-closed)
+    ...
+```
 
 ## Long-Running Policy
 

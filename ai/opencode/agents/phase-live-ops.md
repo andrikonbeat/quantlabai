@@ -25,6 +25,16 @@ MUST NOT:
 4. Fold the `GuardianReport` envelope into this phase's Result Contract.
 5. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Grounded instructions — delegate, do not fabricate (REQ-819):
+
+1. **Delegation contract**: delegate the Guardian live flow to `quantlab-guardian` via the `task` tool; it wraps the `AutonomousMonitorDaemon` stream → MetaGuardian eval → feedback flow (REQ-641) without adding a phase (REQ-37).
+2. **Fold, don't invent**: fold the returned `GuardianReport` (`guardian_state` + `FeedbackRecord` via `next_cycle_inputs()`, REQ-644) into this phase's envelope; never fabricate guardian state.
+3. **Fail-closed**: all human gates remain in force (REQ-34); HOLD/unanswered MUST NOT produce `success`.
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -48,6 +58,25 @@ Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign
 ```
 
 `status != success` halts the campaign loop awaiting a human decision.
+
+## SDK Examples
+
+```python
+# Guardian live flow — delegated to quantlab-guardian via `task`.
+# The executor path folds execute_guardian_directive() -> GuardianReport
+# into evidence (REQ-816/REQ-644).
+
+from quantlab.campaign.delegation import execute_phase, PhaseDirective
+
+result = await execute_phase(
+    PhaseDirective(
+        phase_id="live-ops",
+        campaign_id="Campaign123",
+        payload={"config": {...}, "artifacts": {...}},
+    )
+)
+# PhaseResult.evidence carries the GuardianReport (guardian_state + feedback)
+```
 
 ## Long-Running Policy
 

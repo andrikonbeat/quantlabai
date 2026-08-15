@@ -24,6 +24,16 @@ MUST NOT:
 3. The config-adjustment loop is bounded by `max_iterations` and halts with a final report when exceeded.
 4. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Grounded instructions with condition diagnosis where it adds value (REQ-819):
+
+1. **Bounded loop**: when a `retest` block is configured, run `RetesterStage`; the config-adjustment loop is bounded by `max_iterations` and halts with a final report when exceeded.
+2. **Condition diagnosis**: when iterations are exceeded, reason over WHY (no convergence, parameter drift, regime change) and record the diagnosis in `evidence.details` — never fabricate stage results.
+3. **Handoff when long**: long retest loops hand off via `handoff_payload` (`timeout >= 240`, cleanup) — never wait (REQ-809/818).
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:

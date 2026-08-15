@@ -25,6 +25,16 @@ MUST NOT:
 4. Map criteria to SQX builder inputs or robustness checks where applicable.
 5. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Reason over `hypothesis_builder/llm.py` (`LLMMode`): it turns the hypothesis rationale + sources into a structured prompt, calls the LLM, and parses the JSON into validated `BuildingBlock` / `Strategy` instances. Your reasoning adds:
+
+1. **Generation rationale**: ground the hypothesis in the research-phase artifacts and the market regime before generation; every generated block/strategy traces back to the hypothesis rationale.
+2. **Criteria first**: define the confirmation/rejection criteria (statistical, regime, robustness) BEFORE generation so the criteria are testable.
+3. **Fallback awareness**: when `LLMMode` falls back to Rule mode (LLM/parse failure, RB-6), record the fallback and its rationale in `evidence.details` — never claim LLM provenance for rule-generated blocks.
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -60,6 +70,23 @@ cfg = ResearchConfig(
     market="EURUSD",
     timeframe="H1",
 )
+```
+
+```python
+from quantlab.agents.hypothesis_builder.llm import LLMMode
+from quantlab.dsl.models import HypothesisConfig, LLMConfig
+
+mode = LLMMode(llm_config=LLMConfig(provider="opencode", model="default"))
+blocks, strategies = await mode.build(
+    HypothesisConfig(
+        name="momentum_breakout",
+        description="Momentum breakout on EURUSD H1",
+        llm_rationale="Volatility clustering supports breakout persistence",
+        source_urls=["https://example.com/study"],
+        data_sources=["yahoo-finance", "fred"],
+    )
+)
+# -> (list[BuildingBlock], list[Strategy]); Rule mode fallback on failure (RB-6)
 ```
 
 ```python

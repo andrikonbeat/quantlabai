@@ -25,6 +25,16 @@ MUST NOT:
 4. Consult the SQX Parameter KB (`KbStore.consult`) for parameter guidance before configuring strategies.
 5. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Reason over `LLMResearchAgent` (the `research_llm` stage): it fetches data (YahooFinance / FRED / web / RSS), builds the prompt, calls the LLM, parses, and validates the `ResearchConfig`. Your reasoning adds:
+
+1. **KB rationale (REQ-203/204/205)**: consult `KbStore.consult` for the parameters the research proposes; empty consult hits block configuration pending a `needs_review` entry (REQ-204).
+2. **Hypothesis provenance**: every hypothesis MUST carry `source_urls` and `data_sources` (LLM output validation); record why each hypothesis is worth testing.
+3. **Verdict-shaped evidence**: confirm market/timeframe/building-blocks decisions in `evidence.details` with the underlying rationale.
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -62,6 +72,19 @@ cfg = ResearchConfig(
     timeframe="H1",
     iteration_config=IterationConfig(max_iterations=1),
 )
+```
+
+```python
+from quantlab.agents.llm_research_agent import LLMResearchAgent
+from quantlab.dsl.models import LLMConfig
+
+agent = LLMResearchAgent()
+cfg = await agent.generate_config(
+    objectives=["Research EURUSD H1 momentum"],
+    market_context={"market": "EURUSD", "ticker": "EURUSD"},
+    llm_config=LLMConfig(provider="opencode", model="default"),
+)
+# -> ResearchConfig with hypotheses, building_blocks, strategies
 ```
 
 ```python

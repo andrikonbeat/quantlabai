@@ -24,6 +24,16 @@ MUST NOT:
 3. Finalize only on explicit `HUMAN_APPROVE_ARCHIVE` approval (REQ-38).
 4. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Reason over `ArchivePhase` (the `archive` stage): it composes `account_stats` + `build_plan` into an `ArchiveBundle` and holds it for the `HUMAN_APPROVE_ARCHIVE` gate. Your reasoning adds:
+
+1. **Maintenance-plan reasoning**: justify the maintenance/replacement plan from account statistics, portfolio candidates, and guardian feedback (`build_plan` inputs).
+2. **Fail-closed finalization**: finalize ONLY on explicit `HUMAN_APPROVE_ARCHIVE` approval (REQ-38); denial/HOLD returns the campaign to maintenance (status `DENIED`) — never auto-finalize.
+3. **Evidence**: return the plan summary and gate decision in `evidence.details`.
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -47,6 +57,22 @@ Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign
 ```
 
 `status != success` halts the campaign loop awaiting a human decision.
+
+## SDK Examples
+
+```python
+from quantlab.phase4.campaign_archive import ArchivePhase
+
+archive = ArchivePhase()  # gate_fn defaults to fail-closed HOLD
+bundle = await archive.run(
+    campaign_id="Campaign123",
+    strategy_state="ACTIVE",
+    portfolio_candidates=["S1", "S2"],
+    feedback=feedback_record,
+    equity_points=equity_points,
+)
+# ArchiveBundle: plan + stats; PENDING_GATE until HUMAN_APPROVE_ARCHIVE
+```
 
 ## Long-Running Policy
 

@@ -25,6 +25,16 @@ MUST NOT:
 4. Present recommendations.
 5. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Reason over `OptimizerStage` (the `optimizer` stage) output — it runs the phase4 `Optimizer` and publishes `optimization_result`. Your reasoning adds:
+
+1. **Recommendation reasoning**: parse the CSV into `OptimizationResult` and recommend parameter adjustments grounded in the parsed rows — never fabricate stage output.
+2. **Loop continuation**: the loop continues past optimize — never re-dispatch on your own; proceed to the next phase.
+3. **Evidence**: record the recommendation rationale and the chosen parameter deltas in `evidence.details`.
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -48,6 +58,23 @@ Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign
 ```
 
 `status != success` halts the campaign loop awaiting a human decision.
+
+## SDK Examples
+
+```python
+from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
+
+stage = OptimizerStage()
+outcome = await stage.execute(ctx)
+# ctx.artifacts["optimization_result"] — parsed Optimizer run output
+```
+
+```python
+from quantlab.phase4.optimizer import Optimizer
+
+optimizer = Optimizer(sqx_install_path="assets/SQX_144_2953_linux_20260601")
+result = await optimizer.run(config, campaign_name="Campaign123", output_dir="out")
+```
 
 ## Long-Running Policy
 

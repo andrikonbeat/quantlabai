@@ -24,6 +24,16 @@ MUST NOT:
 3. Package a real deployable JAR via `DeploymentAgent` (dry-run default, zero network).
 4. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Grounded instructions (REQ-819) — never fabricate stage output:
+
+1. **Gate verification**: verify the prior gate approved (`HUMAN_APPROVE_DEPLOY`) before deployment proceeds; non-approval blocks — this check is the reasoning this phase adds.
+2. **Dry-run default**: package a real deployable JAR via `DeploymentAgent` (dry-run default, zero network); deployment is a long-running op.
+3. **Handoff when long**: return the deployment script in `handoff_payload` (`timeout >= 240`, cleanup) — never wait (REQ-809/818).
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -47,6 +57,22 @@ Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign
 ```
 
 `status != success` halts the campaign loop awaiting a human decision.
+
+## SDK Examples
+
+```python
+from quantlab.agents.deployment_agent import DeploymentAgent
+from quantlab.pipeline.base import PipelineContext
+
+agent = DeploymentAgent(dry_run=True)  # zero network; packages portfolio CFX
+outcome = await agent.run(
+    PipelineContext(
+        config={"campaign_id": "Campaign123"},
+        artifacts={"portfolio_cfx": portfolio_cfx},
+    )
+)
+# DeploymentResult: instance_ids, artifact_paths; no upload in dry-run
+```
 
 ## Long-Running Policy
 

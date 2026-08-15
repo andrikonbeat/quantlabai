@@ -24,6 +24,16 @@ MUST NOT:
 3. Package `.jfx` archives.
 4. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Grounded instructions (REQ-819) — never fabricate stage output:
+
+1. **Compiler pipeline**: route the portfolio sources through `CompilerPipeline.compile` (`QUANTLAB_JDK_HOME` javac, per-strategy) and package `.jfx` archives; `CompileReport` carries `exit_code` and parsed `error:` lines.
+2. **Failure reading**: non-zero `exit_code` or error lines → failed/partial envelope with the parsed errors in `evidence.details` — never report a green compile on errors.
+3. **Handoff when long**: real JDK compile hands off via `handoff_payload` (`timeout >= 240`, cleanup) — never wait (REQ-809/818).
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -47,6 +57,19 @@ Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign
 ```
 
 `status != success` halts the campaign loop awaiting a human decision.
+
+## SDK Examples
+
+```python
+from quantlab.compiler.compiler import CompilerPipeline
+
+report = CompilerPipeline.compile(
+    src=java_sources,
+    strategy_ids=["S1", "S2"],
+    jdk_home=os.environ.get("QUANTLAB_JDK_HOME"),
+)
+# CompileReport: exit_code, stderr "error:" lines parsed via report.errors
+```
 
 ## Long-Running Policy
 

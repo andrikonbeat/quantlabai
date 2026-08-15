@@ -25,6 +25,16 @@ MUST NOT:
 4. Acknowledge watcher and LLM verdict events in your summary.
 5. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Reason over `CampaignMonitor` / `LLMGenerationMonitor` (the `execution_monitor` stage via `ExecutionMonitor`). Your reasoning adds:
+
+1. **Stall diagnosis**: progress frozen at the `expected_duration * stall_multiplier` threshold triggers stall handling — checkpoint first, then LLM diagnostics within `llm_timeout`.
+2. **Fail-closed reading**: diagnostics timeout / failure / missing provider / no remediation → `HOLD` for human review; successful remediation → `CONTINUE` with `diagnostics` attached. Interpret which case the monitor returned and why.
+3. **Evidence**: consume `strategy_counts` from `strategies.csv`; acknowledge watcher and LLM verdict events in `evidence.details`.
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -45,6 +55,39 @@ Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign
   "evidence": {"phase": "monitor", "details": {}},
   "handoff_payload": null
 }
+```
+
+## SDK Examples
+
+```python
+from quantlab.sqx.campaign_monitor import CampaignMonitor, compute_baseline
+from quantlab.sqx.llm_generation_monitor import LLMGenerationMonitor
+
+monitor = CampaignMonitor(
+    campaign_id="Campaign123",
+    base_url="http://127.0.0.1:5050",
+    baseline=compute_baseline(config, poll_interval=5.0),
+    config=config,
+)
+events = await monitor.run()  # WatcherEvent list: stall/rejection patterns
+snapshot = monitor.current_snapshot()  # MonitorSnapshot for LLM reasoning
+
+llm = LLMGenerationMonitor(
+    campaign_id="Campaign123",
+    base_url="http://127.0.0.1:5050",
+    snapshot_provider=monitor.current_snapshot,
+    llm_config=llm_cfg,
+    monitor=monitor,
+)
+await llm.run()  # LLM stall verdicts, confidence-gated, human-confirmed stop
+```
+
+```python
+from quantlab.agents.execution_monitor import ExecutionMonitor
+
+em = ExecutionMonitor(expected_duration=180.0, stall_multiplier=2.0)
+result = await em.monitor("Campaign123", phase="dispatch")
+# MonitorResult: HOLD (stall, fail-closed) or CONTINUE (progress/remediation)
 ```
 
 ## Long-Running Policy

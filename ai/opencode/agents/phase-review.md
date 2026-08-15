@@ -25,6 +25,16 @@ MUST NOT:
 4. A `BLOCK` verdict or non-approval gate decision stops dispatch.
 5. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Reason over `ConfigReviewStage` / `ConfigReviewer` (the `config_review` stage) — it produces a `ConfigReviewVerdict` (`action`, `reason`, `proposed_changes`, `cost_note`). Your reasoning adds:
+
+1. **Verdict reasoning**: emit `APPROVE`, `MODIFY` (with concrete `proposed_changes` field diffs), or `BLOCK`; `is_block` means dispatch MUST NOT be attempted.
+2. **Teaching table (REQ-205)**: the review covers every configured parameter with why/for-what rationale; surface the `cost_note` preset-vs-live deviations.
+3. **Verdict-shaped evidence**: return `evidence.verdict` and `evidence.proposed_changes` in the envelope.
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:

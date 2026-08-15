@@ -25,6 +25,16 @@ MUST NOT:
 4. A BLOCK verdict or non-approval stops dispatch.
 5. Return a `PhaseResult` envelope.
 
+## Reasoning
+
+Grounded instructions (REQ-819) — never fabricate stage output:
+
+1. **Gate verification**: verify the prior gate approved (`HUMAN_APPROVE_CONFIG`); a `BLOCK` verdict or non-approval stops dispatch — this check is the reasoning this phase adds.
+2. **Handoff, never wait**: dispatch via `DispatchStage` (wraps `_dispatch_single`); the long SQX run is handed back as a script — never wait for completion (REQ-809).
+3. **Handoff contract**: return the runnable script in `handoff_payload` with `log_path` under `/tmp/opencode/`, `timeout >= 240`, and cleanup instructions (REQ-818).
+
+**Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
+
 ## Human Gates (fail-closed)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
@@ -45,6 +55,16 @@ Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign
   "evidence": {"phase": "dispatch", "details": {}},
   "handoff_payload": null
 }
+```
+
+## SDK Examples
+
+```python
+from quantlab.pipeline.stages.dispatch_stage import DispatchStage
+
+stage = DispatchStage()  # wraps _dispatch_single; long-running
+handoff = await stage.execute(ctx)
+# LongOpSpec: log_path under /tmp/opencode/, timeout >= 240, cleanup set
 ```
 
 ## Long-Running Policy
