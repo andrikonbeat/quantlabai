@@ -149,6 +149,33 @@ Desglose (pre-existente, NO causado por la reorg de docs):
 
 ---
 
+## ✅ Verificación End-to-End (2026-08-14)
+
+Validación completa de las dos capas de QuantLab:
+
+- **SDK + CLI**: install limpio desde `sdk/` en venv nuevo (Python 3.14, `pip>=26`),
+  `import quantlab 0.1.0` OK, binario `quantlab` con 14 comandos, `pipeline list`
+  (SQXCampaign 11 stages) y `pipeline run SQXCampaign --dry-run` OK sin daemon.
+  Fue bloqueado temporalmente por caída de `files.pythonhosted.org`; verificado al
+  recuperarse la red.
+- **Flujo orquestado (dry-run)**: agente `quantlab-campaign` con `SQX_FORCE_MOCK=1`
+  validó `assert_flow(PHASES)` (14 fases), parseo de `examples/research-config.yaml`
+  (EURUSD H1, 4 hipótesis, 5 gates), `BuildConfig` (3 blocks), CFX dry-run
+  (`_output/*.cfx.json`), `ConfigReviewStage` → **APPROVE**, y CLI dry-run exit 0.
+  Los 4 gates humanos (`HUMAN_APPROVE_CONFIG/DEPLOY/DEMO/ARCHIVE`) confirmados
+  **fail-closed** (sin decisión → HOLD). Sin daemon real, sin gates respondidos.
+- **Fixes aplicados en esta sesión** (absorbidos por `fe49a6f`):
+  - `sdk/pyproject.toml`: `ta>=0.11` + `jinja2>=3.0` en deps core; extra
+    `reporting-matplotlib` (matplotlib opcional).
+  - `sdk/quantlab/agents/llm_research_agent.py`: `call_llm` ahora usa
+    `os.environ.get(llm_config.api_key_env)` (patrón de `llm_generation_monitor.py`);
+    soporta OpenCode Zen (`OPENCODE_API_KEY`, `deepseek-v4-flash-free`).
+  - `.env.example` / `README.md`: `SQX_INSTALL_PATH` real + requisito `pip>=26`.
+- **Pendiente externo**: llamada LLM real a OpenCode Zen devuelve 429
+  (`FreeUsageLimitError`, cuota free) — bloqueo temporal, no es defecto.
+
+---
+
 ## 🗺️ Pendientes y Deuda Técnica
 
 - [ ] **PR 3 (GitHub prep)**: `.gitignore`/`.gitattributes`, compose →
