@@ -2,13 +2,15 @@
 """Deterministic, idempotent sync of repo-canonical QuantLab prompts to live.
 
 REQ-806: the repo directory ``ai/opencode/agents/`` is the single source of
-truth for the campaign prompt and all phase prompts. The live copies under
+truth for the campaign prompt, all phase prompts, and the
+``guardian-orchestrator.md`` prompt. The live copies under
 ``~/.config/opencode/prompts/quantlab/`` are generated from it by this
 script; hand-editing live prompts is not permitted.
 
-Managed allowlist (sorted, deterministic): ``campaign.md`` + ``phase-*.md``.
-Non-managed live files (``deploy.md``, ``guardian.md``, ``monitor.md``,
-``orchestrator.md``, ...) are NEVER written or deleted by this script.
+Managed allowlist (sorted, deterministic): ``campaign.md`` + ``phase-*.md`` +
+``guardian-orchestrator.md`` (REQ-821). Non-managed live files (``deploy.md``,
+``guardian.md``, ``monitor.md``, ``orchestrator.md``, ...) are NEVER written
+or deleted by this script.
 
 Usage::
 
@@ -29,20 +31,23 @@ from pathlib import Path
 REPO_DIR = Path(__file__).resolve().parent / "agents"
 LIVE_DIR = Path.home() / ".config" / "opencode" / "prompts" / "quantlab"
 
-# Sorted allowlist: campaign.md + phase-*.md. Anything else under the agents
-# dir (or the live dir) is non-managed and must stay untouched.
-MANAGED_NAMES = ("campaign.md",)
+# Sorted allowlist: campaign.md + phase-*.md + guardian-orchestrator.md
+# (REQ-806/821). Anything else under the agents dir (or the live dir) is
+# non-managed and must stay untouched.
+MANAGED_NAMES = ("campaign.md", "guardian-orchestrator.md")
 
 
 def managed_prompt_names(repo_dir: Path = REPO_DIR) -> list[str]:
     """Sorted allowlist of managed prompt filenames present in the repo.
 
-    Always includes ``campaign.md`` plus every ``phase-*.md`` file found.
-    Sorted for determinism regardless of filesystem order.
+    Always includes ``campaign.md`` and ``guardian-orchestrator.md`` plus
+    every ``phase-*.md`` file found; names without a repo copy are omitted
+    so the allowlist never names a prompt the repo does not hold. Sorted
+    for determinism regardless of filesystem order.
     """
-    names = {MANAGED_NAMES[0]}
+    names = set(MANAGED_NAMES)
     names.update(p.name for p in repo_dir.glob("phase-*.md") if p.is_file())
-    return sorted(names)
+    return sorted(name for name in names if (repo_dir / name).is_file())
 
 
 def read_bytes(path: Path) -> bytes | None:
