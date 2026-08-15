@@ -1,4 +1,4 @@
-"""REQ-801..REQ-804, REQ-809: delegation glue tests.
+"""REQ-801..REQ-804, REQ-809, REQ-815, REQ-816: delegation glue tests.
 
 Covers:
 - PhaseDirective envelope schema
@@ -8,6 +8,9 @@ Covers:
 - Long-op script no-wait (handoff_payload present, no await)
 - PHASE_AGENTS keys == PHASES
 - validate_phase_result() helper
+- PRODUCTION_EXECUTORS registry completeness (REQ-815)
+- Executor gap fails closed (REQ-815 s2)
+- Hybrid delegation split: reasoning vs mechanical vs retest vs live-ops (REQ-816)
 """
 
 from __future__ import annotations
@@ -16,16 +19,42 @@ import asyncio
 
 import pytest
 
+from quantlab.campaign import delegation as delegation_module
 from quantlab.campaign.delegation import (
     PHASE_AGENTS,
+    PRODUCTION_EXECUTORS,
     AuthorityViolationError,
+    LongOpSpec,
     PhaseDirective,
     PhaseNotFoundError,
     PhaseResult,
     execute_phase,
     validate_phase_result,
 )
-from quantlab.campaign.flow import PHASES
+from quantlab.campaign.flow import PHASES, STAGE_FOR_PHASE
+
+# Orchestrated stage bindings for the REQ-815 "resolves STAGE_FOR_PHASE"
+# contract: the research phase binds to the LLM-routed stage and the monitor
+# phase binds to the ADR-3 ExecutionMonitorStage in the orchestrated flow.
+_ORCHESTRATED_STAGE = {
+    "research": "research_llm",
+    "monitor": "execution_monitor",
+}
+
+
+def _expected_stage(phase: str) -> str:
+    """The concrete stage the production executor must resolve for *phase*."""
+    return _ORCHESTRATED_STAGE.get(phase, STAGE_FOR_PHASE[phase])
+
+
+def _recording_stage(calls: list[tuple[object, ...]]) -> object:
+    """Fake ``_run_sdk_stage`` that records invocations instead of executing."""
+
+    async def _recorded(*args: object, **kwargs: object) -> dict[str, object]:
+        calls.append((args, kwargs))
+        return {"recorded": True}
+
+    return _recorded
 
 
 # --- Envelope schema ---------------------------------------------------------
@@ -242,14 +271,22 @@ class TestExecutePhase:
         assert result.phase_id == "research"
         assert result.artifacts == ["a.json"]
 
-    def test_mock_executor_available_when_force_mock(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_registry_executor_takes_precedence_over_mock(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # REQ-815/D2 resolution order: explicit arg → registry → mock → raise.
+        # With a registered production executor, SQX_FORCE_MOCK=1 must NOT
+        # divert research to the mock — the registry executor runs the SDK
+        # stage (classic fallback research is deterministic and pure).
         monkeypatch.setenv("SQX_FORCE_MOCK", "1")
         directive = PhaseDirective(
-            phase_id="research", scope="research-scope", payload={}
+            phase_id="research",
+            scope="research-scope",
+            payload={"config": {"objectives": ["Research EURUSD H1"]}},
         )
         result = asyncio.run(execute_phase(directive))
         assert result.status == "success"
         assert result.phase_id == "research"
+        assert result.evidence.get("stage") == "research_llm"
+        assert result.evidence.get("mock") is not True
 
 
 # --- validate_phase_result ----------------------------------------------------
@@ -354,3 +391,181 @@ class TestLongOpSpec:
                 expected="DONE",
                 timeout=60,
             )
+
+
+# --- Production executor registry (REQ-815) -----------------------------------
+
+
+class TestProductionExecutorsRegistry:
+    def test_registry_covers_every_phase(self) -> None:
+        # REQ-815: a production executor MUST be registered for every phase of
+        # PHASES — no phase may silently fall back to the mock in production.
+        assert set(PRODUCTION_EXECUTORS.keys()) == set(PHASES)
+
+    def test_registry_has_fourteen_executors(self) -> None:
+        assert len(PRODUCTION_EXECUTORS) == len(PHASES) == 14
+
+    def test_every_executor_resolves_its_stage(self) -> None:
+        # REQ-815: every executor resolves its SDK stage from STAGE_FOR_PHASE
+        # (research→research_llm and monitor→execution_monitor are the
+        # orchestrated bindings). The resolved stage is recorded in evidence.
+        for phase in PHASES:
+            directive = PhaseDirective(
+                phase_id=phase, scope=f"{phase}-scope", payload={}
+            )
+            result = asyncio.run(execute_phase(directive))
+            assert result.phase_id == phase
+            assert result.evidence["stage"] == _expected_stage(phase)
+            validate_phase_result(result)
+
+    def test_executor_gap_fails_closed_no_stage_runs(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # REQ-815 s2: a phase whose executor is not registered, without
+        # SQX_FORCE_MOCK, raises AuthorityViolationError and NO SDK stage runs.
+        monkeypatch.delenv("SQX_FORCE_MOCK", raising=False)
+        monkeypatch.delitem(PRODUCTION_EXECUTORS, "research")
+        calls: list[tuple[object, ...]] = []
+        monkeypatch.setattr(delegation_module, "_run_sdk_stage", _recording_stage(calls))
+
+        directive = PhaseDirective(
+            phase_id="research", scope="research-scope", payload={}
+        )
+        with pytest.raises(AuthorityViolationError):
+            asyncio.run(execute_phase(directive))
+        assert calls == [], "an SDK stage ran despite the executor gap"
+
+    def test_mock_fallback_intact_when_gap(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # REQ-810/REQ-815: with SQX_FORCE_MOCK=1 and a registry gap the mock
+        # executor still runs — the deny-first fallback stays intact.
+        monkeypatch.setenv("SQX_FORCE_MOCK", "1")
+        monkeypatch.delitem(PRODUCTION_EXECUTORS, "research")
+        directive = PhaseDirective(
+            phase_id="research", scope="research-scope", payload={}
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.status == "success"
+        assert result.phase_id == "research"
+        assert result.evidence == {"mock": True}
+
+    def test_production_executor_runs_sdk_stage(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # REQ-803 s3: with a production executor registered, execute_phase()
+        # without SQX_FORCE_MOCK runs the SDK stage and returns a validated
+        # PhaseResult. Classic-fallback research is deterministic and pure.
+        monkeypatch.delenv("SQX_FORCE_MOCK", raising=False)
+        directive = PhaseDirective(
+            phase_id="research",
+            scope="research-scope",
+            payload={"config": {"objectives": ["Research EURUSD H1"]}},
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.status == "success"
+        assert result.phase_id == "research"
+        assert result.evidence["stage"] == "research_llm"
+        assert "research_config" in result.evidence["outcome"]
+
+    def test_archive_executor_resolves_archive_stage(self) -> None:
+        # REQ-815 s1: an archive directive resolves the `archive` stage from
+        # STAGE_FOR_PHASE, the stage executes, and the envelope carries
+        # phase_id=archive.
+        directive = PhaseDirective(
+            phase_id="archive", scope="archive-scope", payload={}
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.status == "success"
+        assert result.phase_id == "archive"
+        assert result.evidence["stage"] == "archive"
+        assert "archive_bundle" in result.evidence["outcome"]
+
+
+# --- Hybrid delegation split (REQ-816) ----------------------------------------
+
+
+class TestHybridDelegationSplit:
+    # REQ-816: reasoning-heavy phases run as LLM subagent phases (SDK stage,
+    # no handoff); mechanical/long phases hand a LongOpSpec to the orchestrator
+    # shell; retest is conditional; live-ops delegates to the guardian surface.
+    REASONING_PHASES = (
+        "research", "hypothesis", "config", "review",
+        "portfolio", "optimize", "archive",
+    )
+    MECHANICAL_PHASES = ("dispatch", "monitor", "compile", "deploy", "demo")
+
+    @pytest.mark.parametrize("phase", REASONING_PHASES)
+    def test_reasoning_phase_never_hands_off(self, phase: str) -> None:
+        # REQ-816 s1: a reasoning directive dispatches as an LLM subagent phase
+        # and returns a PhaseResult WITHOUT a handoff_payload.
+        directive = PhaseDirective(
+            phase_id=phase, scope=f"{phase}-scope", payload={}
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.phase_id == phase
+        assert result.handoff_payload is None
+
+    @pytest.mark.parametrize("phase", MECHANICAL_PHASES)
+    def test_mechanical_phase_hands_off_long_op(self, phase: str) -> None:
+        # REQ-816 s2 + REQ-809: a mechanical directive returns a LongOpSpec in
+        # handoff_payload (log under /tmp/opencode, timeout>=240, cleanup set)
+        # for the orchestrator shell — the glue never waits on it.
+        directive = PhaseDirective(
+            phase_id=phase, scope=f"{phase}-scope", payload={}
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.phase_id == phase
+        assert result.handoff_payload is not None
+        spec = LongOpSpec(**result.handoff_payload)
+        assert spec.command
+        assert spec.log_path.startswith("/tmp/opencode/")
+        assert spec.timeout >= 240
+        assert spec.cleanup, "long-op handoff MUST carry a cleanup command (D5)"
+        assert result.evidence["stage"] == _expected_stage(phase)
+
+    def test_mechanical_phase_never_runs_stage_inline(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # REQ-809: the glue must NOT run the mechanical stage inline — it
+        # returns the runnable script for the orchestrator shell.
+        calls: list[tuple[object, ...]] = []
+        monkeypatch.setattr(delegation_module, "_run_sdk_stage", _recording_stage(calls))
+        directive = PhaseDirective(
+            phase_id="dispatch", scope="dispatch-scope", payload={}
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.handoff_payload is not None
+        assert calls == [], "mechanical stage ran inline — REQ-809 forbids waiting"
+
+    def test_retest_long_run_hands_off(self) -> None:
+        # REQ-816: retest hands off via LongOpSpec when the run is long.
+        directive = PhaseDirective(
+            phase_id="retest", scope="retest-scope", payload={"long_op": True}
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.handoff_payload is not None
+        spec = LongOpSpec(**result.handoff_payload)
+        assert spec.timeout >= 240
+        assert spec.cleanup
+
+    def test_retest_short_run_runs_inline(self) -> None:
+        # REQ-816: a short retest runs inline (no handoff). The retester stage
+        # with a config that has no retest block returns immediately.
+        directive = PhaseDirective(
+            phase_id="retest",
+            scope="retest-scope",
+            payload={"artifacts": {"research_config": {}}},
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.handoff_payload is None
+        assert result.phase_id == "retest"
+
+    def test_live_ops_folds_guardian_report(self) -> None:
+        # REQ-816: live-ops delegates to the guardian surface via
+        # execute_guardian_directive(); the GuardianReport is folded into
+        # evidence and never adds a flow stage (no handoff).
+        directive = PhaseDirective(
+            phase_id="live-ops",
+            scope="live-ops-scope",
+            payload={"kind": "live_ops_status", "campaign_id": "c1"},
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.phase_id == "live-ops"
+        assert result.handoff_payload is None
+        report = result.evidence["guardian_report"]
+        assert isinstance(report, dict)
+        assert "live_ops_status" in report
+        assert "guardian_state" in report

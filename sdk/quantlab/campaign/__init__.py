@@ -13,7 +13,9 @@ from quantlab.campaign.delegation import (  # noqa: F401
     AuthorityViolationError,
     LongOpSpec,
     PHASE_AGENTS,
+    PRODUCTION_EXECUTORS,
     PhaseDirective,
+    PhaseExecutor,
     PhaseNotFoundError,
     PhaseResult,
     execute_phase,
@@ -34,10 +36,12 @@ __all__ = [
     "FlowIntegrityError",
     "assert_flow",
     "missing_flow_stages",
-    # Delegation glue (REQ-801..REQ-804, REQ-809)
+    # Delegation glue (REQ-801..REQ-804, REQ-809, REQ-815)
     "PhaseDirective",
     "PhaseResult",
     "PHASE_AGENTS",
+    "PRODUCTION_EXECUTORS",
+    "PhaseExecutor",
     "execute_phase",
     "validate_phase_result",
     "PhaseNotFoundError",
