@@ -38,6 +38,12 @@ from typing import Optional
 import yaml
 
 from quantlab.tools.exceptions import ParseError
+from quantlab.robustness.circuit_breaker import CircuitBreaker
+from quantlab.robustness.knowledge_health import (
+    HealthCheckResult,
+    HealthStatus,
+    KnowledgeStoreHealthCheck,
+)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -203,8 +209,18 @@ class KnowledgeStore:
         warnings = store.validate_formats()
     """
 
-    def __init__(self, root: str | Path = "knowledge") -> None:
+    def __init__(
+        self, root: str | Path = "knowledge", circuit_breaker: CircuitBreaker | None = None
+    ) -> None:
         self.root = Path(root).resolve()
+
+        # ── Robustness integration (advanced-robustness 3.3, REQ-403) ─────────
+        # Writes are protected by a CircuitBreaker: when the circuit is OPEN,
+        # writes are buffered in-memory (bounded FIFO) instead of hitting disk.
+        # ``health_check`` replays buffered writes once the store is writable.
+        self._circuit_breaker = circuit_breaker or CircuitBreaker()
+        self._write_buffer: list[dict[str, str]] = []
+        self._buffer_max_size = 1000
 
     # ── Initialisation ─────────────────────────────────────────────────────────
 
@@ -240,6 +256,75 @@ class KnowledgeStore:
             gitkeep = sub_path / GITKEEP_FILENAME
             if not gitkeep.exists():
                 gitkeep.write_text("", encoding="utf-8")
+
+    # ── Write buffering with circuit breaker (advanced-robustness 3.3) ───────
+
+    def _check_write_circuit(self, path: str, content: str) -> None:
+        """Write ``content`` to ``path`` when the circuit is CLOSED.
+
+        When the circuit breaker is OPEN (or HALF_OPEN), the write is
+        buffered in ``_write_buffer`` (bounded FIFO) instead of hitting
+        disk.  Buffered writes are replayed by :meth:`_replay_buffer`
+        or :meth:`health_check`.
+        """
+        if self._circuit_breaker.state == "CLOSED":
+            target = self.root / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+            return
+
+        if len(self._write_buffer) >= self._buffer_max_size:
+            self._write_buffer.pop(0)
+        self._write_buffer.append({"path": path, "content": content})
+
+    def _replay_buffer(self) -> None:
+        """Replay buffered writes to disk, preserving any that still fail.
+
+        Writes that succeed are removed from the buffer; writes that raise
+        an ``OSError`` (e.g. read-only store) are kept for a later replay.
+        """
+        remaining: list[dict[str, str]] = []
+        for entry in self._write_buffer:
+            try:
+                target = self.root / entry["path"]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(entry["content"], encoding="utf-8")
+            except OSError:
+                remaining.append(entry)
+        self._write_buffer = remaining
+
+    async def health_check(self) -> "HealthCheckResult":
+        """Probe store writability and replay buffered writes.
+
+        Runs a ``KnowledgeStoreHealthCheck`` probe against this store; on a
+        healthy probe, buffered writes are replayed to disk.  Unlike a
+        circuit close, a healthy probe does **not** change the circuit
+        breaker state — recovery is driven by the circuit's own timeout.
+        """
+        check = KnowledgeStoreHealthCheck(self)
+        result = await check.check()
+        if result.status == HealthStatus.HEALTHY:
+            self._replay_buffer()
+        return result
+
+    # ── Async I/O interface (used by KnowledgeStoreHealthCheck) ───────────────
+
+    async def write(self, path: str, content: str) -> None:
+        """Write ``content`` to ``path`` under the store root (async I/O)."""
+        target = self.root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+
+    async def read(self, path: str) -> str:
+        """Read and return the text at ``path`` under the store root."""
+        target = self.root / path
+        return target.read_text(encoding="utf-8")
+
+    async def delete(self, path: str) -> None:
+        """Delete the file at ``path`` under the store root, if present."""
+        target = self.root / path
+        if target.exists():
+            target.unlink()
 
     # ── Pipeline Run History ───────────────────────────────────────────────────────
 
@@ -382,14 +467,19 @@ class KnowledgeStore:
             if entries:
                 directories[dir_name] = entries
 
-        # Build base index dict (v4 — reconciled layout, REQ-403)
+        # Build base index dict (v5 — reconciled layout, REQ-403; v5 adds
+        # campaign-phase, parameter-matrix, guardian-feedback, maintenance)
         doc: dict[str, object] = {
             "_generated": now_iso,
-            "_version": "4",
+            "_version": "5",
             "directories": directories,
             "agent_memory": self._build_agent_memory_index(),
             "kb_parameters": self._build_kb_parameters_index(),
             "version_events": self._build_version_events_index(),
+            "campaign_phases": {},
+            "parameter_matrix": {},
+            "guardian_feedback": {},
+            "maintenance": {},
         }
 
         # Enhance with campaign metrics/tags/links via Indexer (if available)

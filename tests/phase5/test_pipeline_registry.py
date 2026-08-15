@@ -64,6 +64,8 @@ class TestStageRegistry:
             "archiver",
             # PR 4 canonical live-ops phase (REQ-01 phase 14, REQ-6)
             "live_ops",
+            # jForex indicator export stage
+            "indicator_export",
         }
         assert set(registry._stage_map.keys()) == expected_stages
 

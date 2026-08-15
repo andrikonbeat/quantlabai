@@ -71,24 +71,55 @@ from quantlab.phase4.retester import (
 from quantlab.phase4.models import CampaignPhase, PhaseResult, PhaseStatus
 
 # Phase 3 — Campaign Orchestrator (guarded: requires pipeline framework)
-try:
-    from quantlab.phase4.campaign_orchestrator import (
-        CampaignOrchestrator,
-        CampaignConfig,
-        CampaignResult,
-        run_campaign,
-    )
-    from quantlab.phase4.checkpoint import (
-        CampaignCheckpoint,
-        CheckpointManager,
-    )
-except ImportError:
-    CampaignOrchestrator = None  # type: ignore[assignment]
-    CampaignConfig = None
-    CampaignResult = None
-    run_campaign = None
-    CampaignCheckpoint = None
-    CheckpointManager = None
+# Imported lazily (PEP 562) so importing any phase4 submodule — e.g. daemon or
+# retester, which the pipeline package pulls in during its own initialization —
+# does not trigger campaign_orchestrator -> quantlab.pipeline while the pipeline
+# package may still be partially initialized (circular import). The names stay
+# importable from ``quantlab.phase4`` and resolve to None only when the pipeline
+# framework is genuinely unavailable.
+_ORCHESTRATOR_IMPORTED = False
+
+
+def __getattr__(name: str):
+    global _ORCHESTRATOR_IMPORTED
+    if name in {
+        "CampaignOrchestrator",
+        "CampaignConfig",
+        "CampaignResult",
+        "run_campaign",
+        "CampaignCheckpoint",
+        "CheckpointManager",
+    }:
+        if not _ORCHESTRATOR_IMPORTED:
+            try:
+                from quantlab.phase4.campaign_orchestrator import (
+                    CampaignOrchestrator,
+                    CampaignConfig,
+                    CampaignResult,
+                    run_campaign,
+                )
+                from quantlab.phase4.checkpoint import (
+                    CampaignCheckpoint,
+                    CheckpointManager,
+                )
+            except ImportError:
+                CampaignOrchestrator = None  # type: ignore[assignment]
+                CampaignConfig = None
+                CampaignResult = None
+                run_campaign = None
+                CampaignCheckpoint = None
+                CheckpointManager = None
+            globals().update(
+                CampaignOrchestrator=CampaignOrchestrator,
+                CampaignConfig=CampaignConfig,
+                CampaignResult=CampaignResult,
+                run_campaign=run_campaign,
+                CampaignCheckpoint=CampaignCheckpoint,
+                CheckpointManager=CheckpointManager,
+                _ORCHESTRATOR_IMPORTED=True,
+            )
+        return globals()[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     # Errors

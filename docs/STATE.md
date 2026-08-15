@@ -162,7 +162,8 @@ Validación completa de las dos capas de QuantLab:
   validó `assert_flow(PHASES)` (14 fases), parseo de `examples/research-config.yaml`
   (EURUSD H1, 4 hipótesis, 5 gates), `BuildConfig` (3 blocks), CFX dry-run
   (`_output/*.cfx.json`), `ConfigReviewStage` → **APPROVE**, y CLI dry-run exit 0.
-  Los 4 gates humanos (`HUMAN_APPROVE_CONFIG/DEPLOY/DEMO/ARCHIVE`) confirmados
+  Los 4 gates humanos (`HUMAN_APPROVE_CONFIG`, `HUMAN_APPROVE_DEPLOY`,
+  `HUMAN_APPROVE_DEMO`, `HUMAN_APPROVE_ARCHIVE`) confirmados
   **fail-closed** (sin decisión → HOLD). Sin daemon real, sin gates respondidos.
 - **Fixes aplicados en esta sesión** (absorbidos por `fe49a6f`):
   - `sdk/pyproject.toml`: `ta>=0.11` + `jinja2>=3.0` en deps core; extra

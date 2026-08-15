@@ -44,7 +44,7 @@ Chain strategy: stacked-to-main
 
 - [ ] 3.1 Create `sdk/quantlab/robustness/llm_circuit_breaker.py` — `LLMCircuitBreaker` wrapping `call_llm()`, configurable threshold, fallback guard
 - [ ] 3.2 Modify `sdk/quantlab/agents/llm_research_agent.py` — wrap `call_llm()` with `LLMCircuitBreaker`, skip LLM when OPEN, log warning
-- [ ] 3.3 Modify `sdk/quantlab/knowledge/store.py` — add `health_check()`, write buffering when circuit OPEN, bounded buffer with eviction
+- [x] 3.3 Modify `sdk/quantlab/knowledge/store.py` — add `health_check()`, write buffering when circuit OPEN, bounded buffer with eviction
 - [ ] 3.4 Modify `sdk/quantlab/agents/autonomous_monitor.py` — integrate `KnowledgeStoreHealthCheck` into heartbeat, `STORE_UNHEALTHY` alert, `store_health` in status
 - [ ] 3.5 Modify `sdk/quantlab/gates/notifiers.py` — add `ResilientNotifier` import/export
 

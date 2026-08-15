@@ -21,7 +21,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 README = REPO_ROOT / "README.md"
-STATE = REPO_ROOT / "STATE.md"
+STATE = REPO_ROOT / "docs" / "STATE.md"
 
 PHASE_CHAIN = (
     "research → hypothesis → config → review → dispatch → monitor → retest → "

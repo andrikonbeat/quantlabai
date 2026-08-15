@@ -137,8 +137,12 @@ def _research_config(retest=None, optimize=None) -> ResearchConfig:
     )
 
 
-def _ctx(research_config: ResearchConfig, **artifacts) -> PipelineContext:
-    return PipelineContext(config={}, artifacts={"research_config": research_config, **artifacts})
+def _ctx(research_config: ResearchConfig, **kwargs) -> PipelineContext:
+    config = kwargs.pop("config", {})
+    return PipelineContext(
+        config=config,
+        artifacts={"research_config": research_config, **kwargs},
+    )
 
 
 # ── REQ-17: StageRegistry registration ────────────────────────────────────────
@@ -195,7 +199,21 @@ class TestRetesterStage:
             confidence_level=0.9,
         )
         stage = RetesterStage(retester=fake)
-        ctx = _ctx(_research_config(retest=block))
+        # REQ-1 (parameter-justification-matrix): fields that deviate from the
+        # retest defaults need an explicit rationale or the stage blocks.
+        ctx = _ctx(
+            _research_config(retest=block),
+            config={
+                "rationale_overrides": {
+                    "databanks": "targeted EURUSD_H1 databank for the retest",
+                    "monte_carlo_runs": "reduced 50 runs for a quick retest",
+                    "mc_percentile": "90th percentile focus",
+                    "walkforward_cycles": "3 cycles for bounded retest",
+                    "min_trades": "min 20 trades for signal robustness",
+                    "confidence_level": "90% confidence for the retest",
+                }
+            },
+        )
 
         result = await stage.execute(ctx)
 

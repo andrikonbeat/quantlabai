@@ -112,7 +112,7 @@ class TestKnowledgeStoreIndex:
         # Should have a valid structure
         assert "directories" in index
         assert "_generated" in index
-        assert index["_version"] == "4"  # Post-Indexer version (REQ-403)
+        assert index["_version"] == "5"  # Post-Indexer version (REQ-403)
 
     def test_missing_index_is_rebuilt(self, tmp_path: Path) -> None:
         """If index.yaml doesn't exist, read_index rebuilds it."""
@@ -223,16 +223,15 @@ class TestKnowledgeStoreInitBase:
 class TestKnowledgeStoreReconciledLayout:
     """REQ-101/REQ-402: structured/ hosts the reconciled sub-layouts."""
 
-    def test_fresh_init_creates_three_structured_sub_layouts(self, tmp_path: Path) -> None:
+    def test_fresh_init_creates_all_structured_sub_layouts(self, tmp_path: Path) -> None:
         """GIVEN a fresh knowledge/ path
         WHEN the system initializes the Knowledge Lake
-        THEN the 3 structured sub-layout skeletons are created with .gitkeep.
-        """
+        THEN every canonical structured sub-layout skeleton exists with .gitkeep."""
         root = tmp_path / "knowledge"
         store = KnowledgeStore(root)
         store.initialize()
 
-        assert len(STRUCTURED_SUB_LAYOUTS) == 3
+        assert len(STRUCTURED_SUB_LAYOUTS) == 7
         for rel in STRUCTURED_SUB_LAYOUTS:
             sub = root / rel
             assert sub.is_dir(), f"sub-layout {rel} was not created"
@@ -263,13 +262,13 @@ class TestKnowledgeStoreReconciledLayout:
         assert keep.read_text(encoding="utf-8") == "key: value\n"
 
 
-class TestKnowledgeStoreIndexV4:
-    """REQ-403: rebuild_index bumps to v4 and covers the reconciled areas."""
+class TestKnowledgeStoreIndexV5:
+    """REQ-403: rebuild_index bumps to v5 and covers the reconciled areas."""
 
-    def test_rebuild_index_is_v4_with_new_areas(self, tmp_path: Path) -> None:
+    def test_rebuild_index_is_v5_with_new_areas(self, tmp_path: Path) -> None:
         """GIVEN campaigns, agent-memory, and sqx-kb entries
         WHEN rebuild_index() runs
-        THEN index.yaml is version 4 and includes entries for each area."""
+        THEN index.yaml is version 5 and includes entries for each area."""
         root = tmp_path / "knowledge"
         store = KnowledgeStore(root)
         store.initialize()
@@ -294,9 +293,13 @@ class TestKnowledgeStoreIndexV4:
 
         index = store.rebuild_index()
 
-        assert index["_version"] == "4"
+        assert index["_version"] == "5"
         assert "kb_parameters" in index
         assert "version_events" in index
+        assert "campaign_phases" in index
+        assert "parameter_matrix" in index
+        assert "guardian_feedback" in index
+        assert "maintenance" in index
         assert any("sqx-kb" in key for key in index["kb_parameters"])
         assert any("sqx-version" in key for key in index["version_events"])
         assert "agent-memory/research-director/campaign-7/memory.yaml" in index["agent_memory"]
@@ -323,12 +326,12 @@ class TestKnowledgeStoreIndexV4:
 
         index = store.read_index()
 
-        assert index["_version"] == "4"
+        assert index["_version"] == "5"
         assert "directories" in index
         assert index["kb_parameters"] == {}
         assert index["version_events"] == {}
 
-    def test_v2_index_upgraded_to_v4(self, tmp_path: Path) -> None:
+    def test_v2_index_upgraded_to_v5(self, tmp_path: Path) -> None:
         root = tmp_path / "knowledge"
         store = KnowledgeStore(root)
         store.initialize()
@@ -347,11 +350,15 @@ class TestKnowledgeStoreIndexV4:
 
         index = store.read_index()
 
-        assert index["_version"] == "4"
+        assert index["_version"] == "5"
         assert index["kb_parameters"] == {}
         assert index["version_events"] == {}
+        assert index["campaign_phases"] == {}
+        assert index["parameter_matrix"] == {}
+        assert index["guardian_feedback"] == {}
+        assert index["maintenance"] == {}
 
-    def test_v3_index_upgraded_to_v4(self, tmp_path: Path) -> None:
+    def test_v3_index_upgraded_to_v5(self, tmp_path: Path) -> None:
         root = tmp_path / "knowledge"
         store = KnowledgeStore(root)
         store.initialize()
@@ -370,9 +377,13 @@ class TestKnowledgeStoreIndexV4:
 
         index = store.read_index()
 
-        assert index["_version"] == "4"
+        assert index["_version"] == "5"
         assert index["kb_parameters"] == {}
         assert index["version_events"] == {}
+        assert index["campaign_phases"] == {}
+        assert index["parameter_matrix"] == {}
+        assert index["guardian_feedback"] == {}
+        assert index["maintenance"] == {}
 
 
 class TestIndexerReconciledRead:

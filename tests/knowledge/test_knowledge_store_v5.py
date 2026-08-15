@@ -71,7 +71,7 @@ class TestKnowledgeStoreV5Initialize:
 
         raw = index_path.read_text(encoding="utf-8")
         data = yaml.safe_load(raw)
-        assert data["_version"] == "4"
+        assert data["_version"] == "5"
 
         index = store.read_index()
         assert index["_version"] == "5"

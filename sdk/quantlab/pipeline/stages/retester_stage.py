@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 from quantlab.dsl.models import ResearchConfig, RetestBlock
-from quantlab.phase4.retester import Retester, RetesterConfig
 from quantlab.pipeline.base import PipelineContext, Stage
 
 
@@ -44,6 +43,8 @@ class RetesterStage(Stage):
 
     def _build_config(self, block: RetestBlock) -> RetesterConfig:
         """Mirror the DSL ``retest`` block into a ``RetesterConfig``."""
+        from quantlab.phase4.retester import RetesterConfig
+
         return RetesterConfig(
             strategy_id=block.strategy_id,
             databanks=list(block.databanks),
@@ -73,6 +74,8 @@ class RetesterStage(Stage):
 
         retester = self._retester
         if retester is None:  # pragma: no cover - exercised by integration
+            from quantlab.phase4.retester import Retester
+
             retester = Retester(sqx_install_path=self._sqx_install_path)
 
         # DSL retest block takes precedence; a CFX path (no DSL block) sources
@@ -80,6 +83,8 @@ class RetesterStage(Stage):
         if block is not None:
             config = self._build_config(block)
         else:
+            from quantlab.phase4.retester import RetesterConfig
+
             config = RetesterConfig.from_cfx(self._cfx_path)
         # REQ-1 (parameter-justification-matrix): the retest run produces a
         # matrix; a parameter deviating from its retest default without a

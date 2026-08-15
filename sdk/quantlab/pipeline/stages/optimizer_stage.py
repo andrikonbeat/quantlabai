@@ -14,7 +14,6 @@ from __future__ import annotations
 from typing import Any
 
 from quantlab.dsl.models import OptimizeBlock, ResearchConfig
-from quantlab.phase4.optimizer import Optimizer, OptimizerConfig
 from quantlab.pipeline.base import PipelineContext, Stage
 
 
@@ -43,6 +42,8 @@ class OptimizerStage(Stage):
 
     def _build_config(self, block: OptimizeBlock) -> OptimizerConfig:
         """Mirror the DSL ``optimize`` block into an ``OptimizerConfig``."""
+        from quantlab.phase4.optimizer import OptimizerConfig
+
         return OptimizerConfig(
             strategy_id=block.strategy_id,
             method=block.method,
@@ -73,6 +74,8 @@ class OptimizerStage(Stage):
 
         optimizer = self._optimizer
         if optimizer is None:  # pragma: no cover - exercised by integration
+            from quantlab.phase4.optimizer import Optimizer
+
             optimizer = Optimizer(sqx_install_path=self._sqx_install_path)
 
         config = self._build_config(block)

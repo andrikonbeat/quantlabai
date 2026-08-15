@@ -254,16 +254,20 @@ class MockSQXHandler(BaseHTTPRequestHandler):
 
         strategies = [
             {
+                # Deterministic, clean strategy — guaranteed to pass the
+                # AnalysisAgent overfit heuristics so E2E pipeline wiring
+                # tests always produce a non-empty selected_strategies:
+                # trades >= min_trades, MC p10 >= 0, OOS/IS >= 0.7.
                 "Name": "strat_alpha",
-                "Profit Factor": round(random.uniform(1.5, 2.5), 2),
-                "Sharpe Ratio": round(random.uniform(1.0, 2.0), 2),
-                "Win Rate": round(random.uniform(0.45, 0.65), 2),
-                "Trades": random.randint(80, 200),
-                "Max DD": round(random.uniform(5.0, 15.0), 2),
-                "MC p10": round(random.uniform(-500, 500), 2),
-                "WF IS Sharpe": round(random.uniform(1.5, 2.5), 2),
-                "WF OOS Sharpe": round(random.uniform(1.2, 2.0), 2),
-                "WF Cycles": random.choice([0, 12]),
+                "Profit Factor": 1.8,
+                "Sharpe Ratio": 1.5,
+                "Win Rate": 0.55,
+                "Trades": 120,
+                "Max DD": 12.0,
+                "MC p10": 50.0,
+                "WF IS Sharpe": 2.0,
+                "WF OOS Sharpe": 1.6,
+                "WF Cycles": 12,
             },
             {
                 "Name": "strat_beta",

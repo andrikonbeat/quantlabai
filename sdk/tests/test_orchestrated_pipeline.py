@@ -171,7 +171,7 @@ class TestOrchestratedGateWiring:
 
         assert "HUMAN_APPROVE_CONFIG" in gate_ids
         assert "HUMAN_APPROVE_DEMO" in gate_ids
-        assert len(gate_ids) == 7
+        assert len(gate_ids) == 8
         idx_gate = names.index("gate_HUMAN_APPROVE_CONFIG")
         assert names.index("config_review") < idx_gate < names.index("dispatch")
         idx_demo = names.index("gate_HUMAN_APPROVE_DEMO")

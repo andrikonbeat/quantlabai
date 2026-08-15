@@ -88,7 +88,9 @@ class TestCampaignsEndpoint:
         assert data["success"] is True
         assert isinstance(data["data"], list)
 
-    def test_campaigns_returns_empty_list_when_no_campaigns(self, client):
+    def test_campaigns_returns_empty_list_when_no_campaigns(self, store_client):
+        """Isolated lake: no seeded campaigns means an empty list (hermetic)."""
+        client, _store = store_client
         resp = client.get("/api/campaigns")
         data = resp.get_json()
         assert data["data"] == []
