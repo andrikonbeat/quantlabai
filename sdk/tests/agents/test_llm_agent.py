@@ -160,6 +160,188 @@ class TestCallLLM:
                 provider="anthropic", model="claude-3",
             ))
 
+    @pytest.mark.asyncio
+    async def test_opencode_calls_local_cli_not_zen_api(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """provider='opencode' invokes the local opencode binary (not the HTTP Zen API).
+
+        Verifies the built command shape and that NDJSON events are parsed into
+        the final assistant text.
+        """
+        captured: dict[str, Any] = {}
+
+        def fake_run(cmd: list[str], **kwargs: Any) -> Any:
+            captured["cmd"] = cmd
+            captured["kwargs"] = kwargs
+            return type(
+                "Completed",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": (
+                        '{"type":"step_start","part":{"type":"step-start"}}\n'
+                        '{"type":"text","part":{"type":"text","text":"OK"}}\n'
+                        '{"type":"step_finish","part":{"type":"step-finish",'
+                        '"reason":"stop"}}\n'
+                    ),
+                    "stderr": "",
+                },
+            )()
+
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.subprocess.run", fake_run
+        )
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.shutil.which",
+            lambda _name: "/home/ogzuz/.opencode/bin/opencode",
+        )
+
+        llm_config = LLMConfig(provider="opencode")
+        result = await agent.call_llm("test prompt", llm_config)
+
+        assert result == "OK"
+        cmd = captured["cmd"]
+        assert cmd[0] == "/home/ogzuz/.opencode/bin/opencode"
+        assert cmd[1] == "run"
+        assert cmd[2] == "--format"
+        assert cmd[3] == "json"
+        assert cmd[4] == "-m"
+        assert cmd[5] == "opencode/deepseek-v4-flash-free"
+        assert cmd[-1] == "test prompt"
+        assert captured["kwargs"].get("capture_output") is True
+
+    @pytest.mark.asyncio
+    async def test_opencode_missing_binary_raises_clear_error(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When the opencode binary is not in PATH, raise a clear RuntimeError."""
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.shutil.which",
+            lambda _name: None,
+        )
+        llm_config = LLMConfig(provider="opencode")
+        with pytest.raises(RuntimeError, match="opencode CLI not found"):
+            await agent.call_llm("test prompt", llm_config)
+
+    @pytest.mark.asyncio
+    async def test_opencode_nonzero_exit_raises(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A failing opencode run surfaces stderr in the raised error."""
+        def fake_run(cmd: list[str], **kwargs: Any) -> Any:
+            return type(
+                "Completed",
+                (),
+                {
+                    "returncode": 1,
+                    "stdout": "",
+                    "stderr": "boom",
+                },
+            )()
+
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.subprocess.run", fake_run
+        )
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.shutil.which",
+            lambda _name: "/home/ogzuz/.opencode/bin/opencode",
+        )
+        llm_config = LLMConfig(provider="opencode")
+        with pytest.raises(RuntimeError, match="boom"):
+            await agent.call_llm("test prompt", llm_config)
+
+    @pytest.mark.asyncio
+    async def test_opencode_no_text_events_raises(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """opencode run that emits no text events raises a clear error."""
+        def fake_run(cmd: list[str], **kwargs: Any) -> Any:
+            return type(
+                "Completed",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": '{"type":"step_start","part":{"type":"step-start"}}\n',
+                    "stderr": "",
+                },
+            )()
+
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.subprocess.run", fake_run
+        )
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.shutil.which",
+            lambda _name: "/home/ogzuz/.opencode/bin/opencode",
+        )
+        llm_config = LLMConfig(provider="opencode")
+        with pytest.raises(RuntimeError, match="no text output"):
+            await agent.call_llm("test prompt", llm_config)
+
+    @pytest.mark.asyncio
+    async def test_opencode_accumulates_multiple_text_events(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Multiple text events are joined into a single response string."""
+        def fake_run(cmd: list[str], **kwargs: Any) -> Any:
+            return type(
+                "Completed",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": (
+                        '{"type":"text","part":{"type":"text","text":"Hello"}}\n'
+                        '{"type":"text","part":{"type":"text","text":"world"}}\n'
+                        '{"type":"step_finish","part":{"type":"step-finish",'
+                        '"reason":"stop"}}\n'
+                    ),
+                    "stderr": "",
+                },
+            )()
+
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.subprocess.run", fake_run
+        )
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.shutil.which",
+            lambda _name: "/home/ogzuz/.opencode/bin/opencode",
+        )
+        llm_config = LLMConfig(provider="opencode")
+        result = await agent.call_llm("test prompt", llm_config)
+        assert result == "Hello\nworld"
+
+    @pytest.mark.asyncio
+    async def test_opencode_explicit_model_prefix_preserved(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An explicit model already prefixed with 'opencode/' is not doubled."""
+        captured: dict[str, Any] = {}
+
+        def fake_run(cmd: list[str], **kwargs: Any) -> Any:
+            captured["cmd"] = cmd
+            return type(
+                "Completed",
+                (),
+                {
+                    "returncode": 0,
+                    "stdout": (
+                        '{"type":"text","part":{"type":"text","text":"OK"}}\n'
+                    ),
+                    "stderr": "",
+                },
+            )()
+
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.subprocess.run", fake_run
+        )
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.shutil.which",
+            lambda _name: "/home/ogzuz/.opencode/bin/opencode",
+        )
+        llm_config = LLMConfig(provider="opencode", model="opencode/big-pickle")
+        await agent.call_llm("test prompt", llm_config)
+        assert captured["cmd"][5] == "opencode/big-pickle"
+
 
 class TestGenerateConfigFallback:
     """generate_config() fallback to classic ResearchAgent on LLM failure."""

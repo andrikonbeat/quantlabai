@@ -172,6 +172,13 @@ Validación completa de las dos capas de QuantLab:
     `os.environ.get(llm_config.api_key_env)` (patrón de `llm_generation_monitor.py`);
     soporta OpenCode Zen (`OPENCODE_API_KEY`, `deepseek-v4-flash-free`).
   - `.env.example` / `README.md`: `SQX_INSTALL_PATH` real + requisito `pip>=26`.
+- **Modo orquestado es el correcto**: la campaña LLM-driven corre con los
+  subagentes OpenCode (`quantlab-orchestrator` → `quantlab-campaign` →
+  `quantlab-phase-*`), que consumen el modelo LLM activo del usuario en
+  OpenCode — sin API key propia. El stage `research_llm` / `LLMConfig` es SOLO
+  para el modo autónomo/headless del SDK (CLI, servidor, CI): con
+  `provider="opencode"` sus defaults apuntan a OpenCode Zen free
+  (`https://opencode.ai/zen/v1`, `deepseek-v4-flash-free`, `OPENCODE_API_KEY`).
 - **Pendiente externo**: llamada LLM real a OpenCode Zen devuelve 429
   (`FreeUsageLimitError`, cuota free) — bloqueo temporal, no es defecto.
 

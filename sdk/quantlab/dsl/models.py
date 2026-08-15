@@ -141,9 +141,16 @@ class LLMConfig(BaseModel):
     Provider validation ensures only known vendors are accepted.
     ``api_key_env`` is auto-derived from the provider name when not explicitly set.
 
+    ``provider="opencode"`` targets the **OpenCode Zen** free tier by default:
+    ``base_url`` defaults to ``https://opencode.ai/zen/v1`` and ``model`` to
+    ``deepseek-v4-flash-free`` (both overridable explicitly). This is the
+    standalone/headless SDK research path; the orchestrated campaign flow
+    consumes the OpenCode subagent's own model and never needs an API key.
+
     Attributes:
         provider: LLM provider name (``"openai"``, ``"anthropic"``, or ``"opencode"``).
-        model: Model identifier (e.g. ``"gpt-4"``, ``"claude-3-opus-20240229"``).
+        model: Model identifier (e.g. ``"gpt-4"``, ``"claude-3-opus-20240229"``,
+            ``"deepseek-v4-flash-free"``).
         api_key_env: Environment variable holding the API key.
         base_url: Optional custom API base URL (e.g. for Ollama, OpenCode local).
         temperature: Sampling temperature 0.0–2.0 (default 0.7).
@@ -157,6 +164,10 @@ class LLMConfig(BaseModel):
         "anthropic": "ANTHROPIC_API_KEY",
         "opencode": "OPENCODE_API_KEY",
     }
+    # OpenCode Zen free-tier defaults for provider="opencode" (standalone/headless
+    # SDK research only). Explicit values always win.
+    _OPENCODE_ZEN_BASE_URL: str = "https://opencode.ai/zen/v1"
+    _OPENCODE_ZEN_MODEL: str = "deepseek-v4-flash-free"
 
     provider: str = Field(
         default="openai",
@@ -166,7 +177,9 @@ class LLMConfig(BaseModel):
     api_key_env: str = Field(default="OPENAI_API_KEY", description="Env var for the API key")
     base_url: str | None = Field(
         default=None,
-        description="Custom API base URL (e.g. http://localhost:11434/v1 for Ollama)",
+        description="Custom API base URL. For provider='opencode' this defaults "
+        "to OpenCode Zen (https://opencode.ai/zen/v1); pass e.g. "
+        "http://localhost:11434/v1 to override with a local Ollama server",
     )
     temperature: float = Field(
         default=0.7, ge=0.0, le=2.0, description="Sampling temperature 0.0–2.0"
@@ -194,9 +207,14 @@ class LLMConfig(BaseModel):
         # If api_key_env is the default string, derive it; otherwise respect explicit value
         if self.api_key_env == "OPENAI_API_KEY" and self.provider != "openai":
             self.api_key_env = derived
-        # OpenCode default: use any available key or empty for local models
-        if self.provider == "opencode" and self.base_url is None:
-            self.base_url = "http://localhost:11434/v1"
+        # OpenCode Zen defaults: point the standalone SDK research path at the
+        # free OpenCode Zen endpoint + model. An explicit base_url/model is
+        # preserved; only the unset (or field-default) value is replaced.
+        if self.provider == "opencode":
+            if self.base_url is None or self.base_url == "":
+                self.base_url = self._OPENCODE_ZEN_BASE_URL
+            if self.model == "gpt-4":  # field default → Zen free model
+                self.model = self._OPENCODE_ZEN_MODEL
         return self
 
 
