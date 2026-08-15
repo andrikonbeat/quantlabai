@@ -19,8 +19,8 @@ from quantlab.customproject.models import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GOLDEN_E2E = (
-    REPO_ROOT
-    / "assets"
+    Path.home()
+    / "Proyectos"
     / "SQX_144_2953_linux_20260601"
     / "user"
     / "projects"
