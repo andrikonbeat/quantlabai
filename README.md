@@ -212,6 +212,16 @@ Each phase returns the Result Contract envelope (`status`,
 `executive_summary`, `artifacts`, `next_recommended`, `risks`). A failed phase
 halts the loop for a human decision.
 
+> **Migration note (REQ-817)**: the legacy root script `_run_campaign.py`
+> (which built the non-orchestrated pipeline) is retired. The single campaign
+> entry point is the CLI `campaign run-flow`
+> (`python3 -m quantlab.cli campaign run-flow --json`), which runs the full
+> 14-phase orchestrated flow. Any harness or doc referencing `_run_campaign.py`
+> SHALL point to `campaign run-flow` instead. Per-phase execution inside the
+> orchestrated loop is bridged by
+> `python3 sdk/quantlab/campaign/phase_runner.py --phase <name> --directive '<json>'`
+> (REQ-818).
+
 Assets are versioned in-repo:
 
 - `ai/opencode/agents/campaign.md` — the campaign agent prompt
