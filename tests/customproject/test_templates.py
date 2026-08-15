@@ -41,7 +41,7 @@ from quantlab.cfx.reader import CfxReader
 from quantlab.cfx.writer import CfxWriter
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SQX_ROOT = REPO_ROOT / "assets" / "SQX_144_2953_linux_20260601"
+SQX_ROOT = Path.home() / "Proyectos" / "SQX_144_2953_linux_20260601"
 
 STANDARD_DATABANKS = [
     DatabankSpec(name="Results"),

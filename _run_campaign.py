@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 # Resolve SQX install path: SQX_PATH env var wins, fall back to repo-relative assets
-_DEFAULT_SQX = str(Path(__file__).resolve().parent / "assets" / "SQX_144_2953_linux_20260601")
+_DEFAULT_SQX = str(Path.home() / "Proyectos" / "SQX_144_2953_linux_20260601")
 SQX_PATH = str(Path(os.environ.get("SQX_PATH", _DEFAULT_SQX)).resolve())
 os.environ.setdefault("SQX_INSTALL_PATH", SQX_PATH)
 os.environ.setdefault("JAVA_HOME", f"{SQX_PATH}/j64")

@@ -32,7 +32,7 @@ research.yaml ──→ [dsl/parser] ──→ ResearchConfig ──→ [transla
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.11+ (Python 3.14 requires `pip >= 26` — upgrade with `python -m pip install -U pip` if resolution fails)
 - [uv](https://github.com/astral-sh/uv) (recommended) or pip
 
 ### Setup
@@ -52,6 +52,30 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
+
+### StrategyQuant X (required for real backtests)
+
+The SDK runs fully in dry-run/mock mode without SQX, but real dispatch,
+backtests, retests, and optimization need a StrategyQuant X distribution.
+QuantLab discovers it through `SQX_INSTALL_PATH` (falling back to
+`--sqx-path` / `SQX_PATH`). Documented local install:
+
+```bash
+export SQX_INSTALL_PATH="$HOME/Proyectos/SQX_144_2953_linux_20260601"
+export SQX_PORT=5050
+```
+
+`sqcli` lives at `$SQX_INSTALL_PATH/sqcli`; the bundled JDK is at
+`$SQX_INSTALL_PATH/j64`. Set these in `.env` (see `.env.example`) or your
+shell profile. Without a valid install, keep `SQX_FORCE_MOCK=1` for tests
+and dry runs — the real SQX daemon binds port 5050 and can block the suite.
+
+> **Repo layout note**: the install lives outside the repo (HGN-02 — it is a
+> local tool dependency, never tracked). `assets/SQX_144_2953_linux_20260601`
+> is a **symlink** to the real install at `~/Proyectos/SQX_144_2953_linux_20260601`
+> so legacy `assets/SQX_*` paths keep resolving. The symlink is git-ignored
+> (`.gitignore` uses `assets/SQX_*` without a trailing slash — git does not
+> match symlinks with directory patterns).
 
 ## Quick Start
 

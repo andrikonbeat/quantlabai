@@ -21,7 +21,7 @@ QuantLab AI provides a quantitative research SDK with these key components:
 | `quantlab.dsl` | ResearchConfig DSL (markets, timeframes, building blocks, criteria) | ~175 |
 | `quantlab.translate` | ResearchConfig → CFX archive factory | ~340 |
 
-**Real SQX**: `/home/ogzuz/Proyectos/QuantLab AI/assets/SQX_144_2953_linux_20260601/sqcli`
+**Real SQX**: `/home/ogzuz/Proyectos/QuantLab AI//home/ogzuz/Proyectos/SQX_144_2953_linux_20260601/sqcli`
 
 ---
 

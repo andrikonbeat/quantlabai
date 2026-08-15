@@ -5,7 +5,7 @@ in order, each gated by human confirmation. The campaign start assertion MUST
 abort with a flow-integrity error when a phase is dropped, reordered, merged,
 or unknown — never reorder or skip (fail-closed, REQ-37 scenario 2).
 
-The same canonical list is declared in ``AI/opencode/agents/campaign.md``; the
+The same canonical list is declared in ``ai/opencode/agents/campaign.md``; the
 doc must never drift from the code (REQ-37 "asserted at campaign start and
 after any harness change").
 """
@@ -134,7 +134,7 @@ class TestCampaignDoc:
     """REQ-37: the campaign.md doc declares the same canonical phases."""
 
     def _doc_phases(self) -> tuple[str, ...]:
-        doc = Path("AI/opencode/agents/campaign.md").read_text(encoding="utf-8")
+        doc = Path("ai/opencode/agents/campaign.md").read_text(encoding="utf-8")
         match = re.search(r"PHASES\s*=\s*\((.*?)\)", doc, re.DOTALL)
         assert match is not None, "campaign.md must declare the PHASES tuple"
         body = match.group(1)
@@ -152,7 +152,7 @@ class TestCampaignDoc:
         """GIVEN the campaign agent instructions
         THEN they mandate the flow-integrity assert at campaign start
         AND aborting on any dropped/reordered phase (REQ-37)."""
-        doc = Path("AI/opencode/agents/campaign.md").read_text(encoding="utf-8")
+        doc = Path("ai/opencode/agents/campaign.md").read_text(encoding="utf-8")
         assert "assert_flow" in doc
         assert "FlowIntegrityError" in doc
 

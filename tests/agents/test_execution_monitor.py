@@ -43,7 +43,7 @@ class FakeClock:
 
 def _config(campaign_id: str = "campaign-x") -> PhaseConfig:
     return PhaseConfig(
-        sqx_install_path="assets/SQX_144_2953_linux_20260601",
+        sqx_install_path="/home/ogzuz/Proyectos/SQX_144_2953_linux_20260601",
         campaign_id=campaign_id,
         force_mock=True,
     )

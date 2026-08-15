@@ -42,7 +42,7 @@ when the seed composition changes.
 ## 2. How to Seed (real install)
 
 Prerequisites: the pinned install tree exists at
-`assets/SQX_144_2953_linux_20260601/` (with `user/projects/Builder/project.cfx`
+`/home/ogzuz/Proyectos/SQX_144_2953_linux_20260601/` (with `user/projects/Builder/project.cfx`
 and `user/settings/Configs/DJ CFD H1.cfx`), and `docs/sqx-builder-config/SQX Builder Config.md`
 is present.
 
@@ -132,7 +132,7 @@ Golden snapshot (all present under `knowledge/`):
 ## 5. Regenerating the Educational Table / Dataset
 
 The table cross-references the real builder template
-(`assets/SQX_144_2953_linux_20260601/internal/web/BUILDER/templates/tpl_build.xml`)
+(`/home/ogzuz/Proyectos/SQX_144_2953_linux_20260601/internal/web/BUILDER/templates/tpl_build.xml`)
 against the seeded KB via the curated `TPL_KEY_MAP`; unmapped parameters are
 flagged `⚠ template-missing` and keep their KB status (nothing invented).
 
@@ -160,7 +160,7 @@ cd sdk
 python3 -m quantlab.cli.main sqx kb get "Genetic options/Max # of Generations" --knowledge-root ../knowledge
 
 # 2. Check the evidence file exists and is a real .cfx container
-unzip -l ../assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
+unzip -l ..//home/ogzuz/Proyectos/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx
 # expected: a Config.xml member rides inside the ZIP
 
 # 3. Cross-check the curated mapping (project.cfx, 67 params)
@@ -168,7 +168,7 @@ grep -c "Max # of Generations" sdk/quantlab/knowledge/kb/seeding_flow.py
 ```
 
 Expected values for this parameter: `status: verified`,
-`evidence_ref: assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx`.
+`evidence_ref: /home/ogzuz/Proyectos/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx`.
 Trading-options params such as **Friday Close Time** map to
 `user/settings/Configs/DJ CFD H1.cfx` instead (7 params). Parameters with no
 install evidence (e.g. `Strategy style`, `Use`, `Number of Exit Types (SL/PT/etc...)`)

@@ -56,7 +56,7 @@ def _cfg(
     client=None,
 ) -> PhaseConfig:
     return PhaseConfig(
-        sqx_install_path="assets/SQX_144_2953_linux_20260601",
+        sqx_install_path="/home/ogzuz/Proyectos/SQX_144_2953_linux_20260601",
         campaign_id=campaign_id,
         project=f"{campaign_id}.cfx",
         poll_interval=0.3,
@@ -144,7 +144,7 @@ class TestChainedLegacyParity:
             b"",
             campaign_id=campaign_id,
             config={},
-            sqx_install_path="assets/SQX_144_2953_linux_20260601",
+            sqx_install_path="/home/ogzuz/Proyectos/SQX_144_2953_linux_20260601",
             poll_interval=0.3,
             timeout=20.0,
             force_mock=True,

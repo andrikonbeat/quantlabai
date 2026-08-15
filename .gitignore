@@ -49,7 +49,10 @@ knowledge/raw/*
 databanks/
 # SQX distribution (local tool dependency, kept on external volume; see HGN-02)
 assets/SQX_*.zip
-assets/SQX_*/
+assets/SQX_*
+# NOTE: no trailing slash — the repo-local assets/SQX_* entry is a symlink to
+# the real install (~/Proyectos/SQX_144_2953_linux_20260601) and git does not
+# treat directory patterns with a trailing slash as matching symlinks.
 
 # Logs
 *.log

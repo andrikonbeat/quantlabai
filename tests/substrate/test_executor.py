@@ -62,7 +62,7 @@ def _build_config(
     project: str | None = None,
 ) -> PhaseConfig:
     return PhaseConfig(
-        sqx_install_path="assets/SQX_144_2953_linux_20260601",
+        sqx_install_path="/home/ogzuz/Proyectos/SQX_144_2953_linux_20260601",
         campaign_id=campaign_id,
         project=project or f"{campaign_id}.cfx",
         poll_interval=poll_interval,
@@ -118,7 +118,7 @@ class TestMockParity:
             b"",  # cfx bytes unused by mock dispatch
             campaign_id=campaign_id,
             config={},
-            sqx_install_path="assets/SQX_144_2953_linux_20260601",
+            sqx_install_path="/home/ogzuz/Proyectos/SQX_144_2953_linux_20260601",
             poll_interval=0.3,
             timeout=20.0,
             force_mock=True,

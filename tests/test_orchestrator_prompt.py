@@ -1,6 +1,6 @@
 """RED tests for WU-9: quantlab-campaign harness + orchestrator routing (REQ-01, REQ-02, REQ-16).
 
-The harness deliverable lives in-repo under ``AI/opencode/`` (REQ-02) and is
+The harness deliverable lives in-repo under ``ai/opencode/`` (REQ-02) and is
 wired from the OpenCode config (``~/.config/opencode/``).  These tests assert:
 
 - the orchestrator prompt routes campaign intents to ``quantlab-campaign``
@@ -35,8 +35,8 @@ OPENCODE_DIR = Path.home() / ".config" / "opencode"
 ORCHESTRATOR_PROMPT = OPENCODE_DIR / "prompts" / "quantlab" / "orchestrator.md"
 OPENCODE_JSON = OPENCODE_DIR / "opencode.json"
 
-CAMPAIGN_AGENT_PROMPT = REPO_ROOT / "AI" / "opencode" / "agents" / "campaign.md"
-CAMPAIGN_SKILL = REPO_ROOT / "AI" / "opencode" / "skills" / "quantlab-run-campaign" / "SKILL.md"
+CAMPAIGN_AGENT_PROMPT = REPO_ROOT / "ai" / "opencode" / "agents" / "campaign.md"
+CAMPAIGN_SKILL = REPO_ROOT / "ai" / "opencode" / "skills" / "quantlab-run-campaign" / "SKILL.md"
 CONFIG_YAML = REPO_ROOT / "openspec" / "config.yaml"
 
 SDD_SKILLS = ["sdd-spec", "sdd-design", "sdd-tasks", "sdd-apply", "sdd-verify", "sdd-archive"]

@@ -167,6 +167,10 @@ Desglose (pre-existente, NO causado por la reorg de docs):
 ## 🔧 Comandos Útiles
 
 ```bash
+# Configuración de SQX (instalación real, fuera del repo)
+export SQX_INSTALL_PATH="$HOME/Proyectos/SQX_144_2953_linux_20260601"
+export SQX_PORT=5050
+
 # Tests completos (ambos árboles, con mock)
 SQX_FORCE_MOCK=1 python -m pytest -q
 

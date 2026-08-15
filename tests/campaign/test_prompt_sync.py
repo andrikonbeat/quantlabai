@@ -1,9 +1,9 @@
 """REQ-806/807/810: prompt sync idempotency, parity, and allowlist classification.
 
-The repo directory ``AI/opencode/agents/`` is the single source of truth for
+The repo directory ``ai/opencode/agents/`` is the single source of truth for
 the campaign prompt and all phase prompts (REQ-806). The live copies under
 ``~/.config/opencode/prompts/quantlab/`` are generated from it by
-``AI/opencode/sync_prompts.py``; hand-editing live prompts is not permitted.
+``ai/opencode/sync_prompts.py``; hand-editing live prompts is not permitted.
 
 These tests assert:
 
@@ -30,8 +30,8 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SYNC_SCRIPT = REPO_ROOT / "AI" / "opencode" / "sync_prompts.py"
-REPO_AGENTS = REPO_ROOT / "AI" / "opencode" / "agents"
+SYNC_SCRIPT = REPO_ROOT / "ai" / "opencode" / "sync_prompts.py"
+REPO_AGENTS = REPO_ROOT / "ai" / "opencode" / "agents"
 LIVE_PROMPTS = Path.home() / ".config" / "opencode" / "prompts" / "quantlab"
 
 
@@ -140,7 +140,7 @@ class TestLiveParity:
     """REQ-807 "Parity holds": repo-canonical prompts match live byte-for-byte.
 
     This is the "Live prompt never hand-edited" contract: a mismatch is a sync
-    miss, not a manual edit — run ``python3 AI/opencode/sync_prompts.py``.
+    miss, not a manual edit — run ``python3 ai/opencode/sync_prompts.py``.
     """
 
     def test_managed_allowlist_defined(self) -> None:
@@ -158,7 +158,7 @@ class TestLiveParity:
             live_file = LIVE_PROMPTS / name
             assert live_file.is_file(), f"managed prompt missing live copy: {name}"
             assert live_file.read_bytes() == repo_file.read_bytes(), (
-                f"parity drift in {name} — run AI/opencode/sync_prompts.py"
+                f"parity drift in {name} — run ai/opencode/sync_prompts.py"
             )
 
     def test_non_managed_live_prompts_outside_allowlist(self) -> None:

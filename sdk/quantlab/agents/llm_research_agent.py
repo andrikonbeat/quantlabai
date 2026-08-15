@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any
 
 from quantlab.agents.prompts import PROMPT_TEMPLATES
@@ -403,6 +404,9 @@ class LLMResearchAgent:
                 }
                 if llm_config.base_url:
                     kwargs["base_url"] = llm_config.base_url
+                api_key = os.environ.get(llm_config.api_key_env)
+                if api_key:
+                    kwargs["api_key"] = api_key
 
                 client = AsyncOpenAI(**kwargs)
                 response = await client.chat.completions.create(

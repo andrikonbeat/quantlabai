@@ -35,7 +35,7 @@ HALT_EVENTS = [{"event_type": "stall", "severity": "CRITICAL"}]
 
 def _cfg(campaign_id: str, export_dir: Path, checkpoint_root: Path | None, on_stall=None) -> PhaseConfig:
     return PhaseConfig(
-        sqx_install_path="assets/SQX_144_2953_linux_20260601",
+        sqx_install_path="/home/ogzuz/Proyectos/SQX_144_2953_linux_20260601",
         campaign_id=campaign_id,
         project=f"{campaign_id}.cfx",
         poll_interval=0.3,
