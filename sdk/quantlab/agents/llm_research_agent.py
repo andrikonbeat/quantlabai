@@ -15,12 +15,17 @@ import logging
 import os
 import shutil
 import subprocess
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from quantlab.agents.prompts import PROMPT_TEMPLATES
 from quantlab.agents.research_agent import ResearchAgent
+from quantlab.analysis.indicators import IndicatorEngine
+from quantlab.data.dukascopy.provider import DukascopyProvider
 from quantlab.data.fundamental.fred import FredProvider
 from quantlab.data.fundamental.yahoo import YahooFinanceProvider
+from quantlab.data.market.models import Bar
 from quantlab.dsl.models import (
     HypothesisConfig,
     LLMConfig,
@@ -45,6 +50,21 @@ logger = logging.getLogger(__name__)
 # Timeout for a single `opencode run` CLI invocation. The runtime boots
 # fully (agents, skills, plugins), so allow generous headroom.
 _OPENCODE_CLI_TIMEOUT: float = 300.0
+
+# G3 Dukascopy market context (llm-research delta): the compact zone set
+# rendered into the prompt. Zone labels only — raw series are omitted.
+DEFAULT_MARKET_INDICATORS: tuple[str, ...] = ("RSI", "ATR", "ADX")
+
+# Default timeframe when the research data carries no explicit one.
+_DEFAULT_MARKET_TIMEFRAME = "H1"
+
+
+@dataclass
+class _MarketContext:
+    """Fetched Dukascopy bars plus the rendered compact market block."""
+
+    bars: list[Bar]
+    block: str
 
 
 class LLMResearchAgent:
@@ -74,6 +94,7 @@ class LLMResearchAgent:
         self._fred: FredProvider | None = None
         self._web_search: Any = None
         self._rss_news: Any = None
+        self._dukascopy: DukascopyProvider | None = None
 
     # ── Provider lazy init ─────────────────────────────────────────────────────
 
@@ -116,6 +137,103 @@ class LLMResearchAgent:
             except ImportError:  # pragma: no cover
                 self._rss_news = None
         return self._rss_news
+
+    # ── G3 Dukascopy market data ────────────────────────────────────────────
+
+    def _get_dukascopy(self) -> DukascopyProvider | None:
+        """Lazily initialize the Dukascopy provider singleton.
+
+        Returns ``None`` when the provider cannot be constructed — the
+        market block is then omitted and research continues (llm-research
+        "Provider unavailable degrades").
+        """
+        if self._dukascopy is None:
+            try:
+                self._dukascopy = DukascopyProvider()
+            except Exception:
+                self._dukascopy = None
+        return self._dukascopy
+
+    def _market_bars(self, symbol: str, timeframe: str) -> list[Bar]:
+        """Fetch normalized bars for the market block (soft gap → ``[]``)."""
+        provider = self._get_dukascopy()
+        if provider is None:
+            return []
+        try:
+            return provider.fetch_bars(symbol, timeframe)
+        except Exception:
+            return []
+
+    @staticmethod
+    def _render_market_block(
+        symbol: str, timeframe: str, zones: list[dict[str, Any]]
+    ) -> str:
+        """Render the compact market block (zone labels only, no series)."""
+        lines = [
+            f"Market Context (Dukascopy/JForex4): {symbol} {timeframe}"
+        ]
+        for zone in zones:
+            lines.append(f"- {zone['indicator_name']}: {zone['zone']}")
+        return "\n".join(lines)
+
+    def _market_context(self, symbol: str, timeframe: str) -> _MarketContext | None:
+        """Fetch bars + IndicatorEngine zones for the market block.
+
+        Returns ``None`` on a provider gap (empty bars) so the caller
+        omits the block. Non-empty but too-short bars still produce a
+        block whose zones read ``insufficient_data`` (dukascopy-research-data
+        "Insufficient data yields insufficient_data").
+        """
+        bars = self._market_bars(symbol, timeframe)
+        if not bars:
+            return None
+        engine = IndicatorEngine()
+        zones = engine.compute(bars, list(DEFAULT_MARKET_INDICATORS))
+        block = self._render_market_block(symbol, timeframe, zones)
+        return _MarketContext(bars=bars, block=block)
+
+    async def cache_market_bars(
+        self,
+        symbol: str,
+        timeframe: str,
+        bars: list[Bar] | None = None,
+        knowledge_root: str | Path | None = None,
+    ) -> str | None:
+        """Cache fetched Dukascopy bars under ``knowledge/datasets/``.
+
+        Records the dataset via ``rebuild_index`` (knowledge-store delta
+        "Dataset Sample Caching"). Best-effort — never raises.
+
+        Args:
+            symbol: Base symbol (e.g. ``EURUSD``).
+            timeframe: FX timeframe (``M1``/``M5``/``H1``).
+            bars: Bars to cache; when omitted, re-fetches from the
+                Dukascopy provider.
+            knowledge_root: Lake root; defaults to the repo ``knowledge/``.
+
+        Returns:
+            The relative lake path (``datasets/{symbol}/{timeframe}.csv``),
+            or ``None`` when the fetch is a soft gap or the write fails.
+        """
+        if bars is None:
+            bars = self._market_bars(symbol, timeframe)
+        if not bars:
+            return None
+        try:
+            from quantlab.knowledge.store import KnowledgeStore
+
+            store = KnowledgeStore(root=Path(knowledge_root or "knowledge"))
+            rel = await store.cache_dataset(symbol, timeframe, bars)
+            store.rebuild_index()
+            return rel
+        except Exception as exc:
+            logger.warning(
+                "Failed to cache Dukascopy bars for %s %s: %s",
+                symbol,
+                timeframe,
+                exc,
+            )
+            return None
 
     # ── Task 2.5: fetch_data ────────────────────────────────────────────────────
 
@@ -363,6 +481,34 @@ class LLMResearchAgent:
             "a data_sources array."
         )
 
+        # F2 wiring: inject SQX reference section
+        try:
+            from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+
+            sqx_provider = SQXDocProvider()
+            sections.append(
+                "\nSQX Parameter Reference (authoritative):\n"
+                "- Indicator parameters MUST respect documented ranges and types.\n"
+                "- RSI period: [2, 200], default 14\n"
+                "- BB period: [2, 200], deviation: [0.1, 5.0], defaults 20/2.0\n"
+                "- EMA/SMA period: [2, 500], default 200\n"
+                "- ATR period: [2, 200], default 14\n"
+                "- MACD fast/slow/signal: [2, 200], defaults 12/26/9\n"
+                "When generating parameters, stay within these bounds."
+            )
+        except Exception:
+            pass
+
+        # G3: Dukascopy market context block — compact zone labels from
+        # IndicatorEngine, source cited. Omitted on a provider gap.
+        fund = data.get("fundamental", {})
+        symbol = fund.get("ticker") or data.get("ticker", "")
+        if symbol:
+            timeframe = data.get("timeframe") or _DEFAULT_MARKET_TIMEFRAME
+            market = self._market_context(symbol, timeframe)
+            if market is not None:
+                sections.append("\n" + market.block)
+
         return "\n".join(sections)
 
     # ── Task 2.5: call_llm ─────────────────────────────────────────────────────
@@ -587,6 +733,18 @@ class LLMResearchAgent:
                 )
             )
 
+        # F2 wiring: validate hypotheses against SQXDocProvider and drop invalid ones
+        try:
+            from quantlab.agents.parameter_validator import ParameterValidator
+
+            validator = ParameterValidator()
+            hypotheses = [
+                h for h in hypotheses
+                if validator.validate_hypothesis(h).valid
+            ]
+        except Exception:
+            pass
+
         # Parse building blocks
         building_blocks = data.get("building_blocks", [])
 
@@ -662,6 +820,7 @@ class LLMResearchAgent:
         objectives: list[str],
         market_context: dict[str, Any] | None = None,
         llm_config: LLMConfig | None = None,
+        knowledge_root: str | Path | None = None,
     ) -> ResearchConfig:
         """Generate a ``ResearchConfig`` using LLM-powered analysis.
 
@@ -694,12 +853,31 @@ class LLMResearchAgent:
                 objectives[0] if objectives else "",
                 market_context,
             )
+            fund_ticker: str = (
+                data.get("fundamental", {}).get("ticker")
+                or data.get("ticker", "")
+            )
 
             # Step 2: Build prompt
             prompt = self.build_prompt(
                 objectives[0] if objectives else "",
                 data,
             )
+
+            # G3: cache the fetched market sample (best-effort).
+            context = market_context or {}
+            cache_symbol = (
+                fund_ticker
+                or context.get("ticker")
+                or context.get("market")
+                or ""
+            )
+            if cache_symbol:
+                await self.cache_market_bars(
+                    cache_symbol,
+                    context.get("timeframe") or _DEFAULT_MARKET_TIMEFRAME,
+                    knowledge_root=knowledge_root,
+                )
 
             # Step 3: Call LLM through circuit breaker
             logger.debug(
