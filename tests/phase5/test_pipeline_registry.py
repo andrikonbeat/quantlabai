@@ -66,6 +66,8 @@ class TestStageRegistry:
             "live_ops",
             # jForex indicator export stage
             "indicator_export",
+            # PR 7 G2 custom-project builder stage (flow-ecosystem-alignment)
+            "custom_project",
         }
         assert set(registry._stage_map.keys()) == expected_stages
 

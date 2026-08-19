@@ -25,7 +25,7 @@ The central coordinator that manages the entire research pipeline lifecycle.
 - Optimization loop controller
 
 ### 2. Specialized Agents
-Eight domain-specific agents that perform distinct functions in the research workflow:
+Multiple specialized agents that perform distinct functions in the research workflow:
 
 | Agent | Primary Function | Key Outputs |
 |-------|------------------|-------------|
