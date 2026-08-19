@@ -29,34 +29,24 @@
       "description": "QuantLab campaign runner — executes and monitors trading campaigns",
       "hidden": true,
       "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        }
+      },
       "prompt": "{file:~/.config/opencode/prompts/quantlab/campaign.md}",
       "tools": {
         "bash": true,
         "edit": true,
         "read": true,
         "write": true
-      }
-    },
-    "quantlab-deploy": {
-      "description": "QuantLab deployment agent — manages JForex strategy deployments",
-      "hidden": true,
-      "mode": "subagent",
-      "prompt": "{file:~/.config/opencode/prompts/quantlab/deploy.md}",
-      "tools": {
-        "bash": true,
-        "edit": true,
-        "read": true,
-        "write": true
-      }
-    },
-    "quantlab-monitor": {
-      "description": "QuantLab monitor — watches campaign and deployment status",
-      "hidden": true,
-      "mode": "subagent",
-      "prompt": "{file:~/.config/opencode/prompts/quantlab/monitor.md}",
-      "tools": {
-        "bash": true,
-        "read": true
       }
     }
   }
