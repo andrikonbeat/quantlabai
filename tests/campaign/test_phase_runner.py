@@ -7,7 +7,8 @@ emits the validated ``PhaseResult`` envelope as JSON.
 
 Covers:
 - build_directive: strict JSON parsing; unknown phase -> PhaseNotFoundError;
-  malformed/non-object JSON rejected
+  malformed/non-object JSON rejected; D3 injection of knowledge_root +
+  campaign_id into the payload
 - run: round-trip directive -> validated PhaseResult; out-of-scope directive
   rejected before any SDK stage runs
 - main: --phase/--directive CLI, JSON envelope on stdout, exit codes
@@ -51,7 +52,23 @@ class TestBuildDirective:
         )
         assert d.phase_id == "research"
         assert d.scope == "research-scope"
-        assert d.payload == {"campaign_id": "c1"}
+        # D3: the runner injects knowledge_root alongside the caller payload.
+        assert d.payload == {"campaign_id": "c1", "knowledge_root": "knowledge"}
+
+    def test_injects_persistence_context_defaults_and_keeps_caller_values(
+        self,
+    ) -> None:
+        # D3: the runner always provides the persistence context — defaults
+        # apply when absent, caller-provided values win.
+        d = build_directive("research", '{"payload": {}}')
+        assert d.payload["knowledge_root"] == "knowledge"
+        assert d.payload["campaign_id"] == "campaign"
+
+        d2 = build_directive(
+            "research",
+            '{"payload": {"knowledge_root": "/tmp/lake", "campaign_id": "c9"}}',
+        )
+        assert d2.payload == {"knowledge_root": "/tmp/lake", "campaign_id": "c9"}
 
     def test_missing_scope_defaults_to_phase_scope(self) -> None:
         d = build_directive("optimize", '{"payload": {}}')
@@ -72,13 +89,19 @@ class TestBuildDirective:
 
 
 class TestRun:
-    def test_round_trip_research_directive(self) -> None:
+    def test_round_trip_research_directive(self, tmp_path: Path) -> None:
         # REQ-818 s1: the runner bridges a directive to the production executor
         # and returns a validated PhaseResult whose phase id matches. Classic
-        # fallback research is deterministic and pure.
+        # fallback research is deterministic and pure. The payload pins the
+        # Knowledge Lake root to tmp_path so the round trip stays hermetic
+        # (D3: the runner would otherwise inject the repo's default lake root).
         directive_json = json.dumps({
             "scope": "research-scope",
-            "payload": {"config": {"objectives": ["Research EURUSD H1"]}},
+            "payload": {
+                "campaign_id": "c1",
+                "knowledge_root": str(tmp_path),
+                "config": {"objectives": ["Research EURUSD H1"]},
+            },
         })
         result = asyncio.run(run("research", directive_json))
         validate_phase_result(result)
@@ -109,10 +132,17 @@ class TestRun:
 
 
 class TestMain:
-    def test_cli_round_trip_emits_json_envelope(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_cli_round_trip_emits_json_envelope(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         # REQ-818 s1: --phase/--directive emits a validated PhaseResult as JSON.
+        # The payload pins the lake root to tmp_path so the run stays hermetic.
         directive = json.dumps({
-            "payload": {"config": {"objectives": ["Research EURUSD H1"]}},
+            "payload": {
+                "campaign_id": "c1",
+                "knowledge_root": str(tmp_path),
+                "config": {"objectives": ["Research EURUSD H1"]},
+            },
         })
         code = main(["--phase", "research", "--directive", directive])
         out = json.loads(capsys.readouterr().out)

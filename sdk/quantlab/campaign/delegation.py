@@ -23,6 +23,7 @@ import dataclasses
 import json
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Awaitable, Callable
 
@@ -99,6 +100,26 @@ class PhaseResult:
     phase_id: str
     evidence: dict[str, Any] = field(default_factory=dict)
     handoff_payload: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class StageRunResult:
+    """Outcome + persistence metadata from :func:`_run_sdk_stage` (D1/D2).
+
+    Wraps the raw stage outcome with what the delegation layer actually
+    persisted, so a phase claims exactly the artifacts that exist on disk
+    (REQ-819 — a stage MUST NOT claim an artifact key it did not persist).
+
+    Attributes:
+        outcome: The stage outcome dict — unchanged contract; the handoff
+            report path (``run_stage_for_handoff``) returns ``.outcome``.
+        artifacts: Real relative Knowledge Lake paths persisted for this run.
+        risks: Degrade notes (e.g. missing ``campaign_id``/``knowledge_root``).
+    """
+
+    outcome: dict[str, Any]
+    artifacts: list[str]
+    risks: list[str]
 
 
 # ---------------------------------------------------------------------------
@@ -178,7 +199,166 @@ def _json_safe(value: Any) -> Any:
     return str(value)
 
 
-async def _run_sdk_stage(phase: str, payload: dict[str, Any]) -> dict[str, Any]:
+def _utc_now_iso() -> str:
+    """Current UTC time as a zero-padded ISO-8601 timestamp (Q2)."""
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+async def _persist_stage_success(
+    phase: str,
+    stage_name: str,
+    outcome: dict[str, Any],
+    payload: dict[str, Any],
+    started_at: str,
+) -> tuple[list[str], list[str]]:
+    """Persist the stage outcome + writer hooks + envelope (REQ-819, D1/D2).
+
+    D2: the claimed ``{phase}_{stage}.json`` key becomes a real file under
+    ``campaign-phases/{campaign_id}/{phase}/``, and the envelope lists real
+    relative paths only.  Q1 writer hooks: ``proposal.md`` on research,
+    ``spec.md`` on hypothesis/config (campaign-artifact-writers).
+
+    Args:
+        phase: Canonical ``PHASES`` entry.
+        stage_name: Resolved SDK stage name.
+        outcome: The stage outcome dict.
+        payload: ``PhaseDirective.payload`` — ``campaign_id`` + ``knowledge_root``
+            drive persistence (D3).
+        started_at: ISO start timestamp captured before the stage ran (Q2).
+
+    Returns:
+        ``(artifact_paths, risks)`` — real relative Knowledge Lake paths and
+        any degrade notes.  When ``campaign_id``/``knowledge_root`` are
+        missing, returns ``([], [gap-note])`` — nothing is claimed (REQ-819).
+
+    Raises:
+        OSError: When a lake write fails — the caller folds a failed envelope
+            and halts (REQ-802); a write failure is NEVER reported as success.
+    """
+    campaign_id = payload.get("campaign_id")
+    knowledge_root = payload.get("knowledge_root")
+    missing = [
+        key
+        for key in ("campaign_id", "knowledge_root")
+        if not payload.get(key)
+    ]
+    if missing:
+        return (
+            [],
+            [
+                f"{', '.join(missing)} missing — no stage artifacts "
+                "persisted (REQ-819)"
+            ],
+        )
+
+    from quantlab.knowledge.artifacts import (
+        write_proposal_artifact,
+        write_spec_artifact,
+    )
+    from quantlab.knowledge.store import KnowledgeStore
+
+    store = KnowledgeStore(root=str(knowledge_root))
+    outcome_rel = f"campaign-phases/{campaign_id}/{phase}/{phase}_{stage_name}.json"
+    await store.write(outcome_rel, json.dumps(_json_safe(outcome), indent=2))
+
+    artifacts = [outcome_rel]
+    # Q1 writer hooks — SDK-owned deterministic renders of the in-memory outcome.
+    if phase == "research":
+        rel = write_proposal_artifact(campaign_id, outcome, str(knowledge_root))
+    elif phase in ("hypothesis", "config"):
+        rel = write_spec_artifact(campaign_id, outcome, str(knowledge_root))
+    else:
+        rel = ""
+    if rel:
+        artifacts.append(rel)
+
+    # G7: a stage-owned deliverable (reviewer teaching table) is a real
+    # artifact only when its file actually exists (REQ-819 — never claim
+    # what was not persisted). The stage exposes the relative lake path as
+    # outcome["teaching_table"]; empty string degrades to no claim.
+    teaching_rel = outcome.get("teaching_table")
+    if (
+        teaching_rel
+        and isinstance(teaching_rel, str)
+        and (Path(str(knowledge_root)) / teaching_rel).is_file()
+    ):
+        artifacts.append(teaching_rel)
+
+    completed_at = _utc_now_iso()
+    try:
+        duration = (
+            datetime.fromisoformat(completed_at) - datetime.fromisoformat(started_at)
+        ).total_seconds()
+    except (TypeError, ValueError):
+        duration = None
+    store.save_phase_envelope(
+        campaign_id,
+        phase,
+        status="completed",
+        started_at=started_at,
+        completed_at=completed_at,
+        duration=duration,
+        artifacts=artifacts,
+        next_gate=_next_phase_id(phase),
+    )
+    return artifacts, []
+
+
+async def _persist_stage_failure(
+    phase: str,
+    stage_name: str,
+    payload: dict[str, Any],
+    started_at: str,
+    exc: Exception,
+) -> None:
+    """Best-effort failed envelope with the error log listed (REQ-819 s3).
+
+    A failed stage still leaves a durable record: ``envelope.json`` with
+    ``status="failed"``, the error log artifact listed, and ``next_gate="HOLD"``
+    (full-campaign-lifecycle REQ-3).  Never raises — the original exception
+    must propagate so folding halts (REQ-802).
+    """
+    campaign_id = payload.get("campaign_id")
+    knowledge_root = payload.get("knowledge_root")
+    if not campaign_id or not knowledge_root:
+        return
+    try:
+        from quantlab.knowledge.store import KnowledgeStore
+
+        store = KnowledgeStore(root=str(knowledge_root))
+        error_rel = f"campaign-phases/{campaign_id}/{phase}/{phase}_{stage_name}.error.json"
+        await store.write(
+            error_rel,
+            json.dumps(
+                {
+                    "phase": phase,
+                    "stage": stage_name,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                },
+                indent=2,
+            ),
+        )
+        store.save_phase_envelope(
+            campaign_id,
+            phase,
+            status="failed",
+            started_at=started_at,
+            completed_at=_utc_now_iso(),
+            artifacts=[error_rel],
+            error=str(exc),
+            next_gate="HOLD",
+        )
+    except OSError:
+        logger.warning(
+            "failed-envelope write for phase %s stage '%s' failed: %s",
+            phase,
+            stage_name,
+            exc,
+        )
+
+
+async def _run_sdk_stage(phase: str, payload: dict[str, Any]) -> StageRunResult:
     """Resolve and execute the SDK stage for *phase* (REQ-815/REQ-803).
 
     The stage class is looked up in the pipeline ``StageRegistry`` under the
@@ -186,17 +366,29 @@ async def _run_sdk_stage(phase: str, payload: dict[str, Any]) -> dict[str, Any]:
     registered fails closed with :class:`AuthorityViolationError` BEFORE any
     execution (deny-first, REQ-803).
 
+    D1: this single choke point — reached by both the inline reasoning
+    executors and the ``run_stage_for_handoff`` subprocess driver — persists
+    the stage outcome JSON + ``envelope.json`` via
+    :func:`_persist_stage_success` / :func:`_persist_stage_failure` and runs
+    the Q1 writer hooks, so every completed/failed stage leaves a durable
+    record (REQ-819, full-campaign-lifecycle REQ-3).
+
     Args:
         phase: Canonical ``PHASES`` entry.
         payload: ``PhaseDirective.payload`` — optional ``config`` and
-            ``artifacts`` sub-dicts feed the ``PipelineContext``.
+            ``artifacts`` sub-dicts feed the ``PipelineContext``; optional
+            ``campaign_id``/``knowledge_root`` drive persistence (D3).
 
     Returns:
-        The stage outcome dict (artifacts written into the context).
+        A :class:`StageRunResult` carrying the stage outcome plus the real
+        persisted artifact paths and any degrade notes (REQ-819 — only real
+        artifacts are claimed).
 
     Raises:
         AuthorityViolationError: If no stage class is registered for the
             resolved stage name.
+        Exception: Any stage/persistence error propagates after the failed
+            envelope is written, so folding halts (REQ-802).
     """
     stage_name = _stage_name_for_phase(phase)
     stage_class = _get_stage_registry().get_stage_class(stage_name)
@@ -208,11 +400,32 @@ async def _run_sdk_stage(phase: str, payload: dict[str, Any]) -> dict[str, Any]:
 
     from quantlab.pipeline.base import PipelineContext
 
+    # G7 (parameter-educational-table): merge the D3 persistence context —
+    # payload-level campaign_id/knowledge_root — into the stage config so
+    # reviewer-owned deliverables persist under the campaign (REQ-819).
+    config = dict(payload.get("config") or {})
+    for key in ("campaign_id", "knowledge_root"):
+        if payload.get(key) and key not in config:
+            config[key] = payload[key]
+
     ctx = PipelineContext(
-        config=dict(payload.get("config") or {}),
+        config=config,
         artifacts=dict(payload.get("artifacts") or {}),
     )
-    return await stage_class().execute(ctx)
+    started_at = _utc_now_iso()
+    try:
+        outcome = await stage_class().execute(ctx)
+    except Exception as exc:  # stage failure -> failed envelope, then re-raise
+        await _persist_stage_failure(phase, stage_name, payload, started_at, exc)
+        raise
+    try:
+        artifacts, risks = await _persist_stage_success(
+            phase, stage_name, outcome, payload, started_at
+        )
+    except OSError as exc:  # write failure -> failed envelope, never fake success
+        await _persist_stage_failure(phase, stage_name, payload, started_at, exc)
+        raise
+    return StageRunResult(outcome=outcome, artifacts=artifacts, risks=risks)
 
 
 def _next_phase_id(phase: str) -> str:
@@ -234,7 +447,7 @@ def _make_reasoning_executor() -> PhaseExecutor:
         phase = directive.phase_id
         stage = _stage_name_for_phase(phase)
         try:
-            outcome = await _run_sdk_stage(phase, directive.payload)
+            run = await _run_sdk_stage(phase, directive.payload)
         except AuthorityViolationError:
             raise
         except Exception as exc:  # stage failure -> failed envelope (REQ-802)
@@ -255,11 +468,11 @@ def _make_reasoning_executor() -> PhaseExecutor:
         return PhaseResult(
             status="success",
             executive_summary=f"{phase} phase completed — SDK stage '{stage}' ran",
-            artifacts=[f"{phase}_{stage}.json"],
+            artifacts=run.artifacts,
             next_recommended=_next_phase_id(phase),
-            risks=[],
+            risks=run.risks,
             phase_id=phase,
-            evidence={"stage": stage, "outcome": _json_safe(outcome)},
+            evidence={"stage": stage, "outcome": _json_safe(run.outcome)},
             handoff_payload=None,
         )
 
@@ -313,9 +526,12 @@ def _make_mechanical_executor(phase: str) -> PhaseExecutor:
             executive_summary=(
                 f"{phase} produced a long-running script for the orchestrator shell"
             ),
-            artifacts=[f"{phase}_handoff.json"],
+            artifacts=[],
             next_recommended="orchestrator-shell",
-            risks=["long operation delegated"],
+            risks=[
+                "long operation delegated — stage artifacts persist when the "
+                "orchestrator shell runs the handoff (REQ-819)"
+            ],
             phase_id=phase,
             evidence={"stage": stage, "handoff": True},
             handoff_payload=dataclasses.asdict(spec),
@@ -438,7 +654,8 @@ async def run_stage_for_handoff(phase: str, payload: dict[str, Any]) -> dict[str
     Returns:
         The stage outcome dict.
     """
-    outcome = await _run_sdk_stage(phase, payload)
+    run = await _run_sdk_stage(phase, payload)
+    outcome = run.outcome
     report = Path(f"/tmp/opencode/{phase}.report.md")
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(

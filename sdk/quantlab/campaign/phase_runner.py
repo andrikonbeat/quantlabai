@@ -56,7 +56,10 @@ def build_directive(phase: str, directive_json: str) -> PhaseDirective:
             ``previous_result`` keys.
 
     Returns:
-        A ``PhaseDirective`` for the phase.
+        A ``PhaseDirective`` for the phase.  D3: ``payload`` always carries
+        ``knowledge_root`` and ``campaign_id`` (caller values win; defaults
+        ``"knowledge"`` / ``"campaign"``), giving the delegation layer an
+        explicit persistence contract.
 
     Raises:
         PhaseNotFoundError: If *phase* is not in ``PHASES`` (rejected before
@@ -82,10 +85,18 @@ def build_directive(phase: str, directive_json: str) -> PhaseDirective:
     if isinstance(raw_previous, dict):
         previous_result = PhaseResult(**raw_previous)
 
+    payload = dict(data.get("payload") or {})
+    # D3: the runner injects the persistence context into the directive payload
+    # so the delegation layer has an explicit, testable contract (env vars are
+    # implicit and untestable).  Caller-provided values win; defaults mirror the
+    # CLI's Knowledge Lake root and the canonical fallback campaign id.
+    payload.setdefault("knowledge_root", "knowledge")
+    payload.setdefault("campaign_id", "campaign")
+
     return PhaseDirective(
         phase_id=phase,
         scope=str(data.get("scope") or f"{phase}-scope"),
-        payload=dict(data.get("payload") or {}),
+        payload=payload,
         previous_result=previous_result,
     )
 

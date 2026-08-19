@@ -11,11 +11,17 @@ Covers:
 - PRODUCTION_EXECUTORS registry completeness (REQ-815)
 - Executor gap fails closed (REQ-815 s2)
 - Hybrid delegation split: reasoning vs mechanical vs retest vs live-ops (REQ-816)
+- Stage artifact persistence (REQ-819 + campaign-artifact-writers): _run_sdk_stage
+  writes the outcome JSON + envelope, hooks proposal/spec writers per phase,
+  degrades on missing knowledge_root/campaign_id, folds write failures into a
+  failed envelope that halts folding, and re-runs idempotently
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
+from pathlib import Path
 
 import pytest
 
@@ -569,3 +575,326 @@ class TestHybridDelegationSplit:
         assert isinstance(report, dict)
         assert "live_ops_status" in report
         assert "guardian_state" in report
+
+
+# --- Stage artifact persistence (REQ-819 + campaign-artifact-writers) ---------
+
+
+class _FakeStageRegistry:
+    """StageRegistry stand-in resolving every name to a single fake class."""
+
+    def __init__(self, stage_class: object) -> None:
+        self._stage_class = stage_class
+
+    def get_stage_class(self, stage_name: str) -> object:
+        return self._stage_class
+
+
+def _make_fake_stage_class(
+    outcome: dict | None = None, error: Exception | None = None
+) -> type:
+    """Build a Stage stand-in with a fixed outcome or a raised error."""
+
+    class _Fake:
+        name = "fake"
+
+        def __init__(
+            self,
+            _outcome: dict | None = outcome,
+            _error: Exception | None = error,
+        ) -> None:
+            self._outcome = _outcome
+            self._error = _error
+
+        async def execute(self, ctx: object) -> dict:
+            if self._error is not None:
+                raise self._error
+            return self._outcome or {}
+
+    return _Fake
+
+
+def _patch_stage(monkeypatch: pytest.MonkeyPatch, stage_class: type) -> None:
+    """Force ``_run_sdk_stage`` to resolve *stage_class* for every stage name."""
+    monkeypatch.setattr(
+        delegation_module,
+        "_get_stage_registry",
+        lambda: _FakeStageRegistry(stage_class),
+    )
+
+
+class TestStageArtifactPersistence:
+    """REQ-819: ``_run_sdk_stage`` persists every claimed artifact to the lake.
+
+    D1: the envelope write happens inside ``_run_sdk_stage`` (the single choke
+    point reached by both the inline reasoning executors and the handoff
+    subprocess). D2: the claimed ``{phase}_{stage}.json`` key becomes a real
+    file under ``campaign-phases/{cid}/{phase}/`` and the envelope lists real
+    paths only. Q1: proposal.md is written on research, spec.md on
+    hypothesis/config.
+    """
+
+    def test_success_persists_envelope_and_outcome_file(
+        self, tmp_path: Path
+    ) -> None:
+        # REQ-819 s1 + campaign-artifact-writers "Claimed artifact becomes a
+        # file": a completed research stage leaves envelope.json + the outcome
+        # file + proposal.md, and every envelope artifact resolves on disk.
+        payload = {
+            "campaign_id": "camp_001",
+            "knowledge_root": str(tmp_path),
+            "config": {"objectives": ["Research EURUSD H1"]},
+        }
+        result = asyncio.run(delegation_module._run_sdk_stage("research", payload))
+
+        envelope_path = (
+            tmp_path / "campaign-phases" / "camp_001" / "research" / "envelope.json"
+        )
+        assert envelope_path.exists(), "envelope.json must exist after the stage"
+        assert (
+            tmp_path
+            / "campaign-phases"
+            / "camp_001"
+            / "research"
+            / "research_research_llm.json"
+        ).exists(), "the claimed outcome key must become a real file (D2)"
+
+        envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+        assert envelope["status"] == "completed"
+        assert envelope["phase"] == "research"
+        assert envelope["started_at"], "started_at captured in _run_sdk_stage (Q2)"
+        assert envelope["completed_at"], "completed_at captured in _run_sdk_stage (Q2)"
+        assert envelope["next_gate"] == "hypothesis"
+        assert envelope["artifacts"], "envelope must list the persisted artifacts"
+        for rel in envelope["artifacts"]:
+            assert (tmp_path / rel).exists(), (
+                f"envelope artifact '{rel}' must resolve to a real file"
+            )
+        # PhaseResult carries the same real paths — no synthetic claim (REQ-819).
+        assert result.artifacts == envelope["artifacts"]
+
+        # Q1 hook: research → proposal.md.
+        proposal = tmp_path / "structured" / "camp_001" / "proposal.md"
+        assert proposal.exists(), "research must persist proposal.md (Q1)"
+        text = proposal.read_text(encoding="utf-8")
+        assert "Campaign Proposal" in text
+        assert "## Research Configuration" in text
+        assert "## Hypotheses" in text
+
+    def test_proposal_hook_renders_research_outcome(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # campaign-artifact-writers "Research stage persists proposal": the
+        # writer renders research_config + hypothesis entries deterministically.
+        outcome = {
+            "research_config": {
+                "campaign": "camp_001",
+                "market": "EURUSD",
+                "timeframe": "H1",
+            },
+            "hypotheses": [{"id": "hyp_1", "statement": "momentum persists"}],
+            "sources": [{"title": "Paper A", "url": "https://example.com/a"}],
+        }
+        _patch_stage(monkeypatch, _make_fake_stage_class(outcome=outcome))
+        payload = {"campaign_id": "camp_001", "knowledge_root": str(tmp_path)}
+
+        asyncio.run(delegation_module._run_sdk_stage("research", payload))
+
+        text = (tmp_path / "structured" / "camp_001" / "proposal.md").read_text(
+            encoding="utf-8"
+        )
+        assert "# Campaign Proposal — camp_001" in text
+        assert "EURUSD" in text
+        assert "hyp_1" in text, "the proposal must render hypothesis entries"
+
+    def test_spec_hook_renders_hypothesis_outcome(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # campaign-artifact-writers "Spec written with empty hypotheses":
+        # hypothesis stage writes spec.md with config sections and an empty
+        # hypotheses section.
+        outcome = {
+            "building_blocks": [{"id": "bb_1"}],
+            "strategies": [{"id": "strat_1"}],
+            "hypotheses": [],
+        }
+        _patch_stage(monkeypatch, _make_fake_stage_class(outcome=outcome))
+        payload = {"campaign_id": "camp_001", "knowledge_root": str(tmp_path)}
+
+        asyncio.run(delegation_module._run_sdk_stage("hypothesis", payload))
+
+        text = (tmp_path / "structured" / "camp_001" / "spec.md").read_text(
+            encoding="utf-8"
+        )
+        assert "# Campaign Spec — camp_001" in text
+        assert "## Hypotheses" in text
+        assert "## Builder Configuration" in text
+        # Empty hypotheses render as an explicitly empty section, never a lie.
+        assert "(none)" in text
+
+    def test_spec_hook_renders_configuration_sections(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # Q1: spec.md on the config phase covers builder/retester/optimizer/
+        # portfolio configuration + acceptance criteria.
+        outcome = {
+            "build_config": {"entries": 3},
+            "cfx_bytes": b"CFX-archive",
+            "retest": {"rounds": 1},
+            "optimize": {"metric": "sharpe"},
+            "portfolio": {"targets": ["A"]},
+        }
+        _patch_stage(monkeypatch, _make_fake_stage_class(outcome=outcome))
+        payload = {"campaign_id": "camp_001", "knowledge_root": str(tmp_path)}
+
+        asyncio.run(delegation_module._run_sdk_stage("config", payload))
+
+        text = (tmp_path / "structured" / "camp_001" / "spec.md").read_text(
+            encoding="utf-8"
+        )
+        assert "## Builder Configuration" in text
+        assert "## Retester Configuration" in text
+        assert "## Optimizer Configuration" in text
+        assert "## Portfolio Configuration" in text
+
+    def test_missing_knowledge_root_records_risk_no_claim(
+        self, tmp_path: Path
+    ) -> None:
+        # campaign-phase-delegation "Missing knowledge_root degrades": the
+        # stage completes, the gap lands in risks, and nothing is claimed.
+        result = asyncio.run(
+            delegation_module._run_sdk_stage(
+                "research",
+                {
+                    "campaign_id": "camp_001",
+                    "config": {"objectives": ["Research EURUSD H1"]},
+                },
+            )
+        )
+        assert result.artifacts == [], (
+            "no artifact may be claimed without a knowledge_root"
+        )
+        assert any("knowledge_root" in risk for risk in result.risks)
+        assert not (tmp_path / "campaign-phases").exists()
+
+    def test_missing_campaign_id_records_risk_no_claim(
+        self, tmp_path: Path
+    ) -> None:
+        result = asyncio.run(
+            delegation_module._run_sdk_stage(
+                "research",
+                {
+                    "knowledge_root": str(tmp_path),
+                    "config": {"objectives": ["Research EURUSD H1"]},
+                },
+            )
+        )
+        assert result.artifacts == []
+        assert any("campaign_id" in risk for risk in result.risks)
+
+    def test_executor_never_claims_without_root(self) -> None:
+        # REQ-819 through the full executor path: a completed phase without a
+        # knowledge_root succeeds (stage ran) but claims no artifact and notes
+        # the gap in risks.
+        directive = PhaseDirective(
+            phase_id="research",
+            scope="research-scope",
+            payload={"config": {"objectives": ["Research EURUSD H1"]}},
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.status == "success"
+        assert result.artifacts == []
+        assert any("knowledge_root" in risk for risk in result.risks)
+
+    def test_failed_stage_leaves_failed_envelope_hold(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # campaign-phase-delegation "Failed stage still leaves an envelope":
+        # envelope.json carries failed status + the error log, next gate HOLD.
+        _patch_stage(
+            monkeypatch,
+            _make_fake_stage_class(error=RuntimeError("SQX error: backtest failed")),
+        )
+        directive = PhaseDirective(
+            phase_id="retest",
+            scope="retest-scope",
+            payload={"campaign_id": "camp_001", "knowledge_root": str(tmp_path)},
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.status == "failed"
+        assert result.next_recommended == "halt"
+        assert any("SQX error" in risk for risk in result.risks)
+
+        envelope_path = (
+            tmp_path / "campaign-phases" / "camp_001" / "retest" / "envelope.json"
+        )
+        assert envelope_path.exists(), "a failed stage must still leave an envelope"
+        envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+        assert envelope["status"] == "failed"
+        assert envelope["next_gate"] == "HOLD"
+        assert envelope["error"] and "SQX error" in envelope["error"]
+        assert envelope["artifacts"], "failed envelope must list the error log"
+        for rel in envelope["artifacts"]:
+            assert (tmp_path / rel).exists(), (
+                f"error log artifact '{rel}' must resolve to a real file"
+            )
+
+    def test_write_failure_folds_failed_and_halts(
+        self, tmp_path: Path
+    ) -> None:
+        # campaign-artifact-writers "Write failure is recorded": an unwritable
+        # lake folds into a failed envelope and folding halts (REQ-802) — never
+        # a fake success.
+        blocked = tmp_path / "blocked"
+        blocked.write_text("", encoding="utf-8")
+        directive = PhaseDirective(
+            phase_id="research",
+            scope="research-scope",
+            payload={
+                "campaign_id": "camp_001",
+                "knowledge_root": str(blocked),
+                "config": {"objectives": ["Research EURUSD H1"]},
+            },
+        )
+        result = asyncio.run(execute_phase(directive))
+        assert result.status == "failed", (
+            "a failed persistence MUST NOT masquerade as success (REQ-802)"
+        )
+        assert result.next_recommended == "halt"
+        assert result.risks, "the failure must be recorded in risks"
+
+    def test_rerun_is_idempotent(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # Task 2.6 REFACTOR: re-running the same stage overwrites deterministically
+        # — no duplication, no crash, identical final bytes.
+        outcome = {
+            "research_config": {"campaign": "camp_001", "market": "EURUSD"},
+            "hypotheses": [{"id": "hyp_1"}],
+        }
+        _patch_stage(monkeypatch, _make_fake_stage_class(outcome=outcome))
+        payload = {"campaign_id": "camp_001", "knowledge_root": str(tmp_path)}
+
+        first = asyncio.run(delegation_module._run_sdk_stage("research", payload))
+        outcome_file = (
+            tmp_path / "campaign-phases" / "camp_001" / "research"
+            / "research_research_llm.json"
+        )
+        first_bytes = outcome_file.read_bytes()
+        envelope_file = (
+            tmp_path / "campaign-phases" / "camp_001" / "research" / "envelope.json"
+        )
+        first_envelope = envelope_file.read_bytes()
+
+        second = asyncio.run(delegation_module._run_sdk_stage("research", payload))
+
+        assert first.artifacts == second.artifacts
+        assert outcome_file.read_bytes() == first_bytes, (
+            "re-run must overwrite the outcome deterministically"
+        )
+        assert envelope_file.read_bytes() == first_envelope, (
+            "re-run must overwrite the envelope deterministically"
+        )
+        assert (
+            tmp_path / "structured" / "camp_001" / "proposal.md"
+        ).exists()
