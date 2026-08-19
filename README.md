@@ -398,6 +398,13 @@ Query, tag, link, and export campaigns from the Knowledge Lake.
 | `quantlab knowledge link --list <campaign>` | List links |
 | `quantlab knowledge export --format csv|json --output file.csv` | Export query results |
 | `quantlab knowledge rebuild-index` | Rebuild knowledge index |
+| `quantlab sqx kb seed-ohlc [--symbols EURUSD] [--timeframes M1,M5,H1]` | Seed OHLC market data into Knowledge Lake (requires JForex4 history) |
+
+### Builder / CFX Flags
+
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `QUANTLAB_CUSTOM_PROJECT` | `1` (CustomProject) | `0` → legacy `.cfx` (schema 141.2219); `1` → `CustomProject` `.cfx` (schema 144.2953, per-task XML) |
 
 See [Knowledge Query Reference](docs/guides/knowledge-query.md) for filter syntax, API, and schema details.
 
