@@ -26,11 +26,12 @@ The system MUST provide a first-class `quantlab-guardian` subagent that executes
 
 ### Requirement: GUARDIAN Intent Routing (REQ-642)
 
-The orchestrator MUST route guardian intents (directives, live-ops status, feedback) to `quantlab-guardian` through a GUARDIAN route in its routing table. Non-guardian intents MUST NOT be dispatched to the agent.
+Both orchestrators MUST route guardian intents (directives, live-ops status, feedback) to `quantlab-guardian` through a GUARDIAN route in their routing tables. Non-guardian intents MUST NOT be dispatched to the agent.
+(Previously: only `quantlab-orchestrator` held the GUARDIAN route.)
 
 #### Scenario: Directives route to guardian
 
-- GIVEN the orchestrator routing table contains the GUARDIAN route
+- GIVEN the routing table of either orchestrator contains the GUARDIAN route
 - WHEN a guardian directive arrives
 - THEN it is dispatched to `quantlab-guardian`
 - AND no other agent receives it
@@ -40,7 +41,14 @@ The orchestrator MUST route guardian intents (directives, live-ops status, feedb
 - GIVEN an intent that is not guardian-related
 - WHEN the routing table evaluates it
 - THEN it does not match the GUARDIAN route
-- AND the orchestrator handles it
+- AND the owning orchestrator handles it
+
+#### Scenario: guardian-orchestrator routes to quantlab-guardian
+
+- GIVEN a live-ops evaluation intent routed to `guardian-orchestrator`
+- WHEN it dispatches
+- THEN it delegates to `quantlab-guardian` via `task`
+- AND the `GuardianReport` envelope returns (REQ-644)
 
 ### Requirement: Directive Intake (REQ-643)
 
