@@ -31,6 +31,15 @@ from quantlab.pipeline.stages.retester_stage import RetesterStage
 logger = logging.getLogger(__name__)
 
 
+class RegistryError(Exception):
+    """Raised when a stage name is not registered in the StageRegistry.
+
+    Registry is the authoritative source of stage types (pipeline-core delta,
+    G5): ``StageRegistry.lookup`` fails closed on unregistered names instead
+    of returning a silent ``None``.
+    """
+
+
 class StageRegistry:
     """Registry mapping stage type strings to concrete stage classes.
 
@@ -325,6 +334,11 @@ class StageRegistry:
             "statistics": StatisticsAgent,
             "review": ReviewerAgent,
             "monitor": MonitoringAgent,
+            # CustomProject builder (G2 dependency, REQ-G2): registered so
+            # build_pipeline can instantiate it once wired. This slice only
+            # registers the stage; the builder dispatch (legacy translator vs
+            # customproject/generator.py) lands in U7.
+            "custom_project": BuilderStage,
             # Guardian evaluation
             "guardian_evaluate": GuardianEvaluationAgentStage,
             # Monte Carlo simulation
@@ -393,6 +407,33 @@ class StageRegistry:
             )
         return stage_class
 
+    def lookup(self, stage_name: str) -> type[PipelineStage]:
+        """Return the stage class for a stage name, failing closed when absent.
+
+        The registry is the authoritative source of registered stage types
+        (pipeline-core delta, G5): a stage MUST be registered before
+        ``build_pipeline`` can use it. Unlike ``get_stage_class`` (which
+        returns ``None`` for backward compatibility), ``lookup`` raises
+        ``RegistryError`` for unregistered names so callers cannot silently
+        proceed with a missing stage.
+
+        Args:
+            stage_name: The stage name to resolve.
+
+        Returns:
+            The registered stage class.
+
+        Raises:
+            RegistryError: If the stage name is not registered.
+        """
+        stage_class = self._stage_map.get(stage_name)
+        if stage_class is None:
+            raise RegistryError(
+                f"Unknown stage '{stage_name}'. "
+                f"Available: {', '.join(sorted(self._stage_map.keys()))}"
+            )
+        return stage_class
+
     def list_stage_names(self) -> list[str]:
         """Return all registered stage names."""
         return list(self._stage_map.keys())
@@ -413,7 +454,7 @@ class StageRegistry:
         }
         agent_names = {
             "research", "research_llm", "builder", "analysis", "statistics", "review",
-            "portfolio", "deploy", "monitor",
+            "portfolio", "deploy", "monitor", "custom_project",
         }
         gate_names = {
             "gate", "gate_human_review_objectives", "gate_human_approve_iteration",

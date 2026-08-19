@@ -4,7 +4,7 @@ Reference guide for all agents in the Multi-Agent Research System.
 
 ## Overview
 
-The Multi-Agent Research System consists of 8 specialized agents that collaborate through a pipeline orchestrated by the ResearchDirector. Each agent has a specific responsibility and communicates through well-defined contracts.
+The Multi-Agent Research System consists of specialized agents that collaborate through a pipeline orchestrated by the ResearchDirector. Each agent has a specific responsibility and communicates through well-defined contracts. The canonical pipeline built by `build_pipeline` contains 16 stage entries non-orchestrated (11 agent stages + 5 gate stages), 25 orchestrated (17 agent + 8 gate), and 27 with retest/optimize blocks (19 agent + 8 gate).
 
 ## Agent Overview
 
@@ -27,7 +27,7 @@ The Multi-Agent Research System consists of 8 specialized agents that collaborat
 
 The ResearchDirector is the central orchestrator that:
 - Owns and manages the PipelineRunner
-- Constructs the 17-stage pipeline from ResearchConfig
+- Constructs the canonical pipeline from ResearchConfig (16 non-orchestrated / 25 orchestrated / 27 with retest-optimize entries)
 - Manages the complete campaign lifecycle (create → run → pause → resume → rollback)
 - Handles human gate callbacks and timeout/failover logic
 - Implements the objective optimization loop across iteration cycles

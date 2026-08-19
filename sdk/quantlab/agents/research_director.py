@@ -1,7 +1,8 @@
 """ResearchDirector — central orchestrator for multi-agent research campaigns.
 
-Owns ``PipelineRunner``, constructs the full 17-stage pipeline from
-``ResearchConfig``, manages campaign lifecycle (create → run → pause →
+Owns ``PipelineRunner``, constructs the canonical pipeline from
+``ResearchConfig`` (16 non-orchestrated entries, 25 orchestrated, 27 with
+retest/optimize), manages campaign lifecycle (create → run → pause →
 resume → rollback), handles human gate callbacks, and implements the
 objective optimisation loop across iteration cycles.
 """
@@ -224,10 +225,15 @@ class ResearchDirector:
         agent_config: Any = None,
         orchestrated: bool = False,
     ) -> Any:
-        """Build the full 8-agent pipeline with 5 gate stages from a config.
+        """Build the full pipeline from a config.
 
         Constructs a Pipeline with concrete agent stages in the correct order
         and injects gate interceptor stages at configured positions.
+        Stage count is derived from the config (code is authoritative):
+        - Non-orchestrated: 16 entries (11 agent stages + 5 gate stages)
+        - Orchestrated: 25 entries (17 agent stages + 8 gate stages)
+        - Orchestrated with retest/optimize blocks: 27 entries
+          (19 agent stages + 8 gate stages)
 
         Stage order: research_llm|research → hypothesis_builder → refutation → [gate1] → builder → statistics →
         review → [gate2] → portfolio → [gate3] → deploy → [gate4] → monitor → [gate5]
