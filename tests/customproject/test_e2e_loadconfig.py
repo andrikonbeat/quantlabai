@@ -87,14 +87,18 @@ class TestFastE2EPortion:
 
     def test_rollback_flag_keeps_legacy_path(self, monkeypatch):
         """QUANTLAB_CUSTOM_PROJECT=0 must route away from the custom generator
-        (legacy project_builder path stays untouched — AD-3)."""
-        monkeypatch.setenv("QUANTLAB_CUSTOM_PROJECT", "0")
+        (legacy project_builder path stays untouched — AD-3).
 
+        Default is CustomProject (1) after task 7.4 flips the default.
+        """
         from quantlab.customproject import generator as gen
 
-        # When the flag is off, the entry point is not invoked; legacy path wins.
-        # Assert the flag contract exists and is evaluated by the dispatch helper.
+        monkeypatch.delenv("QUANTLAB_CUSTOM_PROJECT", raising=False)
+        assert gen.is_custom_project_enabled() is True
+
+        monkeypatch.setenv("QUANTLAB_CUSTOM_PROJECT", "0")
         assert gen.is_custom_project_enabled() is False
+
         monkeypatch.setenv("QUANTLAB_CUSTOM_PROJECT", "1")
         assert gen.is_custom_project_enabled() is True
 

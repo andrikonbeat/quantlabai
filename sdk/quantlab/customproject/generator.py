@@ -17,10 +17,14 @@ from quantlab.customproject.models import CustomProject, DatabankSpec
 
 
 def is_custom_project_enabled(env: dict[str, str] | None = None) -> bool:
-    """Rollback gate (AD-3): ``QUANTLAB_CUSTOM_PROJECT=0`` keeps the legacy
-    single-task generator path (``sqx.project_builder``) untouched."""
+    """Rollback gate (AD-3): ``QUANTLAB_CUSTOM_PROJECT=1`` or unset enables the
+    CustomProject multi-task generator path (schema 144.2953); ``0`` keeps the
+    legacy single-task generator path (schema 141.2219).
+
+    Default is ``1`` (CustomProject) after task 7.4 flips the default.
+    """
     env = os.environ if env is None else env
-    return env.get("QUANTLAB_CUSTOM_PROJECT", "1") != "0"
+    return env.get("QUANTLAB_CUSTOM_PROJECT", "1") == "1"
 
 
 def _resolve_databanks(project: CustomProject) -> list[DatabankSpec]:
