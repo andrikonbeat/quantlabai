@@ -13,6 +13,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
+import subprocess
 from typing import Any
 
 from quantlab.agents.prompts import PROMPT_TEMPLATES
@@ -39,6 +41,10 @@ except ImportError:  # pragma: no cover
     RSSNewsProvider = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
+
+# Timeout for a single `opencode run` CLI invocation. The runtime boots
+# fully (agents, skills, plugins), so allow generous headroom.
+_OPENCODE_CLI_TIMEOUT: float = 300.0
 
 
 class LLMResearchAgent:
@@ -386,7 +392,10 @@ class LLMResearchAgent:
         """
         provider = llm_config.provider
 
-        if provider in ("openai", "opencode"):
+        if provider == "opencode":
+            return await self._call_opencode_cli(prompt, llm_config)
+
+        if provider == "openai":
             try:
                 import openai  # noqa: F811
             except ImportError:
@@ -430,6 +439,91 @@ class LLMResearchAgent:
                 f"Unsupported LLM provider '{provider}'. "
                 f"Supported: {', '.join(sorted(LLMConfig.VALID_PROVIDERS))}"
             )
+
+    async def _call_opencode_cli(
+        self,
+        prompt: str,
+        llm_config: LLMConfig,
+    ) -> str:
+        """Call the local OpenCode CLI instead of the HTTP Zen API.
+
+        OpenCode Zen's HTTP API rate-limits the free tier with HTTP 429
+        (``FreeUsageLimitError``). Calling the user's local ``opencode``
+        binary uses their already-authenticated login (OAuth), needs no
+        ``OPENCODE_API_KEY``, and does not hit the Zen quota.
+
+        Emits ``opencode run --format json -m <provider/model> "<prompt>"``
+        and parses the NDJSON event stream: assistant text lives in
+        ``type == "text"`` events under ``part.text``; the run ends with a
+        ``step_finish`` event.
+
+        Raises:
+            RuntimeError: If the opencode binary is missing, the run fails,
+                times out, or produces no text output.
+        """
+        binary = shutil.which("opencode")
+        if binary is None:
+            raise RuntimeError(
+                "opencode CLI not found in PATH. Install opencode "
+                "(https://opencode.ai) and sign in with `opencode auth login` "
+                "to use provider='opencode'."
+            )
+
+        # The -m flag expects provider/model form; a bare model gets the
+        # opencode provider prefix unless it already carries one.
+        model = llm_config.model
+        if "/" not in model:
+            model = f"opencode/{model}"
+
+        cmd = [
+            binary,
+            "run",
+            "--format",
+            "json",
+            "-m",
+            model,
+            prompt,
+        ]
+        try:
+            completed = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=_OPENCODE_CLI_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise RuntimeError(
+                f"opencode run timed out after {_OPENCODE_CLI_TIMEOUT}s"
+            ) from exc
+
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"opencode run failed (exit {completed.returncode}): "
+                f"{completed.stderr.strip() or completed.stdout.strip()}"
+            )
+
+        # Parse NDJSON events: accumulate assistant text, ignore others.
+        parts: list[str] = []
+        for line in completed.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if event.get("type") == "text":
+                part = event.get("part") or {}
+                if part.get("type") == "text" and part.get("text"):
+                    parts.append(part["text"])
+
+        content = "\n".join(parts).strip()
+        if not content:
+            raise RuntimeError(
+                "opencode run produced no text output. "
+                f"stdout: {(completed.stdout or '').strip()[:500]}"
+            )
+        return content
 
     # ── Task 2.3: parse_response ────────────────────────────────────────────────
 

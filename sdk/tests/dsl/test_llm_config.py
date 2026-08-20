@@ -95,6 +95,31 @@ class TestLLMConfig:
         with pytest.raises(PydanticValidationError):
             LLMConfig(provider="openai", model="gpt-4", max_tokens=-100)
 
+    def test_opencode_defaults_to_open_code_zen(self):
+        """GIVEN LLMConfig with provider='opencode' and no base_url/model
+        WHEN instantiated THEN the free OpenCode Zen endpoint and model are
+        the defaults AND api_key_env derives to OPENCODE_API_KEY.
+        """
+        config = LLMConfig(provider="opencode")
+        assert config.provider == "opencode"
+        assert config.base_url == "https://opencode.ai/zen/v1"
+        assert config.model == "deepseek-v4-flash-free"
+        assert config.api_key_env == "OPENCODE_API_KEY"
+
+    def test_opencode_explicit_base_url_preserved(self):
+        """GIVEN LLMConfig with provider='opencode' and an explicit base_url
+        WHEN instantiated THEN the explicit base_url is preserved.
+        """
+        config = LLMConfig(provider="opencode", base_url="http://localhost:11434/v1")
+        assert config.base_url == "http://localhost:11434/v1"
+
+    def test_opencode_explicit_model_preserved(self):
+        """GIVEN LLMConfig with provider='opencode' and an explicit model
+        WHEN instantiated THEN the explicit model is preserved.
+        """
+        config = LLMConfig(provider="opencode", model="big-pickle")
+        assert config.model == "big-pickle"
+
 
 class TestHypothesisConfigExtension:
     """HypothesisConfig extended with llm_rationale, source_urls, data_sources."""

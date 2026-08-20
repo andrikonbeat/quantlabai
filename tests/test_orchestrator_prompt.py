@@ -19,8 +19,22 @@ wired from the OpenCode config (``~/.config/opencode/``).  These tests assert:
   orchestrator task allowlist explicitly permits it (delegation ownership,
   PR 2).
 
+G4 (flow-ecosystem-alignment, U1/PR1) additions pin the live-config security
+state:
+
+- ``quantlab-deploy`` and ``quantlab-monitor`` are retired from
+  ``opencode.json`` and the installer overlay (no dangling agent entries);
+- no ``quantlab-run|status|compare`` reference remains in the orchestrator
+  task allowlist, bash allowlist, or ``orchestrator.md`` routing table;
+- ``quantlab-campaign`` bash is deny-first (``*: deny``) with only the two
+  SDK paths allowed — never unrestricted ``bash: true``;
+- the stale ``sdk/pipeline/*`` allow on ``quantlab-orchestrator`` is
+  corrected to ``sdk/quantlab/pipeline/*``.
+
 The OpenCode config files live outside the repo (``~/.config/opencode/``);
 they are asserted here because REQ-16 scenario text names the exact path.
+The installer overlay lives in-repo (``installer/internal/opencode/``) and is
+asserted so a fresh install matches the restored live config (G4 rollback).
 """
 
 from __future__ import annotations
@@ -36,6 +50,7 @@ ORCHESTRATOR_PROMPT = OPENCODE_DIR / "prompts" / "quantlab" / "orchestrator.md"
 OPENCODE_JSON = OPENCODE_DIR / "opencode.json"
 
 CAMPAIGN_AGENT_PROMPT = REPO_ROOT / "ai" / "opencode" / "agents" / "campaign.md"
+GUARDIAN_ORCHESTRATOR_PROMPT = REPO_ROOT / "ai" / "opencode" / "agents" / "guardian-orchestrator.md"
 CAMPAIGN_SKILL = REPO_ROOT / "ai" / "opencode" / "skills" / "quantlab-run-campaign" / "SKILL.md"
 CONFIG_YAML = REPO_ROOT / "openspec" / "config.yaml"
 
@@ -385,6 +400,143 @@ class TestPhaseAgentRegistration:
         )
 
 
+class TestGuardianOrchestratorPromptFile:
+    """REQ-822 (PR 3): ``guardian-orchestrator.md`` is a managed repo prompt.
+
+    The second first-class orchestrator is versioned in-repo under
+    ``ai/opencode/agents/guardian-orchestrator.md`` (REQ-806 managed set).
+    It is a FIRST-CLASS orchestrator (mode primary, visible, own routing),
+    NOT a phase inside ``quantlab-orchestrator`` (PRD G9 / D10).
+    """
+
+    def test_guardian_orchestrator_prompt_exists_in_repo(self) -> None:
+        _read(GUARDIAN_ORCHESTRATOR_PROMPT)  # exists + readable
+
+    def test_guardian_orchestrator_prompt_declares_second_orchestrator_role(self) -> None:
+        text = _read(GUARDIAN_ORCHESTRATOR_PROMPT)
+        assert "guardian-orchestrator" in text
+        assert "second" in text.lower()  # PRD G9: second first-class orchestrator
+
+    def test_guardian_orchestrator_prompt_declares_routing_table(self) -> None:
+        text = _read(GUARDIAN_ORCHESTRATOR_PROMPT)
+        assert "GUARDIAN-LIVE" in text  # owns the live-ops intent surface
+
+    def test_guardian_orchestrator_prompt_declares_delegates(self) -> None:
+        text = _read(GUARDIAN_ORCHESTRATOR_PROMPT)
+        for agent in ("quantlab-guardian", "quantlab-guardian-alert", "quantlab-replacement"):
+            assert agent in text, f"delegate {agent} must be declared (REQ-825)"
+
+    def test_guardian_orchestrator_prompt_declares_replacement_gate(self) -> None:
+        text = _read(GUARDIAN_ORCHESTRATOR_PROMPT)
+        assert "HUMAN_APPROVE_REPLACEMENT" in text  # REQ-824 live gate
+        assert "approve" in text
+
+    def test_guardian_orchestrator_prompt_declares_no_phase_rule(self) -> None:
+        text = _read(GUARDIAN_ORCHESTRATOR_PROMPT).lower()
+        assert "phase" in text
+        assert "14" in text  # PHASES stays 14 (REQ-37)
+
+    def test_guardian_orchestrator_prompt_declares_long_running_policy(self) -> None:
+        text = _read(GUARDIAN_ORCHESTRATOR_PROMPT).lower()
+        assert "orchestrator shell" in text or "long" in text
+
+
+class TestGuardianOrchestratorRegistration:
+    """REQ-822/825 (D10/D11): live opencode.json registers guardian-orchestrator
+    as a first-class primary agent with deny-first permissions mirroring
+    ``quantlab-orchestrator``, plus hidden inline delegate subagents."""
+
+    def test_opencode_json_registers_guardian_orchestrator_primary_visible(self) -> None:
+        assert OPENCODE_JSON.exists(), f"expected opencode.json at {OPENCODE_JSON}"
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        agent = cfg.get("agent", {}).get("guardian-orchestrator")
+        assert agent is not None, "opencode.json must register guardian-orchestrator"
+        assert agent.get("mode") == "primary"
+        assert agent.get("hidden") is not True  # visible: NOT a hidden subagent
+
+    def test_guardian_orchestrator_deny_first_bash_permissions(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        bash = cfg["agent"]["guardian-orchestrator"]["permission"]["bash"]
+        assert bash.get("*") == "deny"  # deny-first, mirroring quantlab-orchestrator
+        for pattern in ("sdk/quantlab/*", "knowledge/*", "/tmp/opencode/*"):
+            assert bash.get(pattern) == "allow", f"bash allowlist must include {pattern}"
+
+    def test_guardian_orchestrator_deny_first_task_permissions(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        task = cfg["agent"]["guardian-orchestrator"]["permission"]["task"]
+        assert task.get("*") == "deny"
+        for agent in ("quantlab-guardian", "quantlab-guardian-alert", "quantlab-replacement"):
+            assert task.get(agent) == "allow", f"task allowlist must include {agent}"
+
+    def test_guardian_orchestrator_question_allowed(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        perms = cfg["agent"]["guardian-orchestrator"]["permission"]
+        assert perms.get("question") == "allow"
+
+    def test_guardian_orchestrator_prompt_reference(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        prompt = cfg["agent"]["guardian-orchestrator"].get("prompt", "")
+        assert "{file:~/.config/opencode/prompts/quantlab/guardian-orchestrator.md}" in prompt
+
+    def test_orchestrator_task_allowlist_includes_guardian_orchestrator(self) -> None:
+        """REQ-823: quantlab-orchestrator must be able to delegate GUARDIAN-LIVE
+        intents to guardian-orchestrator via the task tool."""
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        task_perms = cfg["agent"]["quantlab-orchestrator"]["permission"]["task"]
+        assert task_perms.get("guardian-orchestrator") == "allow"
+
+
+class TestGuardianOrchestratorDelegates:
+    """REQ-825 (D10): alert + replacement delegates are hidden subagents with
+    inline prompts (pattern: ``jd-fix-agent``), deny-first."""
+
+    def test_alert_delegate_registered_hidden_subagent_inline(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        agent = cfg.get("agent", {}).get("quantlab-guardian-alert")
+        assert agent is not None, "opencode.json must register quantlab-guardian-alert"
+        assert agent.get("mode") == "subagent"
+        assert agent.get("hidden") is True
+        assert "guardian" in agent.get("description", "").lower()
+
+    def test_replacement_delegate_registered_hidden_subagent_inline(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        agent = cfg.get("agent", {}).get("quantlab-replacement")
+        assert agent is not None, "opencode.json must register quantlab-replacement"
+        assert agent.get("mode") == "subagent"
+        assert agent.get("hidden") is True
+        assert "replacement" in agent.get("description", "").lower()
+
+    def test_alert_and_replacement_delegates_have_inline_prompts(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for name in ("quantlab-guardian-alert", "quantlab-replacement"):
+            prompt = cfg["agent"][name].get("prompt", "")
+            assert len(prompt) > 0, f"{name} must carry an inline prompt"
+            assert "{file:" not in prompt, f"{name} prompt must be inline, not a file ref"
+
+
+class TestGuardianLiveRouting:
+    """REQ-823 (D8): GUARDIAN-LIVE intents delegate to guardian-orchestrator
+    via ``task`` — mirroring SDD intents routing to gentle-orchestrator."""
+
+    def test_prompt_declares_guardian_live_route_dispatching_via_task(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT)
+        assert "GUARDIAN-LIVE" in text  # routing-table classification exists
+        assert "guardian-orchestrator" in text  # routing-table target exists
+        assert "task" in text  # dispatch via the task tool
+
+    def test_guardian_live_keywords_classify(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT).lower()
+        for keyword in ("guardian-live", "live-ops event", "replacement"):
+            assert keyword in text, f"GUARDIAN-LIVE classification must match {keyword}"
+
+    def test_guardian_live_row_does_not_replace_guardian_row(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT)
+        assert "GUARDIAN-LIVE" in text
+        assert "quantlab-guardian" in text  # REQ-642 GUARDIAN row unchanged
+        # GUARDIAN-LIVE routes to guardian-orchestrator, not quantlab-orchestrator
+        assert "guardian-orchestrator" in text
+
+
 class TestE2eDispatchAndMockIntegrity:
     """REQ-810/811: e2e dispatch order, mock mode, and routing-note integrity."""
 
@@ -422,3 +574,133 @@ class TestE2eDispatchAndMockIntegrity:
         cmd = "SQX_FORCE_MOCK=1 PYTHONPATH=sdk python3 -m pytest -q <files> --tb=short"
         assert "SQX_FORCE_MOCK=1" in cmd
         assert "PYTHONPATH=sdk" in cmd
+
+
+INSTALLER_OVERLAY = REPO_ROOT / "installer" / "internal" / "opencode" / "overlay.json"
+
+LEGACY_AGENTS = ("quantlab-deploy", "quantlab-monitor")
+DANGLING_TASKS = ("quantlab-run", "quantlab-status", "quantlab-compare")
+CAMPAIGN_BASH_ALLOWS = ("sdk/quantlab/pipeline/*", "sdk/quantlab/campaign/*")
+
+
+class TestG4LegacyAgentRetirement:
+    """G4 (flow-ecosystem-alignment): the legacy agents MUST be retired and
+    every dangling reference pruned.
+
+    Spec scenarios (quantlab-orchestrator delta, G4):
+    - "Legacy entries absent": opencode.json MUST NOT register
+      ``quantlab-deploy`` or ``quantlab-monitor``.
+    - "Dangling refs pruned": no ``quantlab-run|status|compare`` reference
+      remains in the orchestrator task allowlist, bash allowlist, or
+      ``orchestrator.md`` routing table.
+    - "Orchestrator path corrected": the orchestrator bash allowlist
+      references ``sdk/quantlab/pipeline/*``, never ``sdk/pipeline/*``.
+
+    Assertions are token-exact (``quantlab-run`` etc.) so routing keywords
+    like ``run campaign`` or ``live-ops status`` are unaffected.
+    """
+
+    def test_opencode_json_does_not_register_legacy_deploy_agent(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        assert "quantlab-deploy" not in cfg.get("agent", {}), (
+            "G4: quantlab-deploy agent MUST be retired from opencode.json"
+        )
+
+    def test_opencode_json_does_not_register_legacy_monitor_agent(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        assert "quantlab-monitor" not in cfg.get("agent", {}), (
+            "G4: quantlab-monitor agent MUST be retired from opencode.json"
+        )
+
+    def test_active_agents_still_registered_after_retirement(self) -> None:
+        """Positive control: the agent map is really read and active agents
+        remain — the absence assertions above are not vacuous."""
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        for name in ("quantlab-campaign", "quantlab-guardian", "quantlab-orchestrator"):
+            assert name in cfg["agent"], f"active agent {name} must stay registered"
+
+    def test_orchestrator_task_allowlist_has_no_legacy_dangling_refs(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        task_perms = cfg["agent"]["quantlab-orchestrator"]["permission"]["task"]
+        for legacy in DANGLING_TASKS:
+            assert legacy not in task_perms, (
+                f"orchestrator task allowlist must not reference {legacy}"
+            )
+
+    def test_orchestrator_bash_allowlist_has_no_legacy_dangling_refs(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        bash_perms = cfg["agent"]["quantlab-orchestrator"]["permission"]["bash"]
+        for legacy in DANGLING_TASKS:
+            assert legacy not in bash_perms, (
+                f"orchestrator bash allowlist must not reference {legacy}"
+            )
+
+    def test_orchestrator_prompt_has_no_legacy_routing_rows(self) -> None:
+        text = _read(ORCHESTRATOR_PROMPT)
+        for legacy in DANGLING_TASKS:
+            assert legacy not in text, (
+                f"orchestrator.md routing table must not reference {legacy}"
+            )
+
+    def test_orchestrator_bash_allowlist_has_no_stale_sdk_pipeline(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        bash_perms = cfg["agent"]["quantlab-orchestrator"]["permission"]["bash"]
+        assert "sdk/pipeline/*" not in bash_perms, (
+            "G4: stale sdk/pipeline/* allow MUST be corrected"
+        )
+        assert bash_perms.get("sdk/quantlab/pipeline/*") == "allow", (
+            "G4: orchestrator bash MUST allow sdk/quantlab/pipeline/*"
+        )
+
+
+class TestG4CampaignDenyFirstBash:
+    """G4 (Deny-First Bash Scope): ``quantlab-campaign`` bash MUST default to
+    deny with only the two SDK paths allowed — never unrestricted ``bash:
+    true``.
+
+    Spec scenario "Campaign agent is deny-first": ``*: deny`` plus the two
+    ``sdk/quantlab/*`` allows; the campaign agent must keep its deny-first
+    task allowlist and registration.
+    """
+
+    def test_campaign_agent_bash_is_deny_first(self) -> None:
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        bash = cfg["agent"]["quantlab-campaign"]["permission"]["bash"]
+        assert bash.get("*") == "deny", "campaign bash wildcard MUST deny"
+        for pattern in CAMPAIGN_BASH_ALLOWS:
+            assert bash.get(pattern) == "allow", (
+                f"campaign bash must allow {pattern}"
+            )
+
+    def test_campaign_agent_keeps_deny_first_task_allowlist(self) -> None:
+        """Positive control: the permission block is intact, not replaced by
+        an unrestricted tools-only entry."""
+        cfg = json.loads(OPENCODE_JSON.read_text(encoding="utf-8"))
+        campaign = cfg["agent"]["quantlab-campaign"]
+        assert campaign.get("mode") == "subagent"
+        task = campaign["permission"]["task"]
+        assert task.get("*") == "deny"
+        assert task.get("quantlab-*") == "allow"
+
+
+class TestG4InstallerOverlaySync:
+    """G4 (Live Config Restore Path): the installer overlay mirrors the
+    retired agents and the campaign deny-first bash block, so a fresh install
+    matches the restored live config."""
+
+    def test_overlay_does_not_register_legacy_agents(self) -> None:
+        overlay = json.loads(INSTALLER_OVERLAY.read_text(encoding="utf-8"))
+        agents = overlay.get("agent", {})
+        for legacy in LEGACY_AGENTS:
+            assert legacy not in agents, (
+                f"installer overlay must not register {legacy}"
+            )
+
+    def test_overlay_campaign_agent_is_deny_first(self) -> None:
+        overlay = json.loads(INSTALLER_OVERLAY.read_text(encoding="utf-8"))
+        bash = overlay["agent"]["quantlab-campaign"]["permission"]["bash"]
+        assert bash.get("*") == "deny", "overlay campaign bash wildcard MUST deny"
+        for pattern in CAMPAIGN_BASH_ALLOWS:
+            assert bash.get(pattern) == "allow", (
+                f"overlay campaign bash must allow {pattern}"
+            )
