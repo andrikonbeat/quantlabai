@@ -63,3 +63,30 @@ PROMPT_TEMPLATES: dict[str, str] = {
         "market-moving events, catalysts, and potential trading opportunities."
     ),
 }
+
+TOOL_KNOWLEDGE_TEMPLATES: dict[str, str] = {
+    # Official tool-knowledge surfaces (REQ-LMR-01). Populated via retrieval
+    # or curated cheat-sheets only — full corpora are never injected. Each
+    # template points the agent at the version-pinned KB cheat-sheet instead
+    # of embedding corpus text.
+    "sqx_block_snippet": (
+        "SQX block-to-snippet mapping: every indicator block in StrategyQuant X "
+        "maps to a Java snippet in the 931-entry snippet corpus "
+        "(internal/autocomplete/Snippets/SQ/Blocks/). Consult the curated "
+        "cheat-sheet 'block-to-snippet' for the block->snippet mapping before "
+        "translating a block into JForex; never invent JForex API calls."
+    ),
+    "jforex_lifecycle": (
+        "JForex strategy lifecycle: a strategy implements IStrategy with "
+        "onStart(), onBar(), onTick() and onStop() callbacks. Annotate "
+        "user-editable parameters with @Configurable so the generated JForex "
+        "code stays tunable in the Dukascopy platform. See the curated "
+        "cheat-sheet 'jforex-lifecycle' for the ABL->JForex translation rules."
+    ),
+    "sqx_http_api": (
+        "SQX HTTP API: strategy operations are exposed over HTTP endpoints. "
+        "Endpoint paths and payload schemas are version-pinned in the installed "
+        "distribution's docs; consult the curated cheat-sheet 'sqx-http-api' "
+        "or get_doc('api', ...) instead of guessing paths."
+    ),
+}

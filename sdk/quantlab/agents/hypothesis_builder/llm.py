@@ -16,13 +16,13 @@ import logging
 from typing import Any
 
 from quantlab.agents.llm_research_agent import LLMResearchAgent
+from quantlab.agents.parameter_validator import ParameterValidator, ValidationResult
 from quantlab.dsl.models import (
     BuildingBlock,
     EntryRule,
     ExitRule,
     HypothesisConfig,
     IndicatorConfig,
-    LLMConfig,
     Strategy,
     StrategyDirection,
 )
@@ -184,6 +184,9 @@ class LLMMode:
                 )
             )
 
+        # F2 wiring: validate parsed blocks and drop invalid ones
+        blocks = LLMMode._drop_invalid_blocks(blocks)
+
         # Parse strategies
         strategies: list[Strategy] = []
         for s_data in data["strategies"]:
@@ -199,6 +202,26 @@ class LLMMode:
             )
 
         return blocks, strategies
+
+    @staticmethod
+    def _drop_invalid_blocks(blocks: list[BuildingBlock]) -> list[BuildingBlock]:
+        """Drop building blocks whose indicator parameters fail validation."""
+        try:
+            validator = ParameterValidator()
+            valid_blocks: list[BuildingBlock] = []
+            for block in blocks:
+                params = {f"{block.indicator.name.lower()}_{k}": v for k, v in block.indicator.params.items()}
+                hyp = HypothesisConfig(
+                    name="llm_parse_check",
+                    description="",
+                    parameters=params,
+                )
+                result = validator.validate_hypothesis(hyp)
+                if result.valid:
+                    valid_blocks.append(block)
+            return valid_blocks
+        except Exception:
+            return blocks
 
 
 __all__ = ["LLMMode"]
