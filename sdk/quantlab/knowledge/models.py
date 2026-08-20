@@ -53,13 +53,14 @@ class QueryFilter:
     agent_name: Optional[str] = field(default=None)
     campaign_id: Optional[str] = field(default=None)
 
-
 @dataclass
 class QueryResult:
     """Result of a query."""
+
     campaigns: list[CampaignSummary]
     total_count: int
     query_time_ms: float = 0.0
+    docs: list[dict[str, object]] | None = None
 
 
 @dataclass

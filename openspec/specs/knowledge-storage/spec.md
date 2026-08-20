@@ -8,14 +8,14 @@ Manages the Knowledge Lake directory structure — a filesystem-first, Git-versi
 
 ### Requirement: Directory Initialization
 
-The system MUST create the Knowledge Lake skeleton: `raw/`, `structured/`, `graph/`, `embeddings/`, `datasets/`, `pipeline-runs/`, `agent-memory/`. `structured/` SHALL host the reconciled sub-layouts `structured/{campaign_id}/` (configs, metrics, results), `structured/sqx-kb/{sqx_version}/parameters/{tab}/`, and `structured/sqx-version/{old}→{new}/`. Each directory SHALL contain a `.gitkeep` or metadata file.
-(Previously: 5-directory skeleton without `pipeline-runs/`, `agent-memory/`, `sqx-kb/`, or `sqx-version/`)
+The system MUST create the Knowledge Lake skeleton: `raw/`, `structured/`, `graph/`, `embeddings/`, `datasets/`, `pipeline-runs/`, `agent-memory/`. `structured/` SHALL host the reconciled sub-layouts `structured/{campaign_id}/` (configs, metrics, results), `structured/sqx-kb/{sqx_version}/parameters/{tab}/`, `structured/sqx-kb/{sqx_version}/docs/`, `structured/jforex-kb/{ver}/`, and `structured/sqx-version/{old}→{new}/`. Each directory SHALL contain a `.gitkeep` or metadata file.
+(Previously: 5-directory skeleton without `pipeline-runs/`, `agent-memory/`, `sqx-kb/`, `sqx-kb/docs/`, `jforex-kb/`, or `sqx-version/`)
 
 #### Scenario: Fresh initialization creates all directories
 
 - GIVEN a `knowledge/` path that does not exist
 - WHEN the system initializes the Knowledge Lake
-- THEN 7 top-level subdirectories and the 3 structured sub-layouts are created, each with a `.gitkeep` marker file
+- THEN 7 top-level subdirectories and the structured sub-layouts are created, each with a `.gitkeep` marker file
 
 #### Scenario: Re-initialization on existing structure is idempotent
 
@@ -89,16 +89,23 @@ The system MUST provide a conformance test asserting every writer's artifacts la
 
 ### Requirement: REQ-403 Index v4 Compatibility
 
-The system MUST bump `knowledge/index.yaml` to version 4, covering the reconciled layout: campaign metrics/tags/links, agent-memory decisions, KB parameter files, and version events. The index MUST read legacy v1–v3 indexes with defaults (backward compatible).
+The system MUST bump `knowledge/index.yaml` to version 4, covering the reconciled layout: campaign metrics/tags/links, agent-memory decisions, KB parameter files, version events, and official docs (`docs` section mapping `structured/sqx-kb/{ver}/docs/**` and `structured/jforex-kb/{ver}/**` to `{size, sha256, kind, version}`). The index MUST read legacy v1–v3 indexes with defaults (backward compatible).
+(Previously: index covered campaign metrics/tags/links, agent-memory, KB parameters, and version events without the `docs` section)
 
 #### Scenario: Rebuild covers new areas
 
-- GIVEN campaigns, agent-memory, and sqx-kb entries
+- GIVEN campaigns, agent-memory, sqx-kb entries, and official docs
 - WHEN `rebuild_index()` runs
-- THEN index.yaml is version 4 and includes entries for each area
+- THEN index.yaml is version 4 and includes entries for each area, including the `docs` section
 
 #### Scenario: Legacy index readable
 
 - GIVEN an index.yaml of version 1
 - WHEN `read_index()` runs
 - THEN entries parse with defaults and no error
+
+#### Scenario: read_index supplies empty docs default for legacy indexes
+
+- GIVEN a legacy index without a `docs` key
+- WHEN `read_index()` is called
+- THEN `index["docs"] == {}` is returned
