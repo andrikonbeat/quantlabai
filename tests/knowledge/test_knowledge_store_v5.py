@@ -2,9 +2,11 @@
 
 Covers:
 - KNOWLEDGE_DIRS includes 4 new directories
-- STRUCTURED_SUB_LAYOUTS includes 4 new template paths
+- STRUCTURED_SUB_LAYOUTS includes 6 new template paths (REQ-403 delta)
 - initialize() creates all new directories
 - index.yaml version is "5" after rebuild + read
+- rebuild_index() includes a ``docs`` section for SQX/JForex official docs
+- read_index() provides legacy default ``docs: {}``
 - _upgrade_index() upgrades legacy v1/v2/v3/v4 indexes to v5
 - Legacy data remains readable after upgrade
 - KnowledgeStore can save/load campaign-phase artifacts
@@ -42,6 +44,8 @@ class TestKnowledgeStoreV5Constants:
             "parameter-matrix/_template",
             "guardian-feedback/_template",
             "maintenance/_template",
+            "structured/sqx-kb/_template/docs/_template",
+            "structured/jforex-kb/_template",
         }
         assert new_layouts.issubset(set(STRUCTURED_SUB_LAYOUTS))
 
@@ -591,3 +595,60 @@ class TestSeedOhlc:
             ["sqx", "kb", "seed-ohlc", "--knowledge-root", str(tmp_path / "lake")]
         )
         assert args.func is cmd_kb_seed_ohlc
+
+
+class TestKnowledgeStoreV5DocsIndex:
+    """Verify v5 docs index for SQX/JForex official docs (REQ-403 delta)."""
+
+    def test_rebuild_index_includes_docs_section(
+        self, tmp_path: Path
+    ) -> None:
+        store = KnowledgeStore(root=tmp_path / "knowledge")
+        store.initialize()
+
+        docs_dir = tmp_path / "knowledge" / "structured" / "sqx-kb" / "144.2953" / "docs" / "blocks"
+        docs_dir.mkdir(parents=True, exist_ok=True)
+        (docs_dir / "rsi.md").write_text("RSI block doc", encoding="utf-8")
+
+        cheat_dir = tmp_path / "knowledge" / "structured" / "sqx-kb" / "144.2953" / "cheat-sheets"
+        cheat_dir.mkdir(parents=True, exist_ok=True)
+        (cheat_dir / "block-to-snippet.md").write_text("Cheat-sheet", encoding="utf-8")
+
+        jforex_dir = tmp_path / "knowledge" / "structured" / "jforex-kb" / "144.2953"
+        jforex_dir.mkdir(parents=True, exist_ok=True)
+        (jforex_dir / "overview.md").write_text("JForex doc", encoding="utf-8")
+
+        index = store.rebuild_index()
+        assert "docs" in index
+        docs_section = index["docs"]
+        assert any("rsi.md" in rel for rel in docs_section)
+        assert any("block-to-snippet.md" in rel for rel in docs_section)
+        assert any("overview.md" in rel for rel in docs_section)
+
+        rsi_entry = next(
+            entry for rel, entry in docs_section.items() if "rsi.md" in rel
+        )
+        assert rsi_entry["kind"] == "block"
+        assert rsi_entry["version"] == "144.2953"
+        assert "size" in rsi_entry
+        assert "sha256" in rsi_entry
+
+    def test_read_index_legacy_defaults_docs_to_empty(
+        self, tmp_path: Path
+    ) -> None:
+        store = KnowledgeStore(root=tmp_path / "knowledge")
+        store.initialize()
+
+        index_path = tmp_path / "knowledge" / "index.yaml"
+        legacy = yaml.safe_dump({
+            "_version": "4",
+            "_generated": "2026-01-01T00:00:00",
+            "directories": {},
+            "agent_memory": {},
+            "kb_parameters": {},
+            "version_events": {},
+        })
+        index_path.write_text(legacy, encoding="utf-8")
+
+        index = store.read_index()
+        assert index.get("docs") == {}

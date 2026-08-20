@@ -80,6 +80,8 @@ PIPELINE_RUNS_DIR = "pipeline-runs"
 STRUCTURED_SUB_LAYOUTS = [
     "structured/_template",
     "structured/sqx-kb/_template/parameters/_template",
+    "structured/sqx-kb/_template/docs/_template",
+    "structured/jforex-kb/_template",
     "structured/sqx-version/_template→_template",
     "campaign-phases/_template",
     "parameter-matrix/_template",
@@ -514,6 +516,7 @@ class KnowledgeStore:
             "parameter_matrix": {},
             "guardian_feedback": {},
             "maintenance": {},
+            "docs": self._build_docs_index(),
         }
 
         # Enhance with campaign metrics/tags/links via Indexer (if available)
@@ -553,6 +556,7 @@ class KnowledgeStore:
             if not isinstance(data, dict):
                 return self.rebuild_index()
             data = self._upgrade_index(data)
+            data.setdefault("docs", {})
             return data
         except (yaml.YAMLError, OSError):
             return self.rebuild_index()
@@ -924,6 +928,54 @@ class KnowledgeStore:
                 "size": checklist.stat().st_size,
                 "sha256": self._hash_file(checklist),
             }
+        return entries
+
+    def _build_docs_index(self) -> dict[str, dict[str, object]]:
+        """Index official SQX/JForex docs under ``structured/sqx-kb/`` and ``structured/jforex-kb/``.
+
+        Maps each doc file to ``{size, sha256, kind, version}`` where ``kind``
+        is one of ``block``, ``api``, ``cheat-sheet``, or ``jforex``.
+        """
+        docs_root = self.root / "structured"
+        if not docs_root.exists():
+            return {}
+
+        entries: dict[str, object] = {}
+        for file_path in sorted(docs_root.rglob("*")):
+            if not file_path.is_file():
+                continue
+            if file_path.name in (GITKEEP_FILENAME, INDEX_FILENAME):
+                continue
+
+            rel = str(file_path.relative_to(self.root))
+            rel_parts = file_path.relative_to(docs_root).parts
+            kind = "jforex"
+            version = None
+            for idx, part in enumerate(rel_parts):
+                if part == "sqx-kb" and idx + 1 < len(rel_parts):
+                    version = rel_parts[idx + 1]
+                    if idx + 2 < len(rel_parts) and rel_parts[idx + 2] == "docs":
+                        if idx + 3 < len(rel_parts) and rel_parts[idx + 3] == "blocks":
+                            kind = "block"
+                        elif idx + 3 < len(rel_parts) and rel_parts[idx + 3] == "apis":
+                            kind = "api"
+                    elif idx + 2 < len(rel_parts) and rel_parts[idx + 2] == "cheat-sheets":
+                        kind = "cheat-sheet"
+                    break
+                if part == "jforex-kb" and idx + 1 < len(rel_parts):
+                    version = rel_parts[idx + 1]
+                    break
+
+            if version is None:
+                continue
+
+            entries[rel] = {
+                "size": file_path.stat().st_size,
+                "sha256": self._hash_file(file_path),
+                "kind": kind,
+                "version": version,
+            }
+
         return entries
 
     # ── Tag Management ──────────────────────────────────────────────────────────
