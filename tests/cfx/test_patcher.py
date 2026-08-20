@@ -27,6 +27,9 @@ from quantlab.cfx.models import (
     SetDateRangeInstruction,
     AddRankingConditionInstruction,
     EnableCrosscheckInstruction,
+    SetCrossChecksInstruction,
+    CrossChecksConfig,
+    CrossChecksGeneric,
 )
 
 
@@ -337,3 +340,62 @@ class TestDomModule:
 
         result = enable_crosscheck(archive, True, True, 50)
         assert result is archive
+
+
+class TestSetCrossChecksTyped:
+    """Tests for typed CrossChecks patching."""
+
+    def test_set_crosschecks_creates_typed_model(self) -> None:
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = SetCrossChecksInstruction(
+            mc_enabled=True,
+            wf_enabled=True,
+            mc_runs=100,
+            mc_percentile=95,
+            wf_cycles=5,
+            confidence_level=0.95,
+        )
+        patcher.apply([instr])
+
+        section = archive.config.task.cross_checks_section
+        assert section is not None
+        assert section.dialect == "generic"
+        assert isinstance(section.generic, CrossChecksGeneric)
+        assert section.generic.mc_enabled is True
+        assert section.generic.mc_runs == 100
+        assert section.generic.wf_enabled is True
+        assert section.generic.wf_cycles == 5
+        assert section.generic.confidence_level == 0.95
+        assert section.raw_xml == ""
+
+    def test_set_crosschecks_invalid_confidence_raises(self) -> None:
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = SetCrossChecksInstruction(
+            mc_enabled=False,
+            wf_enabled=False,
+            confidence_level=0.999,
+        )
+        with pytest.raises(ValidationError, match="confidence_level must be in"):
+            patcher.apply([instr])
+
+    def test_set_crosschecks_round_trip_via_writer(self) -> None:
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = SetCrossChecksInstruction(
+            mc_enabled=True,
+            wf_enabled=False,
+            mc_runs=250,
+            mc_percentile=90,
+            wf_cycles=10,
+            confidence_level=0.90,
+        )
+        patcher.apply([instr])
+
+        section = archive.config.task.cross_checks_section
+        assert section is not None
+        xml = section.to_xml()
+        assert '<MonteCarlo enabled="true" runs="250" percentile="90"/>' in xml
+        assert '<WalkForward enabled="false" cycles="10"/>' in xml
+        assert '<ConfidenceLevel value="0.9"/>' in xml

@@ -73,6 +73,62 @@ class DispatchResult:
     error: str | None = None
 
 
+def _is_custom_project_enabled() -> bool:
+    """Return True when the builder should dispatch to the CustomProject generator.
+
+    G2 flag-first contract (D7):
+    - ``QUANTLAB_CUSTOM_PROJECT=1`` or unset → CustomProject dialect (schema 144.2953)
+    - ``QUANTLAB_CUSTOM_PROJECT=0`` → legacy translator (schema 141.2219)
+
+    Default is ``1`` (CustomProject) after task 7.4 flips the default.
+    """
+    return os.environ.get("QUANTLAB_CUSTOM_PROJECT", "1") == "1"
+
+
+def _research_config_to_custom_project(config: Any) -> Any:
+    """Convert a ``ResearchConfig`` to a minimal ``CustomProject``.
+
+    The CustomProject generator expects a project-level model with an ordered
+    task list and a databank registry. When the builder receives a DSL
+    ``ResearchConfig`` (the existing orchestrated flow contract), this helper
+    produces a single-task CustomProject that preserves the campaign identity
+    and uses the standard databank defaults.
+    """
+    from quantlab.customproject.models import (
+        CustomProject,
+        CustomProjectTask,
+        DatabankSpec,
+    )
+
+    if hasattr(config, "campaign") and config.campaign:
+        name = config.campaign
+    elif isinstance(config, dict):
+        name = config.get("campaign") or "default"
+    else:
+        name = "default"
+
+    return CustomProject(
+        name=name,
+        tasks=[
+            CustomProjectTask(
+                type="Build",
+                name="Build",
+                source_databank="Initial population",
+                target_databank="Results",
+            )
+        ],
+        databanks=[
+            DatabankSpec(name="Results"),
+            DatabankSpec(name="Last generation"),
+            DatabankSpec(name="Initial population"),
+            DatabankSpec(name="Strategies to improve"),
+        ],
+    )
+
+    # ── Phase 2: Validation ─────────────────────────────────────────────────────
+
+
+
 class BuilderAgent:
     """Orchestrates DSL-to-CFX translation, validation, and SQX dispatch.
 
@@ -408,6 +464,47 @@ class BuilderAgent:
 
     # ── Phase 1: Translation ────────────────────────────────────────────────────
 
+    async def _translate(self, config: Any) -> tuple[bytes, dict[str, Any]]:
+        """Internal translation with flag-first dispatch (G2).
+
+        - ``QUANTLAB_CUSTOM_PROJECT=0`` → legacy translator (schema 141.2219)
+        - ``QUANTLAB_CUSTOM_PROJECT=1`` or unset (CustomProject default): converts
+          the ``ResearchConfig`` to a ``CustomProject`` and delegates to
+          ``quantlab.customproject.generator`` (schema 144.2953).
+        """
+        from quantlab.tools.exceptions import TranslationError
+
+        log: dict[str, Any] = {"phase": "translate", "status": "started"}
+
+        try:
+            if _is_custom_project_enabled():
+                from quantlab.customproject.generator import generate_cfx_archive as cp_generate
+                from quantlab.cfx.writer import CfxWriter
+
+                project = _research_config_to_custom_project(config)
+                archive = cp_generate(project)
+                cfx_bytes = CfxWriter.to_bytes(archive)
+                log["dialect"] = "custom_project"
+            else:
+                from quantlab.translate.translator import generate_cfx_archive
+                from quantlab.cfx.writer import CfxWriter
+
+                archive = generate_cfx_archive(config)
+                cfx_bytes = CfxWriter.to_bytes(archive)
+                log["dialect"] = "legacy"
+
+            log["status"] = "completed"
+            log["byte_size"] = len(cfx_bytes)
+
+            logger.info("Translation completed: %d bytes generated", len(cfx_bytes))
+            return cfx_bytes, log
+
+        except Exception as e:
+            log["status"] = "failed"
+            log["error"] = str(e)
+            logger.error("Translation failed: %s", e)
+            raise TranslationError(f"DSL-to-CFX translation failed: {e}", cause=e)
+
     async def translate_to_cfx(self, config: Any) -> bytes:
         """Translate a ``ResearchConfig`` to CFX bytes.
 
@@ -426,32 +523,6 @@ class BuilderAgent:
         result = await self._translate(config)
         return result[0]
 
-    async def _translate(self, config: Any) -> tuple[bytes, dict[str, Any]]:
-        """Internal translation with logging."""
-        from quantlab.translate.translator import generate_cfx_archive
-        from quantlab.cfx.writer import CfxWriter
-        from quantlab.tools.exceptions import TranslationError
-
-        log: dict[str, Any] = {"phase": "translate", "status": "started"}
-
-        try:
-            archive = generate_cfx_archive(config)
-
-            cfx_bytes = CfxWriter.to_bytes(archive)
-
-            log["status"] = "completed"
-            log["byte_size"] = len(cfx_bytes)
-
-            logger.info("Translation completed: %d bytes generated", len(cfx_bytes))
-            return cfx_bytes, log
-
-        except Exception as e:
-            log["status"] = "failed"
-            log["error"] = str(e)
-            logger.error("Translation failed: %s", e)
-            raise TranslationError(f"DSL-to-CFX translation failed: {e}", cause=e)
-
-    # ── Phase 2: Validation ─────────────────────────────────────────────────────
 
     async def _validate(self, cfx_bytes: bytes) -> dict[str, Any]:
         """Validate CFX bytes via ``cfx_editor.validate()``.

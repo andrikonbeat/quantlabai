@@ -34,7 +34,7 @@ The `pipeline` section defines the execution flow and metadata:
 ```yaml
 pipeline:
   name: "multi-agent-research"
-  description: "Complete 17-stage research pipeline"
+  description: "Complete multi-agent research pipeline (16 stages non-orchestrated, 25 orchestrated, 27 with retest/optimize)"
   version: "1.0"
   stages:
     - name: research-agent

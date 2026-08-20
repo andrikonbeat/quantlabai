@@ -69,7 +69,7 @@ conocida; `testpaths = tests sdk/tests` recoge ambos).
 
 ## 🧠 Sistema Multi-Agent
 
-8 agentes + 5 gates humanos orquestados via PipelineRunner (ver detalle en
+11 agentes + 5 gates (no orquestado) / 17 agentes + 8 gates (orquestado) / 19 agentes + 8 gates (con retest/optimize) orquestados via PipelineRunner (ver detalle en
 secciones previas de este doc y en `openspec/changes/archive/`).
 
 ---

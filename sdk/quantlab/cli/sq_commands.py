@@ -13,9 +13,12 @@ REQ-209 gate fails (REQ-209 scenarios). ``check-version`` exits 0 in-sync,
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
+from quantlab.data import DataManager
+from quantlab.data.market.models import Bar
 from quantlab.knowledge.kb.models import KB_TABS, SQX_VERSION
 from quantlab.knowledge.kb.seeding_flow import (
     _default_evidence_base,
@@ -29,10 +32,15 @@ from quantlab.knowledge.kb.educational import (
 )
 from quantlab.knowledge.kb.store import KbParamNotFoundError, KbStore
 from quantlab.knowledge.kb.validation import validate_seed
+from quantlab.knowledge.store import KnowledgeStore
 
 # Evidence-base derivation hook (D2). Tests monkeypatch this to point at a
 # synthetic install tree; production derives the project root from the lake.
 _DEFAULT_EVIDENCE_BASE_FACTORY = _default_evidence_base
+
+# G6 seed-ohlc defaults (Q3): a single symbol keeps CI deterministic.
+DEFAULT_SEED_SYMBOLS = ("EURUSD",)
+DEFAULT_SEED_TIMEFRAMES = ("M1", "M5", "H1")
 
 
 def print_human(message: str, *, error: bool = False) -> None:
@@ -72,6 +80,58 @@ def _split_target(target: str) -> tuple[str, str] | None:
         return None
     tab, _, param = target.partition("/")
     return tab.strip(), param.strip()
+
+
+# ── G6 OHLC source seam (seed-ohlc) ────────────────────────────────────────
+
+
+class _DataManagerOhlcSource:
+    """Fetches OHLC bars via ``DataManager`` → ``JForexProvider`` (REQ-04).
+
+    Reads local JForex4 history files, so seeding never fabricates market
+    data: when the JForex state directory or a symbol's history is missing,
+    ``fetch_bars`` returns ``[]`` and the command fails clearly.
+    """
+
+    def __init__(self, jforex_state_dir: str | Path | None = None) -> None:
+        self._dm = DataManager(jforex_state_dir=jforex_state_dir)
+
+    def fetch_bars(self, symbol: str, timeframe: str) -> list[Bar]:
+        handler = self._dm.datasources.get("jforex")
+        if handler is None:
+            return []
+        return handler.fetch_history(symbol, timeframe)
+
+    def gap_hint(self) -> str:
+        return (
+            "local JForex4 history (download the instrument in the JForex4 "
+            "platform first)"
+        )
+
+
+def _default_ohlc_source(
+    knowledge_root: str | Path,
+    *,
+    jforex_state_dir: str | Path | None = None,
+) -> _DataManagerOhlcSource:
+    """Build the production OHLC source (tests monkeypatch this seam).
+
+    ``knowledge_root`` mirrors the ``_DEFAULT_EVIDENCE_BASE_FACTORY`` seam
+    shape so tests replace both factories with the same call signature; the
+    lake root is owned by ``KnowledgeStore``, not the source.
+    """
+    return _DataManagerOhlcSource(jforex_state_dir=jforex_state_dir)
+
+
+_DEFAULT_OHLC_SOURCE_FACTORY = _default_ohlc_source
+
+
+def _missing_env_dependency_names() -> list[str]:
+    """Names of environment dependencies absent from the process env."""
+    names: list[str] = []
+    if not (os.environ.get("SQCLI_PATH") or os.environ.get("SQX_INSTALL_PATH")):
+        names.append("SQCLI_PATH/SQX_INSTALL_PATH")
+    return names
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -169,6 +229,63 @@ def _print_gate_report(report: object) -> None:
         print_human(f"  [{('PASS' if ok else 'FAIL')}] {name}")
     for err in errors:
         print_error(f"  {err}")
+
+
+async def cmd_kb_seed_ohlc(args: argparse.Namespace) -> int:
+    """Seed ``knowledge/datasets/{symbol}/`` with real Dukascopy OHLC (G6).
+
+    Fetches M1/M5/H1 bars through ``DataManager``/``JForexProvider`` local
+    JForex history and caches each symbol into
+    ``datasets/{symbol}/{timeframe}.csv``, then rebuilds the Knowledge Lake
+    index. Real market data only — never fabricated. When no data is
+    available the command exits 1 with a clear error naming the missing
+    dependency (JForex history / SQCLI_PATH) and reports any partially
+    written files.
+    """
+    try:
+        store = KnowledgeStore(root=args.knowledge_root)
+        store.initialize()
+        source = _DEFAULT_OHLC_SOURCE_FACTORY(
+            args.knowledge_root, jforex_state_dir=args.jforex_state_dir
+        )
+        symbols = args.symbols or list(DEFAULT_SEED_SYMBOLS)
+        timeframes = args.timeframes or list(DEFAULT_SEED_TIMEFRAMES)
+
+        written: list[str] = []
+        gaps: list[str] = []
+        for symbol in symbols:
+            for timeframe in timeframes:
+                bars = source.fetch_bars(symbol, timeframe)
+                if not bars:
+                    gaps.append(f"{symbol} {timeframe}")
+                    continue
+                written.append(await store.cache_dataset(symbol, timeframe, bars))
+
+        if not written:
+            detail_parts = [source.gap_hint()]
+            detail_parts.extend(_missing_env_dependency_names())
+            print_error(
+                "OHLC seed failed: no market data available — missing "
+                f"dependency: {'; '.join(detail_parts)}"
+            )
+            if gaps:
+                print_error(f"  requested but no data: {', '.join(gaps)}")
+            print_error("  no dataset files written")
+            return 1
+
+        store.rebuild_index()
+        print_human(
+            f"Seeded OHLC: {len(written)} dataset file(s) for "
+            f"{', '.join(symbols)} at {', '.join(timeframes)}"
+        )
+        for rel in written:
+            print_human(f"  {rel}")
+        if gaps:
+            print_human(f"  skipped (no local data): {', '.join(gaps)}")
+        return 0
+    except Exception as e:  # pragma: no cover - defensive
+        print_error(f"OHLC seed failed: {e}")
+        return 1
 
 
 async def cmd_kb_validate(args: argparse.Namespace) -> int:
@@ -379,6 +496,31 @@ def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Path to the SQX Builder Config doc (default: docs/sqx-builder-config/SQX Builder Config.md)",
     )
     p_seed.set_defaults(func=cmd_kb_seed)
+
+    # ── sqx kb seed-ohlc ───────────────────────────────────────────────────
+    p_seed_ohlc = kb_sub.add_parser(
+        "seed-ohlc",
+        help="Seed knowledge/datasets/{symbol}/ with real Dukascopy OHLC (G6)",
+    )
+    _add_common(p_seed_ohlc)
+    p_seed_ohlc.add_argument(
+        "--symbols",
+        nargs="+",
+        default=list(DEFAULT_SEED_SYMBOLS),
+        help="Symbols to seed (default: EURUSD — CI-deterministic, Q3)",
+    )
+    p_seed_ohlc.add_argument(
+        "--timeframes",
+        nargs="+",
+        default=list(DEFAULT_SEED_TIMEFRAMES),
+        help="FX timeframes to seed (default: M1 M5 H1)",
+    )
+    p_seed_ohlc.add_argument(
+        "--jforex-state-dir",
+        default=None,
+        help="JForex4 local state directory (root of history/)",
+    )
+    p_seed_ohlc.set_defaults(func=cmd_kb_seed_ohlc)
 
     # ── sqx kb validate ─────────────────────────────────────────────────────
     p_validate = kb_sub.add_parser(

@@ -37,6 +37,7 @@ from typing import Optional
 
 import yaml
 
+from quantlab.data.market.models import Bar
 from quantlab.tools.exceptions import ParseError
 from quantlab.robustness.circuit_breaker import CircuitBreaker
 from quantlab.robustness.knowledge_health import (
@@ -326,6 +327,37 @@ class KnowledgeStore:
         if target.exists():
             target.unlink()
 
+    # ── Dataset Cache (G6) ──────────────────────────────────────────────────
+
+    async def cache_dataset(
+        self, symbol: str, timeframe: str, bars: list[Bar]
+    ) -> str:
+        """Cache normalized OHLC bars into ``datasets/{symbol}/{timeframe}.csv``.
+
+        The G6 seed command and the Dukascopy research provider (G3) both
+        write through this helper so ``rebuild_index()`` records every cached
+        dataset. Timestamps are stored as UTC ISO-8601; columns match the
+        ``Bar`` model (``quantlab.data.market.models``). Re-caching the same
+        symbol/timeframe overwrites the file (idempotent re-seed).
+
+        Args:
+            symbol: Base symbol (e.g. ``EURUSD``).
+            timeframe: FX timeframe (``M1``/``M5``/``H1``).
+            bars: Normalized OHLCV bars to persist.
+
+        Returns:
+            The relative lake path (``datasets/{symbol}/{timeframe}.csv``).
+        """
+        rows = [
+            f"{bar.timestamp.isoformat()},{bar.open},{bar.high},{bar.low},"
+            f"{bar.close},{bar.volume}"
+            for bar in bars
+        ]
+        rel = f"datasets/{symbol}/{timeframe}.csv"
+        header = "timestamp,open,high,low,close,volume"
+        await self.write(rel, header + "\n" + "\n".join(rows) + "\n")
+        return rel
+
     # ── Pipeline Run History ───────────────────────────────────────────────────────
 
     def _pipeline_runs_dir(self) -> Path:
@@ -431,9 +463,11 @@ class KnowledgeStore:
     def rebuild_index(self) -> dict[str, dict[str, object]]:
         """Scan the Knowledge Lake and regenerate ``index.yaml``.
 
-        Walks all directories, computes SHA-256 hashes and sizes
-        for every file (skipping ``.gitkeep`` and ``index.yaml``),
-        and writes a human-readable YAML index.
+        Walks every directory recursively (v5 records nested artifacts such
+        as ``datasets/{symbol}/{timeframe}.csv`` and
+        ``campaign-phases/{campaign_id}/{phase}/envelope.json``), computes
+        SHA-256 hashes and sizes for every file (skipping ``.gitkeep`` and
+        ``index.yaml``), and writes a human-readable YAML index.
 
         Corrupted or missing index files are silently rebuilt — the
         filesystem state is always the source of truth.
@@ -450,7 +484,7 @@ class KnowledgeStore:
                 continue
 
             entries: dict[str, object] = {}
-            for file_path in sorted(dir_path.iterdir()):
+            for file_path in sorted(dir_path.rglob("*")):
                 if not file_path.is_file():
                     continue
                 if file_path.name in (GITKEEP_FILENAME, INDEX_FILENAME):
