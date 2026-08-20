@@ -189,3 +189,47 @@ The system MUST reuse `TokenBucket` for LLM API call rate limiting and `SqliteCa
 - WHEN the market block is rendered
 - THEN the volatility zone reads "high"
 - AND the oscillator zones reflect the session values
+
+### Requirement: Tool-Knowledge Templates (ADDED)
+
+`prompts.py` MUST expose `TOOL_KNOWLEDGE_TEMPLATES` with three official tool-knowledge surfaces: `sqx_block_snippet` (block→snippet mapping), `jforex_lifecycle` (IStrategy lifecycle + `@Configurable`), and `sqx_http_api` (SQX HTTP API endpoints). Templates SHALL point agents at version-pinned KB cheat-sheets or `get_doc('api', ...)` instead of embedding full corpora.
+
+#### Scenario: Templates expose three official surfaces
+
+- GIVEN `TOOL_KNOWLEDGE_TEMPLATES` is defined
+- WHEN an agent reads the template registry
+- THEN `sqx_block_snippet`, `jforex_lifecycle`, and `sqx_http_api` are present
+
+#### Scenario: Templates do not inject full corpora
+
+- GIVEN the templates are rendered into a prompt
+- WHEN the prompt is inspected
+- THEN no large licensed corpus text appears; only curated pointers and cheat-sheet references
+
+**Acceptance**: `tests/agents/test_tool_knowledge_templates.py` passes.
+
+### Requirement: KB-Driven F2 Ranges (ADDED)
+
+`LLMResearchAgent.build_prompt` MUST render the F2 SQX parameter reference from the KB via `_render_f2_ranges(provider, ver)`. When the provider returns a range mapping, it SHALL be rendered. When a range is missing, the indicator SHALL be omitted with a logged warning. When no provider is supplied or the KB is absent, the agent MUST fall back to the documented default ranges (RSI [2,200], BB [2,200]/[0.1,5.0], EMA/SMA [2,500], ATR [2,200], MACD [2,200]). No hardcoded range string SHALL remain outside the fallback constant table.
+
+#### Scenario: KB-driven ranges rendered
+
+- GIVEN `SQXDocProvider.get_indicator_range("RSI", "144.2953")` returns `{"period": (2.0, 200.0)}`
+- WHEN `_render_f2_ranges(provider, "144.2953")` is called
+- THEN the prompt contains `RSI period: [2.0, 200.0], default 14`
+
+#### Scenario: Missing range omitted with warning
+
+- GIVEN the provider returns `None` for an indicator
+- WHEN `_render_f2_ranges` is called
+- THEN that indicator is omitted from the prompt
+- AND a warning is logged
+
+#### Scenario: Fallback to defaults when KB absent
+
+- GIVEN no provider is supplied
+- WHEN `_render_f2_ranges(None, "144.2953")` is called
+- THEN the prompt contains the documented default ranges
+- AND no exception is raised
+
+**Acceptance**: `tests/agents/test_llm_research_agent_f2.py` passes.
