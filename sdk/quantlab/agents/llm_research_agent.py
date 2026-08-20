@@ -60,6 +60,30 @@ DEFAULT_MARKET_INDICATORS: tuple[str, ...] = ("RSI", "ATR", "ADX")
 # Default timeframe when the research data carries no explicit one.
 _DEFAULT_MARKET_TIMEFRAME = "H1"
 
+# F2 SQX parameter defaults (REQ-LMR-02). Used when the KB is absent or
+# the indicator lookup returns None.
+_F2_DEFAULT_RANGES: dict[str, dict[str, tuple[float, float]]] = {
+    "rsi": {"period": (2.0, 200.0)},
+    "bb": {"period": (2.0, 200.0), "deviation": (0.1, 5.0)},
+    "sma": {"period": (2.0, 500.0)},
+    "ema": {"period": (2.0, 500.0)},
+    "atr": {"period": (2.0, 200.0)},
+    "macd": {
+        "fast_period": (2.0, 200.0),
+        "slow_period": (2.0, 200.0),
+        "signal_period": (2.0, 100.0),
+    },
+}
+
+_F2_DEFAULT_VALUES: dict[str, dict[str, int | float]] = {
+    "rsi": {"period": 14},
+    "bb": {"period": 20, "deviation": 2.0},
+    "sma": {"period": 200},
+    "ema": {"period": 200},
+    "atr": {"period": 14},
+    "macd": {"fast_period": 12, "slow_period": 26, "signal_period": 9},
+}
+
 
 @dataclass
 class _MarketContext:
@@ -374,6 +398,44 @@ class LLMResearchAgent:
 
     # ── Task 2.5: build_prompt ──────────────────────────────────────────────────
 
+    def _render_f2_ranges(
+        self, provider: SQXDocProvider | None, ver: str
+    ) -> str:
+        """Render F2 SQX parameter reference from KB or fallback defaults.
+
+        When the provider returns a range mapping, render it; otherwise fall
+        back to ``_F2_DEFAULT_RANGES``. Missing indicators are skipped with a
+        warning rather than crashing (REQ-LMR-02).
+        """
+        lines = [
+            "\nSQX Parameter Reference (authoritative):",
+            "- Indicator parameters MUST respect documented ranges and types.",
+        ]
+        for indicator in ("RSI", "BB", "EMA", "SMA", "ATR", "MACD"):
+            ranges = None
+            if provider is not None:
+                ranges = provider.get_indicator_range(indicator, ver)
+            if ranges is None:
+                if provider is None:
+                    ranges = _F2_DEFAULT_RANGES.get(indicator.lower())
+                else:
+                    logger.warning(
+                        "F2 range missing for %s (version %s)", indicator, ver
+                    )
+                    continue
+            for param, (lo, hi) in ranges.items():
+                default = _F2_DEFAULT_VALUES.get(indicator.lower(), {}).get(param)
+                if default is not None:
+                    lines.append(
+                        f"- {indicator} {param}: [{lo}, {hi}], default {default}"
+                    )
+                else:
+                    lines.append(f"- {indicator} {param}: [{lo}, {hi}]")
+        lines.append(
+            "When generating parameters, stay within these bounds."
+        )
+        return "\n".join(lines)
+
     def build_prompt(
         self,
         objective: str,
@@ -483,18 +545,9 @@ class LLMResearchAgent:
             "a data_sources array."
         )
 
-        # F2 wiring: inject SQX reference section
+        # F2 wiring: inject SQX reference section (KB-driven, REQ-LMR-02)
         sqx_provider = SQXDocProvider()
-        sections.append(
-            "\nSQX Parameter Reference (authoritative):\n"
-            "- Indicator parameters MUST respect documented ranges and types.\n"
-            "- RSI period: [2, 200], default 14\n"
-            "- BB period: [2, 200], deviation: [0.1, 5.0], defaults 20/2.0\n"
-            "- EMA/SMA period: [2, 500], default 200\n"
-            "- ATR period: [2, 200], default 14\n"
-            "- MACD fast/slow/signal: [2, 200], defaults 12/26/9\n"
-            "When generating parameters, stay within these bounds."
-        )
+        sections.append(self._render_f2_ranges(sqx_provider, "144.2953"))
 
         # G3: Dukascopy market context block — compact zone labels from
         # IndicatorEngine, source cited. Omitted on a provider gap.

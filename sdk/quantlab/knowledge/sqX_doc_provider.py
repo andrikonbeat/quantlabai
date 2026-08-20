@@ -87,6 +87,15 @@ class SQXDocProvider:
             return True
         return False
 
+    def get_indicator_range(
+        self, indicator: str, sqx_version: str
+    ) -> dict[str, tuple[float, float]] | None:
+        """Return parameter ranges for an indicator, or None when unknown."""
+        normalized = indicator.lower().strip()
+        if normalized not in self._INDICATOR_RANGES:
+            return None
+        return dict(self._INDICATOR_RANGES[normalized])
+
     def get_valid_range(
         self, indicator: str, param_name: str, sqx_version: str
     ) -> tuple[float, float] | None:

@@ -116,3 +116,60 @@ class TestLLMResearchAgentParseValidation:
         })
         config = agent.parse_response(response)
         assert len(config.hypotheses) == 0
+
+
+# ── U2: KB-driven F2 ranges (REQ-LMR-02) ──────────────────────────────────────
+
+
+class TestF2KBRanges:
+    """F2 block renders KB-driven indicator ranges (REQ-LMR-02)."""
+
+    def test_build_prompt_renders_kb_ranges(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+
+        mock_provider = MagicMock(spec=SQXDocProvider)
+        mock_provider.get_indicator_range.return_value = {
+            "period": (2.0, 200.0),
+        }
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.SQXDocProvider",
+            lambda: mock_provider,
+        )
+
+        data = {"fundamental": {"ticker": "EURUSD"}, "macro": {}, "news": []}
+        prompt = agent.build_prompt("mean-reversion on EURUSD", data)
+        assert "RSI period: [2.0, 200.0]" in prompt
+        assert "default 14" in prompt
+
+    def test_build_prompt_omits_missing_indicator(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+
+        mock_provider = MagicMock(spec=SQXDocProvider)
+        mock_provider.get_indicator_range.return_value = None
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.SQXDocProvider",
+            lambda: mock_provider,
+        )
+
+        data = {"fundamental": {"ticker": "EURUSD"}, "macro": {}, "news": []}
+        prompt = agent.build_prompt("mean-reversion on EURUSD", data)
+        assert "SQX Parameter Reference" in prompt
+        assert "- RSI period:" not in prompt
+        assert "F2 range missing" in caplog.text
+
+    def test_build_prompt_falls_back_to_defaults_when_no_provider(
+        self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(
+            "quantlab.agents.llm_research_agent.SQXDocProvider",
+            lambda: None,
+        )
+
+        data = {"fundamental": {"ticker": "EURUSD"}, "macro": {}, "news": []}
+        prompt = agent.build_prompt("mean-reversion on EURUSD", data)
+        assert "RSI period" in prompt
+        assert "default 14" in prompt
