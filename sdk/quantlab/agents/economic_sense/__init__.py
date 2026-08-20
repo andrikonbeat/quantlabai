@@ -1,0 +1,1 @@
+"""Economic sense validation agents."""
