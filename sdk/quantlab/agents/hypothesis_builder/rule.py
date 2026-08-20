@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from quantlab.agents.parameter_validator import ParameterValidator
 from quantlab.dsl.models import (
     BuildingBlock,
     EntryRule,
@@ -281,6 +282,7 @@ class RuleMode:
         self._keyword_map = self._build_keyword_map()
         # Cache indicator names already added to avoid duplicates
         self._indicator_names_seen: set[str] = set()
+        self._parameter_validator = None
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -340,6 +342,7 @@ class RuleMode:
 
         Maps hypothesis parameter keys (e.g. ``rsi_period``) to the
         indicator's param dict based on the indicator name prefix.
+        Rejects invalid overrides and keeps defaults when validation fails.
         """
         params = block.indicator.params.copy()
         prefix = block.indicator.name.lower()
@@ -349,13 +352,32 @@ class RuleMode:
             if hyp_key.startswith(prefix):
                 param_key = hyp_key[len(prefix) + 1 :]  # strip "rsi_" → "period"
                 if param_key and param_key in params:
-                    params[param_key] = hyp_val
+                    # F2 wiring: validate override before applying
+                    if RuleMode._is_valid_override(prefix, param_key, hyp_val):
+                        params[param_key] = hyp_val
 
         if params != block.indicator.params:
             return block.model_copy(
                 update={"indicator": block.indicator.model_copy(update={"params": params})}
             )
         return block
+
+    @staticmethod
+    def _is_valid_override(indicator: str, param_key: str, value: Any) -> bool:
+        """Validate a parameter override against SQXDocProvider."""
+        try:
+            from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+
+            validator = ParameterValidator(doc_provider=SQXDocProvider())
+            hyp = HypothesisConfig(
+                name="override_check",
+                description="",
+                parameters={f"{indicator}_{param_key}": value},
+            )
+            result = validator.validate_hypothesis(hyp)
+            return result.valid
+        except Exception:
+            return True
 
     @staticmethod
     def _infer_direction(hyp: HypothesisConfig) -> StrategyDirection:

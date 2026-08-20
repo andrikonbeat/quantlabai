@@ -34,6 +34,8 @@ from quantlab.dsl.models import (
     Timeframe,
 )
 from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
+from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+from quantlab.agents.parameter_validator import ParameterValidator
 
 try:
     from quantlab.data.news.web_search import WebSearchProvider
@@ -482,22 +484,17 @@ class LLMResearchAgent:
         )
 
         # F2 wiring: inject SQX reference section
-        try:
-            from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
-
-            sqx_provider = SQXDocProvider()
-            sections.append(
-                "\nSQX Parameter Reference (authoritative):\n"
-                "- Indicator parameters MUST respect documented ranges and types.\n"
-                "- RSI period: [2, 200], default 14\n"
-                "- BB period: [2, 200], deviation: [0.1, 5.0], defaults 20/2.0\n"
-                "- EMA/SMA period: [2, 500], default 200\n"
-                "- ATR period: [2, 200], default 14\n"
-                "- MACD fast/slow/signal: [2, 200], defaults 12/26/9\n"
-                "When generating parameters, stay within these bounds."
-            )
-        except Exception:
-            pass
+        sqx_provider = SQXDocProvider()
+        sections.append(
+            "\nSQX Parameter Reference (authoritative):\n"
+            "- Indicator parameters MUST respect documented ranges and types.\n"
+            "- RSI period: [2, 200], default 14\n"
+            "- BB period: [2, 200], deviation: [0.1, 5.0], defaults 20/2.0\n"
+            "- EMA/SMA period: [2, 500], default 200\n"
+            "- ATR period: [2, 200], default 14\n"
+            "- MACD fast/slow/signal: [2, 200], defaults 12/26/9\n"
+            "When generating parameters, stay within these bounds."
+        )
 
         # G3: Dukascopy market context block — compact zone labels from
         # IndicatorEngine, source cited. Omitted on a provider gap.
@@ -735,8 +732,6 @@ class LLMResearchAgent:
 
         # F2 wiring: validate hypotheses against SQXDocProvider and drop invalid ones
         try:
-            from quantlab.agents.parameter_validator import ParameterValidator
-
             validator = ParameterValidator()
             hypotheses = [
                 h for h in hypotheses
@@ -752,16 +747,18 @@ class LLMResearchAgent:
         strategies = data.get("strategies", [])
 
         # Build ResearchConfig
-        config = ResearchConfig(
-            campaign=data.get("campaign", "LLM Research"),
-            market=market if isinstance(market, Market) else Market.SP500,
-            timeframe=timeframe,
-            building_blocks=building_blocks,
-            strategies=strategies,
-            criteria=data.get("criteria", []),
-            hypotheses=hypotheses,
-            iteration_config=data.get("iteration_config", None),
-        )
+        config_kwargs: dict[str, Any] = {
+            "campaign": data.get("campaign", "LLM Research"),
+            "market": market if isinstance(market, Market) else Market.SP500,
+            "timeframe": timeframe,
+            "building_blocks": building_blocks,
+            "strategies": strategies,
+            "criteria": data.get("criteria", []),
+            "hypotheses": hypotheses,
+        }
+        if data.get("iteration_config") is not None:
+            config_kwargs["iteration_config"] = data["iteration_config"]
+        config = ResearchConfig(**config_kwargs)
 
         return config
 
