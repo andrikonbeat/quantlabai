@@ -3,6 +3,8 @@ sqx_name: Walk-Forward Matrix
 tab: Cross checks
 section: 3. EXTENSIVE (SLOWEST)
 type: config
+xml_path: CrossChecks/WalkForwardMatrix
+element_name: WalkForwardMatrix
 default: OOS 10% - 40%, 5 - 20 runs
 range: '>= 1 2x2 zone at 80% robustness; WF Net Profit (OOS) > 0'
 what_it_does: Matrix of walk-forward tests hunting the ideal optimization/test period

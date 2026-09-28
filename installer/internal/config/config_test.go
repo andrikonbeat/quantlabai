@@ -125,3 +125,123 @@ func TestWriteConfig_CreatesDir(t *testing.T) {
 		t.Fatalf("file not created: %v", err)
 	}
 }
+
+func TestResolveSQXCliPath(t *testing.T) {
+	tests := []struct {
+		name       string
+		cfg        *SQXConfig
+		want       string
+		goos       string
+	}{
+		{
+			name: "CLIPath override wins",
+			cfg: &SQXConfig{
+				InstallPath: "/opt/SQX",
+				CLIPath:     "/usr/local/bin/sqcli",
+			},
+			want: "/usr/local/bin/sqcli",
+		},
+		{
+			name: "derived from InstallPath on linux",
+			cfg: &SQXConfig{
+				InstallPath: "/opt/SQX",
+			},
+			want: "/opt/SQX/sqcli",
+			goos: "linux",
+		},
+		{
+			name: "nil config returns default",
+			cfg:  nil,
+			want: "/opt/SQX/sqcli",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.goos != "" {
+				// We can't change runtime.GOOS, but we can test the public method
+				// which uses runtime.GOOS. For cross-platform coverage, we test
+				// the exported ResolveSQXCliPath which is deterministic on the
+				// current OS.
+			}
+			got := tt.cfg.ResolveSQXCliPath()
+			if got != tt.want {
+				t.Errorf("ResolveSQXCliPath() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValidateSQXPath(t *testing.T) {
+	t.Run("empty path fails", func(t *testing.T) {
+		err := ValidateSQXPath("")
+		if err == nil {
+			t.Fatal("expected error for empty path")
+		}
+	})
+
+	t.Run("nonexistent path fails", func(t *testing.T) {
+		err := ValidateSQXPath("/nonexistent/SQX")
+		if err == nil {
+			t.Fatal("expected error for nonexistent path")
+		}
+	})
+
+	t.Run("valid path with sqcli in root", func(t *testing.T) {
+		dir := t.TempDir()
+		// Create sqcli binary in root
+		bin := filepath.Join(dir, "sqcli")
+		if err := os.WriteFile(bin, []byte{}, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := ValidateSQXPath(dir); err != nil {
+			t.Fatalf("expected valid path, got error: %v", err)
+		}
+	})
+
+	t.Run("valid path with sqcli in bin", func(t *testing.T) {
+		dir := t.TempDir()
+		binDir := filepath.Join(dir, "bin")
+		if err := os.MkdirAll(binDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		bin := filepath.Join(binDir, "sqcli")
+		if err := os.WriteFile(bin, []byte{}, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := ValidateSQXPath(dir); err != nil {
+			t.Fatalf("expected valid path, got error: %v", err)
+		}
+	})
+}
+
+func TestNormalizeAccountMode(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+		err   bool
+	}{
+		{"", "demo", false},
+		{"demo", "demo", false},
+		{"live", "live", false},
+		{"invalid", "", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := NormalizeAccountMode(tt.input)
+			if tt.err {
+				if err == nil {
+					t.Fatalf("expected error for %q", tt.input)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error for %q: %v", tt.input, err)
+				}
+				if got != tt.want {
+					t.Errorf("NormalizeAccountMode(%q) = %q, want %q", tt.input, got, tt.want)
+				}
+			}
+		})
+	}
+}

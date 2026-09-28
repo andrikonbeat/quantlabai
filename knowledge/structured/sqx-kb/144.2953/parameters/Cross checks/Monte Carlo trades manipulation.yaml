@@ -3,6 +3,8 @@ sqx_name: Monte Carlo trades manipulation
 tab: Cross checks
 section: 1. BASIC (FAST)
 type: config
+xml_path: CrossChecks/MonteCarloManipulation
+element_name: MonteCarloManipulation
 default: 2 tests, 30 simulations, 2 conditions
 range: Net profit >= 60% of original at 80% confidence
 what_it_does: Resamples trade sequence and randomly omits 10% of trades to verify

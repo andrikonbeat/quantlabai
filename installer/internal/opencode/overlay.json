@@ -1,53 +1,227 @@
 {
-  "agent": {
+  "agents": {
     "quantlab-orchestrator": {
-      "description": "QuantLab AI orchestrator — routes requests to SDD, CLI, or dashboard",
+      "description": "QuantLab orchestrator: research → hypothesis → config → review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops.",
       "mode": "primary",
-      "permission": {
+      "permissions": {
         "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sqcli": "allow",
+          "python": "allow",
+          "pytest": "allow",
+          "git": "allow"
+        },
         "task": {
           "*": "deny",
           "sdd-*": "allow",
-          "quantlab-*": "allow"
+          "quantlab-*": "allow",
+          "gentle-*": "allow"
         },
-        "bash": {
+        "read": {
+          "*": "allow"
+        },
+        "write": {
           "*": "deny",
-          "quantlab-*": "allow"
+          "openspec/**": "allow",
+          "sdk/**": "allow",
+          "installer/**": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "openspec/**": "allow",
+          "sdk/**": "allow",
+          "installer/**": "allow"
         }
       },
       "prompt": "{file:~/.config/opencode/prompts/quantlab/orchestrator.md}",
-      "tools": {
-        "bash": true,
-        "edit": true,
-        "read": true,
-        "task": true,
-        "write": true,
-        "question": true
-      }
+      "skills": [
+        "quantlab-run-campaign",
+        "sdd-*",
+        "gentle-*"
+      ]
     },
     "quantlab-campaign": {
-      "description": "QuantLab campaign runner — executes and monitors trading campaigns",
-      "hidden": true,
-      "mode": "subagent",
-      "permission": {
+      "description": "QuantLab campaign executor: runs the 14-phase campaign lifecycle under orchestrator direction.",
+      "mode": "standard",
+      "permissions": {
         "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sqcli": "allow",
+          "python": "allow",
+          "pytest": "allow",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
         "task": {
           "*": "deny",
           "quantlab-*": "allow"
         },
-        "bash": {
+        "read": {
+          "*": "allow"
+        },
+        "write": {
           "*": "deny",
-          "sdk/quantlab/pipeline/*": "allow",
-          "sdk/quantlab/campaign/*": "allow"
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
         }
       },
       "prompt": "{file:~/.config/opencode/prompts/quantlab/campaign.md}",
-      "tools": {
-        "bash": true,
-        "edit": true,
-        "read": true,
-        "write": true
-      }
+      "skills": [
+        "quantlab-run-campaign"
+      ]
+    },
+    "guardian-orchestrator": {
+      "description": "QuantLab guardian: live-ops, monitoring, alerts, retest, optimize, deploy, archive.",
+      "mode": "primary",
+      "permissions": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sqcli": "allow",
+          "python": "allow",
+          "pytest": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow",
+          "gentle-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "write": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/guardian-orchestrator.md}",
+      "skills": [
+        "quantlab-run-campaign"
+      ]
+    },
+    "quantlab-guardian": {
+      "description": "QuantLab guardian subagent: live-ops monitoring.",
+      "mode": "subagent",
+      "hidden": true,
+      "permissions": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sqcli": "allow",
+          "python": "allow",
+          "pytest": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "write": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/guardian-orchestrator.md}",
+      "skills": [
+        "quantlab-run-campaign"
+      ]
+    },
+    "quantlab-guardian-alert": {
+      "description": "QuantLab guardian alert subagent.",
+      "mode": "subagent",
+      "hidden": true,
+      "permissions": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sqcli": "allow",
+          "python": "allow",
+          "pytest": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "write": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/guardian-orchestrator.md}",
+      "skills": [
+        "quantlab-run-campaign"
+      ]
+    },
+    "quantlab-replacement": {
+      "description": "QuantLab replacement subagent.",
+      "mode": "subagent",
+      "hidden": true,
+      "permissions": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sqcli": "allow",
+          "python": "allow",
+          "pytest": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "write": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/guardian-orchestrator.md}",
+      "skills": [
+        "quantlab-run-campaign"
+      ]
+    }
+  },
+  "skills": {
+    "quantlab-run-campaign": {
+      "source": "builtin",
+      "delegate_only": true
     }
   }
 }

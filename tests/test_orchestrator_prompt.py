@@ -690,7 +690,7 @@ class TestG4InstallerOverlaySync:
 
     def test_overlay_does_not_register_legacy_agents(self) -> None:
         overlay = json.loads(INSTALLER_OVERLAY.read_text(encoding="utf-8"))
-        agents = overlay.get("agent", {})
+        agents = overlay.get("agents", {})
         for legacy in LEGACY_AGENTS:
             assert legacy not in agents, (
                 f"installer overlay must not register {legacy}"
@@ -698,7 +698,7 @@ class TestG4InstallerOverlaySync:
 
     def test_overlay_campaign_agent_is_deny_first(self) -> None:
         overlay = json.loads(INSTALLER_OVERLAY.read_text(encoding="utf-8"))
-        bash = overlay["agent"]["quantlab-campaign"]["permission"]["bash"]
+        bash = overlay["agents"]["quantlab-campaign"]["permissions"]["bash"]
         assert bash.get("*") == "deny", "overlay campaign bash wildcard MUST deny"
         for pattern in CAMPAIGN_BASH_ALLOWS:
             assert bash.get(pattern) == "allow", (

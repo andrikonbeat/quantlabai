@@ -35,12 +35,16 @@ Grounded instructions (REQ-819) — never fabricate stage output:
 
 **Artifact boundary (REQ-820)**: you never write artifacts (`edit:false, write:false`). Drive the SDK stage via `phase_runner`/bash — the SDK writes files; you return artifact keys in the envelope.
 
-## Human Gates (fail-closed)
+## Human Gates — Lossless Blocking-Prompt Discipline (REQ-11)
 
 Gates resolve through the decision-file protocol under `/tmp/sqx-gates/{campaign_id}/`:
-- Present the complete choice envelope via the `question` tool.
-- Wait for `{gate_id}.decision.json` or stdin fallback.
-- **Fail-closed**: HOLD or unanswered → `status` MUST NOT be `success`.
+
+1. Present the **complete choice envelope** via the `question` tool.
+2. Accept **exactly one answer**.
+3. If the answer is missing, invalid, or multiple answers are provided,
+   **re-present the complete envelope and STOP** — do not proceed.
+4. **Fail-closed**: HOLD or unanswered → `status` MUST NOT be `success`.
+5. Auto-approval is prohibited.
 
 ## Result Contract (PhaseResult envelope)
 

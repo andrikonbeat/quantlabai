@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ogzuz/quantlab/internal/config"
 	"github.com/ogzuz/quantlab/internal/model"
 	"github.com/ogzuz/quantlab/internal/opencode"
 	"github.com/ogzuz/quantlab/internal/sdk"
@@ -46,10 +47,10 @@ func TestDetectIssues_NoIssues(t *testing.T) {
 	}
 
 	issues := detectIssues(st, &sdk.SDKInfo{Installed: true}, &opencode.Config{Raw: map[string]any{
-		"agent": map[string]any{
+		"agents": map[string]any{
 			"quantlab-orchestrator": map[string]any{},
 		},
-	}}, 2, 1, qlDir)
+	}}, 2, 1, qlDir, nil)
 
 	if len(issues) != 0 {
 		t.Errorf("expected no issues, got: %v", issues)
@@ -63,7 +64,7 @@ func TestDetectIssues_MissingSkills(t *testing.T) {
 	st := &state.State{}
 	st.AddComponent(model.ComponentSkills, "installed", "", 3)
 
-	issues := detectIssues(st, nil, nil, 0, 0, qlDir)
+	issues := detectIssues(st, nil, nil, 0, 0, qlDir, nil)
 
 	found := false
 	for _, issue := range issues {
@@ -84,7 +85,7 @@ func TestDetectIssues_MissingPrompts(t *testing.T) {
 	st := &state.State{}
 	st.AddComponent(model.ComponentPrompts, "installed", "", 2)
 
-	issues := detectIssues(st, nil, nil, 0, 0, qlDir)
+	issues := detectIssues(st, nil, nil, 0, 0, qlDir, nil)
 
 	found := false
 	for _, issue := range issues {
@@ -105,7 +106,7 @@ func TestDetectIssues_MissingSDK(t *testing.T) {
 	st := &state.State{}
 	st.AddComponent(model.ComponentSDK, "installed", filepath.Join(qlDir, "venv"), 0)
 
-	issues := detectIssues(st, &sdk.SDKInfo{Installed: false}, nil, 0, 0, qlDir)
+	issues := detectIssues(st, &sdk.SDKInfo{Installed: false}, nil, 0, 0, qlDir, nil)
 
 	found := false
 	for _, issue := range issues {
@@ -132,7 +133,7 @@ func TestDetectIssues_OrphanedAgent(t *testing.T) {
 		},
 	}}
 
-	issues := detectIssues(st, nil, ocCfg, 0, 0, qlDir)
+	issues := detectIssues(st, nil, ocCfg, 0, 0, qlDir, nil)
 
 	found := false
 	for _, issue := range issues {
@@ -147,7 +148,7 @@ func TestDetectIssues_OrphanedAgent(t *testing.T) {
 }
 
 func TestDetectIssues_NilState(t *testing.T) {
-	issues := detectIssues(nil, nil, nil, 0, 0, "")
+	issues := detectIssues(nil, nil, nil, 0, 0, "", nil)
 	if len(issues) == 0 {
 		t.Error("expected issues for nil state")
 	}
@@ -167,7 +168,7 @@ func TestDetectIssues_JournalResidue(t *testing.T) {
 	}
 
 	st := &state.State{}
-	issues := detectIssues(st, nil, nil, 0, 0, qlDir)
+	issues := detectIssues(st, nil, nil, 0, 0, qlDir, nil)
 
 	found := false
 	for _, issue := range issues {
@@ -178,6 +179,38 @@ func TestDetectIssues_JournalResidue(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected journal residue issue, got: %v", issues)
+	}
+}
+
+func TestDetectIssues_SQXFolderMoved(t *testing.T) {
+	home := t.TempDir()
+	qlDir := filepath.Join(home, ".quantlab")
+	if err := os.MkdirAll(qlDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	st := &state.State{}
+	st.AddComponent(model.ComponentSDK, "installed", filepath.Join(qlDir, "venv"), 0)
+
+	// Configure SQX with an InstallPath that does NOT exist on disk
+	cfg := &config.QuantLabConfig{
+		SQX: config.SQXConfig{
+			InstallPath: "/nonexistent/SQX/path",
+			CLIPath:     "/opt/SQX/sqcli",
+		},
+	}
+
+	issues := detectIssues(st, &sdk.SDKInfo{Installed: true}, nil, 0, 0, qlDir, cfg)
+
+	found := false
+	for _, issue := range issues {
+		if issue == "SQX folder moved — run 'quantlab configure' to update" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected SQX folder moved issue, got: %v", issues)
 	}
 }
 

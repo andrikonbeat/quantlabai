@@ -3,7 +3,10 @@ sqx_name: Opt. Profile / Sys. Param. Permutation
 tab: Cross checks
 section: 3. EXTENSIVE (SLOWEST)
 type: config
+xml_path: CrossChecks/OptProfileSysParamPermutation
+element_name: OptProfileSysParamPermutation
 default: Max 1,000 optimizations, 4 conditions
+range: 'ProfitOptPct 0-100; AvgProfit any; UniformDistrChanges 1-20; StdevAvgProfit >= 0'
 what_it_does: Analyzes the optimization profile to ensure chosen parameters sit in
   a broad profitable zone, not isolated peaks.
 how_it_works_in_sqx: Optimization-surface analysis.

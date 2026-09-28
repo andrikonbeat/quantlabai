@@ -3,6 +3,8 @@ sqx_name: Sequential Optimization
 tab: Cross checks
 section: 2. STANDARD (SLOW)
 type: config
+xml_path: CrossChecks/SequentialOptimization
+element_name: SequentialOptimization
 default: Up/Down 50%, 50 steps
 range: '>= 80% of parameters must pass stability'
 what_it_does: Optimizes parameters sequentially to find stability ranges.

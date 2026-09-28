@@ -3,8 +3,10 @@ sqx_name: Walk-Forward Optimization
 tab: Cross checks
 section: 3. EXTENSIVE (SLOWEST)
 type: config
-default: 10 runs, 20% Out of sample
-range: Robustness score >= 50%
+xml_path: CrossChecks/WalkForwardOptimization
+element_name: WalkForwardOptimization
+default: period=12, optimization=6
+range: period 1-100, optimization 1-50
 what_it_does: Simulates periodic re-optimization over rolling OOS windows.
 how_it_works_in_sqx: Walk-forward validation loop.
 quant_trading_role: Simulates live re-optimization behavior.

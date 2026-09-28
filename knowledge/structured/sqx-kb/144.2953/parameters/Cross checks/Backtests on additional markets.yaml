@@ -3,6 +3,8 @@ sqx_name: Backtests on additional markets
 tab: Cross checks
 section: 2. STANDARD (SLOW)
 type: config
+xml_path: CrossChecks/RetestOnAdditionalMarkets
+element_name: RetestOnAdditionalMarkets
 default: GBPUSD_M1_dukas
 range: Spread 0.6; commission $7 per lot
 what_it_does: Retests on a similar symbol to confirm the logic captures a general

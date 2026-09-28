@@ -38,7 +38,8 @@ GUARDIAN-LIVE intents MUST route to `guardian-orchestrator`. Decision (documente
 
 ### Requirement: HUMAN_APPROVE_REPLACEMENT Live Gate (REQ-824)
 
-The system MUST implement a `HUMAN_APPROVE_REPLACEMENT` live gate with REQ-11 fail-closed semantics (D10/D11): it is the ONLY path that changes a live position; the system MUST NEVER auto-replace a strategy. A HOLD, missing, or non-approved decision SHALL block the replacement; `guardian-orchestrator` SHALL present the gate via the decision-file protocol and MUST NOT execute without approval.
+The system MUST implement a `HUMAN_APPROVE_REPLACEMENT` live gate with fail-closed semantics (D10/D11): it is the ONLY path that changes a live position; the system MUST NEVER auto-replace a strategy. The gate MUST present a complete envelope, accept exactly one answer, and re-present + STOP on missing or invalid input. A HOLD, missing, or non-approved decision SHALL block the replacement; `guardian-orchestrator` SHALL present the gate via the decision-file protocol and MUST NOT execute without approval.
+(Previously: the gate used fail-closed semantics but did not enforce lossless blocking-prompt discipline.)
 
 #### Scenario: Replacement waits for human
 
@@ -53,6 +54,20 @@ The system MUST implement a `HUMAN_APPROVE_REPLACEMENT` live gate with REQ-11 fa
 - WHEN the gate resolves
 - THEN the replacement is blocked
 - AND the strategy is not replaced
+
+#### Scenario: Exact-one answer required
+
+- GIVEN `HUMAN_APPROVE_REPLACEMENT` firing
+- WHEN the human provides multiple or invalid answers
+- THEN the gate re-presents the complete envelope
+- AND blocks until a single valid answer is given
+
+#### Scenario: Invalid answer halts
+
+- GIVEN a gate receiving an unrecognized response
+- WHEN the validation runs
+- THEN the gate re-presents the envelope
+- AND stops without proceeding
 
 ### Requirement: Guardian Orchestrator Delegates (REQ-825)
 

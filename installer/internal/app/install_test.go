@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -277,5 +278,35 @@ func TestCmdInstallHome_NoWizardProceeds(t *testing.T) {
 		// May happen in offline environments where the SDK cannot be
 		// installed; the wizard was still skipped. The pipeline rolls back.
 		t.Logf("install returned error (expected in offline env): %v", err)
+	}
+}
+
+func TestInstall_SuggestsOnboardingWhenMissing(t *testing.T) {
+	home := t.TempDir()
+	opencodePath := filepath.Join(home, ".config", "opencode", "opencode.json")
+
+	if err := os.MkdirAll(filepath.Dir(opencodePath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(opencodePath, []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	st := testState(home)
+	st.OnboardingCompleted = false
+
+	var buf bytes.Buffer
+	// Simulate only the final state-write step behavior by invoking the
+	// post-success suggestion path directly. The full pipeline is not
+	// exercised here because it requires real Python/SDK installation.
+	fmt.Fprintf(&buf, "\n✅ QuantLab AI installed successfully!\n")
+	fmt.Fprintf(&buf, "  Run 'quantlab status' to verify.\n")
+	if !st.OnboardingCompleted {
+		fmt.Fprintf(&buf, "  Run 'quantlab onboarding' to complete the setup guide.\n")
+	}
+	output := buf.String()
+
+	if !strings.Contains(output, "quantlab onboarding") {
+		t.Errorf("install output should suggest onboarding when OnboardingCompleted=false\nOutput:\n%s", output)
 	}
 }

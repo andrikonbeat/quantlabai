@@ -266,3 +266,73 @@ func TestRoundTripJSON(t *testing.T) {
 		t.Fatalf("Components after round-trip = %d", len(decoded.Components))
 	}
 }
+
+func TestOnboardingStatePersistence(t *testing.T) {
+	dir := t.TempDir()
+	stateDir := filepath.Join(dir, ".quantlab")
+
+	s, err := LoadOrInit(stateDir)
+	if err != nil {
+		t.Fatalf("LoadOrInit() error = %v", err)
+	}
+
+	// Simulate onboarding completion
+	s.OnboardingCompleted = true
+	now := time.Now().UTC()
+	s.OnboardingCompletedAt = &now
+
+	changed, err := s.Save()
+	if err != nil {
+		t.Fatalf("Save() error = %v", err)
+	}
+	if !changed {
+		t.Fatal("Save() changed = false, want true")
+	}
+
+	// Load again and verify
+	s2, err := LoadOrInit(stateDir)
+	if err != nil {
+		t.Fatalf("LoadOrInit() second error = %v", err)
+	}
+	if !s2.OnboardingCompleted {
+		t.Fatal("OnboardingCompleted = false after load, want true")
+	}
+	if s2.OnboardingCompletedAt == nil {
+		t.Fatal("OnboardingCompletedAt = nil after load")
+	}
+	if !s2.OnboardingCompletedAt.Equal(now) {
+		t.Fatalf("OnboardingCompletedAt = %v, want %v", s2.OnboardingCompletedAt, now)
+	}
+}
+
+func TestLegacyStateWithoutOnboardingFlags(t *testing.T) {
+	dir := t.TempDir()
+	stateDir := filepath.Join(dir, ".quantlab")
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Write legacy state JSON without onboarding fields
+	legacy := `{
+  "version": "1",
+  "install_id": "legacy-id",
+  "quantlab_version": "0.1.0",
+  "components": [],
+  "opencode_agents_created": []
+}`
+	path := filepath.Join(stateDir, StateFile)
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := LoadOrInit(stateDir)
+	if err != nil {
+		t.Fatalf("LoadOrInit() legacy error = %v", err)
+	}
+	if s.OnboardingCompleted {
+		t.Fatal("legacy state should not have OnboardingCompleted=true")
+	}
+	if s.OnboardingCompletedAt != nil {
+		t.Fatal("legacy state should not have OnboardingCompletedAt")
+	}
+}

@@ -8,15 +8,15 @@ End-to-end pipeline runner that orchestrates the full campaign lifecycle: transl
 
 ### Requirement: Orchestrated Campaign Loop (REQ-01)
 
-The `quantlab-campaign` subagent MUST own the orchestrated phase loop across the full 14-phase lifecycle: research → hypothesis → SQX config → config review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops (Guardian watching the demo account). Each phase MUST be delegated to its dedicated per-phase subagent via the `task` tool, and each delegated agent MUST return the Result Contract envelope (`status`, `executive_summary`, `artifacts`, `next_recommended`, `risks`) wrapped as a `PhaseResult` (REQ-802). The loop MUST fold each `PhaseResult` before dispatching the next phase, MUST NOT stop at optimize, and MUST proceed through deploy, demo, and archive. `quantlab-orchestrator` SHALL remain the router.
-(Previously: the campaign subagent executed all phases inline in its own session; per-phase `task` delegation did not exist.)
+The `quantlab-campaign` subagent MUST own the orchestrated phase loop across the full 14-phase lifecycle: research → hypothesis → SQX config → config review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops (Guardian watching the demo account). Each phase MUST be delegated to its dedicated per-phase subagent via the `task` tool, and each delegated agent MUST return the Result Contract envelope (`status`, `executive_summary`, `artifacts`, `next_recommended`, `risks`) wrapped as a `PhaseResult` (REQ-802). The loop MUST fold each `PhaseResult` before dispatching the next phase, MUST NOT stop at optimize, and MUST proceed through deploy, demo, and archive. A post-phase gatekeeper MUST validate contract conformance, artifact read-back, no-hallucination, no-input-drift, and routing coherence before the next phase. The gatekeeper MUST allow exactly one corrective re-run per failed phase, then stop and report. `quantlab-orchestrator` SHALL remain the router.
+(Previously: the campaign subagent executed phases via task delegation but had no post-phase gatekeeper loop.)
 
 #### Scenario: Full loop runs all 14 phases
 
 - GIVEN a campaign objective entered in OpenCode chat
 - WHEN `quantlab-campaign` runs the loop
 - THEN each of the 14 phases executes via its dedicated per-phase agent dispatched with `task`
-- AND each `PhaseResult` envelope is folded before the next phase is dispatched
+- AND each `PhaseResult` envelope is folded and validated by the gatekeeper before the next phase is dispatched
 - AND the loop terminates at archive with a maintenance plan and statistics
 
 #### Scenario: Phase failure halts for human
@@ -25,6 +25,20 @@ The `quantlab-campaign` subagent MUST own the orchestrated phase loop across the
 - WHEN the phase agent returns its `PhaseResult`
 - THEN the envelope carries `status=failed` and the loop halts awaiting a human decision
 - AND no subsequent phase is dispatched
+
+#### Scenario: Gatekeeper validates envelope
+
+- GIVEN a phase returning a `PhaseResult`
+- WHEN the post-phase gatekeeper runs
+- THEN it validates contract conformance, artifact read-back, no-hallucination, no-input-drift, and routing coherence
+- AND only then dispatches the next phase
+
+#### Scenario: Exactly-once corrective re-run
+
+- GIVEN a phase that fails validation on first attempt
+- WHEN the gatekeeper re-runs it
+- THEN the phase executes exactly once more
+- AND if it fails again, the loop stops and reports
 
 ### Requirement: Progress Callbacks
 
@@ -100,7 +114,7 @@ The full lifecycle MUST retain all 14 flow phases plus the Guardian live flow, i
 
 #### Scenario: Harness change preserves flow
 
-- GIVEN a refactored harness (e.g., substrate rollout)
+- GIVEN a refactored harness (e.g., sync extension)
 - WHEN the campaign starts
 - THEN the 14 phases plus the Guardian flow are asserted present and in order
 - AND each phase blocks on its human gate before proceeding
@@ -112,11 +126,11 @@ The full lifecycle MUST retain all 14 flow phases plus the Guardian live flow, i
 - THEN the campaign aborts with a flow-integrity error
 - AND no execution begins
 
-#### Scenario: CLI run-flow asserts before execution
+#### Scenario: Preflight runs after harness change
 
-- GIVEN the user invokes the campaign run-flow command
-- WHEN the command starts
-- THEN the REQ-37 invariant is asserted before any phase executes
+- GIVEN a harness change (e.g., sync extension)
+- WHEN the campaign starts
+- THEN the REQ-37 invariant is asserted
 - AND a broken pipeline aborts with a flow-integrity error and non-zero exit
 
 ### Requirement: Run-Flow Gate Execution

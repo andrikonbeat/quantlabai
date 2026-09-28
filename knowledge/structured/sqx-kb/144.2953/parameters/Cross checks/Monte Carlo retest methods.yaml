@@ -3,6 +3,8 @@ sqx_name: Monte Carlo retest methods
 tab: Cross checks
 section: 2. STANDARD (SLOW)
 type: config
+xml_path: CrossChecks/MonteCarloRetest
+element_name: MonteCarloRetest
 default: 6 tests, 10 simulations, 2 conditions
 range: Net Profit >= 50% of original; Max DD % <= 200% of original (80% confidence)
 what_it_does: 'Hardest test: varies historical data, spread, slippage and strategy

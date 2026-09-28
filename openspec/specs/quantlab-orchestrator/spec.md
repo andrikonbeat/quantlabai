@@ -8,14 +8,14 @@ Defines the `quantlab-orchestrator` agent entry in `opencode.json` and its promp
 
 ### Requirement: Agent registration in opencode.json
 
-The system MUST register `quantlab-orchestrator` as a subagent in `opencode.json` with `mode: subagent`, a description, a prompt file reference, and a scoped tool set.
+The system MUST register `quantlab-orchestrator` as a primary agent in `opencode.json` with `mode: primary`, a description, a prompt file reference, and a scoped tool set.
 
 #### Scenario: Agent appears in opencode.json agents map
 
 - GIVEN `opencode.json` exists at `~/.config/opencode/opencode.json`
 - WHEN the quantlab-orchestrator agent is configured
 - THEN `agents.quantlab-orchestrator` exists in the JSON
-- AND its `mode` is `"subagent"`
+- AND its `mode` is `"primary"`
 - AND its `description` contains "QuantLab orchestrator"
 
 #### Scenario: Agent prompt references the orchestrator prompt file
@@ -30,6 +30,13 @@ The system MUST register `quantlab-orchestrator` as a subagent in `opencode.json
 - WHEN tools are listed
 - THEN `bash`, `edit`, `read`, `write`, and `task` are allowed
 - AND `question` is allowed for permission prompts
+
+#### Scenario: Mode consistent with overlay and REQ-822
+
+- GIVEN the installer overlay and the live machine config
+- WHEN the agent mode is compared
+- THEN `mode: primary` matches the overlay definition
+- AND it is consistent with the first-class registration of `guardian-orchestrator` (REQ-822)
 
 ### Requirement: Prompt file with skill resolver
 

@@ -3,6 +3,8 @@ sqx_name: Higher backtest precision
 tab: Cross checks
 section: 1. BASIC (FAST)
 type: config
+xml_path: CrossChecks/RetestWithHigherPrecision
+element_name: RetestWithHigherPrecision
 default: 1-minute tick simulation, 3 conditions
 range: Spread 3 pips
 what_it_does: Slower, precise backtest with wider spread (3 pips) to confirm viability

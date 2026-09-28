@@ -114,6 +114,14 @@ for phase in PHASES:
 
     # Validate and fold the envelope (REQ-802).
     validate_phase_result(result)
+
+    # Post-phase gatekeeper (REQ-01): validate envelope conformance,
+    # artifact read-back, no hallucination, no input drift, routing coherence.
+    # If the gate fails, re-run the phase exactly once with corrective feedback,
+    # then halt and report if it fails again.
+    result = run_post_phase_gatekeeper(directive, result)
+    validate_phase_result(result)  # re-validate after potential corrective re-run
+
     state.last_result = result
     state.artifacts.extend(result.artifacts)
 
@@ -141,6 +149,33 @@ Rules:
   inside a subagent session (REQ-809).
 - Phase failure (`status=failed`) halts the loop and surfaces the
   `PhaseResult` to the human. Do not auto-continue past a failed phase.
+
+### Post-Phase Gatekeeper (REQ-01)
+
+After `validate_phase_result(result)` and before folding the result into campaign
+state, run the post-phase gatekeeper. The gatekeeper validates:
+
+1. **Contract conformance** — envelope shape (already validated by
+   `validate_phase_result`).
+2. **Artifact read-back** — every declared artifact must exist on disk under the
+   `knowledge_root` provided in the directive payload.
+3. **No hallucination** — spot-check for file/symbol/command references that do
+   not exist. Absolute paths in `artifacts` and `evidence` must resolve.
+4. **No input drift** — the result must respect the directive bounds
+   (`result.phase_id` must match `directive.phase_id`).
+5. **Routing coherence** — `result.next_recommended` must equal the expected
+   next phase from the canonical `PHASES` tuple.
+
+**Corrective re-run policy:** if any gate check fails, re-run the phase exactly
+once with corrective feedback injected into the directive payload
+(`corrective_feedback.previous_risks`, `previous_artifacts`, `previous_summary`).
+If the re-run also fails any gate check, halt the loop and report with
+`GatekeeperHalt`. Do not attempt a third execution.
+
+```python
+result = run_post_phase_gatekeeper(directive, result)
+validate_phase_result(result)  # re-validate after potential corrective re-run
+```
 
 | Phase | Subagent |
 |---|---|
@@ -261,6 +296,17 @@ Autonomous rules (binding):
   FALLBACK.
 - Campaign ids passed to the gate channel are restricted to `[A-Za-z0-9_-]`;
   reject anything else before touching the filesystem.
+
+## Lossless Gate Protocol (REQ-11)
+
+All human gates MUST use lossless blocking-prompt discipline:
+
+1. Present the **complete choice envelope** (context, options, consequences) via
+   the `question` tool.
+2. Accept **exactly one answer**.
+3. If the answer is missing, invalid, or multiple answers are provided,
+   **re-present the complete envelope and STOP** — do not proceed.
+4. Auto-approval is prohibited. Gate on explicit `action == APPROVE` only.
 
 ## Data (D5)
 

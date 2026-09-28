@@ -8,25 +8,102 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/ogzuz/quantlab/internal/filemerge"
 	"gopkg.in/yaml.v3"
 )
 
-// SQXConfig holds SQX CLI configuration.
+// DefaultSQXCliPath is the fallback CLI path used when neither InstallPath
+// nor CLIPath is configured.
+const DefaultSQXCliPath = "/opt/SQX/sqcli"
+
+// SQXConfig holds SQX installation configuration. InstallPath is the
+// canonical install folder; CLIPath is an optional override.
 type SQXConfig struct {
-	CLIPath string `yaml:"cli_path"`
+	InstallPath string `yaml:"install_path"`
+	CLIPath     string `yaml:"cli_path"`
 }
 
-// JForexConfig holds JForex DAS connection settings.
+// ResolveSQXCliPath returns the effective SQX CLI binary path. An explicit
+// CLIPath override wins; otherwise the path is derived from InstallPath.
+func (c *SQXConfig) ResolveSQXCliPath() string {
+	return c.resolveSQXCliPath(runtime.GOOS)
+}
+
+func (c *SQXConfig) resolveSQXCliPath(goos string) string {
+	if c == nil {
+		return DefaultSQXCliPath
+	}
+	if c.CLIPath != "" {
+		return c.CLIPath
+	}
+	if c.InstallPath != "" {
+		return filepath.Join(c.InstallPath, sqxBinaryName(goos))
+	}
+	return DefaultSQXCliPath
+}
+
+func sqxBinaryName(goos string) string {
+	if goos == "windows" {
+		return "sqcli.exe"
+	}
+	return "sqcli"
+}
+
+// ValidateSQXPath accepts the SQX install folder only if the sqcli binary
+// exists at the folder root or in bin/.
+func ValidateSQXPath(dir string) error {
+	return validateSQXPath(dir, runtime.GOOS)
+}
+
+func validateSQXPath(dir, goos string) error {
+	if dir == "" {
+		return fmt.Errorf("SQX install path is empty")
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		return fmt.Errorf("SQX install path %q: %w", dir, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("SQX install path %q is not a directory", dir)
+	}
+
+	name := sqxBinaryName(goos)
+	root := filepath.Join(dir, name)
+	bin := filepath.Join(dir, "bin", name)
+	for _, candidate := range []string{root, bin} {
+		if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
+			return nil
+		}
+	}
+	return fmt.Errorf("SQX CLI binary %q not found in %q or %q", name, root, bin)
+}
+
+// JForexConfig holds JForex DAS connection settings. AccountMode is
+// restricted to demo|live.
 type JForexConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	InstallPath string `yaml:"install_path"`
+	AccountMode string `yaml:"account_mode"`
+	Host        string `yaml:"host"`
+	Port        int    `yaml:"port"`
+	Username    string `yaml:"username"`
+	Password    string `yaml:"password"`
 }
 
-// APIKeysConfig holds external API keys (OpenAI, Anthropic, etc.).
+// NormalizeAccountMode validates a JForex account mode. Empty defaults to "demo".
+func NormalizeAccountMode(mode string) (string, error) {
+	switch mode {
+	case "":
+		return "demo", nil
+	case "demo", "live":
+		return mode, nil
+	default:
+		return "", fmt.Errorf("account mode must be 'demo' or 'live', got %q", mode)
+	}
+}
+
+// APIKeysConfig holds external API keys.
 type APIKeysConfig struct {
 	OpenAI    string `yaml:"openai"`
 	Anthropic string `yaml:"anthropic"`
@@ -45,18 +122,18 @@ func DefaultConfig() *QuantLabConfig {
 	return &QuantLabConfig{
 		QLVersion: "0.1.0",
 		SQX: SQXConfig{
-			CLIPath: "/opt/SQX/sqcli",
+			CLIPath: DefaultSQXCliPath,
 		},
 		JForex: JForexConfig{
-			Host: "localhost",
-			Port: 19790,
+			AccountMode: "demo",
+			Host:        "localhost",
+			Port:        19790,
 		},
 		APIKeys: APIKeysConfig{},
 	}
 }
 
-// ConfigPath returns the expected path for config.yaml relative to the
-// given home directory (e.g., /home/user/.quantlab/config.yaml).
+// ConfigPath returns the expected path for config.yaml.
 func ConfigPath(homeDir string) string {
 	return filepath.Join(homeDir, ".quantlab", "config.yaml")
 }
@@ -101,8 +178,7 @@ func WriteConfig(path string, cfg *QuantLabConfig) error {
 	return nil
 }
 
-// ConfigHash computes a SHA-256 hex digest of the config file for state
-// tracking. Returns empty string on marshal failure.
+// ConfigHash computes a SHA-256 hex digest of the config file.
 func ConfigHash(cfg *QuantLabConfig) string {
 	data, err := yaml.Marshal(cfg)
 	if err != nil {

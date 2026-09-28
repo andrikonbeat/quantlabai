@@ -158,12 +158,18 @@ func cmdStatus(w io.Writer) error {
 			printSection(w, "  API Keys", "⚠ Not configured")
 		}
 		printSection(w, "  SQX Path", cfg.SQX.CLIPath)
+		if cfg.JForex.AccountMode != "" {
+			printSection(w, "  JForex Mode", cfg.JForex.AccountMode)
+		}
+		if cfg.JForex.Host != "" || cfg.JForex.Port != 0 {
+			printSection(w, "  JForex Address", fmt.Sprintf("%s:%d", cfg.JForex.Host, cfg.JForex.Port))
+		}
 	}
 	fmt.Fprintf(w, "\n")
 
 	// Overall health
 	printHeader(w, "Overall Health")
-	issues := detectIssues(st, sdkInfo, ocCfg, skillCount, promptCount, qlDir)
+	issues := detectIssues(st, sdkInfo, ocCfg, skillCount, promptCount, qlDir, cfg)
 	if len(issues) == 0 {
 		if installed {
 			printSection(w, "  Status", "✅ All systems ready")
@@ -181,7 +187,7 @@ func cmdStatus(w io.Writer) error {
 }
 
 // detectIssues checks for common problems and inconsistencies.
-func detectIssues(st *state.State, sdkInfo *sdk.SDKInfo, ocCfg *opencode.Config, skillCount, promptCount int, qlDir string) []string {
+func detectIssues(st *state.State, sdkInfo *sdk.SDKInfo, ocCfg *opencode.Config, skillCount, promptCount int, qlDir string, cfg *config.QuantLabConfig) []string {
 	var issues []string
 
 	if st == nil {
@@ -234,6 +240,13 @@ func detectIssues(st *state.State, sdkInfo *sdk.SDKInfo, ocCfg *opencode.Config,
 	journalPath := filepath.Join(qlDir, ".journal")
 	if _, err := os.Stat(journalPath); err == nil {
 		issues = append(issues, "Residual journal found — a previous operation may have been interrupted")
+	}
+
+	// Check for SQX folder moved (InstallPath configured but missing on disk)
+	if cfg != nil && cfg.SQX.InstallPath != "" {
+		if _, err := os.Stat(cfg.SQX.InstallPath); err != nil {
+			issues = append(issues, "SQX folder moved — run 'quantlab configure' to update")
+		}
 	}
 
 	return issues

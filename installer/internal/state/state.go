@@ -24,6 +24,10 @@ type State struct {
 	Components  []model.Component `json:"components"`
 	ConfigHash  string          `json:"config_hash"`
 	Agents      []string        `json:"opencode_agents_created"`
+
+	// Onboarding tracking
+	OnboardingCompleted   bool      `json:"onboarding_completed,omitempty"`
+	OnboardingCompletedAt *time.Time `json:"onboarding_completed_at,omitempty"`
 }
 
 // ComponentID identifies a QuantLab component.

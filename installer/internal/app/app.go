@@ -25,6 +25,8 @@ func RunArgs(args []string, stdout io.Writer) error {
 	cmd := args[0]
 
 	switch cmd {
+	case "onboarding":
+		return cmdOnboarding(stdout, args[1:])
 	case "install":
 		return cmdInstall(stdout, args[1:])
 	case "uninstall":

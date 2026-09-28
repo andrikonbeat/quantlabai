@@ -2,15 +2,16 @@
 """Deterministic, idempotent sync of repo-canonical QuantLab prompts to live.
 
 REQ-806: the repo directory ``ai/opencode/agents/`` is the single source of
-truth for the campaign prompt, all phase prompts, and the
-``guardian-orchestrator.md`` prompt. The live copies under
+truth for the campaign prompt, all phase prompts, ``guardian-orchestrator.md``,
+and ``orchestrator.md``. The live copies under
 ``~/.config/opencode/prompts/quantlab/`` are generated from it by this
 script; hand-editing live prompts is not permitted.
 
 Managed allowlist (sorted, deterministic): ``campaign.md`` + ``phase-*.md`` +
-``guardian-orchestrator.md`` (REQ-821). Non-managed live files (``deploy.md``,
-``guardian.md``, ``monitor.md``, ``orchestrator.md``, ...) are NEVER written
-or deleted by this script.
+``guardian-orchestrator.md`` + ``orchestrator.md`` (REQ-821). Retired prompts
+(``deploy.md``, ``monitor.md``) are actively removed from live; versioned
+legacy copies remain in repo only. Non-managed live files (``guardian.md``,
+...) are NEVER written or deleted by this script.
 
 Usage::
 
@@ -24,34 +25,35 @@ Idempotent: identical bytes are never rewritten; a second run is a no-op.
 from __future__ import annotations
 
 import argparse
-import shutil
 import sys
 from pathlib import Path
+
+# Ensure sync_common.py is importable when this module is loaded dynamically
+# (e.g. via importlib in tests).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sync_common import SyncDriver
 
 REPO_DIR = Path(__file__).resolve().parent / "agents"
 LIVE_DIR = Path.home() / ".config" / "opencode" / "prompts" / "quantlab"
 
-# Sorted allowlist: campaign.md + phase-*.md + guardian-orchestrator.md
-# (REQ-806/821). Anything else under the agents dir (or the live dir) is
-# non-managed and must stay untouched.
-MANAGED_NAMES = ("campaign.md", "guardian-orchestrator.md")
+# Sorted allowlist: campaign.md + phase-*.md + guardian-orchestrator.md +
+# orchestrator.md (REQ-806/821). Retired prompts are removed from live but
+# versioned in repo only.
+MANAGED_NAMES = ("campaign.md", "guardian-orchestrator.md", "orchestrator.md")
+RETIRED_NAMES = ("deploy.md", "monitor.md")
 
 
 def managed_prompt_names(repo_dir: Path = REPO_DIR) -> list[str]:
     """Sorted allowlist of managed prompt filenames present in the repo.
 
-    Always includes ``campaign.md`` and ``guardian-orchestrator.md`` plus
-    every ``phase-*.md`` file found; names without a repo copy are omitted
-    so the allowlist never names a prompt the repo does not hold. Sorted
-    for determinism regardless of filesystem order.
+    Always includes ``campaign.md``, ``guardian-orchestrator.md``,
+    ``orchestrator.md`` plus every ``phase-*.md`` file found; names without a
+    repo copy are omitted so the allowlist never names a prompt the repo does
+    not hold. Sorted for determinism regardless of filesystem order.
     """
     names = set(MANAGED_NAMES)
     names.update(p.name for p in repo_dir.glob("phase-*.md") if p.is_file())
     return sorted(name for name in names if (repo_dir / name).is_file())
-
-
-def read_bytes(path: Path) -> bytes | None:
-    return path.read_bytes() if path.is_file() else None
 
 
 def sync(repo_dir: Path = REPO_DIR, live_dir: Path = LIVE_DIR, *, dry_run: bool = False) -> list[str]:
@@ -59,22 +61,12 @@ def sync(repo_dir: Path = REPO_DIR, live_dir: Path = LIVE_DIR, *, dry_run: bool 
 
     Returns the sorted list of managed names that were (or, with
     ``dry_run=True``, would be) written. Idempotent: a name whose live bytes
-    already equal the repo bytes is skipped and not listed. Never touches
-    non-managed files.
+    already equal the repo bytes is skipped and not listed. Retired prompts
+    are actively removed from live before managed copies are refreshed.
+    Never touches non-managed files.
     """
-    live_dir.mkdir(parents=True, exist_ok=True)
-    changed: list[str] = []
-    for name in managed_prompt_names(repo_dir):
-        src = repo_dir / name
-        dst = live_dir / name
-        if not src.is_file():
-            continue  # allowlist entry absent in repo: nothing to sync
-        if read_bytes(dst) == src.read_bytes():
-            continue  # identical bytes -> no-op
-        changed.append(name)
-        if not dry_run:
-            shutil.copyfile(src, dst)
-    return changed
+    driver = SyncDriver(repo_dir, live_dir, managed_prompt_names, RETIRED_NAMES)
+    return driver.sync(dry_run=dry_run)
 
 
 def check(repo_dir: Path = REPO_DIR, live_dir: Path = LIVE_DIR) -> list[str]:
@@ -82,15 +74,8 @@ def check(repo_dir: Path = REPO_DIR, live_dir: Path = LIVE_DIR) -> list[str]:
 
     Empty list means parity holds byte-for-byte.
     """
-    drifted: list[str] = []
-    for name in managed_prompt_names(repo_dir):
-        src = repo_dir / name
-        dst = live_dir / name
-        if not src.is_file():
-            continue
-        if read_bytes(dst) != src.read_bytes():
-            drifted.append(name)
-    return drifted
+    driver = SyncDriver(repo_dir, live_dir, managed_prompt_names, RETIRED_NAMES)
+    return driver.check()
 
 
 def _main(argv: list[str] | None = None) -> int:

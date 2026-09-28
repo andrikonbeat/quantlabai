@@ -23,6 +23,7 @@ const (
 	ComponentPrompts        ComponentID = "prompts"
 	ComponentConfig         ComponentID = "config"
 	ComponentWizard         ComponentID = "wizard"
+	ComponentOnboarding     ComponentID = "onboarding"
 )
 
 // SkillID identifies an embedded skill installed to ~/.config/opencode/skills/.

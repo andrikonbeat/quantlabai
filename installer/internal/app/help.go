@@ -32,6 +32,7 @@ Usage:
 
 Installation:
   install       Install QuantLab AI (wizard + SDK + OpenCode integration)
+  onboarding    Run the interactive onboarding guide (setup tools, SQX, JForex)
   uninstall     Remove QuantLab AI and all its components
 
 Lifecycle:
@@ -172,6 +173,7 @@ Show the current QuantLab installation status:
   • Configured API keys (masked)
   • OpenCode integration status
   • Installed skills and prompts
+  • SQX and JForex configuration
   • Last update timestamp
   • Overall health status
 
@@ -179,6 +181,22 @@ Detects missing state, orphaned agents, or incomplete installations.
 
 Examples:
   quantlab status
+`,
+
+	"onboarding": `Usage: quantlab onboarding
+
+Run the interactive onboarding guide to complete your QuantLab setup:
+
+  1. Explains what QuantLab is and how the 14-phase campaign flow works
+  2. Installs third-party tools with your consent (OpenCode, gentle-ai)
+  3. Guides you through StrategyQuantX (SQX) folder configuration
+  4. Guides you through JForex 4 setup (demo or live account)
+  5. Shows how to use QuantLab: campaigns folder, OpenCode, primary agent
+
+Re-runnable: run it again anytime to update your setup.
+
+Examples:
+  quantlab onboarding
 `,
 
 	"version": `Usage: quantlab version
@@ -202,7 +220,7 @@ Examples:
 // validCommands lists all recognized commands for subcommand validation.
 var validCommands = []string{
 	"install", "uninstall", "sync", "update",
-	"configure", "dashboard", "status", "version", "help",
+	"configure", "dashboard", "status", "version", "help", "onboarding",
 }
 
 // isValidCommand checks whether the given name is a recognized command.
@@ -219,6 +237,7 @@ func isValidCommand(name string) bool {
 func FormatHelpSummary() string {
 	lines := []string{
 		"install       Install QuantLab AI",
+		"onboarding    Run setup guide",
 		"uninstall     Remove QuantLab AI",
 		"sync          Refresh components",
 		"update        Self-update binary",

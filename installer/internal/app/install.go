@@ -136,6 +136,10 @@ func cmdInstallHome(w io.Writer, args []string, home string) error {
 
 	fmt.Fprintf(w, "\n✅ QuantLab AI installed successfully!\n")
 	fmt.Fprintf(w, "  Run 'quantlab status' to verify.\n")
+
+	if !st.OnboardingCompleted {
+		fmt.Fprintf(w, "  Run 'quantlab onboarding' to complete the setup guide.\n")
+	}
 	return nil
 }
 
@@ -305,7 +309,7 @@ func buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath string, 
 			fn: func() ([]byte, os.FileMode, error) {
 				st.MarkInstalled("install-"+modelChoice, "0.1.0")
 				st.AddComponent(model.ComponentSDK, "installed", filepath.Join(qlDir, "venv"), 0)
-				st.AddComponent(model.ComponentOpenCodeAgents, "installed", "", 4)
+				st.AddComponent(model.ComponentOpenCodeAgents, "installed", "", len(opencode.QuantLabAgentNames()))
 				st.AddComponent(model.ComponentSkills, "installed", "", 3)
 				st.AddComponent(model.ComponentPrompts, "installed", "", 2)
 				st.AddComponent(model.ComponentConfig, "installed", filepath.Join(qlDir, "sdk-config.yaml"), 0)

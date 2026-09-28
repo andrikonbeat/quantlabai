@@ -9,7 +9,7 @@ Zero-dependency Go binary that installs, configures, and maintains QuantLab AI o
 ### Functional
 
 #### INSTALL — Bootstrap QuantLab
-The system MUST validate prerequisites (Python 3.11+, OpenCode installed), MUST capture before-images via mutation journal, MUST run config wizard when no config exists, MUST create venv + pip install SDK from wheel, MUST deep-merge `quantlab-orchestrator` + `quantlab-*` agents into opencode.json, MUST write skills under `~/.config/opencode/skills/quantlab-*`, MUST set ownership marker for `default_agent`, and MUST write state to `~/.quantlab/state.json`. On any step failure, MUST rollback all prior steps.
+The system MUST validate prerequisites (Python 3.11+, OpenCode installed), MUST capture before-images via mutation journal, MUST run config wizard when no config exists, MUST create venv + pip install SDK from wheel, MUST deep-merge `quantlab-orchestrator`, `guardian-orchestrator` and `quantlab-*` agents into opencode.json, MUST write skills under `~/.config/opencode/skills/quantlab-*`, MUST set ownership marker for `default_agent`, and MUST write state to `~/.quantlab/state.json`. On any step failure, MUST rollback all prior steps. The count of agents registered SHALL be derived from the overlay (single source of truth), not from a hardcoded list; if onboarding is not completed, install SHALL suggest `quantlab onboarding` at the end.
 
 #### UNINSTALL — Complete removal
 The system MUST read state.json to enumerate installed components, MUST restore `default_agent` from ownership marker, MUST remove `quantlab-*` agents from opencode.json via deep merge overlay, MUST remove `~/.config/opencode/skills/quantlab-*` and `~/.config/opencode/prompts/quantlab/`, MUST remove venv + SDK, and MUST delete `~/.quantlab/` directory.
@@ -24,7 +24,7 @@ The system MUST download the latest release binary from GitHub, MUST verify SHA-
 The system MUST present a Bubbletea TUI collecting SQX CLI path, JForex DAS host:port, JForex credentials, and API keys (OpenAI, Anthropic, etc.). MUST validate each path exists and each connection is reachable. MUST mask secrets in TUI display. MUST store `~/.quantlab/config.yaml` with permissions 0600.
 
 #### STATUS — Inspect state
-The system MUST display installed version, list of components, configured services (SQX, JForex, API keys presence without revealing values), and detect inconsistencies (missing state, orphaned agents, partial install).
+The system MUST display installed version, list of components, configured services (SQX, JForex, API keys presence without revealing values), and detect inconsistencies (missing state, orphaned agents, partial install). `detectIssues` MUST emit the warning "SQX folder moved — run 'quantlab configure' to update" when `SQX.InstallPath` does not exist on disk; the warning SHALL be non-blocking.
 
 #### DASHBOARD — Web UI shortcut
 The system SHOULD open the QuantLab web dashboard URL in the default browser.
@@ -120,6 +120,24 @@ Every apply step MUST register a reverse step in the mutation journal. If any st
 - AND restore `default_agent` from the ownership marker
 - AND report "State file missing — removed by component scan"
 
+### S11: Agent count matches overlay
+- GIVEN the overlay.json is updated
+- WHEN install registers the agents component
+- THEN the registered count equals the number of agents defined in the overlay
+- AND every managed agent has a definition (no ghost names)
+
+### S12: SQX folder moved detection
+- GIVEN `sqx.install_path` points to a deleted folder
+- WHEN `quantlab status` runs detectIssues
+- THEN the warning "SQX folder moved — run 'quantlab configure' to update" is emitted
+- AND status completes successfully (warning is non-blocking)
+
+### S13: SQX configured and present
+- GIVEN a valid SQX install_path
+- WHEN status prints configured services
+- THEN SQX is shown as configured
+- AND no folder-moved warning is emitted
+
 ## Data Dictionary
 
 ### `~/.quantlab/state.json`
@@ -180,6 +198,47 @@ api_keys:
 | opencode.json with JSONC | NormalizeJSON before merge; preserve comments on write if input had them |
 | Multiple users same machine | Each user has their own `~/.quantlab/` — no cross-user state |
 | arm64 vs amd64 binary | UPDATE command MUST detect architecture and download matching asset |
+
+### SQX/JForex config model (REQ-INS-1)
+
+The model MUST define `SQXConfig{InstallPath, CLIPath}` (`InstallPath` = folder; `CLIPath` = optional override). `ResolveSQXCliPath()` MUST return `InstallPath + "/sqcli"` (or `sqcli.exe` on Windows) unless a `CLIPath` override is set, which MUST win (existing `cli_path` values remain valid). `ValidateSQXPath()` MUST accept the folder only if `sqcli`/`sqcli.exe` exists at its root or in `bin/`. The model MUST also define `JForexConfig{InstallPath, AccountMode, Host, Port, Username, Password}` with `AccountMode` restricted to `demo|live` and default `demo`. The password MUST be stored only in `~/.quantlab/config.yaml` (0600) and MUST NOT appear in logs or state.
+
+#### Scenario: Resolution with override
+- GIVEN config with `install_path=/opt/SQX` and `cli_path=/custom/sqcli`
+- WHEN `ResolveSQXCliPath()` runs
+- THEN it returns `/custom/sqcli`
+
+#### Scenario: Derived resolution
+- GIVEN config with only `install_path=/opt/SQX`
+- WHEN `ResolveSQXCliPath()` runs
+- THEN it returns `/opt/SQX/sqcli` (or `sqcli.exe` on Windows)
+
+#### Scenario: Folder validation
+- GIVEN `/opt/SQX/bin` contains `sqcli`
+- WHEN `ValidateSQXPath("/opt/SQX")` runs
+- THEN it accepts the folder
+- AND rejects folders without the binary at root or in `bin/`
+
+#### Scenario: Default AccountMode
+- GIVEN config without account_mode
+- WHEN JForexConfig is read
+- THEN account_mode is `demo`
+
+### Overlay as single source of truth (REQ-INS-2)
+
+`QuantLabAgentNames()` MUST derive its list from the overlay (not hardcoded) and include `guardian-orchestrator` (mode primary, deny-first mirror of `quantlab-orchestrator` — REQ-822) and delegates `quantlab-guardian`, `quantlab-guardian-alert`, `quantlab-replacement`. The agent count reported by install/status MUST derive from the same overlay. `uninstall`/`sync` MUST use the derived list for removal and matching (no duplicates).
+
+#### Scenario: Overlay contains guardian
+- GIVEN the updated overlay.json
+- WHEN managed agents are enumerated
+- THEN `guardian-orchestrator` is present with mode primary
+- AND `quantlab-guardian`, `quantlab-guardian-alert`, and `quantlab-replacement` are defined
+- AND `QuantLabAgentNames()` matches the overlay
+
+#### Scenario: Uninstall cleans derived set
+- WHEN `quantlab uninstall` runs
+- THEN it removes all agents from `QuantLabAgentNames()`
+- AND no orphan guardian agents remain
 
 ## Acceptance Criteria
 

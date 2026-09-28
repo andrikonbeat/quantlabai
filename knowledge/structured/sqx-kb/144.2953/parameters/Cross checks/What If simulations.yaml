@@ -3,6 +3,8 @@ sqx_name: What If simulations
 tab: Cross checks
 section: 1. BASIC (FAST)
 type: config
+xml_path: CrossChecks/WhatIf
+element_name: WhatIf
 default: 15 simulations, 3 filter conditions
 range: 'Filters: Profit factor > 1.3 AND Ret/DD Ratio > 4'
 what_it_does: Scenario tests (e.g. selected days only, exclude best/worst trades)

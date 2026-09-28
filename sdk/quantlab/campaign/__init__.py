@@ -21,6 +21,11 @@ from quantlab.campaign.delegation import (  # noqa: F401
     execute_phase,
     validate_phase_result,
 )
+from quantlab.campaign.gatekeeper import (  # noqa: F401
+    GatekeeperError,
+    GatekeeperHalt,
+    run_post_phase_gatekeeper,
+)
 from quantlab.campaign.flow import (  # noqa: F401
     PHASES,
     STAGE_FOR_PHASE,
@@ -47,4 +52,8 @@ __all__ = [
     "PhaseNotFoundError",
     "AuthorityViolationError",
     "LongOpSpec",
+    # Post-phase gatekeeper (REQ-01)
+    "run_post_phase_gatekeeper",
+    "GatekeeperError",
+    "GatekeeperHalt",
 ]
