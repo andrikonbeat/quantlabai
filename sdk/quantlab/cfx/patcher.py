@@ -21,6 +21,7 @@ from quantlab.cfx.models import (
     ColumnValue,
     CrossChecksConfig,
     DatabanksConfig,
+    DataRangeParts,
     DisableBlockInstruction,
     EnableBlockInstruction,
     EnableCrosscheckInstruction,
@@ -33,6 +34,7 @@ from quantlab.cfx.models import (
     SetAdvancedRankingsInstruction,
     SetAutomaticPortfolioBuilderInstruction,
     SetCrossChecksInstruction,
+    SetDataRangePartsInstruction,
     SetDateRangeInstruction,
     SetDatabanksInstruction,
     SetGeneticInstruction,
@@ -186,6 +188,7 @@ class CfxPatcher:
             "set_retester_data": self._validate_set_retester_data,
             "set_advanced_rankings": self._validate_set_advanced_rankings,
             "add_advanced_ranking_condition": self._validate_add_advanced_ranking_condition,
+            "set_data_range_parts": self._validate_set_data_range_parts,
         }
 
         validator = validator_map.get(instruction.instruction_type)
@@ -377,6 +380,16 @@ class CfxPatcher:
                 "AddAdvancedRankingConditionInstruction: condition must have at least one ColumnValue"
             )
 
+    def _validate_set_data_range_parts(self, instruction: SetDataRangePartsInstruction) -> None:
+        # A ratio of 0 or >= 1 is not a split; accepting it would let a caller
+        # silently emit a degenerate range-parts block into the CFX.
+        for field_name in ("validation_ratio", "test_ratio"):
+            ratio = getattr(instruction.parts, field_name)
+            if ratio is not None and not (0 < ratio < 1):
+                raise ValidationError(
+                    f"SetDataRangePartsInstruction: {field_name} must be in (0, 1) exclusive"
+                )
+
     # ── Application ───────────────────────────────────────────────────
 
     def apply(self, instructions: list[PatchInstruction]) -> CfxPatcher:
@@ -423,6 +436,7 @@ class CfxPatcher:
             "set_retester_data": self._apply_set_retester_data,
             "set_advanced_rankings": self._apply_set_advanced_rankings,
             "add_advanced_ranking_condition": self._apply_add_advanced_ranking_condition,
+            "set_data_range_parts": self._apply_set_data_range_parts,
         }
 
         applier = applier_map.get(instruction.instruction_type)
@@ -753,6 +767,18 @@ class CfxPatcher:
         conditions.append(cond)
         section.raw_xml = self._build_advanced_rankings_xml(conditions)
 
+    def _apply_set_data_range_parts(
+        self, instruction: SetDataRangePartsInstruction
+    ) -> None:
+        """Replace the <Data> range-parts block (create if missing).
+
+        The typed model is stored as-is rather than as a pre-rendered blob: the
+        spec defines ``raw_xml`` as the lane for content that has *no* typed
+        field, and PR 2's DSL/renderer wiring needs the typed fields to survive
+        the patch. Call ``DataRangeParts.to_xml()`` to serialise.
+        """
+        self._task.data_range_parts = instruction.parts
+
     @staticmethod
     def _parse_conditions_from_xml(xml: str) -> list[AdvancedRankingCondition]:
         """Parse advanced ranking conditions from a ``<Rankings>`` raw_xml block.
@@ -921,6 +947,10 @@ class CfxPatcher:
     ) -> CfxPatcher:
         """Append one advanced ranking condition to the existing block."""
         return self.apply([AddAdvancedRankingConditionInstruction(condition=condition)])
+
+    def set_data_range_parts(self, parts: DataRangeParts) -> CfxPatcher:
+        """Set the <Data> range-parts block from a typed model."""
+        return self.apply([SetDataRangePartsInstruction(parts=parts)])
 
     def enable_crosscheck(
         self, wf_enabled: bool, mc_enabled: bool, wf_cycles: int = 50

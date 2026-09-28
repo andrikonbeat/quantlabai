@@ -867,3 +867,294 @@ class TestAdvancedRankingPatcher:
 
         # No silent data loss: the simple rankings block survives untouched.
         assert archive.config.task.rankings_section.raw_xml == simple_xml
+
+
+# Data Range Parts — typed model + patcher
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestDataRangePartsModel:
+    """Tests for DataRangeParts: typed fields, raw_xml bridge, split semantics."""
+
+    def test_data_range_parts_typed_fields_round_trip(self) -> None:
+        """GIVEN every known typed segment set
+        WHEN serialized to XML and parsed back
+        THEN each field emits its element and survives the round-trip.
+        """
+        from quantlab.cfx.models import DataRangeParts
+
+        parts = DataRangeParts(
+            ist="2005.01.01-2010.12.31",
+            isc="2011.01.01-2012.12.31",
+            isv_1="2013.01.01-2013.12.31",
+            isv_2="2014.01.01-2014.12.31",
+            isv_3="2015.01.01-2015.12.31",
+            isv_4="2016.01.01-2016.12.31",
+            isv_5="2017.01.01-2017.12.31",
+            isv_6="2018.01.01-2018.12.31",
+            isv_7="2019.01.01-2019.12.31",
+            isv_8="2020.01.01-2020.12.31",
+            isv_9="2021.01.01-2021.12.31",
+            isv_10="2022.01.01-2022.12.31",
+            oos_1="2023.01.01-2023.12.31",
+            isv_every="true",
+            oos_every="true",
+            validation_ratio=0.2,
+            test_ratio=0.1,
+            date_from="2005.01.01",
+            date_to="2023.12.31",
+        )
+        xml = parts.to_xml()
+
+        # Typed fields emit alongside each other, inside one <Data> structure.
+        assert xml.count("<Data>") == 1
+        assert '<IST value="2005.01.01-2010.12.31" />' in xml
+        assert '<ISC value="2011.01.01-2012.12.31" />' in xml
+        assert '<ISV1 value="2013.01.01-2013.12.31" />' in xml
+        assert '<ISV10 value="2022.01.01-2022.12.31" />' in xml
+        assert '<OOS1 value="2023.01.01-2023.12.31" />' in xml
+        assert '<ISVEvery value="true" />' in xml
+        assert '<OOSEvery value="true" />' in xml
+        assert '<ValidationRatio value="0.2" />' in xml
+        assert '<TestRatio value="0.1" />' in xml
+        assert '<DateFrom value="2005.01.01" />' in xml
+        assert '<DateTo value="2023.12.31" />' in xml
+
+        restored = DataRangeParts.from_xml(xml)
+        assert restored.ist == "2005.01.01-2010.12.31"
+        assert restored.isv_1 == "2013.01.01-2013.12.31"
+        assert restored.isv_10 == "2022.01.01-2022.12.31"
+        assert restored.oos_1 == "2023.01.01-2023.12.31"
+        assert restored.isv_every == "true"
+        assert restored.oos_every == "true"
+        assert restored.validation_ratio == 0.2
+        assert restored.test_ratio == 0.1
+        assert restored.date_from == "2005.01.01"
+        assert restored.date_to == "2023.12.31"
+
+    def test_data_range_parts_defaults_emit_no_typed_elements(self) -> None:
+        """GIVEN a DataRangeParts with nothing set
+        WHEN serialized and parsed back
+        THEN no typed element is emitted and every field stays None.
+
+        Companion to test_data_range_parts_typed_fields_round_trip: same code
+        path, opposite branch (every field unset).
+        """
+        from quantlab.cfx.models import DataRangeParts
+
+        parts = DataRangeParts()
+        xml = parts.to_xml()
+
+        assert xml == "<Data />"
+        for element in ("IST", "ISC", "ISV1", "ISV10", "OOS1", "ValidationRatio", "DateFrom"):
+            assert element not in xml
+
+        restored = DataRangeParts.from_xml(xml)
+        assert restored.ist is None
+        assert restored.isv_1 is None
+        assert restored.validation_ratio is None
+        assert restored.date_from is None
+        assert restored.raw_xml == ""
+
+    def test_data_range_parts_raw_xml_only_is_verbatim(self) -> None:
+        """GIVEN raw_xml holding a complete custom <Data> block and no typed fields
+        WHEN serialized
+        THEN the output is exactly the raw_xml content.
+        """
+        from quantlab.cfx.models import DataRangeParts
+
+        custom = (
+            "<Data>\n"
+            '  <InSample length="3000" />\n'
+            '  <OutOfSample showGraph="false" />\n'
+            "</Data>"
+        )
+        parts = DataRangeParts(raw_xml=custom)
+
+        assert parts.to_xml() == custom
+
+    def test_data_range_parts_typed_and_raw_xml_coexist(self) -> None:
+        """GIVEN IST/ISC plus a proprietary raw_xml sub-range
+        WHEN serialized
+        THEN typed elements and the raw content appear together, unduplicated.
+        """
+        from quantlab.cfx.models import DataRangeParts
+
+        parts = DataRangeParts(
+            ist="2005.01.01-2010.12.31",
+            isc="2011.01.01-2012.12.31",
+            raw_xml='  <ProprietaryRange mode="turbo" />',
+        )
+        xml = parts.to_xml()
+
+        assert xml.count("<Data>") == 1
+        assert xml.count("</Data>") == 1
+        assert '<IST value="2005.01.01-2010.12.31" />' in xml
+        assert '<ISC value="2011.01.01-2012.12.31" />' in xml
+        assert '<ProprietaryRange mode="turbo" />' in xml
+
+    def test_data_range_parts_unknown_range_lands_in_raw_xml(self) -> None:
+        """GIVEN XML carrying an unrecognised <Data> child
+        WHEN parsed through the bridge
+        THEN the typed fields populate and the unknown element survives in raw_xml.
+        """
+        from quantlab.cfx.models import DataRangeParts
+
+        parts = DataRangeParts.from_xml(
+            "<Data>"
+            '<IST value="2005.01.01-2010.12.31" />'
+            '<FutureSQXRange version="9" />'
+            "</Data>"
+        )
+
+        assert parts.ist == "2005.01.01-2010.12.31"
+        assert 'FutureSQXRange' in parts.raw_xml
+        assert 'version="9"' in parts.raw_xml
+        # The unknown range is not silently dropped on re-serialization.
+        assert 'FutureSQXRange' in parts.to_xml()
+
+    def test_data_range_parts_split_ratios_are_not_training_ratios(self) -> None:
+        """GIVEN validation ratio 0.2 and test ratio 0.1
+        WHEN serialized and re-parsed
+        THEN both ratios are unchanged, distinct, and never folded into a training ratio.
+        """
+        from quantlab.cfx.models import DataRangeParts
+
+        parts = DataRangeParts(validation_ratio=0.2, test_ratio=0.1)
+        xml = parts.to_xml()
+
+        assert '<ValidationRatio value="0.2" />' in xml
+        assert '<TestRatio value="0.1" />' in xml
+        assert "TrainingRatio" not in xml
+        assert "training" not in xml.lower()
+
+        restored = DataRangeParts.from_xml(xml)
+        assert restored.validation_ratio == 0.2
+        assert restored.test_ratio == 0.1
+        assert restored.validation_ratio != restored.test_ratio
+
+
+class TestSetDataRangePartsPatcher:
+    """Tests for SetDataRangePartsInstruction."""
+
+    def test_set_data_range_parts_writes_data_range_parts_section(self) -> None:
+        """GIVEN a SetDataRangePartsInstruction with typed segments
+        WHEN applied
+        THEN the task's data_range_parts section holds the built XML.
+        """
+        from quantlab.cfx.models import DataRangeParts, SetDataRangePartsInstruction
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        patcher.apply(
+            [
+                SetDataRangePartsInstruction(
+                    parts=DataRangeParts(
+                        ist="2005.01.01-2010.12.31",
+                        isv_1="2011.01.01-2011.12.31",
+                        oos_1="2012.01.01-2012.12.31",
+                        validation_ratio=0.2,
+                        test_ratio=0.1,
+                    )
+                )
+            ]
+        )
+
+        section = archive.config.task.data_range_parts
+        assert section is not None
+        # The typed model is stored, not a pre-rendered blob: raw_xml is the
+        # lane for content that has no typed field, so to_xml() is the
+        # serialization contract and the typed fields stay queryable for PR 2.
+        assert section.ist == "2005.01.01-2010.12.31"
+        assert section.isv_1 == "2011.01.01-2011.12.31"
+        assert section.oos_1 == "2012.01.01-2012.12.31"
+        assert section.raw_xml == ""
+
+        xml = section.to_xml()
+        assert xml.startswith("<Data>")
+        assert '<IST value="2005.01.01-2010.12.31" />' in xml
+        assert '<ISV1 value="2011.01.01-2011.12.31" />' in xml
+        assert '<OOS1 value="2012.01.01-2012.12.31" />' in xml
+        assert '<ValidationRatio value="0.2" />' in xml
+        assert '<TestRatio value="0.1" />' in xml
+
+    def test_set_data_range_parts_raw_xml_only_preserved(self) -> None:
+        """GIVEN an instruction carrying only raw_xml
+        WHEN applied
+        THEN the custom <Data> block reaches the section unchanged.
+        """
+        from quantlab.cfx.models import DataRangeParts, SetDataRangePartsInstruction
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        custom = '<Data><OutOfSample showGraph="false" /></Data>'
+        patcher.apply(
+            [SetDataRangePartsInstruction(parts=DataRangeParts(raw_xml=custom))]
+        )
+
+        section = archive.config.task.data_range_parts
+        assert section is not None
+        assert section.raw_xml == custom
+        assert section.to_xml() == custom
+
+    def test_set_data_range_parts_rejects_ratio_outside_unit_interval(self) -> None:
+        """GIVEN a validation ratio outside (0, 1)
+        WHEN applied
+        THEN ValidationError is raised and no mutation is applied.
+        """
+        from quantlab.cfx.models import DataRangeParts, SetDataRangePartsInstruction
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = SetDataRangePartsInstruction(
+            parts=DataRangeParts(validation_ratio=1.5, test_ratio=0.1)
+        )
+
+        with pytest.raises(ValidationError, match="validation_ratio must be in"):
+            patcher.apply([instr])
+
+        assert archive.config.task.data_range_parts is None
+
+    def test_set_data_range_parts_rejects_zero_ratio(self) -> None:
+        """GIVEN a test ratio of 0.0
+        WHEN applied
+        THEN ValidationError is raised, because a zero split is not a real split.
+        """
+        from quantlab.cfx.models import DataRangeParts, SetDataRangePartsInstruction
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = SetDataRangePartsInstruction(
+            parts=DataRangeParts(validation_ratio=0.2, test_ratio=0.0)
+        )
+
+        with pytest.raises(ValidationError, match="test_ratio must be in"):
+            patcher.apply([instr])
+
+        assert archive.config.task.data_range_parts is None
+
+    def test_set_data_range_parts_does_not_clobber_simple_data_section(self) -> None:
+        """GIVEN the flat <Data> SettingsSection written by set_date_range
+        WHEN SetDataRangePartsInstruction is applied
+        THEN the simple Data section survives untouched beside the new typed one.
+        """
+        from quantlab.cfx.models import DataRangeParts, SetDataRangePartsInstruction
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        patcher.apply([SetDateRangeInstruction(start="2005.01.01", end="2023.12.31")])
+        simple_data = archive.config.task.data
+        assert simple_data is not None
+        assert simple_data.settings.get("FromDate@value") == "2005.01.01"
+
+        patcher.apply(
+            [SetDataRangePartsInstruction(parts=DataRangeParts(ist="2005.01.01-2010.12.31"))]
+        )
+
+        assert archive.config.task.data is simple_data
+        assert archive.config.task.data.settings.get("FromDate@value") == "2005.01.01"
+        assert archive.config.task.data_range_parts is not None
+        assert (
+            '<IST value="2005.01.01-2010.12.31" />'
+            in archive.config.task.data_range_parts.to_xml()
+        )

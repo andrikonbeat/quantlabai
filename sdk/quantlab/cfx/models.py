@@ -174,6 +174,126 @@ class AdvancedRankingsConfig(BaseModel):
     raw_xml: str = ""
 
 
+# Element names for the DataRangeParts typed fields, shared by ``to_xml`` and
+# ``from_xml`` so the two directions can never drift apart.
+#
+# SQX's data-range sub-range schema is a documented gap: no verified export
+# exists in this repo, so these names are a QuantLab convention rather than a
+# transcription of real SQX output. Callers holding genuine SQX evidence pass
+# it through ``raw_xml``, which is emitted verbatim.
+_DATA_RANGE_PART_ELEMENTS: tuple[tuple[str, str], ...] = (
+    ("ist", "IST"),
+    ("isc", "ISC"),
+    ("isv_1", "ISV1"),
+    ("isv_2", "ISV2"),
+    ("isv_3", "ISV3"),
+    ("isv_4", "ISV4"),
+    ("isv_5", "ISV5"),
+    ("isv_6", "ISV6"),
+    ("isv_7", "ISV7"),
+    ("isv_8", "ISV8"),
+    ("isv_9", "ISV9"),
+    ("isv_10", "ISV10"),
+    ("oos_1", "OOS1"),
+    ("isv_every", "ISVEvery"),
+    ("oos_every", "OOSEvery"),
+    ("validation_ratio", "ValidationRatio"),
+    ("test_ratio", "TestRatio"),
+    ("date_from", "DateFrom"),
+    ("date_to", "DateTo"),
+)
+
+_RATIO_FIELDS: frozenset[str] = frozenset({"validation_ratio", "test_ratio"})
+
+
+class DataRangeParts(BaseModel):
+    """Typed model for the IS / validation / OOS sub-ranges of ``<Data>``.
+
+    Carries two independent lanes, per the spec's raw_xml bridge decision:
+
+    * **Typed lane** — the known concepts (IST, ISC, ISV1..ISV10, OOS1,
+      ISV-Every, OOS-Every), the validation/test split ratios, and the overall
+      date bounds. Every field is optional; an unset field emits nothing.
+    * **Passthrough lane** — ``raw_xml`` holds any ``<Data>`` content that has
+      no typed field and is emitted verbatim, so schema drift in SQX cannot
+      cost a caller their configuration.
+
+    ``validation_ratio`` and ``test_ratio`` are kept as distinct fields and are
+    never folded into a training ratio: the spec forbids that reinterpretation.
+    """
+
+    ist: str | None = None
+    isc: str | None = None
+    isv_1: str | None = None
+    isv_2: str | None = None
+    isv_3: str | None = None
+    isv_4: str | None = None
+    isv_5: str | None = None
+    isv_6: str | None = None
+    isv_7: str | None = None
+    isv_8: str | None = None
+    isv_9: str | None = None
+    isv_10: str | None = None
+    oos_1: str | None = None
+    isv_every: str | None = None
+    oos_every: str | None = None
+    validation_ratio: float | None = None
+    test_ratio: float | None = None
+    date_from: str | None = None
+    date_to: str | None = None
+    raw_xml: str = ""
+
+    def to_xml(self) -> str:
+        """Render this configuration as a ``<Data>`` XML block.
+
+        Returns ``raw_xml`` verbatim when it is the only populated lane, so a
+        caller holding a complete real SQX ``<Data>`` block gets byte-preserving
+        passthrough rather than a re-wrapped copy.
+        """
+        elements = [
+            f'  <{element} value="{getattr(self, field_name)}" />'
+            for field_name, element in _DATA_RANGE_PART_ELEMENTS
+            if getattr(self, field_name) is not None
+        ]
+        if not elements:
+            return self.raw_xml or "<Data />"
+        body = "\n".join(elements)
+        if self.raw_xml:
+            body = f"{body}\n{self.raw_xml}"
+        return f"<Data>\n{body}\n</Data>"
+
+    @classmethod
+    def from_xml(cls, xml: str) -> DataRangeParts:
+        """Parse a ``<Data>`` block into typed fields, preserving unknown children.
+
+        Children with no typed field are kept verbatim in ``raw_xml`` so no
+        sub-range is silently lost to an unrecognised SQX shape. A bare single
+        element (no ``<Data>`` wrapper) is accepted as well, since the patcher
+        stores the block detached from its parent.
+        """
+        root = ET.fromstring(xml)
+        children = list(root) if root.tag == "Data" else [root]
+
+        known_elements = {element: field_name for field_name, element in _DATA_RANGE_PART_ELEMENTS}
+        values: dict[str, str] = {}
+        unknown: list[str] = []
+        for child in children:
+            field_name = known_elements.get(child.tag)
+            if field_name is None:
+                unknown.append(ET.tostring(child, encoding="unicode").strip())
+                continue
+            values[field_name] = child.get("value", "")
+
+        # Ratios are the only numeric lanes; keep them distinct from the
+        # string-valued sub-range definitions.
+        for ratio_field in _RATIO_FIELDS:
+            raw_value = values.pop(ratio_field, None)
+            if raw_value is not None:
+                values[ratio_field] = float(raw_value)
+
+        return cls(**values, raw_xml="\n".join(unknown))
+
+
 # ── CrossChecks Typed Models ───────────────────────────────────────────
 
 
@@ -591,6 +711,9 @@ class BuildTask(BaseModel):
     cross_checks_section: CrossChecksConfig | None = None
     retester_data: RetesterDataConfig | None = None
 
+    # Data range parts (IS / validation / OOS sub-ranges of <Data>)
+    data_range_parts: DataRangeParts | None = None
+
     unknown_sections: list[RawXmlSection] = Field(default_factory=list)
 
 
@@ -814,6 +937,13 @@ class SetAdvancedRankingsInstruction(BaseModel):
     instruction_type: str = "set_advanced_rankings"
 
 
+class SetDataRangePartsInstruction(BaseModel):
+    """Replace the <Data> range-parts block with typed IS/validation/OOS sub-ranges."""
+
+    parts: DataRangeParts
+    instruction_type: str = "set_data_range_parts"
+
+
 PatchInstruction = Union[
     # Original 8
     SetMarketInstruction,
@@ -837,5 +967,7 @@ PatchInstruction = Union[
     # Advanced ranking filters
     AddAdvancedRankingConditionInstruction,
     SetAdvancedRankingsInstruction,
+    # Data range parts
+    SetDataRangePartsInstruction,
 ]
-"""Union of all 18 typed instruction models for CfxPatcher."""
+"""Union of all 19 typed instruction models for CfxPatcher."""
