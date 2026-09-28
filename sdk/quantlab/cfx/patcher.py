@@ -6,15 +6,19 @@ with atomic semantics: all instructions are validated before any mutation occurs
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import xml.etree.ElementTree as ET
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
 from quantlab.cfx.errors import CfxParseError
 from quantlab.cfx.models import (
+    AddAdvancedRankingConditionInstruction,
     AddRankingConditionInstruction,
     AddTimeframeInstruction,
+    AdvancedRankingCondition,
     AutomaticPortfolioBuilderConfig,
+    ColumnValue,
     CrossChecksConfig,
     DatabanksConfig,
     DisableBlockInstruction,
@@ -26,6 +30,7 @@ from quantlab.cfx.models import (
     PortfolioSettingsConfig,
     RankingsConfig,
     RetesterDataConfig,
+    SetAdvancedRankingsInstruction,
     SetAutomaticPortfolioBuilderInstruction,
     SetCrossChecksInstruction,
     SetDateRangeInstruction,
@@ -50,6 +55,56 @@ class ValidationError(CfxParseError):
     """Raised when a patch instruction fails validation."""
 
     pass
+
+
+# Attribute emission order for advanced ranking filters. The order reproduces a
+# real SQX 144/2953 Retester CFX export; every attribute is always emitted
+# because SQX writes the full attribute set, defaults included.
+_CONDITION_ATTRS: tuple[tuple[str, str], ...] = (
+    ("result_type", "resultType"),
+    ("sample_type", "sampleType"),
+    ("direction", "direction"),
+    ("pct_ratio", "pctRatio"),
+    ("confidence_level", "confidenceLevel"),
+    ("market", "market"),
+    ("pl_type", "plType"),
+    ("subresult", "subresult"),
+    ("class_", "class"),
+    ("name", "name"),
+)
+
+_COLUMN_VALUE_ATTRS: tuple[tuple[str, str], ...] = (
+    ("column", "column"),
+    ("column_type", "columnType"),
+    ("format", "format"),
+    ("result_type", "resultType"),
+    ("direction", "direction"),
+    ("sample_type", "sampleType"),
+    ("pl_type", "plType"),
+    ("confidence_level", "confidenceLevel"),
+    ("market", "market"),
+    ("subresult", "subresult"),
+    ("pct_ratio", "pctRatio"),
+    ("class_", "class"),
+    ("name", "name"),
+)
+
+
+def _render_attributes(source: Any, spec: tuple[tuple[str, str], ...]) -> str:
+    """Render ``spec`` fields of ``source`` as space-separated XML attributes.
+
+    ``None`` values are skipped so optional attributes stay absent. Booleans
+    render lowercase to match SQX's ``true``/``false`` convention.
+    """
+    rendered: list[str] = []
+    for field_name, xml_name in spec:
+        value = getattr(source, field_name)
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            value = str(value).lower()
+        rendered.append(f'{xml_name}="{value}"')
+    return " ".join(rendered)
 
 
 class CfxPatcher:
@@ -129,6 +184,8 @@ class CfxPatcher:
             "set_rankings": self._validate_set_rankings,
             "set_crosschecks": self._validate_set_crosschecks,
             "set_retester_data": self._validate_set_retester_data,
+            "set_advanced_rankings": self._validate_set_advanced_rankings,
+            "add_advanced_ranking_condition": self._validate_add_advanced_ranking_condition,
         }
 
         validator = validator_map.get(instruction.instruction_type)
@@ -310,6 +367,16 @@ class CfxPatcher:
         if not (1 <= instruction.mc_percentile <= 99):
             raise ValidationError("SetRetesterDataInstruction: mc_percentile must be in [1, 99]")
 
+    def _validate_set_advanced_rankings(self, instruction: SetAdvancedRankingsInstruction) -> None:
+        if not instruction.conditions:
+            raise ValidationError("SetAdvancedRankingsInstruction: conditions must not be empty")
+
+    def _validate_add_advanced_ranking_condition(self, instruction: AddAdvancedRankingConditionInstruction) -> None:
+        if not instruction.condition.column_values:
+            raise ValidationError(
+                "AddAdvancedRankingConditionInstruction: condition must have at least one ColumnValue"
+            )
+
     # ── Application ───────────────────────────────────────────────────
 
     def apply(self, instructions: list[PatchInstruction]) -> CfxPatcher:
@@ -354,6 +421,8 @@ class CfxPatcher:
             "set_rankings": self._apply_set_rankings,
             "set_crosschecks": self._apply_set_crosschecks,
             "set_retester_data": self._apply_set_retester_data,
+            "set_advanced_rankings": self._apply_set_advanced_rankings,
+            "add_advanced_ranking_condition": self._apply_add_advanced_ranking_condition,
         }
 
         applier = applier_map.get(instruction.instruction_type)
@@ -626,6 +695,175 @@ class CfxPatcher:
             self._task.retester_data = RetesterDataConfig(raw_xml="")
         self._task.retester_data.raw_xml = xml
 
+    @staticmethod
+    def _build_advanced_rankings_xml(conditions: list[AdvancedRankingCondition]) -> str:
+        """Build nested ``<Rankings><Conditions>`` XML from typed conditions.
+
+        Every SQX attribute is emitted, defaults included, because a real SQX
+        144/2953 Retester CFX always writes the full attribute set. Only the
+        genuinely optional ``class`` and ``name`` attributes are omitted.
+        """
+        parts = ["<Rankings>", "  <Conditions>"]
+        for cond in conditions:
+            use_attr = f'use="{str(cond.use).lower()}"'
+            attrs = " ".join(
+                part for part in (use_attr, _render_attributes(cond, _CONDITION_ATTRS)) if part
+            )
+            parts.append(f"    <Condition {attrs}>")
+            for cv in cond.column_values:
+                cv_attrs = _render_attributes(cv, _COLUMN_VALUE_ATTRS)
+                parts.append(f"      <Column-Value {cv_attrs} />")
+            parts.append("    </Condition>")
+        parts.append("  </Conditions>")
+        parts.append("</Rankings>")
+        return "\n".join(parts)
+
+    def _apply_set_advanced_rankings(self, instruction: SetAdvancedRankingsInstruction) -> None:
+        """Replace the advanced rankings block with the given conditions."""
+        xml = self._build_advanced_rankings_xml(instruction.conditions)
+        if not self._task.rankings_section:
+            self._task.rankings_section = RankingsConfig(raw_xml="")
+        self._task.rankings_section.raw_xml = xml
+
+    def _apply_add_advanced_ranking_condition(
+        self, instruction: AddAdvancedRankingConditionInstruction
+    ) -> None:
+        """Append one advanced ranking condition to the existing Rankings section."""
+        cond = instruction.condition
+        section = self._task.rankings_section
+        existing_xml = section.raw_xml if section else ""
+
+        if not existing_xml:
+            self._task.rankings_section = RankingsConfig(
+                raw_xml=self._build_advanced_rankings_xml([cond])
+            )
+            return
+
+        conditions = self._parse_conditions_from_xml(existing_xml)
+        if not conditions:
+            # Never silently discard a Rankings block we cannot interpret: the
+            # simple SetRankingsInstruction path writes <Rankings> without a
+            # <Conditions> child, and overwriting it would lose user config.
+            raise ValidationError(
+                "AddAdvancedRankingConditionInstruction: existing Rankings section has no "
+                "<Conditions> block to append to. Use SetAdvancedRankingsInstruction to "
+                "replace it."
+            )
+
+        conditions.append(cond)
+        section.raw_xml = self._build_advanced_rankings_xml(conditions)
+
+    @staticmethod
+    def _parse_conditions_from_xml(xml: str) -> list[AdvancedRankingCondition]:
+        """Parse advanced ranking conditions from a ``<Rankings>`` raw_xml block.
+
+        Returns an empty list when the XML is unparseable or carries no
+        ``<Conditions>`` parent, so callers can distinguish "no advanced
+        conditions" from "an unrecognised block".
+        """
+        try:
+            root = ET.fromstring(xml)
+        except ET.ParseError:
+            return []
+
+        conditions_el = root if root.tag == "Conditions" else root.find("Conditions")
+        if conditions_el is None:
+            return []
+
+        conditions: list[AdvancedRankingCondition] = []
+        for cond_el in conditions_el.findall("Condition"):
+            column_values = [
+                ColumnValue(
+                    column=cv_el.get("column", ""),
+                    column_type=cv_el.get("columnType", "0"),
+                    format=cv_el.get("format", ""),
+                    result_type=cv_el.get("resultType", "main"),
+                    direction=cv_el.get("direction", "0"),
+                    sample_type=cv_el.get("sampleType", "127"),
+                    pl_type=cv_el.get("plType", "10"),
+                    confidence_level=cv_el.get("confidenceLevel", "50"),
+                    market=cv_el.get("market", "1"),
+                    subresult=cv_el.get("subresult", "30"),
+                    pct_ratio=cv_el.get("pctRatio", "0"),
+                    class_=cv_el.get("class", ""),
+                    name=cv_el.get("name"),
+                )
+                for cv_el in cond_el.findall("Column-Value")
+            ]
+            conditions.append(
+                AdvancedRankingCondition(
+                    use=cond_el.get("use", "true").lower() == "true",
+                    result_type=cond_el.get("resultType", "main"),
+                    sample_type=cond_el.get("sampleType", "127"),
+                    direction=cond_el.get("direction", "0"),
+                    pct_ratio=cond_el.get("pctRatio", "0"),
+                    confidence_level=cond_el.get("confidenceLevel", "50"),
+                    market=cond_el.get("market", "1"),
+                    pl_type=cond_el.get("plType", "10"),
+                    subresult=cond_el.get("subresult", "30"),
+                    class_=cond_el.get("class"),
+                    name=cond_el.get("name"),
+                    column_values=column_values,
+                )
+            )
+        return conditions
+    @staticmethod
+    def _parse_conditions_from_xml(xml: str) -> list[AdvancedRankingCondition]:
+        """Parse advanced ranking conditions from raw XML."""
+        root = ET.fromstring(xml)
+        conditions_el = root.find("Conditions")
+        if conditions_el is None:
+            return []
+        conditions = []
+        for cond_el in conditions_el.findall("Condition"):
+            use = cond_el.get("use", "true").lower() == "true"
+            result_type = cond_el.get("resultType", "main")
+            sample_type = cond_el.get("sampleType", "127")
+            direction = cond_el.get("direction", "0")
+            pct_ratio = cond_el.get("pctRatio", "0")
+            confidence_level = cond_el.get("confidenceLevel", "50")
+            market = cond_el.get("market", "1")
+            pl_type = cond_el.get("plType", "10")
+            subresult = cond_el.get("subresult", "30")
+            class_ = cond_el.get("class")
+            name = cond_el.get("name")
+            column_values = []
+            for cv_el in cond_el.findall("Column-Value"):
+                column_values.append(
+                    ColumnValue(
+                        column=cv_el.get("column", ""),
+                        column_type=cv_el.get("columnType", "0"),
+                        format=cv_el.get("format", ""),
+                        result_type=cv_el.get("resultType", "main"),
+                        direction=cv_el.get("direction", "0"),
+                        sample_type=cv_el.get("sampleType", "127"),
+                        pl_type=cv_el.get("plType", "10"),
+                        confidence_level=cv_el.get("confidenceLevel", "50"),
+                        market=cv_el.get("market", "1"),
+                        subresult=cv_el.get("subresult", "30"),
+                        pct_ratio=cv_el.get("pctRatio", "0"),
+                        class_=cv_el.get("class", ""),
+                        name=cv_el.get("name"),
+                    )
+                )
+            conditions.append(
+                AdvancedRankingCondition(
+                    use=use,
+                    result_type=result_type,
+                    sample_type=sample_type,
+                    direction=direction,
+                    pct_ratio=pct_ratio,
+                    confidence_level=confidence_level,
+                    market=market,
+                    pl_type=pl_type,
+                    subresult=subresult,
+                    class_=class_,
+                    name=name,
+                    column_values=column_values,
+                )
+            )
+        return conditions
+
     # ── Domain convenience methods (exposed via dom.py) ───────────────
 
     def set_market(self, symbol: str) -> CfxPatcher:
@@ -671,6 +909,18 @@ class CfxPatcher:
                 )
             ]
         )
+
+    def set_advanced_rankings(
+        self, conditions: list[AdvancedRankingCondition]
+    ) -> CfxPatcher:
+        """Set the advanced rankings block with typed conditions."""
+        return self.apply([SetAdvancedRankingsInstruction(conditions=conditions)])
+
+    def add_advanced_ranking_condition(
+        self, condition: AdvancedRankingCondition
+    ) -> CfxPatcher:
+        """Append one advanced ranking condition to the existing block."""
+        return self.apply([AddAdvancedRankingConditionInstruction(condition=condition)])
 
     def enable_crosscheck(
         self, wf_enabled: bool, mc_enabled: bool, wf_cycles: int = 50

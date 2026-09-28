@@ -10,7 +10,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from quantlab.customproject.models import DatabankSpec
 
@@ -115,6 +115,62 @@ class DatabanksConfig(BaseModel):
 class RankingsConfig(BaseModel):
     """Typed model for <Rankings> section (Retester)."""
 
+    raw_xml: str = ""
+
+
+class ColumnValue(BaseModel):
+    """Typed model for the SQX ``<Column-Value>`` element.
+
+    Field aliases reproduce the exact attribute names of a real SQX 144/2953
+    Retester CFX export, so ``model_dump(by_alias=True)`` round-trips without
+    attribute loss. ``populate_by_name`` keeps the idiomatic Python keyword
+    form (``column_type=...``) usable when constructing instances.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    column: str
+    column_type: str = Field(default="0", alias="columnType")
+    format: str
+    result_type: str = Field(default="main", alias="resultType")
+    direction: str = "0"
+    sample_type: str = Field(default="127", alias="sampleType")
+    pl_type: str = Field(default="10", alias="plType")
+    confidence_level: str = Field(default="50", alias="confidenceLevel")
+    market: str = "1"
+    subresult: str = "30"
+    pct_ratio: str = Field(default="0", alias="pctRatio")
+    class_: str = Field(alias="class")
+    name: str | None = None
+
+
+class AdvancedRankingCondition(BaseModel):
+    """Typed model for the SQX ``<Condition>`` element inside ``<Rankings><Conditions>``.
+
+    Mirrors the attribute vocabulary of a real SQX 144/2953 Retester CFX
+    export. ``class_`` and ``name`` are the only optional attributes.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    use: bool = True
+    result_type: str = Field(default="main", alias="resultType")
+    sample_type: str = Field(default="127", alias="sampleType")
+    direction: str = "0"
+    pct_ratio: str = Field(default="0", alias="pctRatio")
+    confidence_level: str = Field(default="50", alias="confidenceLevel")
+    market: str = "1"
+    pl_type: str = Field(default="10", alias="plType")
+    subresult: str = "30"
+    class_: str | None = Field(default=None, alias="class")
+    name: str | None = None
+    column_values: list[ColumnValue] = Field(default_factory=list)
+
+
+class AdvancedRankingsConfig(BaseModel):
+    """Typed model for advanced <Rankings><Conditions> section (Retester)."""
+
+    conditions: list[AdvancedRankingCondition] | None = None
     raw_xml: str = ""
 
 
@@ -744,6 +800,20 @@ class SetRetesterDataInstruction(BaseModel):
     instruction_type: str = "set_retester_data"
 
 
+class AddAdvancedRankingConditionInstruction(BaseModel):
+    """Add one advanced ranking condition to the Rankings section."""
+
+    condition: AdvancedRankingCondition
+    instruction_type: str = "add_advanced_ranking_condition"
+
+
+class SetAdvancedRankingsInstruction(BaseModel):
+    """Replace the advanced rankings block with a full set of conditions."""
+
+    conditions: list[AdvancedRankingCondition]
+    instruction_type: str = "set_advanced_rankings"
+
+
 PatchInstruction = Union[
     # Original 8
     SetMarketInstruction,
@@ -764,5 +834,8 @@ PatchInstruction = Union[
     SetRankingsInstruction,
     SetCrossChecksInstruction,
     SetRetesterDataInstruction,
+    # Advanced ranking filters
+    AddAdvancedRankingConditionInstruction,
+    SetAdvancedRankingsInstruction,
 ]
-"""Union of all 16 typed instruction models for CfxPatcher."""
+"""Union of all 18 typed instruction models for CfxPatcher."""

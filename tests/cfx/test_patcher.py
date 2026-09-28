@@ -399,3 +399,471 @@ class TestSetCrossChecksTyped:
         assert '<MonteCarlo enabled="true" runs="250" percentile="90"/>' in xml
         assert '<WalkForward enabled="false" cycles="10"/>' in xml
         assert '<ConfidenceLevel value="0.9"/>' in xml
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Advanced Ranking Filters — models + patcher
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestAdvancedRankingModels:
+    """Tests for ColumnValue, AdvancedRankingCondition, AdvancedRankingsConfig."""
+
+    def test_column_value_round_trip_full_attributes(self) -> None:
+        """GIVEN a ColumnValue with all attributes
+        WHEN model_dump and model_validate round-trip
+        THEN all attributes are preserved with alias 'class'.
+        """
+        from quantlab.cfx.models import ColumnValue
+
+        cv = ColumnValue(
+            column="ProfitFactor",
+            column_type="0",
+            format="Decimal2",
+            result_type="main",
+            direction="0",
+            sample_type="127",
+            pl_type="10",
+            confidence_level="50",
+            market="1",
+            subresult="30",
+            pct_ratio="0",
+            class_="ProfitFactor",
+            name="PF",
+        )
+        data = cv.model_dump(by_alias=True)
+        assert data["column"] == "ProfitFactor"
+        assert data["class"] == "ProfitFactor"
+        assert data["format"] == "Decimal2"
+        assert data["resultType"] == "main"
+        assert data["pctRatio"] == "0"
+
+        restored = ColumnValue.model_validate(data)
+        assert restored.column == "ProfitFactor"
+        assert restored.class_ == "ProfitFactor"
+
+    def test_column_value_defaults(self) -> None:
+        """GIVEN a ColumnValue with only required fields
+        WHEN dumped
+        THEN defaults are populated.
+        """
+        from quantlab.cfx.models import ColumnValue
+
+        cv = ColumnValue(column="Sharpe", format="Decimal2", class_="Sharpe")
+        data = cv.model_dump(by_alias=True)
+        assert data["columnType"] == "0"
+        assert data["sampleType"] == "127"
+        assert data["plType"] == "10"
+        assert data["confidenceLevel"] == "50"
+        assert data["market"] == "1"
+        assert data["subresult"] == "30"
+        assert data["pctRatio"] == "0"
+        assert data["name"] is None
+
+    def test_advanced_ranking_condition_round_trip_full(self) -> None:
+        """GIVEN a condition with full attributes and two ColumnValue entries
+        WHEN serializes to XML and parses back
+        THEN all attributes and children are preserved exactly.
+        """
+        from quantlab.cfx.models import AdvancedRankingCondition, ColumnValue
+
+        cond = AdvancedRankingCondition(
+            use=True,
+            result_type="main",
+            sample_type="127",
+            direction="0",
+            pct_ratio="0",
+            confidence_level="50",
+            market="1",
+            pl_type="10",
+            subresult="30",
+            class_="MyClass",
+            name="MyCond",
+            column_values=[
+                ColumnValue(column="ProfitFactor", format="Decimal2", class_="ProfitFactor"),
+                ColumnValue(column="SharpeRatio", format="Decimal2", class_="SharpeRatio"),
+            ],
+        )
+        data = cond.model_dump(by_alias=True)
+        assert data["use"] is True
+        assert data["class"] == "MyClass"
+        assert data["name"] == "MyCond"
+        assert len(data["column_values"]) == 2
+        assert data["column_values"][0]["column"] == "ProfitFactor"
+
+        restored = AdvancedRankingCondition.model_validate(data)
+        assert restored.use is True
+        assert restored.class_ == "MyClass"
+        assert len(restored.column_values) == 2
+        assert restored.column_values[0].column == "ProfitFactor"
+
+    def test_advanced_ranking_condition_minimal(self) -> None:
+        """GIVEN a condition with only use and one ColumnValue
+        WHEN serialized
+        THEN optional attributes use defaults and model validates.
+        """
+        from quantlab.cfx.models import AdvancedRankingCondition, ColumnValue
+
+        cond = AdvancedRankingCondition(
+            use=True,
+            column_values=[
+                ColumnValue(column="NetProfit", format="Decimal2", class_="NetProfit"),
+            ],
+        )
+        data = cond.model_dump(by_alias=True)
+        assert data["use"] is True
+        assert data["resultType"] == "main"
+        assert data["sampleType"] == "127"
+        assert data["pctRatio"] == "0"
+        assert data["class"] is None
+        assert data["name"] is None
+        assert len(data["column_values"]) == 1
+
+    def test_advanced_rankings_config_round_trip(self) -> None:
+        """GIVEN an AdvancedRankingsConfig with conditions
+        WHEN model_dump and model_validate round-trip
+        THEN conditions list is preserved.
+        """
+        from quantlab.cfx.models import AdvancedRankingCondition, AdvancedRankingsConfig, ColumnValue
+
+        config = AdvancedRankingsConfig(
+            conditions=[
+                AdvancedRankingCondition(
+                    use=True,
+                    result_type="main",
+                    column_values=[
+                        ColumnValue(column="ProfitFactor", format="Decimal2", class_="ProfitFactor"),
+                    ],
+                ),
+            ],
+        )
+        data = config.model_dump(by_alias=True)
+        assert data["conditions"] is not None
+        assert len(data["conditions"]) == 1
+        assert data["conditions"][0]["use"] is True
+        assert data["raw_xml"] == ""
+
+        restored = AdvancedRankingsConfig.model_validate(data)
+        assert restored.conditions is not None
+        assert len(restored.conditions) == 1
+        assert restored.conditions[0].use is True
+        assert restored.raw_xml == ""
+
+
+class TestAdvancedRankingPatcher:
+    """Tests for AddAdvancedRankingConditionInstruction and SetAdvancedRankingsInstruction."""
+
+    def test_set_advanced_rankings_generates_nested_xml(self) -> None:
+        """GIVEN a SetAdvancedRankingsInstruction with one condition
+        WHEN applied
+        THEN rankings_section.raw_xml contains nested Conditions/Condition/Column-Value.
+        """
+        from quantlab.cfx.models import (
+            AdvancedRankingCondition,
+            AdvancedRankingsConfig,
+            ColumnValue,
+            SetAdvancedRankingsInstruction,
+        )
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = SetAdvancedRankingsInstruction(
+            conditions=[
+                AdvancedRankingCondition(
+                    use=True,
+                    result_type="main",
+                    sample_type="127",
+                    direction="desc",
+                    pct_ratio="10",
+                    confidence_level="95",
+                    market="1",
+                    pl_type="10",
+                    subresult="30",
+                    class_="Advanced",
+                    name="Main",
+                    column_values=[
+                        ColumnValue(column="ProfitFactor", column_type="0", format="Decimal2", class_="ProfitFactor"),
+                    ],
+                ),
+            ],
+        )
+        patcher.apply([instr])
+
+        section = archive.config.task.rankings_section
+        assert section is not None
+        xml = section.raw_xml
+        assert "<Rankings>" in xml
+        assert "<Conditions>" in xml
+        assert '<Condition use="true"' in xml
+        assert 'resultType="main"' in xml
+        assert 'sampleType="127"' in xml
+        assert 'direction="desc"' in xml
+        assert 'pctRatio="10"' in xml
+        assert 'confidenceLevel="95"' in xml
+        assert 'market="1"' in xml
+        assert 'plType="10"' in xml
+        assert 'subresult="30"' in xml
+        assert 'class="Advanced"' in xml
+        assert 'name="Main"' in xml
+        assert "<Column-Value" in xml
+        assert 'column="ProfitFactor"' in xml
+        assert 'format="Decimal2"' in xml
+
+    def test_set_advanced_rankings_multiple_conditions(self) -> None:
+        """GIVEN two advanced ranking conditions
+        WHEN applied
+        THEN both conditions appear under the same Conditions parent.
+        """
+        from quantlab.cfx.models import (
+            AdvancedRankingCondition,
+            AdvancedRankingsConfig,
+            ColumnValue,
+            SetAdvancedRankingsInstruction,
+        )
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = SetAdvancedRankingsInstruction(
+            conditions=[
+                AdvancedRankingCondition(
+                    use=True,
+                    column_values=[ColumnValue(column="PF", format="Decimal2", class_="PF")],
+                ),
+                AdvancedRankingCondition(
+                    use=False,
+                    column_values=[ColumnValue(column="Sharpe", format="Decimal2", class_="Sharpe")],
+                ),
+            ],
+        )
+        patcher.apply([instr])
+
+        xml = archive.config.task.rankings_section.raw_xml
+        # "<Condition " (with trailing space) counts only the opening elements;
+        # a bare "<Condition" also matches the required <Conditions> parent.
+        assert xml.count("<Condition ") == 2
+        assert xml.count("<Conditions>") == 1
+        assert 'use="true"' in xml
+        assert 'use="false"' in xml
+
+    def test_add_advanced_ranking_condition_appends_to_existing(self) -> None:
+        """GIVEN an existing advanced rankings section with one condition
+        WHEN AddAdvancedRankingConditionInstruction is applied
+        THEN a second condition is appended to the same Conditions block.
+        """
+        from quantlab.cfx.models import (
+            AdvancedRankingCondition,
+            AdvancedRankingsConfig,
+            ColumnValue,
+            AddAdvancedRankingConditionInstruction,
+            SetAdvancedRankingsInstruction,
+        )
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        set_instr = SetAdvancedRankingsInstruction(
+            conditions=[
+                AdvancedRankingCondition(
+                    use=True,
+                    column_values=[ColumnValue(column="PF", format="Decimal2", class_="PF")],
+                ),
+            ],
+        )
+        patcher.apply([set_instr])
+
+        add_instr = AddAdvancedRankingConditionInstruction(
+            condition=AdvancedRankingCondition(
+                use=True,
+                column_values=[ColumnValue(column="Sharpe", format="Decimal2", class_="Sharpe")],
+            ),
+        )
+        patcher.apply([add_instr])
+
+        xml = archive.config.task.rankings_section.raw_xml
+        # "<Condition " (with trailing space) counts only the opening elements;
+        # a bare "<Condition" also matches the required <Conditions> parent.
+        assert xml.count("<Condition ") == 2
+        assert xml.count("<Conditions>") == 1
+        assert 'column="PF"' in xml
+        assert 'column="Sharpe"' in xml
+
+    def test_set_advanced_rankings_empty_conditions_raises(self) -> None:
+        """GIVEN a SetAdvancedRankingsInstruction with no conditions
+        WHEN applied
+        THEN ValidationError is raised.
+        """
+        from quantlab.cfx.models import SetAdvancedRankingsInstruction
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = SetAdvancedRankingsInstruction(conditions=[])
+        with pytest.raises(ValidationError, match="conditions must not be empty"):
+            patcher.apply([instr])
+
+    def test_add_advanced_ranking_condition_without_existing_section(self) -> None:
+        """GIVEN no existing advanced rankings section
+        WHEN AddAdvancedRankingConditionInstruction is applied
+        THEN a new Rankings section is created with the condition.
+        """
+        from quantlab.cfx.models import (
+            AddAdvancedRankingConditionInstruction,
+            AdvancedRankingCondition,
+            ColumnValue,
+        )
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        instr = AddAdvancedRankingConditionInstruction(
+            condition=AdvancedRankingCondition(
+                use=True,
+                column_values=[ColumnValue(column="NetProfit", format="Decimal2", class_="NetProfit")],
+            ),
+        )
+        patcher.apply([instr])
+
+        section = archive.config.task.rankings_section
+        assert section is not None
+        xml = section.raw_xml
+        assert "<Rankings>" in xml
+        assert "<Conditions>" in xml
+        assert "<Condition" in xml
+        assert "<Column-Value" in xml
+
+    def test_column_value_matches_real_sqx_cfx_attribute_set(self) -> None:
+        """GIVEN a ColumnValue mirroring a real SQX 144/2953 CFX export
+        WHEN the patcher renders it
+        THEN the emitted attribute string is byte-identical to the CFX evidence,
+        including defaults and attribute order.
+        """
+        from quantlab.cfx.models import (
+            AdvancedRankingCondition,
+            ColumnValue,
+            SetAdvancedRankingsInstruction,
+        )
+
+        # Verbatim from sdk/quantlab/customproject/renderers.py CFX evidence.
+        expected = (
+            '<Column-Value column="NetProfit" columnType="0" format="Decimal2PL" '
+            'resultType="OptProfileSysParamPermutation" direction="0" sampleType="127" '
+            'plType="10" confidenceLevel="50" market="1" subresult="30" pctRatio="0" '
+            'class="NetProfit" />'
+        )
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        patcher.apply(
+            [
+                SetAdvancedRankingsInstruction(
+                    conditions=[
+                        AdvancedRankingCondition(
+                            use=True,
+                            column_values=[
+                                ColumnValue(
+                                    column="NetProfit",
+                                    format="Decimal2PL",
+                                    result_type="OptProfileSysParamPermutation",
+                                    class_="NetProfit",
+                                )
+                            ],
+                        )
+                    ]
+                )
+            ]
+        )
+
+        xml = archive.config.task.rankings_section.raw_xml
+        assert expected in xml
+        # Defaults must survive even though they were never set explicitly.
+        assert 'columnType="0"' in xml
+        assert 'direction="0"' in xml
+        assert 'pctRatio="0"' in xml
+
+    def test_repeated_appends_preserve_earlier_condition_attributes(self) -> None:
+        """GIVEN two sequential appends with different non-default attributes
+        WHEN the block is rebuilt after each append
+        THEN no earlier condition loses an attribute.
+        """
+        from quantlab.cfx.models import (
+            AddAdvancedRankingConditionInstruction,
+            AdvancedRankingCondition,
+            ColumnValue,
+        )
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+
+        patcher.apply(
+            [
+                AddAdvancedRankingConditionInstruction(
+                    condition=AdvancedRankingCondition(
+                        use=True,
+                        direction="desc",
+                        pct_ratio="60",
+                        class_="First",
+                        column_values=[
+                            ColumnValue(column="ProfitFactor", format="Decimal2", class_="ProfitFactor")
+                        ],
+                    )
+                )
+            ]
+        )
+        first_xml = archive.config.task.rankings_section.raw_xml
+        assert 'direction="desc"' in first_xml
+        assert 'pctRatio="60"' in first_xml
+        assert 'class="First"' in first_xml
+
+        patcher.apply(
+            [
+                AddAdvancedRankingConditionInstruction(
+                    condition=AdvancedRankingCondition(
+                        use=False,
+                        name="Second",
+                        column_values=[
+                            ColumnValue(column="Sharpe", format="Decimal2", class_="Sharpe")
+                        ],
+                    )
+                )
+            ]
+        )
+
+        xml = archive.config.task.rankings_section.raw_xml
+        assert xml.count("<Condition ") == 2
+        assert xml.count("<Conditions>") == 1
+        # First condition survived the parse/rebuild round-trip intact.
+        assert 'direction="desc"' in xml
+        assert 'pctRatio="60"' in xml
+        assert 'class="First"' in xml
+        # Second condition carries its own distinct attributes.
+        assert 'use="false"' in xml
+        assert 'name="Second"' in xml
+        assert 'column="Sharpe"' in xml
+
+    def test_add_advanced_ranking_condition_refuses_to_clobber_simple_rankings(self) -> None:
+        """GIVEN a simple <Rankings> block written by SetRankingsInstruction
+        WHEN AddAdvancedRankingConditionInstruction is applied
+        THEN a ValidationError is raised and the simple block is left intact.
+        """
+        from quantlab.cfx.models import (
+            AddAdvancedRankingConditionInstruction,
+            AdvancedRankingCondition,
+            ColumnValue,
+            SetRankingsInstruction,
+        )
+
+        archive = _make_archive()
+        patcher = CfxPatcher(archive)
+        patcher.apply([SetRankingsInstruction(metrics=["ProfitFactor"], min_trades=50)])
+
+        simple_xml = archive.config.task.rankings_section.raw_xml
+        assert "<Conditions" not in simple_xml
+
+        instr = AddAdvancedRankingConditionInstruction(
+            condition=AdvancedRankingCondition(
+                use=True,
+                column_values=[ColumnValue(column="NetProfit", format="Decimal2", class_="NetProfit")],
+            ),
+        )
+        with pytest.raises(ValidationError, match="no <Conditions> block to append to"):
+            patcher.apply([instr])
+
+        # No silent data loss: the simple rankings block survives untouched.
+        assert archive.config.task.rankings_section.raw_xml == simple_xml
