@@ -20,6 +20,7 @@ from quantlab.cfx.models import (
     AutomaticPortfolioBuilderConfig,
     ColumnValue,
     CrossChecksConfig,
+    CrossChecksGeneric,
     DatabanksConfig,
     DataRangeParts,
     DisableBlockInstruction,
@@ -107,6 +108,35 @@ def _render_attributes(source: Any, spec: tuple[tuple[str, str], ...]) -> str:
             value = str(value).lower()
         rendered.append(f'{xml_name}="{value}"')
     return " ".join(rendered)
+
+
+def build_conditions_xml(conditions: list[AdvancedRankingCondition], indent: str = "  ") -> str:
+    """Render ``conditions`` as the inner ``<Conditions>`` block of a Rankings section.
+
+    Every SQX attribute is emitted, defaults included, because a real SQX
+    144/2953 Retester CFX always writes the full attribute set. Only the
+    genuinely optional ``class`` and ``name`` attributes are omitted.
+
+    Public because two entry points need this exact dialect: the patcher
+    (instruction-driven edits) and the custom-project renderers (task-driven
+    builds). Re-verifying it twice would be a worse trade than one renderer.
+    """
+    lines = [f"{indent}<Conditions>"]
+    for cond in conditions:
+        use_attr = f'use="{str(cond.use).lower()}"'
+        attrs = " ".join(part for part in (use_attr, _render_attributes(cond, _CONDITION_ATTRS)) if part)
+        lines.append(f"{indent}  <Condition {attrs}>")
+        for cv in cond.column_values:
+            cv_attrs = _render_attributes(cv, _COLUMN_VALUE_ATTRS)
+            lines.append(f"{indent}    <Column-Value {cv_attrs} />")
+        lines.append(f"{indent}  </Condition>")
+    lines.append(f"{indent}</Conditions>")
+    return "\n".join(lines)
+
+
+def build_advanced_rankings_xml(conditions: list[AdvancedRankingCondition]) -> str:
+    """Build a complete ``<Rankings>`` element carrying nested ``<Conditions>``."""
+    return "\n".join(["<Rankings>", build_conditions_xml(conditions), "</Rankings>"])
 
 
 class CfxPatcher:
@@ -684,14 +714,27 @@ class CfxPatcher:
 
     def _apply_set_crosschecks(self, instruction: SetCrossChecksInstruction) -> None:
         """Configure retester cross-checks (Monte Carlo, Walk-Forward) — create if missing."""
-        xml = f"""<CrossChecks>
-  <MonteCarlo enabled="{str(instruction.mc_enabled).lower()}" runs="{instruction.mc_runs}" percentile="{instruction.mc_percentile}"/>
-  <WalkForward enabled="{str(instruction.wf_enabled).lower()}" cycles="{instruction.wf_cycles}"/>
-  <ConfidenceLevel value="{instruction.confidence_level}"/>
-</CrossChecks>"""
+        new_section = CrossChecksConfig(
+            dialect="generic",
+            generic=CrossChecksGeneric(
+                mc_enabled=instruction.mc_enabled,
+                mc_runs=instruction.mc_runs,
+                mc_percentile=instruction.mc_percentile,
+                wf_enabled=instruction.wf_enabled,
+                wf_cycles=instruction.wf_cycles,
+                confidence_level=instruction.confidence_level,
+            ),
+        )
         if not self._task.cross_checks_section:
-            self._task.cross_checks_section = CrossChecksConfig(raw_xml="")
-        self._task.cross_checks_section.raw_xml = xml
+            self._task.cross_checks_section = new_section
+            return
+        # Preserve raw_xml extras from the existing section while mutating
+        # typed fields (never replace raw_xml outright).
+        existing = self._task.cross_checks_section
+        existing.dialect = "generic"
+        existing.generic = new_section.generic
+        if not existing.raw_xml:
+            existing.raw_xml = ""
 
     def _apply_set_retester_data(self, instruction: SetRetesterDataInstruction) -> None:
         """Configure retester data settings (create if missing)."""
@@ -711,26 +754,8 @@ class CfxPatcher:
 
     @staticmethod
     def _build_advanced_rankings_xml(conditions: list[AdvancedRankingCondition]) -> str:
-        """Build nested ``<Rankings><Conditions>`` XML from typed conditions.
-
-        Every SQX attribute is emitted, defaults included, because a real SQX
-        144/2953 Retester CFX always writes the full attribute set. Only the
-        genuinely optional ``class`` and ``name`` attributes are omitted.
-        """
-        parts = ["<Rankings>", "  <Conditions>"]
-        for cond in conditions:
-            use_attr = f'use="{str(cond.use).lower()}"'
-            attrs = " ".join(
-                part for part in (use_attr, _render_attributes(cond, _CONDITION_ATTRS)) if part
-            )
-            parts.append(f"    <Condition {attrs}>")
-            for cv in cond.column_values:
-                cv_attrs = _render_attributes(cv, _COLUMN_VALUE_ATTRS)
-                parts.append(f"      <Column-Value {cv_attrs} />")
-            parts.append("    </Condition>")
-        parts.append("  </Conditions>")
-        parts.append("</Rankings>")
-        return "\n".join(parts)
+        """Build nested ``<Rankings><Conditions>`` XML from typed conditions."""
+        return build_advanced_rankings_xml(conditions)
 
     def _apply_set_advanced_rankings(self, instruction: SetAdvancedRankingsInstruction) -> None:
         """Replace the advanced rankings block with the given conditions."""

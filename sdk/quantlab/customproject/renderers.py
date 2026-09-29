@@ -15,6 +15,7 @@ from typing import Callable
 from xml.sax.saxutils import escape
 
 from quantlab.cfx.models import (
+    AdvancedRankingCondition,
     AutomaticPortfolioBuilderConfig,
     BuildTask,
     CrossChecksConfig,
@@ -24,6 +25,7 @@ from quantlab.cfx.models import (
     RetesterDataConfig,
     SettingsSection,
 )
+from quantlab.cfx.patcher import build_conditions_xml
 from quantlab.customproject.models import CustomProjectTask, GoToTask
 
 
@@ -116,9 +118,28 @@ def render_build(task: CustomProjectTask) -> BuildTask:
     return bt
 
 
+def render_advanced_rankings(
+    conditions: list[AdvancedRankingCondition],
+    *,
+    extra_elements: str = "",
+) -> RankingsConfig:
+    """Build a ``<Rankings>`` section carrying nested ``<Conditions>`` filters.
+
+    ``extra_elements`` is inserted before ``<Conditions>`` so a caller that also
+    needs ``<MinTrades>``/``<ConfidenceLevel>`` keeps SQX's native ordering. The
+    conditions themselves come from :func:`build_conditions_xml` — the same
+    renderer the patcher uses — because this dialect is verified SQX evidence
+    and a second implementation could drift from it unnoticed.
+    """
+    body = "\n".join(part for part in (extra_elements, build_conditions_xml(conditions)) if part)
+    return RankingsConfig(raw_xml=f"<Rankings>\n{body}\n</Rankings>")
+
+
 def render_retest(task: CustomProjectTask) -> BuildTask:
     bt = _base_task(task)
     bt.cross_checks_section = _crosschecks_section(task)
+    if task.advanced_ranking_filters:
+        bt.rankings_section = render_advanced_rankings(task.advanced_ranking_filters)
     return bt
 
 

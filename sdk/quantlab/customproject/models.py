@@ -8,8 +8,12 @@ be imported and tested standalone. The mapping to CFX models happens in
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from quantlab.versioning import PINNED_SQX_VERSION
+
+if TYPE_CHECKING:  # keeps the DSL layer free of a runtime cfx dependency
+    from quantlab.cfx.models import AdvancedRankingCondition
 
 
 @dataclass
@@ -62,6 +66,8 @@ class CustomProjectTask:
         target_databank: Databank this task writes to.
         filters: Optional filters (Filtering task).
         goto: Optional GoToTask control-flow spec (GoToTask task).
+        advanced_ranking_filters: Optional nested SQX ranking filters, rendered into
+            the task's ``<Rankings><Conditions>`` block (Retest tasks).
         taskXMLFile: Optional explicit XML file name override for the task.
         params: Extra per-task rendering parameters (e.g. ``walkforward_cycles``).
     """
@@ -73,6 +79,7 @@ class CustomProjectTask:
     target_databank: str | None = None
     filters: Filters | None = None
     goto: GoToTask | None = None
+    advanced_ranking_filters: list[AdvancedRankingCondition] | None = None
     taskXMLFile: str | None = None
     params: dict[str, str] = field(default_factory=dict)
 
