@@ -22,7 +22,9 @@ These tests pin the reader half of the contract:
 import zipfile
 from io import BytesIO
 from pathlib import Path
+from xml.etree import ElementTree
 
+from quantlab.cfx.models import CfxArchive, CfxConfig
 from quantlab.cfx.reader import CfxReader
 
 CONFIG_VERSION = "141.2219"
@@ -250,3 +252,203 @@ class TestAdvancedRankingsParsing:
         assert task.rankings_section is None
 
 
+class TestDataRangePartsParsing:
+    def test_typed_subranges_land_in_their_fields(self, tmp_path: Path) -> None:
+        """GIVEN the typed sub-range elements the model declares
+        WHEN read
+        THEN each one populates its named field, so a caller can inspect the
+        split without re-parsing XML.
+        """
+        task = _read_task(
+            "<Settings><Data>"
+            '<IST value="0.5" /><OOSEvery value="0.25" /><ValidationRatio value="0.2" />'
+            '<DateFrom value="2020.01.01" /><DateTo value="2023.12.31" />'
+            "</Data></Settings>",
+            tmp_path,
+        )
+
+        parts = task.data_range_parts
+        assert parts is not None
+        assert parts.ist == "0.5"
+        assert parts.oos_every == "0.25"
+        assert parts.date_from == "2020.01.01"
+        assert parts.date_to == "2023.12.31"
+
+    def test_split_ratios_stay_floats_and_distinct(self, tmp_path: Path) -> None:
+        """The spec forbids reinterpreting the split ratios as a training ratio,
+        so both must survive as independent floats.
+        """
+        task = _read_task(
+            "<Settings><Data>"
+            '<ValidationRatio value="0.2" /><TestRatio value="0.1" />'
+            "</Data></Settings>",
+            tmp_path,
+        )
+
+        parts = task.data_range_parts
+        assert parts.validation_ratio == 0.2
+        assert parts.test_ratio == 0.1
+
+    def test_unknown_subranges_are_parked_in_raw_xml(self, tmp_path: Path) -> None:
+        """Spec scenario "Unknown range passthrough": the real SQX <Data> holds
+        <Setups>/<OutOfSample>, which have no typed field. They must survive
+        verbatim or a read/write cycle would silently drop the date range and
+        the out-of-sample switch.
+        """
+        task = _read_task(
+            "<Settings><Data>"
+            '<IST value="0.5" />'
+            '<Setups><Setup dateFrom="2003.5.5" dateTo="2018.08.30" /></Setups>'
+            '<OutOfSample showGraph="false" />'
+            "</Data></Settings>",
+            tmp_path,
+        )
+
+        parts = task.data_range_parts
+        assert parts.ist == "0.5"
+        assert 'dateFrom="2003.5.5"' in parts.raw_xml
+        assert 'dateTo="2018.08.30"' in parts.raw_xml
+        assert "<OutOfSample" in parts.raw_xml
+        assert "<Setups>" in parts.raw_xml
+
+    def test_typed_and_raw_lanes_round_trip_through_to_xml(
+        self, tmp_path: Path
+    ) -> None:
+        """The bridge is bidirectional: what the reader recovered must
+        re-serialise to the same element set, or the reader would be a lossy
+        step in the middle of the round trip.
+        """
+        source = (
+            '<IST value="0.5" />'
+            '<OutOfSample showGraph="false" />'
+        )
+        task = _read_task(f"<Settings><Data>{source}</Data></Settings>", tmp_path)
+
+        rendered = task.data_range_parts.to_xml()
+        assert '<IST value="0.5" />' in rendered
+        assert '<OutOfSample showGraph="false" />' in rendered
+
+    def test_data_section_without_typed_or_unknown_content(self, tmp_path: Path) -> None:
+        """An empty ``<Data>`` reports an empty parts model rather than
+        ``None``: the section exists, it simply configures nothing.
+        """
+        task = _read_task("<Settings><Data /></Settings>", tmp_path)
+
+        assert task.data_range_parts is not None
+        assert task.data_range_parts.ist is None
+        assert task.data_range_parts.raw_xml == ""
+
+    def test_absent_data_section_leaves_the_typed_lane_unset(
+        self, tmp_path: Path
+    ) -> None:
+        task = _read_task("<Settings><Options /></Settings>", tmp_path)
+
+        assert task.data_range_parts is None
+        assert task.data is None
+
+
+class TestDataLanesAreDisjoint:
+    """``<Data>`` feeds two lanes: the flat ``<Setting>`` SettingsSection and the
+    typed sub-range model. If the reader hands the same child to both, the
+    writer merges them back and the section **grows on every cycle**.
+    """
+
+    def test_flat_lane_holds_only_setting_children(self, tmp_path: Path) -> None:
+        task = _read_task(
+            '<Settings><Data><Setting key="Symbol@symbol" value="EURUSD" />'
+            '<IST value="0.5" /><OutOfSample showGraph="false" /></Data></Settings>',
+            tmp_path,
+        )
+
+        assert task.data.settings == {
+            "Setting@key": "Symbol@symbol",
+            "Setting@value": "EURUSD",
+        }
+
+    def test_nested_elements_do_not_leak_into_the_flat_lane(
+        self, tmp_path: Path
+    ) -> None:
+        """The real SQX ``<Setups><Setup dateFrom=.../></Setups>`` tree must stay
+        in the passthrough lane. Flattening it into the key-value lane would
+        rewrite the whole subtree as ``<Setting key="Setups.Setup@dateFrom"/>``
+        on the next write, silently replacing real XML with key-value pairs.
+        """
+        task = _read_task(
+            '<Settings><Data><Setups><Setup dateFrom="2003.5.5" /></Setups></Data></Settings>',
+            tmp_path,
+        )
+
+        assert task.data.settings == {}
+        assert "<Setups>" in task.data_range_parts.raw_xml
+
+    def test_second_cycle_does_not_grow_the_data_section(self, tmp_path: Path) -> None:
+        """The invariant a golden round-trip depends on: re-writing what was
+        read must not add elements. Growth means the two lanes captured the
+        same child, and the writer merged both copies back.
+
+        Scoped to the typed lane and the ``<Rankings>`` complex lane, which is
+        what this change owns. The flat key-value lane has a *separate*,
+        pre-existing defect — the reader keys entries ``Setting@key`` and the
+        writer re-emits them under that mangled key, so a real SQX ``<Setting>``
+        set does not survive a cycle verbatim. Fixing that is a redesign of the
+        SettingsSection projection for every section, out of scope here.
+        """
+        first = _round_trip(
+            '<Settings><Data><Setting key="Symbol@symbol" value="EURUSD" />'
+            '<IST value="0.5" /><OutOfSample showGraph="false" /></Data>'
+            f"{SQX_CONDITIONS}</Settings>",
+            tmp_path / "first.cfx",
+        )
+        second = _round_trip(
+            first.decode("utf-8"), tmp_path / "second.cfx"
+        )
+
+        assert _data_element_signature(second) == _data_element_signature(first)
+        assert _rankings_xml(second) == _rankings_xml(first)
+
+    def test_flat_settings_are_not_duplicated_into_the_typed_lane(
+        self, tmp_path: Path
+    ) -> None:
+        """Each ``<Setting>`` belongs to exactly one lane. Copying it into the
+        typed model's ``raw_xml`` makes the writer emit it twice.
+        """
+        task = _read_task(
+            '<Settings><Data><Setting key="Symbol@symbol" value="EURUSD" />'
+            '<IST value="0.5" /></Data></Settings>',
+            tmp_path,
+        )
+
+        assert "<Setting" not in task.data_range_parts.raw_xml
+        assert task.data.settings == {
+            "Setting@key": "Symbol@symbol",
+            "Setting@value": "EURUSD",
+        }
+
+
+def _data_element_signature(task_xml: bytes) -> list[tuple[str, str | None]]:
+    """The ``<Data>`` children as ``(tag, value)`` pairs, order preserved."""
+    root = ElementTree.fromstring(task_xml)
+    (data,) = [c for c in root if c.tag == "Data"]
+    return [(c.tag, c.get("value") or c.get("key")) for c in data]
+
+
+def _rankings_xml(task_xml: bytes) -> str:
+    root = ElementTree.fromstring(task_xml)
+    (rankings,) = [c for c in root if c.tag == "Rankings"]
+    return ElementTree.tostring(rankings, encoding="unicode")
+
+
+def _round_trip(task_xml: str, dest: Path) -> bytes:
+    """Write ``task_xml`` as a CFX, read it back, write it again; return pass 2."""
+    from quantlab.cfx.writer import CfxWriter
+
+    task = _read_task(task_xml, dest.parent)
+    archive = CfxArchive(
+        config=CfxConfig(task=task, schema_version=CONFIG_VERSION),
+        task_files={"Build-Task1.xml": task},
+    )
+    CfxWriter.write(archive, dest)
+    reread = CfxReader.read(dest)
+    CfxWriter.write(reread, dest)
+    with zipfile.ZipFile(dest) as zf:
+        return zf.read("Build-Task1.xml")

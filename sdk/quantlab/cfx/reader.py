@@ -32,6 +32,7 @@ from quantlab.cfx.models import (
     CrossChecksConfig,
     DataBankConfig,
     DatabanksConfig,
+    DataRangeParts,
     OptimizationConfig,
     OptimizationParametersConfig,
     PortfolioSettingsConfig,
@@ -340,13 +341,26 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
         | None,
     ] = {}
     unknown: list[RawXmlSection] = []
+    data_el: ElementTree.Element | None = None
     rankings_el: ElementTree.Element | None = None
 
     for child in root:
         tag = child.tag
         if tag in _SETTINGS_SECTIONS:
-            settings = _parse_settings_element(child)
-            sections[tag] = settings
+            if tag == "Data":
+                # <Data> feeds two lanes: the flat <Setting> key-value section
+                # and the typed sub-range model. Restricting the flat lane to
+                # <Setting> children keeps the two disjoint — flattening the
+                # whole subtree would copy every typed sub-range into the flat
+                # lane as well, and the writer merges both lanes back, so the
+                # section would grow on every read/write cycle.
+                settings = _parse_settings_element(
+                    child, setting_children_only=True
+                )
+                sections[tag] = settings
+                data_el = child
+            else:
+                sections[tag] = _parse_settings_element(child)
         elif tag in _COMPLEX_SECTIONS:
             raw_xml = ElementTree.tostring(child, encoding="unicode")
             complex_sections[tag] = _make_complex_section(tag, raw_xml)
@@ -378,6 +392,7 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
         rankings_section=complex_sections.get("Rankings"),
         cross_checks_section=complex_sections.get("CrossChecks"),
         retester_data=complex_sections.get("RetesterData"),
+        data_range_parts=_parse_data_range_parts(data_el),
         advanced_rankings=_parse_advanced_rankings(
             rankings_el, complex_sections.get("Rankings")
         ),
@@ -385,9 +400,23 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
     )
 
 
-def _parse_settings_element(el: ElementTree.Element) -> SettingsSection:
-    """Convert an ElementTree element to a flat key-value SettingsSection."""
+def _parse_settings_element(
+    el: ElementTree.Element, *, setting_children_only: bool = False
+) -> SettingsSection:
+    """Convert an ElementTree element to a flat key-value SettingsSection.
+
+    ``setting_children_only`` restricts the result to direct ``<Setting>``
+    children, leaving nested elements such as ``<Setups>`` or ``<IST>`` out of
+    the flat lane. Used for ``<Data>``, which also feeds the typed
+    ``DataRangeParts`` model: capturing the same element in both lanes would
+    duplicate it on the next write.
+    """
     settings: dict[str, str] = {}
+    if setting_children_only:
+        for child in el:
+            if child.tag == "Setting":
+                _flatten_element(child, settings, prefix="")
+        return SettingsSection(name=el.tag, settings=settings)
     _flatten_element(el, settings, prefix="")
     return SettingsSection(name=el.tag, settings=settings)
 
@@ -503,6 +532,25 @@ def _parse_column_value(cv_el: ElementTree.Element) -> ColumnValue:
     )
 
 
+def _parse_data_range_parts(el: ElementTree.Element | None) -> DataRangeParts | None:
+    """Build the typed ``<Data>`` sub-range lane.
+
+    Delegates to :meth:`DataRangeParts.from_xml`, which parks every unmodelled
+    sibling in ``raw_xml`` — the real SQX ``<Data>`` holds ``<Setups>`` and
+    ``<OutOfSample>``, which have no typed field but must not be lost.
+
+    ``<Setting>`` children are stripped first: they belong to the flat
+    key-value lane, and parking a copy of them in ``raw_xml`` too would make
+    the writer emit each of them twice.
+    """
+    if el is None:
+        return None
+    payload = ElementTree.fromstring(ElementTree.tostring(el, encoding="unicode"))
+    for child in [c for c in payload if c.tag == "Setting"]:
+        payload.remove(child)
+    return DataRangeParts.from_xml(ElementTree.tostring(payload, encoding="unicode"))
+
+
 def _make_complex_section(
     tag: str, raw_xml: str
 ) -> (
@@ -539,4 +587,8 @@ def _make_complex_section(
     cls = mapping.get(tag)
     if cls is None:
         raise CfxParseError(f"Unknown complex section: {tag}")
+    if cls is CrossChecksConfig:
+        # CrossChecks is a dual-dialect typed model: parse into dialect +
+        # typed sections so consumers read fields instead of raw XML.
+        return CrossChecksConfig.from_xml(raw_xml)
     return cls(raw_xml=raw_xml)
