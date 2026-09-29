@@ -12,8 +12,10 @@ from quantlab.cfx import CfxArchive, BuildTask, CfxWriter
 from quantlab.cfx.dom import set_commission_settings, set_spread_settings
 from quantlab.versioning import PINNED_SQX_VERSION
 from quantlab.cfx.models import (
+    AdvancedRankingCondition,
     CfxConfig,
     CfxProject,
+    DataRangeParts,
     SettingsSection,
     AutomaticPortfolioBuilderConfig,
     PortfolioSettingsConfig,
@@ -25,6 +27,7 @@ from quantlab.cfx.models import (
     CrossChecksConfig,
     RetesterDataConfig,
 )
+from quantlab.cfx.patcher import build_conditions_xml
 
 
 class CfxTemplateBuilder:
@@ -166,6 +169,30 @@ class CfxTemplateBuilder:
             CfxWriter.write(archive, out_path)
             return out_path.read_bytes()
 
+    @staticmethod
+    def _build_retester_rankings_xml(
+        *,
+        min_trades: int,
+        confidence_level: float,
+        advanced_ranking_filters: list[AdvancedRankingCondition] | None,
+    ) -> str:
+        """Build the Retester ``<Rankings>`` block, with or without filters.
+
+        SQX orders the section as <MinTrades>, <ConfidenceLevel>, then
+        <Conditions>, so the filters are appended after the two scalars. The
+        conditions come from :func:`build_conditions_xml` — the renderer shared
+        with the patcher and the custom-project renderers — rather than a
+        fourth implementation of a dialect that is verified SQX evidence.
+        """
+        scalars = (
+            f'  <MinTrades value="{min_trades}"/>\n'
+            f'  <ConfidenceLevel value="{confidence_level}"/>'
+        )
+        if not advanced_ranking_filters:
+            return f"<Rankings>\n{scalars}\n</Rankings>"
+        body = f"{scalars}\n{build_conditions_xml(advanced_ranking_filters)}"
+        return f"<Rankings>\n{body}\n</Rankings>"
+
     @classmethod
     def _build_retester_task(
         cls,
@@ -178,19 +205,27 @@ class CfxTemplateBuilder:
         min_trades: int = 30,
         confidence_level: float = 0.95,
         broker_profile: dict | None = None,
+        advanced_ranking_filters: list[AdvancedRankingCondition] | None = None,
+        data_range_parts: DataRangeParts | None = None,
     ) -> BuildTask:
         """Build the underlying BuildTask for a Retester CFX.
 
         Split out from ``build_retester_cfx`` so tests can verify the
         model without serialization.
+
+        ``advanced_ranking_filters`` and ``data_range_parts`` are optional
+        placeholders. When unset the emitted XML is byte-identical to what this
+        method produced before they existed.
         """
         task = BuildTask()
         task.rankings_section = RankingsConfig(
-            raw_xml=f"""<Rankings>
-  <MinTrades value="{min_trades}"/>
-  <ConfidenceLevel value="{confidence_level}"/>
-</Rankings>"""
+            raw_xml=cls._build_retester_rankings_xml(
+                min_trades=min_trades,
+                confidence_level=confidence_level,
+                advanced_ranking_filters=advanced_ranking_filters,
+            )
         )
+        task.data_range_parts = data_range_parts
         task.cross_checks_section = CrossChecksConfig(
             raw_xml=f"""<CrossChecks>
   <MonteCarlo enabled="true" runs="{mc_runs}" percentile="{mc_percentile}"/>
@@ -249,6 +284,8 @@ class CfxTemplateBuilder:
         min_trades: int = 30,
         confidence_level: float = 0.95,
         broker_profile: dict | None = None,
+        advanced_ranking_filters: list[AdvancedRankingCondition] | None = None,
+        data_range_parts: DataRangeParts | None = None,
     ) -> bytes:
         """Build Retester CFX.
 
@@ -260,6 +297,8 @@ class CfxTemplateBuilder:
             walkforward_cycles: WF cycles
             min_trades: Minimum trades for acceptance
             confidence_level: Confidence level
+            advanced_ranking_filters: Optional nested SQX ranking conditions.
+            data_range_parts: Optional typed IS/OOS split for the Data section.
 
         Returns:
             CFX archive as bytes
@@ -273,6 +312,8 @@ class CfxTemplateBuilder:
             min_trades=min_trades,
             confidence_level=confidence_level,
             broker_profile=broker_profile,
+            advanced_ranking_filters=advanced_ranking_filters,
+            data_range_parts=data_range_parts,
         )
 
         archive = CfxArchive(
