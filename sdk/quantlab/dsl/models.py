@@ -11,7 +11,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from quantlab.costs.models import CostsConfig
 
@@ -116,6 +116,116 @@ class AcceptanceCriterion(BaseModel):
     metric: str = Field(..., description="Metric name (e.g. profit_factor, sharpe)")
     operator: str = Field(..., description="Comparison operator (>, >=, <, <=, ==)")
     value: float = Field(..., description="Threshold value")
+
+
+# ── Advanced ranking filters / data range parts ───────────────────────────────
+
+
+class ColumnValueFilter(BaseModel):
+    """DSL form of an SQX ``<Column-Value>`` ranking filter.
+
+    Field aliases reproduce the attribute names of a real SQX 144/2953 CFX
+    export so a campaign YAML reads the way SQX writes it, while
+    ``populate_by_name`` keeps the idiomatic Python spelling usable.
+    ``class_name`` carries SQX's ``class`` attribute, which is a Python
+    keyword and therefore not nameable as a field.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    column: str = Field(..., description="SQX column name (e.g. NetProfit)")
+    column_type: str = Field(default="0", alias="columnType", description="SQX column type id")
+    format: str = Field(..., description="SQX display format (e.g. Decimal2PL)")
+    result_type: str = Field(default="main", alias="resultType", description="Result grouping")
+    direction: str = Field(default="0", description="Sort direction id")
+    sample_type: str = Field(default="127", alias="sampleType", description="Sample type id")
+    pl_type: str = Field(default="10", alias="plType", description="P/L type id")
+    confidence_level: str = Field(
+        default="50", alias="confidenceLevel", description="Confidence level id"
+    )
+    market: str = Field(default="1", description="Market scope id")
+    subresult: str = Field(default="30", description="Sub-result id")
+    pct_ratio: str = Field(default="0", alias="pctRatio", description="Percentage ratio id")
+    class_name: str | None = Field(
+        default=None,
+        alias="class",
+        description="SQX class the column belongs to",
+    )
+    name: str | None = Field(default=None, description="Optional display name")
+
+
+class AdvancedRankingFilter(BaseModel):
+    """DSL form of a nested SQX ``<Condition>`` inside ``<Rankings><Conditions>``.
+
+    This is the advanced counterpart of :class:`AcceptanceCriterion`, which
+    expresses the flat ``CriterionN@metric/operator/value`` form. Use it when
+    the acceptance rule needs SQX's full attribute vocabulary and more than one
+    ``<Column-Value>`` child.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    use: bool = Field(default=True, description="Whether the condition is active")
+    result_type: str = Field(default="main", alias="resultType", description="Result grouping")
+    sample_type: str = Field(default="127", alias="sampleType", description="Sample type id")
+    direction: str = Field(default="0", description="Sort direction id")
+    pct_ratio: str = Field(default="0", alias="pctRatio", description="Percentage ratio id")
+    confidence_level: str = Field(
+        default="50", alias="confidenceLevel", description="Confidence level id"
+    )
+    market: str = Field(default="1", description="Market scope id")
+    pl_type: str = Field(default="10", alias="plType", description="P/L type id")
+    subresult: str = Field(default="30", description="Sub-result id")
+    class_name: str | None = Field(
+        default=None, alias="class", description="SQX class the condition belongs to"
+    )
+    name: str | None = Field(default=None, description="Optional display name")
+    column_values: list[ColumnValueFilter] = Field(
+        default_factory=list,
+        description="Ordered Column-Value children; order is semantic",
+    )
+
+
+class DataRangePartsDSL(BaseModel):
+    """DSL form of the IS / validation / OOS sub-ranges of ``<Data>``.
+
+    Every typed field is optional and an unset field emits nothing, so a
+    partial configuration never masquerades as a real segment. ``raw_xml``
+    carries any ``<Data>`` content with no typed field and is emitted
+    verbatim, which is how an unrecognised SQX sub-range survives a round trip.
+
+    The field set mirrors :class:`quantlab.cfx.models.DataRangeParts` exactly;
+    ``tests/dsl/test_advanced_ranking_dsl.py`` asserts that so the two cannot
+    drift apart.
+    """
+
+    ist: str | None = Field(default=None, description="In-sample training range")
+    isc: str | None = Field(default=None, description="In-sample comparison range")
+    isv_1: str | None = Field(default=None, description="IS validation range 1")
+    isv_2: str | None = Field(default=None, description="IS validation range 2")
+    isv_3: str | None = Field(default=None, description="IS validation range 3")
+    isv_4: str | None = Field(default=None, description="IS validation range 4")
+    isv_5: str | None = Field(default=None, description="IS validation range 5")
+    isv_6: str | None = Field(default=None, description="IS validation range 6")
+    isv_7: str | None = Field(default=None, description="IS validation range 7")
+    isv_8: str | None = Field(default=None, description="IS validation range 8")
+    isv_9: str | None = Field(default=None, description="IS validation range 9")
+    isv_10: str | None = Field(default=None, description="IS validation range 10")
+    oos_1: str | None = Field(default=None, description="Out-of-sample range 1")
+    isv_every: str | None = Field(default=None, description="Aggregate IS validation range")
+    oos_every: str | None = Field(default=None, description="Aggregate out-of-sample range")
+    validation_ratio: float | None = Field(
+        default=None, description="Validation split ratio; never a training ratio"
+    )
+    test_ratio: float | None = Field(
+        default=None, description="Test split ratio; never a training ratio"
+    )
+    date_from: str | None = Field(default=None, description="Overall range start bound")
+    date_to: str | None = Field(default=None, description="Overall range end bound")
+    raw_xml: str = Field(
+        default="",
+        description="Verbatim <Data> content that has no typed field",
+    )
 
 
 # ── Strategy ────────────────────────────────────────────────────────────────────
@@ -369,6 +479,18 @@ class ResearchConfig(BaseModel):
     building_blocks: list[BuildingBlock] = Field(default_factory=list)
     strategies: list[Strategy] = Field(default_factory=list)
     criteria: list[AcceptanceCriterion] = Field(default_factory=list)
+    # Nested <Rankings><Conditions> filters, the advanced counterpart of
+    # `criteria`. Both may be used together; the translator merges them into a
+    # single <Rankings> section.
+    advanced_ranking_filters: list[AdvancedRankingFilter] = Field(
+        default_factory=list,
+        description="Nested advanced ranking conditions (SQX <Rankings><Conditions>)",
+    )
+    # Typed IS / validation / OOS sub-ranges of the <Data> section.
+    data_range_parts: Optional[DataRangePartsDSL] = Field(
+        default=None,
+        description="Optional typed data range parts for the <Data> section",
+    )
     default_criteria: list[AcceptanceCriterion] = Field(
         default_factory=lambda: [
             AcceptanceCriterion(metric="profit_factor", operator=">", value=1.0),
