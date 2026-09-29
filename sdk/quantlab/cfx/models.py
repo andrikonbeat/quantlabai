@@ -714,6 +714,11 @@ class BuildTask(BaseModel):
     # Data range parts (IS / validation / OOS sub-ranges of <Data>)
     data_range_parts: DataRangeParts | None = None
 
+    # Typed view of the nested <Rankings><Conditions> block. ``rankings_section``
+    # stays the verbatim writer source; this lane only makes the conditions
+    # queryable without re-parsing XML.
+    advanced_rankings: AdvancedRankingsConfig | None = None
+
     unknown_sections: list[RawXmlSection] = Field(default_factory=list)
 
 

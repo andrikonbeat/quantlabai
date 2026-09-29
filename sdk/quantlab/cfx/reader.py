@@ -19,6 +19,8 @@ from quantlab.cfx.errors import (
     VersionError,
 )
 from quantlab.cfx.models import (
+    AdvancedRankingsConfig,
+    AdvancedRankingCondition,
     AtmConfig,
     AutomaticPortfolioBuilderConfig,
     BlockConfig,
@@ -26,6 +28,7 @@ from quantlab.cfx.models import (
     CfxArchive,
     CfxConfig,
     CfxProject,
+    ColumnValue,
     CrossChecksConfig,
     DataBankConfig,
     DatabanksConfig,
@@ -337,6 +340,7 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
         | None,
     ] = {}
     unknown: list[RawXmlSection] = []
+    rankings_el: ElementTree.Element | None = None
 
     for child in root:
         tag = child.tag
@@ -346,6 +350,8 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
         elif tag in _COMPLEX_SECTIONS:
             raw_xml = ElementTree.tostring(child, encoding="unicode")
             complex_sections[tag] = _make_complex_section(tag, raw_xml)
+            if tag == "Rankings":
+                rankings_el = child
         else:
             raw_xml = ElementTree.tostring(child, encoding="unicode")
             unknown.append(RawXmlSection(name=tag, raw_xml=raw_xml))
@@ -372,6 +378,9 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
         rankings_section=complex_sections.get("Rankings"),
         cross_checks_section=complex_sections.get("CrossChecks"),
         retester_data=complex_sections.get("RetesterData"),
+        advanced_rankings=_parse_advanced_rankings(
+            rankings_el, complex_sections.get("Rankings")
+        ),
         unknown_sections=unknown,
     )
 
@@ -404,6 +413,94 @@ def _flatten_element(
     # Recurse into children.
     for child in el:
         _flatten_element(child, acc, full_key)
+
+
+def _parse_advanced_rankings(
+    el: ElementTree.Element | None,
+    section: RankingsConfig | None,
+) -> AdvancedRankingsConfig | None:
+    """Build the typed advanced-conditions lane from a ``<Rankings>`` element.
+
+    Returns ``None`` when the element is absent or carries no ``<Conditions>``
+    block, so the pre-existing simple ``<Rankings>`` (flat ``Criterion*``
+    settings only) is reported as having no advanced lane rather than as an
+    empty one.
+
+    ``section`` must be the :class:`RankingsConfig` built from the very same
+    ``el``; its ``raw_xml`` is passed through verbatim, not re-rendered. The
+    real SQX ``<Condition>`` also holds ``<Left-Side>``/``<Comparator>``/
+    ``<Right-Side>`` content that has no typed field here, and re-rendering
+    would drop it.
+    """
+    if el is None or section is None:
+        return None
+    conditions_el = el.find("Conditions")
+    if conditions_el is None:
+        return None
+
+    conditions = [
+        _parse_advanced_condition(cond_el)
+        for cond_el in conditions_el.findall("Condition")
+    ]
+    if not conditions:
+        return None
+    return AdvancedRankingsConfig(conditions=conditions, raw_xml=section.raw_xml)
+
+
+def _parse_advanced_condition(cond_el: ElementTree.Element) -> AdvancedRankingCondition:
+    """Parse one ``<Condition>`` element, in either SQX dialect."""
+    use_raw = cond_el.get("use", "true").strip().lower()
+    columns = [_parse_column_value(cv) for cv in _column_value_elements(cond_el)]
+    return AdvancedRankingCondition(
+        use=use_raw in ("true", "1"),
+        result_type=cond_el.get("resultType", "main"),
+        sample_type=cond_el.get("sampleType", "127"),
+        direction=cond_el.get("direction", "0"),
+        pct_ratio=cond_el.get("pctRatio", "0"),
+        confidence_level=cond_el.get("confidenceLevel", "50"),
+        market=cond_el.get("market", "1"),
+        pl_type=cond_el.get("plType", "10"),
+        subresult=cond_el.get("subresult", "30"),
+        class_=cond_el.get("class"),
+        name=cond_el.get("name"),
+        column_values=columns,
+    )
+
+
+def _column_value_elements(cond_el: ElementTree.Element) -> list[ElementTree.Element]:
+    """Return the ``<Column-Value>`` descendants of a ``<Condition>``.
+
+    Real SQX wraps the filter in ``<Left-Side valueType="column">``; QuantLab's
+    own ``build_conditions_xml`` writes it as a direct child. Both dialects
+    occur in the wild, so both are accepted — reading only one of them makes
+    the reader report zero conditions for a perfectly valid CFX.
+    """
+    direct = cond_el.findall("Column-Value")
+    if direct:
+        return direct
+    left_side = cond_el.find("Left-Side")
+    if left_side is None:
+        return []
+    return left_side.findall("Column-Value")
+
+
+def _parse_column_value(cv_el: ElementTree.Element) -> ColumnValue:
+    """Parse one ``<Column-Value>`` element into its typed model."""
+    return ColumnValue(
+        column=cv_el.get("column", ""),
+        column_type=cv_el.get("columnType", "0"),
+        format=cv_el.get("format", ""),
+        result_type=cv_el.get("resultType", "main"),
+        direction=cv_el.get("direction", "0"),
+        sample_type=cv_el.get("sampleType", "127"),
+        pl_type=cv_el.get("plType", "10"),
+        confidence_level=cv_el.get("confidenceLevel", "50"),
+        market=cv_el.get("market", "1"),
+        subresult=cv_el.get("subresult", "30"),
+        pct_ratio=cv_el.get("pctRatio", "0"),
+        class_=cv_el.get("class", ""),
+        name=cv_el.get("name"),
+    )
 
 
 def _make_complex_section(
