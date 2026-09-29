@@ -23,6 +23,7 @@ from quantlab.cfx.models import (
     CfxConfig,
     CfxProject,
     CrossChecksConfig,
+    CrossChecksGeneric,
     DataBankConfig,
     DataRangeParts,
     DatabanksConfig,
@@ -324,12 +325,17 @@ class CfxWriter:
         Returns:
             Modified BuildTask.
         """
-        xml = f"""<CrossChecks>
-  <MonteCarlo enabled="{str(mc_enabled).lower()}" runs="{mc_runs}" percentile="{mc_percentile}"/>
-  <WalkForward enabled="{str(wf_enabled).lower()}" cycles="{wf_cycles}"/>
-  <ConfidenceLevel value="{confidence_level}"/>
-</CrossChecks>"""
-        task.cross_checks_section = CrossChecksConfig(raw_xml=xml)
+        task.cross_checks_section = CrossChecksConfig(
+            dialect="generic",
+            generic=CrossChecksGeneric(
+                mc_enabled=mc_enabled,
+                mc_runs=mc_runs,
+                mc_percentile=mc_percentile,
+                wf_enabled=wf_enabled,
+                wf_cycles=wf_cycles,
+                confidence_level=confidence_level,
+            ),
+        )
         return task
 
     @staticmethod
@@ -616,16 +622,24 @@ def _append_data_range_parts(
     """
     if parts is None:
         return
+    raw = parts.to_xml()
     try:
-        parts_el = ElementTree.fromstring(parts.to_xml())
+        parts_el = ElementTree.fromstring(raw)
     except ElementTree.ParseError:
         # raw_xml may hold several sibling elements with no <Data> wrapper.
         try:
-            parts_el = ElementTree.fromstring(f"<Data>{parts.to_xml()}</Data>")
+            parts_el = ElementTree.fromstring(f"<Data>{raw}</Data>")
         except ElementTree.ParseError:
             return
-    if len(parts_el) == 0:
-        # No typed field set and no raw_xml: to_xml()'s empty placeholder.
+    if parts_el.tag != "Data":
+        # to_xml() returns raw_xml verbatim when no typed field is set, so a
+        # single raw element arrives unwrapped. Re-wrap it, otherwise the
+        # sub-range would land as a direct <Settings> child.
+        wrapped = ElementTree.Element("Data")
+        wrapped.append(parts_el)
+        parts_el = wrapped
+    if len(parts_el) == 0 and not (parts_el.text or "").strip():
+        # to_xml()'s empty placeholder: no typed field set and no raw_xml.
         return
     if data_el is None:
         parent.append(parts_el)
@@ -653,11 +667,20 @@ def _append_complex_section(
         | None
     ),
 ) -> None:
-    """Append a complex section via raw XML passthrough."""
-    if config is None or not config.raw_xml:
+    """Append a complex section, using typed serialization when available."""
+    if config is None:
+        return
+    xml_source = config.raw_xml
+    if isinstance(config, CrossChecksConfig) and (
+        config.dialect or config.generic is not None or config.automatic_retest is not None
+    ):
+        # Typed CrossChecks: serialize through to_xml() so typed fields are
+        # emitted and raw_xml extras are merged at the end.
+        xml_source = config.to_xml()
+    if not xml_source:
         return
     try:
-        el = ElementTree.fromstring(config.raw_xml)
+        el = ElementTree.fromstring(xml_source)
         parent.append(el)
     except ElementTree.ParseError:
         pass

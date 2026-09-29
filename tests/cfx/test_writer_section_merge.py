@@ -196,6 +196,19 @@ class TestDataRangePartsEmission:
         (data,) = [c for c in root if c.tag == "Data"]
         assert [(c.tag, c.get("value")) for c in data] == [("Alpha", "1"), ("Beta", "2")]
 
+    def test_raw_xml_only_with_a_single_element_is_not_dropped(self) -> None:
+        """A raw_xml block holding exactly one element has no children of its own,
+        so it must not be mistaken for the empty <Data /> placeholder that
+        DataRangeParts.to_xml() emits when nothing at all is set.
+        """
+        build_task = BuildTask()
+        build_task.data_range_parts = DataRangeParts(raw_xml='<ProprietaryRange value="x" />')
+
+        root = _task_xml(build_task)
+
+        (data,) = [c for c in root if c.tag == "Data"]
+        assert [(c.tag, c.get("value")) for c in data] == [("ProprietaryRange", "x")]
+
     def test_empty_parts_object_emits_no_data_element(self) -> None:
         """A DataRangeParts with nothing set must not create a placeholder
         <Data /> in the output — the writer skips the empty element.
