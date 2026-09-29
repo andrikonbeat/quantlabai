@@ -24,6 +24,7 @@ from quantlab.cfx.models import (
     CfxProject,
     CrossChecksConfig,
     DataBankConfig,
+    DataRangeParts,
     DatabanksConfig,
     OptimizationConfig,
     OptimizationParametersConfig,
@@ -499,12 +500,14 @@ def _serialise_task(task: BuildTask) -> bytes:
     root = ElementTree.Element("Settings")
 
     # Simple sections (SettingsSection) — in the order they appear
-    # in the CFX schema.
+    # in the CFX schema. The <Data> and <Rankings> elements are kept so the
+    # typed sub-range / advanced-conditions lanes can merge into them below
+    # instead of emitting a second sibling element.
     _append_settings_section(root, "Options", task.options)
     _append_settings_section(root, "RiskMoneyManagement", task.risk_money_mgmt)
     _append_settings_section(root, "WhatToBuild", task.what_to_build)
-    _append_settings_section(root, "Data", task.data)
-    _append_settings_section(root, "Rankings", task.rankings)
+    data_el = _append_settings_section(root, "Data", task.data)
+    rankings_el = _append_settings_section(root, "Rankings", task.rankings)
     _append_settings_section(root, "PartsToImprove", task.parts_to_improve)
     _append_settings_section(root, "CrossChecks", task.cross_checks)
     _append_settings_section(root, "Notes", task.notes)
@@ -520,9 +523,10 @@ def _serialise_task(task: BuildTask) -> bytes:
     _append_complex_section(root, "WalkForward", task.walk_forward)
     _append_complex_section(root, "Databanks", task.databanks_section)
     _append_complex_section(root, "PortfolioSettings", task.portfolio_settings)
-    _append_complex_section(root, "Rankings", task.rankings_section)
+    _append_merged_complex_section(root, "Rankings", task.rankings_section, rankings_el)
     _append_complex_section(root, "CrossChecks", task.cross_checks_section)
     _append_complex_section(root, "RetesterData", task.retester_data)
+    _append_data_range_parts(root, task.data_range_parts, data_el)
 
     # Unknown sections — raw XML passthrough.
     for u in task.unknown_sections:
@@ -540,13 +544,94 @@ def _append_settings_section(
     parent: ElementTree.Element,
     tag: str,
     section: SettingsSection | None,
-) -> None:
-    """Append a simple key-value section element if the section is set."""
+) -> ElementTree.Element | None:
+    """Append a simple key-value section element if the section is set.
+
+    Returns the created element so a second lane (complex raw XML, or typed
+    ``<Data>`` sub-ranges) can be merged into it rather than emitted as a
+    sibling. Returns ``None`` when the section is absent.
+    """
     if section is None:
-        return
+        return None
     el = ElementTree.SubElement(parent, tag)
     for key, value in section.settings.items():
         ElementTree.SubElement(el, "Setting", attrib={"key": key, "value": value})
+    return el
+
+
+def _append_merged_complex_section(
+    parent: ElementTree.Element,
+    tag: str,
+    config: (
+        BlockConfig
+        | AtmConfig
+        | DataBankConfig
+        | ResourceConfig
+        | AutomaticPortfolioBuilderConfig
+        | OptimizationConfig
+        | OptimizationParametersConfig
+        | WalkForwardConfig
+        | DatabanksConfig
+        | RankingsConfig
+        | CrossChecksConfig
+        | RetesterDataConfig
+        | None
+    ),
+    flat_el: ElementTree.Element | None,
+) -> None:
+    """Append a complex section, folding in the flat ``<Setting>`` lane.
+
+    The two lanes used to be appended independently, so a task carrying both a
+    flat ``SettingsSection`` and a complex raw-XML block produced **two**
+    sibling ``<Rankings>`` elements. The SQX ``<Settings>`` schema admits one, so
+    the flat ``<Setting>`` children are moved into the complex element and the
+    now-redundant sibling is dropped. Using the complex element as the base keeps
+    its attributes and its native child order intact; the generic ``<Setting>``
+    entries land last. Neither lane loses content.
+    """
+    if config is None or not config.raw_xml:
+        return
+    try:
+        complex_el = ElementTree.fromstring(config.raw_xml)
+    except ElementTree.ParseError:
+        return
+    if flat_el is not None:
+        for child in list(flat_el):
+            complex_el.append(child)
+        parent.remove(flat_el)
+    parent.append(complex_el)
+
+
+def _append_data_range_parts(
+    parent: ElementTree.Element,
+    parts: DataRangeParts | None,
+    data_el: ElementTree.Element | None,
+) -> None:
+    """Append the typed ``<Data>`` sub-ranges, merged into the flat ``<Data>`` lane.
+
+    Mirrors :func:`_append_merged_complex_section`: the typed sub-range elements
+    (plus any ``raw_xml`` passthrough) are folded into the already-emitted
+    ``<Data>`` element when the flat lane exists, so ``<Settings>`` keeps a single
+    ``<Data>`` child.
+    """
+    if parts is None:
+        return
+    try:
+        parts_el = ElementTree.fromstring(parts.to_xml())
+    except ElementTree.ParseError:
+        # raw_xml may hold several sibling elements with no <Data> wrapper.
+        try:
+            parts_el = ElementTree.fromstring(f"<Data>{parts.to_xml()}</Data>")
+        except ElementTree.ParseError:
+            return
+    if len(parts_el) == 0:
+        # No typed field set and no raw_xml: to_xml()'s empty placeholder.
+        return
+    if data_el is None:
+        parent.append(parts_el)
+        return
+    for child in list(parts_el):
+        data_el.append(child)
 
 
 def _append_complex_section(
