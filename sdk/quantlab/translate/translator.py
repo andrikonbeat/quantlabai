@@ -32,11 +32,19 @@ from quantlab.cfx.models import (
     RankingsConfig,
     CrossChecksConfig,
     RetesterDataConfig,
+    AdvancedRankingCondition,
+    ColumnValue,
+    DataRangeParts,
+    SetAdvancedRankingsInstruction,
+    SetDataRangePartsInstruction,
 )
 from quantlab.versioning import PINNED_SQX_VERSION
 from quantlab.dsl.models import (
     AcceptanceCriterion,
+    AdvancedRankingFilter,
     BuildingBlock,
+    ColumnValueFilter,
+    DataRangePartsDSL,
     Market,
     ResearchConfig,
     Strategy,
@@ -75,6 +83,69 @@ def _validate_dsl_config(config: ResearchConfig) -> None:
 
     if not config.strategies:
         raise TranslationError("At least one strategy is required for CFX generation")
+
+    for index, ranking_filter in enumerate(config.advanced_ranking_filters, start=1):
+        if not ranking_filter.column_values:
+            raise TranslationError(
+                f"advanced_ranking_filters[{index - 1}] has no column_values. An SQX "
+                "<Condition> must name at least one column to filter on."
+            )
+
+
+# ── DSL → CFX model mapping ──────────────────────────────────────────
+#
+# These are the only places the DSL field names are bound to CFX field names.
+# DataRangePartsDSL mirrors the DataRangeParts field set exactly (asserted by
+# tests/dsl/test_advanced_ranking_dsl.py) so it maps by splat rather than by a
+# hand-written pair per field that could silently drift.
+
+
+def _to_cfx_column_value(filter_: ColumnValueFilter) -> ColumnValue:
+    """Map one DSL column filter to its CFX ``<Column-Value>`` model."""
+    return ColumnValue(
+        column=filter_.column,
+        column_type=filter_.column_type,
+        format=filter_.format,
+        result_type=filter_.result_type,
+        direction=filter_.direction,
+        sample_type=filter_.sample_type,
+        pl_type=filter_.pl_type,
+        confidence_level=filter_.confidence_level,
+        market=filter_.market,
+        subresult=filter_.subresult,
+        pct_ratio=filter_.pct_ratio,
+        class_=filter_.class_name,
+        name=filter_.name,
+    )
+
+
+def _to_cfx_ranking_condition(ranking_filter: AdvancedRankingFilter) -> AdvancedRankingCondition:
+    """Map one DSL advanced ranking filter to its CFX ``<Condition>`` model."""
+    return AdvancedRankingCondition(
+        use=ranking_filter.use,
+        result_type=ranking_filter.result_type,
+        sample_type=ranking_filter.sample_type,
+        direction=ranking_filter.direction,
+        pct_ratio=ranking_filter.pct_ratio,
+        confidence_level=ranking_filter.confidence_level,
+        market=ranking_filter.market,
+        pl_type=ranking_filter.pl_type,
+        subresult=ranking_filter.subresult,
+        class_=ranking_filter.class_name,
+        name=ranking_filter.name,
+        column_values=[
+            _to_cfx_column_value(column) for column in ranking_filter.column_values
+        ],
+    )
+
+
+def _to_cfx_data_range_parts(parts: DataRangePartsDSL) -> DataRangeParts:
+    """Map the DSL data range parts to the CFX model.
+
+    Unset fields are dropped rather than passed as ``None``, which keeps the
+    model free of meaningless entries the writer would have to filter out.
+    """
+    return DataRangeParts(**parts.model_dump(exclude_none=True))
 
 
 def _build_base_task(config: ResearchConfig) -> BuildTask:
@@ -172,6 +243,27 @@ def generate_cfx_archive(config: ResearchConfig) -> CfxArchive:
     # Add acceptance criteria
     for criterion in config.criteria:
         add_ranking_condition(archive, criterion.metric, criterion.operator, criterion.value)
+
+    # Add nested advanced ranking conditions. These land in the complex
+    # Rankings section while the criteria above land in the flat one; the
+    # writer merges the two lanes into a single <Rankings> element.
+    if config.advanced_ranking_filters:
+        patcher.apply(
+            [
+                SetAdvancedRankingsInstruction(
+                    conditions=[
+                        _to_cfx_ranking_condition(ranking_filter)
+                        for ranking_filter in config.advanced_ranking_filters
+                    ]
+                )
+            ]
+        )
+
+    # Set the typed IS / validation / OOS sub-ranges of <Data>
+    if config.data_range_parts is not None:
+        patcher.apply(
+            [SetDataRangePartsInstruction(parts=_to_cfx_data_range_parts(config.data_range_parts))]
+        )
 
     return archive
 
