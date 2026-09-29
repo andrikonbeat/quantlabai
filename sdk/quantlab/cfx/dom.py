@@ -1,6 +1,6 @@
 """Domain methods for CFX archive mutation — high-level API for LLM-driven editing.
 
-Provides 8 typed domain methods that wrap CfxPatcher for common CFX modifications:
+Provides typed domain methods that wrap CfxPatcher for common CFX modifications:
 - set_market()
 - add_timeframe()
 - enable_block()
@@ -9,13 +9,22 @@ Provides 8 typed domain methods that wrap CfxPatcher for common CFX modification
 - set_date_range()
 - add_ranking_condition()
 - enable_crosscheck()
+- add_advanced_ranking_condition()
+- set_data_range_parts()
 
 Each method validates inputs and applies the corresponding patch instruction.
 """
 
 from __future__ import annotations
 
-from quantlab.cfx.models import CfxArchive, SettingsSection
+from quantlab.cfx.models import (
+    AddAdvancedRankingConditionInstruction,
+    AdvancedRankingCondition,
+    CfxArchive,
+    DataRangeParts,
+    SetDataRangePartsInstruction,
+    SettingsSection,
+)
 from quantlab.cfx.patcher import CfxPatcher
 
 
@@ -236,6 +245,56 @@ def set_spread_settings(
     return archive
 
 
+# ── Advanced rankings / data range parts ─────────────────────────────────
+
+
+def add_advanced_ranking_condition(
+    archive: CfxArchive, condition: AdvancedRankingCondition
+) -> CfxArchive:
+    """Append one nested ``<Condition>`` to the advanced Rankings block.
+
+    Unlike :func:`add_ranking_condition`, which writes a flat
+    ``CriterionN@metric/operator/value`` triple, this emits the deeply nested
+    SQX ``<Rankings><Conditions><Condition><Column-Value>`` structure.
+
+    Args:
+        archive: The CFX archive to modify.
+        condition: The typed condition to append.
+
+    Returns:
+        The same archive instance (mutated in place).
+
+    Raises:
+        ValidationError: If the existing Rankings block has no ``<Conditions>``
+            parent to append to (typically a block written by the simple
+            ``SetRankingsInstruction`` path).
+    """
+    CfxPatcher(archive).apply(
+        [AddAdvancedRankingConditionInstruction(condition=condition)]
+    )
+    return archive
+
+
+def set_data_range_parts(
+    archive: CfxArchive, parts: DataRangeParts
+) -> CfxArchive:
+    """Set the IS / validation / OOS sub-ranges of the ``<Data>`` section.
+
+    Stores the typed model rather than a pre-rendered blob, so the typed fields
+    stay queryable and merge with the flat ``<Data>`` ``<Setting>`` entries at
+    serialisation time.
+
+    Args:
+        archive: The CFX archive to modify.
+        parts: The typed sub-range configuration.
+
+    Returns:
+        The same archive instance (mutated in place).
+    """
+    CfxPatcher(archive).apply([SetDataRangePartsInstruction(parts=parts)])
+    return archive
+
+
 # ── Public API ────────────────────────────────────────────────────────
 
 __all__ = [
@@ -249,4 +308,6 @@ __all__ = [
     "enable_crosscheck",
     "set_commission_settings",
     "set_spread_settings",
+    "add_advanced_ranking_condition",
+    "set_data_range_parts",
 ]
