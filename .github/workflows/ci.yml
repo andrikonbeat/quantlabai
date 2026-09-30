@@ -81,6 +81,18 @@ jobs:
       - name: Install dependencies
         run: pip install -e "sdk[dev]"
 
+      - name: Sync live prompts and skills
+        # tests/campaign/test_prompt_sync.py and test_skill_sync.py assert
+        # REQ-806/807 parity against ~/.config/opencode/{prompts,skills},
+        # resolved with Path.home(). On a fresh runner that tree does not
+        # exist, so those assertions failed on the live dir rather than on
+        # any drift. Running the sync first makes the runner's home
+        # byte-identical to the repo, so the tests verify the sync
+        # machinery itself instead of being skipped.
+        run: |
+          python3 ai/opencode/sync_prompts.py
+          python3 ai/opencode/sync_skills.py
+
       - name: Run Flow Integrity Contract
         # Runs first and standalone, with no --maxfail, so the REQ-37 14-phase
         # invariant and the prompt/skill sync contracts can never be skipped by
