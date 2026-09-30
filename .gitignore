@@ -47,6 +47,10 @@ knowledge/raw/*
 *.sqx
 *.sqxc
 databanks/
+# ... except the reduced golden fixture, which is committed test evidence rather
+# than a machine-local SQX artifact. Named explicitly so the Builder.cfx /
+# NQ_CFD_H1.cfx symlinks into the local install stay ignored.
+!tests/cfx/fixtures/retester-advanced-rankings.cfx
 # SQX distribution (local tool dependency, kept on external volume; see HGN-02)
 assets/SQX_*.zip
 assets/SQX_*
