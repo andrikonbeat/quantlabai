@@ -114,9 +114,26 @@ matching DSL block is present in the config. Every other phase must be present.
 
 How to actually run it: [Running Multi-Agent Campaigns](guides/running-campaigns.md).
 
+Dispatch runs through the `quantlab-campaign` agent, which delegates each phase
+to a dedicated `quantlab-phase-<phase>` subagent and folds the returned
+`PhaseResult` envelopes. The `orchestrated-campaign-flow` change that
+introduced this shape is archived at
+`openspec/changes/archive/2026-08-06-full-campaign-flow/`.
+
 Human gates are **fail-closed** (REQ-11) — no auto-approval, and an unanswered
-gate stops the run. Decisions travel by file under `/tmp/sqx-gates/{campaign_id}/`.
-`DataManager` is **Dukascopy-only** at launch (FX M1/M5/H1).
+gate stops the run. The three gates that always block a dispatch are:
+
+| Gate | Blocks |
+|------|--------|
+| `HUMAN_APPROVE_CONFIG` | the dispatch to StrategyQuant X |
+| `HUMAN_APPROVE_DEPLOY` | deployment |
+| `HUMAN_APPROVE_DEMO` | the demo account |
+| `HUMAN_APPROVE_ARCHIVE` | archiving the campaign |
+
+The full registry is eight gates — see `DEFAULT_GATE_POLICIES` at
+`sdk/quantlab/gates/models.py:122-176`. Decisions travel by file under
+`/tmp/sqx-gates/{campaign_id}/`. `DataManager` is **Dukascopy-only** at launch
+(FX M1/M5/H1).
 
 ## Prompt and skill sync contract
 
