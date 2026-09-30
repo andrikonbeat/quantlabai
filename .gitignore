@@ -17,6 +17,9 @@ coverage.xml
 *.jar
 target/
 *.war
+# ... except the Gradle wrapper jar: it is the bootstrap artifact for every
+# Android build and must be versioned or a fresh clone cannot build at all.
+!app_movil/**/gradle/wrapper/gradle-wrapper.jar
 
 # Android
 app_movil/**/build/
@@ -84,9 +87,13 @@ assets/**/user/settings/wizard.txt
 **/monitor.db
 
 # Deployment scratch / run artifacts
-deploy/
+# Anchored to the repo root with a leading slash. Unanchored, these two patterns
+# matched at EVERY depth and silently swallowed real source: `sdk/quantlab/analysis/`
+# (frame/indicators/regime/sentiment) and the OpenSpec capability dir
+# `openspec/changes/*/specs/deploy/`. Anchored, they mean what the comment says.
+/deploy/
 notifications.jsonl
-analysis/
+/analysis/
 
 # Stray junk
 missing.jfx
