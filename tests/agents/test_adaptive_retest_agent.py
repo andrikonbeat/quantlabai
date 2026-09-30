@@ -248,6 +248,97 @@ class TestInspectCfxSignals:
         assert signals.last_run_status == "completed"
 
 
+# ── 4.2 typed builders preserve unmodeled content ─────────────────────────────
+
+
+class TestTypedCrossChecksBuilders:
+    """The builders must emit typed sections without losing dialect content.
+
+    Task 4.2 required the adaptive retest builders to construct typed
+    CrossChecksConfig objects. The typed layer is derived by parsing the
+    builder's own XML, and every child keeps its original markup in the
+    sub-models' raw_xml, so serializing back must reproduce the builder's
+    content exactly — including the elements the models do not model
+    (<Methods>, <Param1>/<Param2>, <OptimizeExitTypes>).
+    """
+
+    def test_automatic_retest_builder_is_typed_and_faithful(self, tmp_path: Path):
+        cfx = tmp_path / "typed_auto.cfx"
+        _write_cfx(
+            cfx,
+            BuildTask(
+                data=SettingsSection(name="Data", settings={}),
+                cross_checks_section=CrossChecksConfig(
+                    raw_xml="<CrossChecks><MonteCarlo enabled='false'/></CrossChecks>"
+                ),
+            ),
+        )
+        apply_adaptive_mutations(cfx, RetestMode.AUTOMATIC_RETEST)
+
+        cc = CfxReader.read(cfx).config.task.cross_checks_section
+        ar = cc.automatic_retest
+
+        # Typed access is available to consumers.
+        assert cc.dialect == "automatic_retest"
+        assert ar.retest_with_higher_precision.precision == 4
+        assert ar.retest_with_higher_precision.spread == 2
+        assert ar.monte_carlo_retest.number_of_simulations == 100
+        assert ar.walk_forward_optimization.walk_forward_type == "1"
+        assert ar.walk_forward_optimization.optimize_periods is True
+        assert ar.walk_forward_matrix is not None
+
+        # Unmodeled content survived the write/read round-trip.
+        xml = cc.to_xml()
+        assert "RandomizeHistoryData" in xml
+        assert '<Param1 value="18" />' in xml
+        assert "<OptimizeExitTypes>true</OptimizeExitTypes>" in xml
+
+    def test_retest_builder_is_typed_and_keeps_child_form(self, tmp_path: Path):
+        cfx = tmp_path / "typed_retest.cfx"
+        _write_cfx(
+            cfx,
+            BuildTask(
+                data=SettingsSection(name="Data", settings={}),
+                cross_checks_section=CrossChecksConfig(
+                    raw_xml="<CrossChecks><MonteCarlo enabled='false'/></CrossChecks>"
+                ),
+            ),
+        )
+        apply_adaptive_mutations(cfx, RetestMode.RETEST)
+
+        cc = CfxReader.read(cfx).config.task.cross_checks_section
+
+        assert cc.dialect == "generic"
+        assert cc.generic.mc_enabled is True
+        assert cc.generic.mc_runs == 100
+        assert cc.generic.wf_cycles == 5
+        assert cc.generic.confidence_level == 0.95
+
+        # The builder emits the child form of ConfidenceLevel; the generic
+        # serializer must not rewrite it into the attribute form.
+        assert "<ConfidenceLevel>0.95</ConfidenceLevel>" in cc.to_xml()
+
+    def test_built_section_has_no_duplicate_children(self, tmp_path: Path):
+        """Typed parsing must not leave copies behind in raw_xml."""
+        cfx = tmp_path / "typed_dedup.cfx"
+        _write_cfx(
+            cfx,
+            BuildTask(
+                data=SettingsSection(name="Data", settings={}),
+                cross_checks_section=CrossChecksConfig(
+                    raw_xml="<CrossChecks><MonteCarlo enabled='false'/></CrossChecks>"
+                ),
+            ),
+        )
+        apply_adaptive_mutations(cfx, RetestMode.AUTOMATIC_RETEST)
+
+        cc = CfxReader.read(cfx).config.task.cross_checks_section
+        xml = cc.to_xml()
+
+        for tag in ("RetestWithHigherPrecision", "MonteCarloRetest", "WalkForwardMatrix"):
+            assert xml.count(f"<{tag} ") + xml.count(f"<{tag}>") == 1, tag
+
+
 # ── apply_adaptive_mutations ──────────────────────────────────────────────────
 
 
@@ -257,7 +348,7 @@ class TestApplyAdaptiveMutations:
     def test_mutate_to_automatic_retest(self, tmp_path: Path):
         """GIVEN a CFX archive with a Retest task
         WHEN apply_adaptive_mutations(cfx_path, mode=AutomaticRetest) runs
-        THEN the task CrossChecks reflect AutomaticRetest.
+        THEN the task CrossChecks reflect AutomaticRetest via typed fields.
         """
         cfx = tmp_path / "mutate.cfx"
         task = BuildTask(
@@ -269,13 +360,17 @@ class TestApplyAdaptiveMutations:
 
         archive = CfxReader.read(cfx)
         task = archive.config.task
-        assert "RetestWithHigherPrecision" in task.cross_checks_section.raw_xml
-        assert "OptProfileSysParamPermutation" in task.cross_checks_section.raw_xml
+        cc = task.cross_checks_section
+        assert cc is not None
+        assert cc.dialect == "automatic_retest"
+        assert cc.automatic_retest is not None
+        assert cc.automatic_retest.retest_with_higher_precision is not None
+        assert cc.automatic_retest.opt_profile_sys_param_permutation is not None
 
     def test_mutate_to_retest(self, tmp_path: Path):
         """GIVEN a CFX archive with an AutomaticRetest task
         WHEN apply_adaptive_mutations(cfx_path, mode=Retest) runs
-        THEN the task CrossChecks reflect full Retest.
+        THEN the task CrossChecks reflect full Retest via typed fields.
         """
         cfx = tmp_path / "mutate_retest.cfx"
         task = BuildTask(
@@ -287,8 +382,12 @@ class TestApplyAdaptiveMutations:
 
         archive = CfxReader.read(cfx)
         task = archive.config.task
-        assert '<MonteCarlo enabled="true"' in task.cross_checks_section.raw_xml
-        assert '<WalkForward enabled="true"' in task.cross_checks_section.raw_xml
+        cc = task.cross_checks_section
+        assert cc is not None
+        assert cc.dialect == "generic"
+        assert cc.generic is not None
+        assert cc.generic.mc_enabled is True
+        assert cc.generic.wf_enabled is True
 
     def test_preserves_unrelated_cfx_content(self, tmp_path: Path):
         """GIVEN a CFX archive with multiple settings sections

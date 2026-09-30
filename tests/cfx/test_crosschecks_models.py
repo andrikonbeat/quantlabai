@@ -51,7 +51,69 @@ _UNKNOWN_ELEMENT_XML = """<CrossChecks>
   <FutureElement someAttr="value">unknown content</FutureElement>
 </CrossChecks>"""
 
+# Realistic AutomaticRetest block as emitted by the adaptive retest builder:
+# every element below carries inner content that the typed models do NOT model
+# (<Methods>, <Param1>/<Param2>, <OptimizeExitTypes>, matrix settings). These
+# must survive a from_xml() -> to_xml() round-trip verbatim.
+_AUTOMATIC_RETEST_FULL_XML = """<CrossChecks use="false">
+  <RetestWithHigherPrecision use="false">
+    <Settings><Precision>4</Precision><Spread>2</Spread></Settings>
+    <AcceptanceSettings><Conditions /></AcceptanceSettings>
+  </RetestWithHigherPrecision>
+  <MonteCarloRetest use="false">
+    <Settings>
+      <Methods>
+        <Method use="true" type="RandomizeHistoryData">
+          <Params><Param key="Probability" type="Integer">20</Param></Params>
+        </Method>
+      </Methods>
+      <NumberOfSimulations>100</NumberOfSimulations>
+    </Settings>
+    <AcceptanceSettings><Conditions /></AcceptanceSettings>
+  </MonteCarloRetest>
+  <MonteCarloManipulation use="false">
+    <Settings>
+      <Methods>
+        <Method use="true" type="RandomizeSpread"><Params /></Method>
+      </Methods>
+      <NumberOfSimulations>100</NumberOfSimulations>
+    </Settings>
+    <AcceptanceSettings><Conditions /></AcceptanceSettings>
+  </MonteCarloManipulation>
+  <RetestOnAdditionalMarkets use="false">
+    <Settings><Setups /></Settings>
+    <AcceptanceSettings><Conditions /></AcceptanceSettings>
+  </RetestOnAdditionalMarkets>
+  <WalkForwardOptimization use="false">
+    <Settings>
+      <WalkForward type="1" period="20" optimization="15">
+        <Param1 value="18" /><Param2 value="10" />
+      </WalkForward>
+      <OptimizePeriods>true</OptimizePeriods>
+      <OptimizeExitTypes>true</OptimizeExitTypes>
+    </Settings>
+    <AcceptanceSettings>
+      <Conditions CrossCheck="WalkForwardOptimization" thresholdPct="50" />
+    </AcceptanceSettings>
+  </WalkForwardOptimization>
+  <WalkForwardMatrix use="false">
+    <Settings><Matrix><Rows>2</Rows><Columns>3</Columns></Matrix></Settings>
+    <AcceptanceSettings><Conditions /></AcceptanceSettings>
+  </WalkForwardMatrix>
+</CrossChecks>"""
+
 _BAD_XML = "this is not xml at all <<<"
+
+# Maps an AutomaticRetest XML tag to the typed sub-model field that owns it.
+# Used to assert no element is serialized from two paths at once.
+_FIELD_FOR_TAG = {
+    "RetestWithHigherPrecision": "retest_with_higher_precision",
+    "MonteCarloRetest": "monte_carlo_retest",
+    "MonteCarloManipulation": "monte_carlo_manipulation",
+    "RetestOnAdditionalMarkets": "retest_on_additional_markets",
+    "WalkForwardOptimization": "walk_forward_optimization",
+    "WalkForwardMatrix": "walk_forward_matrix",
+}
 
 
 # ── Generic model tests ──────────────────────────────────────────────
@@ -184,6 +246,76 @@ class TestCrossChecksConfigRawXmlFallback:
         assert "FutureElement" in config.raw_xml
         assert "someAttr" in config.raw_xml
 
+    def test_generic_children_preserved_verbatim(self):
+        """Generic children must not be rewritten by the serializer.
+
+        to_xml() previously re-synthesized recognized children, which converted
+        <ConfidenceLevel>0.95</ConfidenceLevel> (child form) into
+        <ConfidenceLevel value="0.95"/> (attribute form) and normalized
+        self-closing spacing. Both are lossy rewrites of the source dialect.
+        """
+        from quantlab.cfx.models import CrossChecksConfig
+
+        source = (
+            "<CrossChecks>"
+            '<MonteCarlo enabled="true" runs="200" percentile="99" />'
+            '<WalkForward enabled="false" cycles="10" />'
+            "<ConfidenceLevel>0.95</ConfidenceLevel>"
+            "</CrossChecks>"
+        )
+
+        xml = CrossChecksConfig.from_xml(source).to_xml()
+
+        assert '<MonteCarlo enabled="true" runs="200" percentile="99" />' in xml
+        assert "<ConfidenceLevel>0.95</ConfidenceLevel>" in xml
+        assert 'value="0.95"' not in xml
+
+    def test_generic_verbatim_still_parses_typed(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        source = (
+            "<CrossChecks>"
+            '<MonteCarlo enabled="true" runs="200" percentile="99" />'
+            '<WalkForward enabled="false" cycles="10" />'
+            "<ConfidenceLevel>0.99</ConfidenceLevel>"
+            "</CrossChecks>"
+        )
+
+        reparsed = CrossChecksConfig.from_xml(CrossChecksConfig.from_xml(source).to_xml())
+
+        assert reparsed.generic.mc_runs == 200
+        assert reparsed.generic.wf_cycles == 10
+        assert reparsed.generic.confidence_level == 0.99
+
+    def test_parser_accepts_simulations_attribute_spelling(self):
+        """renderers.py historically emitted simulations=; keep reading it."""
+        from quantlab.cfx.models import CrossChecksConfig
+
+        legacy = (
+            '<CrossChecks><MonteCarlo enabled="true" simulations="500" '
+            'percentile="99"/></CrossChecks>'
+        )
+
+        config = CrossChecksConfig.from_xml(legacy)
+
+        assert config.generic.mc_runs == 500
+        assert config.generic.mc_percentile == 99
+
+    def test_roundtrip_preserves_monte_carlo_runs(self):
+        """to_xml() must emit the attribute name the parser reads back.
+
+        Regression: to_xml() wrote simulations= while _parse_generic read runs=,
+        so a serialized config silently reverted mc_runs to the default.
+        """
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_GENERIC_XML)
+        xml = config.to_xml()
+
+        assert 'runs="200"' in xml
+        assert "simulations=" not in xml
+        assert CrossChecksConfig.from_xml(xml).generic.mc_runs == 200
+
     def test_unparsable_xml_falls_back_to_raw_xml(self):
         from quantlab.cfx.models import CrossChecksConfig
 
@@ -204,6 +336,95 @@ class TestCrossChecksConfigRawXmlFallback:
         assert config.dialect is None or config.dialect == ""
         assert config.generic is None
         assert config.automatic_retest is None
+
+
+class TestCrossChecksRawXmlFidelity:
+    """Unmodeled AutomaticRetest content must survive a typed round-trip.
+
+    The typed models intentionally do not model <Methods>, <Param1>/<Param2>
+    or <OptimizeExitTypes> yet. Those elements must be carried through
+    verbatim via each sub-model's raw_xml field so to_xml() cannot silently
+    drop or corrupt them.
+    """
+
+    def test_methods_content_survives_roundtrip(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        xml = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_FULL_XML).to_xml()
+
+        assert "RandomizeHistoryData" in xml
+        assert 'key="Probability"' in xml
+        assert "RandomizeSpread" in xml
+
+    def test_walkforward_params_and_exit_types_survive(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        xml = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_FULL_XML).to_xml()
+
+        assert 'value="18"' in xml
+        assert 'value="10"' in xml
+        assert "OptimizeExitTypes" in xml
+
+    def test_matrix_content_survives(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        xml = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_FULL_XML).to_xml()
+
+        assert "<Rows>2</Rows>" in xml
+        assert "<Columns>3</Columns>" in xml
+
+    def test_typed_access_still_available(self):
+        """raw_xml passthrough must not cost typed field access."""
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_FULL_XML)
+        ar = config.automatic_retest
+
+        assert config.dialect == "automatic_retest"
+        assert ar.use is False
+        assert ar.retest_with_higher_precision.precision == 4
+        assert ar.retest_with_higher_precision.spread == 2
+        assert ar.monte_carlo_retest.number_of_simulations == 100
+        assert ar.monte_carlo_manipulation is not None
+        assert ar.retest_on_additional_markets is not None
+        assert ar.walk_forward_optimization.walk_forward_type == "1"
+        assert ar.walk_forward_optimization.period == "20"
+        assert ar.walk_forward_optimization.optimize_periods is True
+        assert ar.walk_forward_matrix is not None
+
+    def test_no_duplicate_elements(self):
+        """Typed children must not also leak into the top-level raw_xml.
+
+        auto_tags routing decides this: any recognized child kept in both its
+        typed sub-model and raw_xml would serialize twice.
+        """
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_FULL_XML)
+        ar = config.automatic_retest
+
+        for tag in (
+            "RetestWithHigherPrecision",
+            "MonteCarloRetest",
+            "MonteCarloManipulation",
+            "RetestOnAdditionalMarkets",
+            "WalkForwardOptimization",
+            "WalkForwardMatrix",
+        ):
+            # 1 when only the typed path emitted it.
+            typed = getattr(ar, _FIELD_FOR_TAG[tag]) is not None
+            in_raw = f"<{tag}" in config.raw_xml
+            assert not (typed and in_raw), f"{tag} serialized from both paths"
+            assert not in_raw, f"{tag} leaked into raw_xml"
+
+    def test_parsed_walk_forward_matrix_exposes_raw_xml(self):
+        """WalkForwardMatrix is raw_xml-backed, so raw_xml must be populated."""
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_FULL_XML)
+        ar = config.automatic_retest
+
+        assert ar.walk_forward_matrix.raw_xml.strip().startswith("<WalkForwardMatrix")
 
 
 class TestCrossChecksConfigSummary:

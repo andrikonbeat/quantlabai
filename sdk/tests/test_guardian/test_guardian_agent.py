@@ -27,6 +27,50 @@ from quantlab.readers.models import EquityPoint
 import quantlab.pipeline.stages as stages_pkg
 
 
+class _ConcreteProvider:
+    """Minimal stand-in for a real injected data provider (Slice A).
+
+    Slice A removed the ``_NullDataProvider`` pass-through: the guardian
+    stage now requires concrete providers in ``ctx.config``. Provider stubs
+    like this one are legitimate test doubles — they are duck-typed accessors,
+    NOT an automatic fallback that fabricates data for any attribute.
+    """
+
+    def get_risk_metrics(self) -> dict:
+        """Realistic risk metrics for the RiskGuardian check."""
+        return {
+            "current_drawdown": 0.05,
+            "max_drawdown": 0.08,
+            "sharpe_ratio": 1.2,
+            "total_exposure": 0.6,
+            "kelly_fraction": 0.15,
+            "var_95": 0.02,
+        }
+
+    def get_strategy_returns(self) -> dict[str, list[float]]:
+        """Realistic returns series for the PortfolioGuardian check."""
+        return {
+            "Strategy_A": [0.01, -0.005, 0.02, 0.015, -0.01, 0.008, -0.003, 0.012],
+            "Strategy_B": [0.008, 0.012, -0.003, 0.01, 0.005, -0.002, 0.007, -0.001],
+        }
+
+    def get_strategy_performance(self) -> dict:
+        """Realistic performance metrics for the CapitalGuardian check."""
+        return {"Strategy_A": 0.04, "Strategy_B": 0.021}
+
+    def get_all_strategy_scores(self) -> dict:
+        """Realistic quality scores for the QualityGuardian check."""
+        return {"Strategy_A": 0.9, "Strategy_B": 0.85}
+
+
+def _pipeline_config() -> dict:
+    """Pipeline configuration with concrete guardian providers."""
+    return {
+        "portfolio_data_provider": _ConcreteProvider(),
+        "strategy_performance_provider": _ConcreteProvider(),
+    }
+
+
 class OpsSurface:
     """Minimal in-file double for the REQ-36 escalation-ack surface.
 
@@ -151,7 +195,8 @@ class TestEvaluateDirective:
                 kind="evaluate",
                 campaign_id="camp-eval",
                 points=points,
-            )
+            ),
+            pipeline_config=_pipeline_config(),
         )
 
         assert report.guardian_state is not None
@@ -169,7 +214,8 @@ class TestEvaluateDirective:
         THEN feedback is None while guardian_state is still carried
         (REQ-644 scenario 2)."""
         report = await execute_guardian_directive(
-            GuardianDirective(kind="evaluate", campaign_id="camp-eval", points=[])
+            GuardianDirective(kind="evaluate", campaign_id="camp-eval", points=[]),
+            pipeline_config=_pipeline_config(),
         )
 
         assert report.feedback is None
@@ -189,7 +235,8 @@ class TestEvaluateDirective:
                 kind="evaluate",
                 campaign_id="camp-eval",
                 points=points,
-            )
+            ),
+            pipeline_config=_pipeline_config(),
         )
 
         assert report.feedback is None
@@ -230,7 +277,8 @@ class TestFlowIntegrityAfterRun:
                 kind="evaluate",
                 campaign_id="camp-flow",
                 points=[_point(100_000.0)],
-            )
+            ),
+            pipeline_config=_pipeline_config(),
         )
 
         assert len(PHASES) == 14

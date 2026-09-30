@@ -310,8 +310,30 @@ class DataRangeParts(BaseModel):
 # ── CrossChecks Typed Models ───────────────────────────────────────────
 
 
-class CrossChecksGeneric(BaseModel):
-    """Typed model for Generic CrossChecks dialect."""
+class _RawXmlPassthrough(BaseModel):
+    """Base for CrossChecks sub-models that carry unmodeled inner XML.
+
+    The typed fields on these models cover only the values consumers read.
+    Elements such as <Methods>, <Param1>/<Param2> and <OptimizeExitTypes> are
+    not modeled, so each sub-model also keeps the original element markup in
+    raw_xml. to_xml() re-emits that markup verbatim, which keeps a
+    from_xml()/to_xml() round-trip faithful without inventing a schema for
+    content the models deliberately do not cover.
+    """
+
+    raw_xml: str = ""
+
+
+class CrossChecksGeneric(_RawXmlPassthrough):
+    """Typed model for Generic CrossChecks dialect.
+
+    raw_xml holds the original markup of the recognized children
+    (<MonteCarlo>, <WalkForward>, <ConfidenceLevel>) so to_xml() can re-emit
+    them verbatim. Re-synthesizing them instead would rewrite the dialect, for
+    example turning <ConfidenceLevel>0.95</ConfidenceLevel> into
+    <ConfidenceLevel value="0.95"/>. <Parameters> is excluded because it is
+    carried by the dedicated ``parameters`` field.
+    """
 
     mc_enabled: bool = False
     mc_runs: int = 100
@@ -322,7 +344,7 @@ class CrossChecksGeneric(BaseModel):
     parameters: str | None = None
 
 
-class RetestWithHigherPrecision(BaseModel):
+class RetestWithHigherPrecision(_RawXmlPassthrough):
     """Typed model for <RetestWithHigherPrecision> element."""
 
     use: bool = False
@@ -330,26 +352,26 @@ class RetestWithHigherPrecision(BaseModel):
     spread: int | None = None
 
 
-class MonteCarloRetest(BaseModel):
+class MonteCarloRetest(_RawXmlPassthrough):
     """Typed model for <MonteCarloRetest> element."""
 
     use: bool = False
     number_of_simulations: int = 100
 
 
-class MonteCarloManipulation(BaseModel):
+class MonteCarloManipulation(_RawXmlPassthrough):
     """Typed model for <MonteCarloManipulation> element."""
 
     use: bool = False
 
 
-class RetestOnAdditionalMarkets(BaseModel):
+class RetestOnAdditionalMarkets(_RawXmlPassthrough):
     """Typed model for <RetestOnAdditionalMarkets> element."""
 
     use: bool = False
 
 
-class WalkForwardOptimization(BaseModel):
+class WalkForwardOptimization(_RawXmlPassthrough):
     """Typed model for <WalkForwardOptimization> element."""
 
     use: bool = False
@@ -413,10 +435,19 @@ class CrossChecksConfig(BaseModel):
             child_tags = [child.tag for child in root]
 
             generic_tags = {"MonteCarlo", "WalkForward", "ConfidenceLevel"}
+            # Every child element _parse_automatic_retest understands. This set
+            # drives both dialect detection and extras filtering, so it must stay
+            # in sync with the parser: a recognized tag missing here would be
+            # parsed into its typed sub-model AND kept in raw_xml, serializing
+            # the same element twice.
             auto_tags = {
                 "RetestWithHigherPrecision",
                 "MonteCarloRetest",
+                "MonteCarloManipulation",
+                "RetestOnAdditionalMarkets",
                 "WalkForwardOptimization",
+                "WalkForwardMatrix",
+                "OptProfileSysParamPermutation",
             }
 
             if any(t in generic_tags for t in child_tags):
@@ -453,9 +484,22 @@ class CrossChecksConfig(BaseModel):
         """
         if self.dialect == "generic" and self.generic:
             g = self.generic
+            if g.raw_xml:
+                # Re-emit the source children verbatim instead of re-synthesizing
+                # them, which would rewrite the dialect (attribute vs child form,
+                # self-closing spacing). <Parameters> is appended separately
+                # because it lives in the dedicated `parameters` field.
+                parts = ["<CrossChecks>", f"  {g.raw_xml.strip()}"]
+                if g.parameters:
+                    parts.append(f"  {g.parameters.strip()}")
+                if self.raw_xml:
+                    parts.append(f"  {self.raw_xml.strip()}")
+                parts.append("</CrossChecks>")
+                return "\n".join(parts)
+
             parts = [
                 "<CrossChecks>",
-                f'  <MonteCarlo enabled="{str(g.mc_enabled).lower()}" simulations="{g.mc_runs}" percentile="{g.mc_percentile}"/>',
+                f'  <MonteCarlo enabled="{str(g.mc_enabled).lower()}" runs="{g.mc_runs}" percentile="{g.mc_percentile}"/>',
             ]
             if g.parameters:
                 parts.append(f"  {g.parameters.strip()}")
@@ -472,59 +516,74 @@ class CrossChecksConfig(BaseModel):
 
             if ar.retest_with_higher_precision is not None:
                 rwp = ar.retest_with_higher_precision
-                settings_parts = []
-                if rwp.precision is not None:
-                    settings_parts.append(f"<Precision>{rwp.precision}</Precision>")
-                if rwp.spread is not None:
-                    settings_parts.append(f"<Spread>{rwp.spread}</Spread>")
-                settings_inner = "".join(settings_parts)
-                parts.append(
-                    f"  <RetestWithHigherPrecision use=\"{str(rwp.use).lower()}\">"
-                    f"<Settings>{settings_inner}</Settings>"
-                    f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
-                    f"</RetestWithHigherPrecision>"
-                )
+                if rwp.raw_xml:
+                    parts.append(f"  {rwp.raw_xml.strip()}")
+                else:
+                    settings_parts = []
+                    if rwp.precision is not None:
+                        settings_parts.append(f"<Precision>{rwp.precision}</Precision>")
+                    if rwp.spread is not None:
+                        settings_parts.append(f"<Spread>{rwp.spread}</Spread>")
+                    settings_inner = "".join(settings_parts)
+                    parts.append(
+                        f"  <RetestWithHigherPrecision use=\"{str(rwp.use).lower()}\">"
+                        f"<Settings>{settings_inner}</Settings>"
+                        f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
+                        f"</RetestWithHigherPrecision>"
+                    )
 
             if ar.monte_carlo_retest is not None:
                 mc = ar.monte_carlo_retest
-                parts.append(
-                    f"  <MonteCarloRetest use=\"{str(mc.use).lower()}\">"
-                    f"<Settings><NumberOfSimulations value=\"{mc.number_of_simulations}\"/></Settings>"
-                    f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
-                    f"</MonteCarloRetest>"
-                )
+                if mc.raw_xml:
+                    parts.append(f"  {mc.raw_xml.strip()}")
+                else:
+                    parts.append(
+                        f"  <MonteCarloRetest use=\"{str(mc.use).lower()}\">"
+                        f"<Settings><NumberOfSimulations value=\"{mc.number_of_simulations}\"/></Settings>"
+                        f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
+                        f"</MonteCarloRetest>"
+                    )
 
             if ar.monte_carlo_manipulation is not None:
                 mc = ar.monte_carlo_manipulation
-                parts.append(
-                    f"  <MonteCarloManipulation use=\"{str(mc.use).lower()}\">"
-                    f"<Settings><NumberOfSimulations value=\"100\"/></Settings>"
-                    f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
-                    f"</MonteCarloManipulation>"
-                )
+                if mc.raw_xml:
+                    parts.append(f"  {mc.raw_xml.strip()}")
+                else:
+                    parts.append(
+                        f"  <MonteCarloManipulation use=\"{str(mc.use).lower()}\">"
+                        f"<Settings><NumberOfSimulations value=\"100\"/></Settings>"
+                        f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
+                        f"</MonteCarloManipulation>"
+                    )
 
             if ar.retest_on_additional_markets is not None:
                 rp = ar.retest_on_additional_markets
-                parts.append(
-                    f"  <RetestOnAdditionalMarkets use=\"{str(rp.use).lower()}\">"
-                    f"<Settings><Setups /></Settings>"
-                    f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
-                    f"</RetestOnAdditionalMarkets>"
-                )
+                if rp.raw_xml:
+                    parts.append(f"  {rp.raw_xml.strip()}")
+                else:
+                    parts.append(
+                        f"  <RetestOnAdditionalMarkets use=\"{str(rp.use).lower()}\">"
+                        f"<Settings><Setups /></Settings>"
+                        f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
+                        f"</RetestOnAdditionalMarkets>"
+                    )
 
             if ar.walk_forward_optimization is not None:
                 wfo = ar.walk_forward_optimization
-                parts.append(
-                    f"  <WalkForwardOptimization use=\"{str(wfo.use).lower()}\">"
-                    f"<Settings>"
-                    f"<WalkForward type=\"{wfo.walk_forward_type}\" period=\"{wfo.period}\" optimization=\"{wfo.optimization}\">"
-                    f"<Param1 value=\"\" /><Param2 value=\"\" />"
-                    f"</WalkForward>"
-                    f"<OptimizePeriods>{str(wfo.optimize_periods).lower()}</OptimizePeriods>"
-                    f"</Settings>"
-                    f"<AcceptanceSettings><Conditions CrossCheck=\"WalkForwardOptimization\" thresholdPct=\"50\" /></AcceptanceSettings>"
-                    f"</WalkForwardOptimization>"
-                )
+                if wfo.raw_xml:
+                    parts.append(f"  {wfo.raw_xml.strip()}")
+                else:
+                    parts.append(
+                        f"  <WalkForwardOptimization use=\"{str(wfo.use).lower()}\">"
+                        f"<Settings>"
+                        f"<WalkForward type=\"{wfo.walk_forward_type}\" period=\"{wfo.period}\" optimization=\"{wfo.optimization}\">"
+                        f"<Param1 value=\"\" /><Param2 value=\"\" />"
+                        f"</WalkForward>"
+                        f"<OptimizePeriods>{str(wfo.optimize_periods).lower()}</OptimizePeriods>"
+                        f"</Settings>"
+                        f"<AcceptanceSettings><Conditions CrossCheck=\"WalkForwardOptimization\" thresholdPct=\"50\" /></AcceptanceSettings>"
+                        f"</WalkForwardOptimization>"
+                    )
 
             if ar.walk_forward_matrix is not None and ar.walk_forward_matrix.raw_xml:
                 parts.append(f"  {ar.walk_forward_matrix.raw_xml.strip()}")
@@ -566,17 +625,31 @@ class CrossChecksConfig(BaseModel):
         wf_cycles = 5
         confidence_level = 0.95
         parameters = None
+        verbatim: list[str] = []
 
         for child in root:
             if child.tag == "MonteCarlo":
                 mc_enabled = _str_to_bool(child.get("enabled"), False)
-                mc_runs = int(child.get("runs", "100"))
+                # "runs" is canonical (writer, patcher, templates, translator all
+                # emit it); "simulations" is accepted because _crosschecks_section
+                # in customproject/renderers.py has historically emitted that
+                # spelling, and existing .cfx files may carry it.
+                mc_runs = int(child.get("runs") or child.get("simulations") or "100")
                 mc_percentile = int(child.get("percentile", "95"))
+                verbatim.append(ET.tostring(child, encoding="unicode").strip())
             elif child.tag == "WalkForward":
                 wf_enabled = _str_to_bool(child.get("enabled"), False)
                 wf_cycles = int(child.get("cycles", "5"))
+                verbatim.append(ET.tostring(child, encoding="unicode").strip())
             elif child.tag == "ConfidenceLevel":
-                confidence_level = float(child.get("value", "0.95"))
+                # Two spellings exist in the wild: the attribute form
+                # <ConfidenceLevel value="0.95"/> and the child form
+                # <ConfidenceLevel>0.95</ConfidenceLevel> that the adaptive
+                # retest builder emits. Reading only the attribute silently
+                # discarded the child form.
+                raw = child.get("value") or (child.text or "").strip() or "0.95"
+                confidence_level = float(raw)
+                verbatim.append(ET.tostring(child, encoding="unicode").strip())
             elif child.tag == "Parameters":
                 parameters = ET.tostring(child, encoding="unicode").strip()
 
@@ -588,6 +661,7 @@ class CrossChecksConfig(BaseModel):
             wf_cycles=wf_cycles,
             confidence_level=confidence_level,
             parameters=parameters,
+            raw_xml="\n".join(verbatim),
         )
 
     @staticmethod
@@ -604,6 +678,9 @@ class CrossChecksConfig(BaseModel):
         opt_profile_sys_param_permutation = None
 
         for child in root:
+            # Keep the original markup for every recognized element: to_xml()
+            # re-emits it verbatim so unmodeled inner content is never lost.
+            raw_xml = ET.tostring(child, encoding="unicode").strip()
             if child.tag == "RetestWithHigherPrecision":
                 rwp_use = _str_to_bool(child.get("use"), False)
                 precision = None
@@ -617,7 +694,7 @@ class CrossChecksConfig(BaseModel):
                     if spread_el is not None and spread_el.text:
                         spread = int(spread_el.text.strip())
                 retest_with_higher_precision = RetestWithHigherPrecision(
-                    use=rwp_use, precision=precision, spread=spread
+                    use=rwp_use, precision=precision, spread=spread, raw_xml=raw_xml
                 )
             elif child.tag == "MonteCarloRetest":
                 mc_use = _str_to_bool(child.get("use"), False)
@@ -628,14 +705,18 @@ class CrossChecksConfig(BaseModel):
                     if nos is not None and nos.text:
                         num_sim = int(nos.text.strip())
                 monte_carlo_retest = MonteCarloRetest(
-                    use=mc_use, number_of_simulations=num_sim
+                    use=mc_use, number_of_simulations=num_sim, raw_xml=raw_xml
                 )
             elif child.tag == "MonteCarloManipulation":
                 mc_use = _str_to_bool(child.get("use"), False)
-                monte_carlo_manipulation = MonteCarloManipulation(use=mc_use)
+                monte_carlo_manipulation = MonteCarloManipulation(
+                    use=mc_use, raw_xml=raw_xml
+                )
             elif child.tag == "RetestOnAdditionalMarkets":
                 rwp_use = _str_to_bool(child.get("use"), False)
-                retest_on_additional_markets = RetestOnAdditionalMarkets(use=rwp_use)
+                retest_on_additional_markets = RetestOnAdditionalMarkets(
+                    use=rwp_use, raw_xml=raw_xml
+                )
             elif child.tag == "WalkForwardOptimization":
                 wfo_use = _str_to_bool(child.get("use"), False)
                 wf_type = ""
@@ -658,6 +739,7 @@ class CrossChecksConfig(BaseModel):
                     period=period,
                     optimization=optimization,
                     optimize_periods=optimize_periods,
+                    raw_xml=raw_xml,
                 )
             elif child.tag == "WalkForwardMatrix":
                 wfm_use = _str_to_bool(child.get("use"), False)

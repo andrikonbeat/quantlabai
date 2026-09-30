@@ -9,7 +9,8 @@ presets. The generated ``CustomProject`` instances are serializable via
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import ClassVar
+from types import MappingProxyType
+from typing import ClassVar, Mapping
 
 from quantlab.customproject.models import (
     CustomProject,
@@ -18,6 +19,7 @@ from quantlab.customproject.models import (
     Filters,
     GoToTask,
 )
+from quantlab.guardian.models import PortfolioState
 
 
 @dataclass
@@ -417,6 +419,86 @@ class DeepRobustnessTemplate(CampaignTemplate):
             ],
             databanks=p.databanks,
         )
+
+
+# ── Adaptive Template Selection (Slice B) ────────────────────────────────────
+#
+# Design decision: template selection is a static rule table keyed by
+# ``PortfolioState``, not a learned or heuristic decision. Determinism is the
+# requirement — the same portfolio state must always produce a byte-identical
+# ``CustomProject`` so a campaign can be reproduced from its guardian state.
+#
+# The table is intentionally total: every ``PortfolioState`` maps to a
+# template, including the blocked states. ``BuilderStage`` remains the sole
+# authority that refuses to build under ``QUARANTINE``/``DEFENSIVE``; the
+# rules here describe what to build *if* a human override is granted, and the
+# most conservative template is chosen for exactly that case.
+
+STATE_TEMPLATE_MAP: Mapping[PortfolioState, type[CampaignTemplate]] = MappingProxyType({
+    # Baseline campaign: full standard research pipeline.
+    PortfolioState.NORMAL: StandardResearchTemplate,
+    # Watching capital: keep exposure small, run the trimmed pipeline.
+    PortfolioState.VIGILANCE: QuickValidationTemplate,
+    # Re-entry after a stress episode: full robustness before new capital.
+    PortfolioState.RECOVERY: DeepRobustnessTemplate,
+    # Blocked by BuilderStage until HUMAN_APPROVE_DEPLOY; if overridden, the
+    # most conservative template applies.
+    PortfolioState.DEFENSIVE: DeepRobustnessTemplate,
+    PortfolioState.QUARANTINE: DeepRobustnessTemplate,
+})
+
+
+class TemplateSelector:
+    """Deterministic ``PortfolioState`` → campaign template selection.
+
+    The selector is stateless: every method is a pure function of the rule
+    table above, so two instances always agree.
+    """
+
+    @staticmethod
+    def select(state: PortfolioState) -> type[CampaignTemplate]:
+        """Return the template class for a portfolio state.
+
+        Args:
+            state: The guardian portfolio state.
+
+        Returns:
+            The mapped :class:`CampaignTemplate` subclass.
+
+        Raises:
+            ValueError: If ``state`` is not a :class:`PortfolioState`. The
+                selector fails closed rather than defaulting to a template
+                that was never ruled on.
+        """
+        if not isinstance(state, PortfolioState):
+            raise ValueError(
+                f"Template selection requires a PortfolioState, got "
+                f"{type(state).__name__}: {state!r}"
+            )
+        return STATE_TEMPLATE_MAP[state]
+
+    @classmethod
+    def select_project(
+        cls,
+        state: PortfolioState,
+        params: TemplateParams | None = None,
+    ) -> CustomProject:
+        """Build the ``CustomProject`` selected for a portfolio state.
+
+        Args:
+            state: The guardian portfolio state.
+            params: Optional template overrides; falls back to the template
+                defaults.
+
+        Returns:
+            A complete ``CustomProject`` ready for ``generate_cfx_archive``.
+        """
+        return cls.select(state).build(params)
+
+    @classmethod
+    def template_name(cls, state: PortfolioState) -> str:
+        """Return the registry name of the template selected for a state."""
+        return cls.select(state).build().template_name or ""
 
 
 # ── Template Registry Integration (REQ-22 extended) ──────────────────────────

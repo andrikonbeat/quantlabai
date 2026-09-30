@@ -13,6 +13,7 @@ from abc import ABC
 from typing import Any
 
 from quantlab.pipeline.base import PipelineContext, Stage
+from quantlab.pipeline.errors import GuardianProviderError, PortfolioStateBlockedError
 
 from quantlab.guardian import (
     CapitalGuardian,
@@ -22,6 +23,7 @@ from quantlab.guardian import (
     QualityGuardian,
     RiskGuardian,
 )
+from quantlab.guardian.correction_bus import CorrectionBus, CorrectionEvent
 from quantlab.guardian.models import MetaGuardianConfig, PortfolioState
 from quantlab.guardian.orchestrator import MetaGuardianOrchestrator
 
@@ -52,6 +54,15 @@ class ResearchStage(Stage, ABC):
 class BuilderStage(Stage, ABC):
     """Translates DSL ResearchConfig to CFX, validates, dispatches to SQX, monitors execution.
 
+    Gated on the ``portfolio_state`` artifact written by
+    ``GuardianEvaluationStage``. ``QUARANTINE`` and ``DEFENSIVE`` raise
+    :class:`PortfolioStateBlockedError` before any CFX write, so a blocked
+    portfolio can never reach dispatch without an explicit human override.
+
+    ``portfolio_state`` is read as an *optional* artifact and is therefore
+    absent from ``requires``: the canonical 14-phase flow runs ``builder``
+    before ``guardian_evaluate``, so it is never an upstream ``provides`` key.
+
     **Requires**: research_config
     **Provides**: cfx_bytes, campaign_id, sqcli_status, export_paths
     """
@@ -63,9 +74,34 @@ class BuilderStage(Stage, ABC):
         "sqcli_status",
         "export_paths",
     ]
+    #: Portfolio states that block the stage until a human override is granted.
+    blocked_states: frozenset[str] = frozenset({
+        PortfolioState.QUARANTINE.value,
+        PortfolioState.DEFENSIVE.value,
+    })
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
+        self._assert_portfolio_state_permits_build(ctx)
         raise NotImplementedError("BuilderStage must be implemented by a concrete agent subclass")
+
+    @classmethod
+    def _assert_portfolio_state_permits_build(cls, ctx: PipelineContext) -> None:
+        """Fail closed when the portfolio is in a blocked state.
+
+        Args:
+            ctx: Pipeline context carrying the ``portfolio_state`` artifact.
+
+        Raises:
+            PortfolioStateBlockedError: If ``portfolio_state`` is one of
+                :attr:`blocked_states`.
+        """
+        portfolio_state = ctx.artifacts.get("portfolio_state")
+        if portfolio_state in cls.blocked_states:
+            raise PortfolioStateBlockedError(
+                f"{cls.name} blocked: portfolio_state is {portfolio_state}",
+                portfolio_state=portfolio_state,
+                stage_name=cls.name,
+            )
 
 
 class StatisticsStage(Stage, ABC):
@@ -282,9 +318,11 @@ class GuardianEvaluationStage(Stage, ABC):
 
     Runs MetaGuardianOrchestrator to check market, risk, portfolio,
     capital, quality, and execution conditions before building strategies.
+    The resulting correction is published on the ``CorrectionBus`` so builder
+    consumers can adapt without importing the guardian layer.
 
     **Requires**: research_config
-    **Provides**: guardian_state, portfolio_state
+    **Provides**: guardian_state, portfolio_state, correction_events
     """
     name: str = "guardian_evaluate"
     requires: list[str] = [
@@ -293,6 +331,7 @@ class GuardianEvaluationStage(Stage, ABC):
     provides: list[str] = [
         "guardian_state",
         "portfolio_state",
+        "correction_events",
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
@@ -302,9 +341,14 @@ class GuardianEvaluationStage(Stage, ABC):
 class GuardianEvaluationAgentStage(GuardianEvaluationStage):
     """Concrete wrapper: runs MetaGuardianOrchestrator against pipeline context.
 
-    Builds guardians from available context artifacts when possible; falls back
-    to passive guardians when external collectors/providers are not present so
-    the stage never hard-fails the pipeline.
+    Builds guardians from the concrete providers in ``ctx.config`` and fails
+    closed with :class:`GuardianProviderError` when a required provider is
+    absent — a missing provider is a wiring defect, not an empty dataset.
+
+    A ``correction_bus`` in ``ctx.config`` is used when present so downstream
+    consumers can subscribe; otherwise a stage-local bus is created. Either way
+    the emitted ``state_transition`` envelope is recorded in the
+    ``correction_events`` artifact, keeping the correction auditable.
     """
 
     def __init__(self, **kwargs: Any) -> None:
@@ -319,8 +363,13 @@ class GuardianEvaluationAgentStage(GuardianEvaluationStage):
         orchestrator = MetaGuardianOrchestrator(
             config=MetaGuardianConfig(),
             guardians=guardians,
+            feedback_store=config.get("guardian_feedback_store")
+            if isinstance(config, dict)
+            else None,
+            campaign_id=config.get("campaign_id") if isinstance(config, dict) else None,
         )
 
+        previous_state = orchestrator.get_current_state()
         portfolio_state = orchestrator.evaluate()
         guardian_state = {
             "portfolio_state": portfolio_state.value,
@@ -331,22 +380,80 @@ class GuardianEvaluationAgentStage(GuardianEvaluationStage):
             "strategy_states": orchestrator.get_strategy_states(),
         }
 
+        correction_events = await self._publish_correction(
+            config, previous_state, portfolio_state
+        )
+
         ctx.artifacts["guardian_state"] = guardian_state
         ctx.artifacts["portfolio_state"] = portfolio_state.value
+        ctx.artifacts["correction_events"] = correction_events
 
         return {
             "guardian_state": guardian_state,
             "portfolio_state": portfolio_state.value,
+            "correction_events": correction_events,
         }
+
+    @staticmethod
+    async def _publish_correction(
+        config: Any,
+        previous_state: PortfolioState,
+        portfolio_state: PortfolioState,
+    ) -> list[dict[str, Any]]:
+        """Publish the evaluation result as a ``state_transition`` correction.
+
+        Args:
+            config: Pipeline config, optionally carrying a ``correction_bus``.
+            previous_state: Portfolio state before this evaluation.
+            portfolio_state: Portfolio state after this evaluation.
+
+        Returns:
+            One JSON-serialisable dict per published envelope.
+        """
+        bus = config.get("correction_bus") if isinstance(config, dict) else None
+        if not isinstance(bus, CorrectionBus):
+            bus = CorrectionBus()
+
+        event = CorrectionEvent(
+            source="GuardianEvaluationAgentStage",
+            event_type="state_transition",
+            payload={
+                "from": previous_state.value,
+                "to": portfolio_state.value,
+                "changed": previous_state is not portfolio_state,
+            },
+        )
+        bus.publish(event)
+        await bus.flush()
+
+        return [event.model_dump(mode="json")]
+
 
     def _build_guardians(self, research_config: dict[str, Any], pipeline_config: dict[str, Any]) -> list:
         market_context = research_config.get("market_context") if isinstance(research_config, dict) else {}
         capital_constraints = research_config.get("capital_constraints") if isinstance(research_config, dict) else {}
 
-        regime_collector = pipeline_config.get("regime_collector") if isinstance(pipeline_config, dict) else None
-        cost_collector = pipeline_config.get("cost_collector") if isinstance(pipeline_config, dict) else None
-        portfolio_data_provider = pipeline_config.get("portfolio_data_provider") if isinstance(pipeline_config, dict) else None
-        strategy_performance_provider = pipeline_config.get("strategy_performance_provider") if isinstance(pipeline_config, dict) else None
+        config = pipeline_config if isinstance(pipeline_config, dict) else {}
+
+        regime_collector = config.get("regime_collector")
+        cost_collector = config.get("cost_collector")
+        portfolio_data_provider = config.get("portfolio_data_provider")
+        strategy_performance_provider = config.get("strategy_performance_provider")
+
+        missing = [
+            key
+            for key, value in (
+                ("portfolio_data_provider", portfolio_data_provider),
+                ("strategy_performance_provider", strategy_performance_provider),
+            )
+            if value is None
+        ]
+        if missing:
+            raise GuardianProviderError(
+                "GuardianEvaluationAgentStage requires concrete providers in "
+                f"pipeline config; missing: {', '.join(missing)}",
+                provider_name=missing[0],
+            )
 
         guardians = [
             MarketGuardian(
@@ -354,30 +461,23 @@ class GuardianEvaluationAgentStage(GuardianEvaluationStage):
                 cost_collector=cost_collector,
             ),
             RiskGuardian(
-                portfolio_data_provider=portfolio_data_provider or _NullDataProvider(),
+                portfolio_data_provider=portfolio_data_provider,
             ),
             PortfolioGuardian(
-                returns_data_provider=portfolio_data_provider or _NullDataProvider(),
+                returns_data_provider=portfolio_data_provider,
             ),
             CapitalGuardian(
-                strategy_performance_provider=strategy_performance_provider or _NullDataProvider(),
+                strategy_performance_provider=strategy_performance_provider,
                 risk_guardian=None,
                 portfolio_guardian=None,
             ),
             QualityGuardian(
-                health_score_system=portfolio_data_provider or _NullDataProvider(),
+                health_score_system=portfolio_data_provider,
             ),
             ExecutionGuardian(
-                broker_interface=portfolio_data_provider or _NullDataProvider(),
+                broker_interface=portfolio_data_provider,
                 cost_collector=cost_collector,
             ),
         ]
 
         return guardians
-
-
-class _NullDataProvider:
-    """Pass-through provider that returns empty/defaults when real data is absent."""
-
-    def __getattr__(self, name: str) -> Any:
-        return lambda *args, **kwargs: {}

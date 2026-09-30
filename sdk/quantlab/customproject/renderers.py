@@ -355,7 +355,10 @@ def render_automatic_retest(task: CustomProjectTask) -> BuildTask:
     Rankings, and RetesterData.
     """
     bt = _base_task(task)
-    bt.cross_checks_section = CrossChecksConfig(raw_xml=_AUTOMATIC_RETEST_CROSSCHECKS)
+    # Parsed per call so the section is typed (dialect plus sub-models) while
+    # each child keeps its original markup, keeping the rendered XML unchanged.
+    # Parsing per call avoids sharing one mutable model across renders.
+    bt.cross_checks_section = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_CROSSCHECKS)
     bt.rankings_section = RankingsConfig(raw_xml=_AUTOMATIC_RETEST_RANKINGS)
     bt.retester_data = RetesterDataConfig(raw_xml=_AUTOMATIC_RETEST_RETESTER_DATA)
     return bt

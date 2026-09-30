@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from quantlab.costs.profiles import BrokerProfile
+from quantlab.cfx.models import CrossChecksConfig
 from quantlab.data.symbol_registry import resolve_symbol
 
 logger = logging.getLogger(__name__)
@@ -119,13 +120,56 @@ def _coerce_template_default(raw: str, format_type: str):
     return text
 
 
+_CROSSCHECKS_BLOCK = re.compile(r"<CrossChecks\b.*?</CrossChecks>", re.DOTALL)
+
+
+# CrossChecks build-config fields the typed models already cover. design.md
+# scopes typed access to modeled fields and keeps regex probing for the rest
+# (<Param1>/<Param2>, <MaxTests>, acceptance settings and the <Chart> spread are
+# still unmodeled), so this is a typed fast path rather than a replacement.
+_TYPED_CROSSCHECKS_FIELDS = frozenset(
+    {"wf_period", "wf_optimization", "wf_optimize_periods"}
+)
+
+
+def _typed_crosschecks_default(field_name: str, template_xml: str):
+    """Read a template CrossChecks default through the typed model.
+
+    Returns ``None`` when the field is not typed, the template carries no
+    CrossChecks block, the block is not the AutomaticRetest dialect, or the
+    specific sub-model is absent. Every one of those cases falls back to the
+    existing regex probe in :func:`get_template_default`.
+    """
+    if field_name not in _TYPED_CROSSCHECKS_FIELDS:
+        return None
+
+    block = _CROSSCHECKS_BLOCK.search(template_xml)
+    if block is None:
+        return None
+
+    config = CrossChecksConfig.from_xml(block.group(0))
+    if config.dialect != "automatic_retest" or config.automatic_retest is None:
+        return None
+
+    wfo = config.automatic_retest.walk_forward_optimization
+    if wfo is None:
+        return None
+
+    if field_name == "wf_period":
+        return wfo.period
+    if field_name == "wf_optimization":
+        return wfo.optimization
+    return "true" if wfo.optimize_periods else "false"
+
+
 def get_template_default(field_name: str):
     """Return the SQX template default for a BuildConfig field, or ``None``.
 
-    Probes the bundled default project template with the field's build-config
-    regex and coerces the captured value to the field's type. ``None`` means
-    the field has no scalar template default (composite structures) or the
-    template does not carry the parameter.
+    CrossChecks fields covered by the typed models are read from
+    ``CrossChecksConfig``; every other field is probed with the field's
+    build-config regex. Either way the captured value is coerced to the field's
+    type. ``None`` means the field has no scalar template default (composite
+    structures) or the template does not carry the parameter.
 
     Args:
         field_name: A BuildConfig field name.
@@ -137,7 +181,13 @@ def get_template_default(field_name: str):
     if entry is None:
         return None
     pattern, _replacement, format_type = entry
-    match = re.search(pattern, _template_xml())
+    template_xml = _template_xml()
+
+    typed = _typed_crosschecks_default(field_name, template_xml)
+    if typed is not None:
+        return _coerce_template_default(str(typed), format_type)
+
+    match = re.search(pattern, template_xml)
     if match is None:
         return None
     return _coerce_template_default(_extract_template_value(match), format_type)

@@ -41,10 +41,10 @@ Chain strategy: feature-branch-chain
 
 ## WU3 — F3: Guardian-Orchestrator (PR 3)
 
-- [ ] 3.1 RED `tests/test_orchestrator_prompt.py`: repo `guardian-orchestrator.md`; live JSON entry primary, visible, deny-first mirroring `quantlab-orchestrator`; GUARDIAN-LIVE row→task; alert/replacement allowlisted (REQ-822/823/825)
-- [ ] 3.2 GREEN `guardian-orchestrator.md` (managed): Role, Routing, Delegates, Gates, NO-phase rule (REQ-37), long-run policy
-- [ ] 3.3 GREEN live `opencode.json`: `guardian-orchestrator` (primary; bash `sdk/quantlab/*`,`knowledge/*`,`/tmp/opencode/*`; task `quantlab-guardian`/`-alert`/`quantlab-replacement`); delegates alert+replacement: subagent, hidden, inline (D10/D11)
-- [ ] 3.4 GREEN live `orchestrator.md`: GUARDIAN-LIVE row → `guardian-orchestrator` via `task` (REQ-823; non-managed)
-- [ ] 3.5 RED `tests/gates/test_run_flow_gates.py`: `HUMAN_APPROVE_REPLACEMENT` fail-closed — approve→allow; HOLD/missing/non-approve→block; never auto-replace (REQ-824)
-- [ ] 3.6 GREEN gate: decision-file `/tmp/sqx-gates/{campaign_id}/` (`pending.json`→`decision.json`), `action==approve` only, reuses `DecisionsFileGateCallback` (D9)
-- [ ] 3.7 Sync `guardian-orchestrator.md` live; parity `--check`; `SQX_FORCE_MOCK=1 python3 -m pytest -q tests/campaign tests/gates tests/test_orchestrator_prompt.py` (assert_flow still 14)
+- [x] 3.1 RED `tests/test_orchestrator_prompt.py`: repo `guardian-orchestrator.md`; live JSON entry primary, visible, deny-first mirroring `quantlab-orchestrator`; GUARDIAN-LIVE row→task; alert/replacement allowlisted (REQ-822/823/825)
+- [x] 3.2 GREEN `guardian-orchestrator.md` (managed): Role, Routing, Delegates, Gates, NO-phase rule (REQ-37), long-run policy
+- [x] 3.3 GREEN live `opencode.json`: `guardian-orchestrator` (primary; bash `sdk/quantlab/*`,`knowledge/*`,`/tmp/opencode/*`; task `quantlab-guardian`/`-alert`/`quantlab-replacement`); delegates alert+replacement: subagent, hidden, inline (D10/D11)
+- [x] 3.4 GREEN live `orchestrator.md`: GUARDIAN-LIVE row → `guardian-orchestrator` via `task` (REQ-823; non-managed)
+- [x] 3.5 RED `tests/gates/test_run_flow_gates.py`: `HUMAN_APPROVE_REPLACEMENT` fail-closed — approve→allow; HOLD/missing/non-approve→block; never auto-replace (REQ-824)
+- [x] 3.6 GREEN gate: decision-file `/tmp/sqx-gates/{campaign_id}/` (`pending.json`→`decision.json`), `action==approve` only, reuses `DecisionsFileGateCallback` (D9)
+- [x] 3.7 Sync `guardian-orchestrator.md` live; parity `--check`; `SQX_FORCE_MOCK=1 python3 -m pytest -q tests/campaign tests/gates tests/test_orchestrator_prompt.py` (assert_flow still 14)

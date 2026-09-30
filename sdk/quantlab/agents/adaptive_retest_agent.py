@@ -84,9 +84,14 @@ def inspect_cfx_signals(cfx_path: Path) -> RetestSignals:
 
     # CrossChecks → monte_carlo_passed / walkforward_passed
     cross_checks = task.cross_checks_section or task.cross_checks
-    if cross_checks and cross_checks.raw_xml:
-        signals.monte_carlo_passed = _extract_mc_passed(cross_checks.raw_xml)
-        signals.walkforward_passed = _extract_wf_passed(cross_checks.raw_xml)
+    if cross_checks:
+        if cross_checks.generic is not None:
+            signals.monte_carlo_passed = cross_checks.generic.mc_enabled
+            signals.walkforward_passed = cross_checks.generic.wf_enabled
+        elif cross_checks.raw_xml:
+            # Fallback for raw-only CrossChecks (no typed dialect detected).
+            signals.monte_carlo_passed = _extract_mc_passed(cross_checks.raw_xml)
+            signals.walkforward_passed = _extract_wf_passed(cross_checks.raw_xml)
 
     # Databanks → databank_coverage
     databanks_section = task.databanks_section or task.databanks
@@ -229,8 +234,10 @@ def apply_adaptive_mutations(cfx_path: Path, mode: RetestMode) -> Path:
 
 def _apply_automatic_retest(task: BuildTask) -> None:
     """Replace retest sections with AutomaticRetest-specific variants."""
-    task.cross_checks_section = CrossChecksConfig(
-        raw_xml=(
+    # Built as XML and then parsed so the section is typed: from_xml() keeps
+    # every child's original markup in the sub-models' raw_xml, so to_xml()
+    # re-emits this exact content instead of a lossy re-synthesis.
+    _cross_checks_xml = (
             '<CrossChecks use="true">'
             '<RetestWithHigherPrecision use="false">'
             "<Settings><Precision>4</Precision><Spread>2</Spread></Settings>"
@@ -367,7 +374,7 @@ def _apply_automatic_retest(task: BuildTask) -> None:
             "</OptProfileSysParamPermutation>"
             "</CrossChecks>"
         )
-    )
+    task.cross_checks_section = CrossChecksConfig.from_xml(_cross_checks_xml)
     task.rankings_section = RankingsConfig(
         raw_xml=(
             "<Rankings>"
@@ -414,15 +421,14 @@ def _apply_automatic_retest(task: BuildTask) -> None:
 
 def _apply_retest(task: BuildTask) -> None:
     """Replace retest sections with full Retest variants."""
-    task.cross_checks_section = CrossChecksConfig(
-        raw_xml=(
+    _cross_checks_xml = (
             "<CrossChecks>"
             '<MonteCarlo enabled="true" runs="100" percentile="95" />'
             '<WalkForward enabled="true" cycles="5" />'
             "<ConfidenceLevel>0.95</ConfidenceLevel>"
             "</CrossChecks>"
         )
-    )
+    task.cross_checks_section = CrossChecksConfig.from_xml(_cross_checks_xml)
     task.rankings_section = RankingsConfig(
         raw_xml=(
             "<Rankings>"

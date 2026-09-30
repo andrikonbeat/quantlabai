@@ -1,0 +1,63 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "quantlab-orchestrator",
+  "agent": {
+    "quantlab-campaign": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-guardian": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-guardian-alert": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-orchestrator": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-archive": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-compile": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-config": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-demo": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-deploy": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-dispatch": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-hypothesis": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-live-ops": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-monitor": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-optimize": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-portfolio": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-research": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-retest": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-phase-review": {
+      "model": "opencode/deepseek-v4-flash-free"
+    },
+    "quantlab-replacement": {
+      "model": "opencode/deepseek-v4-flash-free"
+    }
+  }
+}

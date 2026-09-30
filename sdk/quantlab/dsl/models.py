@@ -340,6 +340,10 @@ class HypothesisConfig(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict, description="Hypothesis parameters")
     expected_outcome: str = Field(default="", description="Expected result if hypothesis holds")
     confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Prior confidence 0-1")
+    validation_warnings: list[str] = Field(
+        default_factory=list,
+        description="Non-blocking economic-sense warnings from parameter validation",
+    )
 
     # LLM audit trail fields
     llm_rationale: str | None = Field(

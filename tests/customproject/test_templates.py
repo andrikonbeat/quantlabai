@@ -474,13 +474,24 @@ class TestAutomaticRetestRenderer:
     def test_cross_checks_section_present(self):
         bt = self._render_automatic_retest()
         assert bt.cross_checks_section is not None
-        xml = bt.cross_checks_section.raw_xml
+        cc = bt.cross_checks_section
+        # Typed: the section exposes the AutomaticRetest dialect and sub-models.
+        assert cc.dialect == "automatic_retest"
+        assert cc.automatic_retest is not None
+        ar = cc.automatic_retest
+        assert ar.retest_with_higher_precision.precision == 4
+        assert ar.monte_carlo_retest.number_of_simulations == 100
+        assert ar.walk_forward_optimization.period == "20"
+        assert ar.walk_forward_optimization.optimize_periods is True
+        assert ar.walk_forward_matrix is not None
+        assert ar.opt_profile_sys_param_permutation is not None
+        xml = cc.to_xml()
         assert "<CrossChecks" in xml
         assert 'use="true"' in xml
 
     def test_cross_checks_contains_all_required_elements(self):
         bt = self._render_automatic_retest()
-        xml = bt.cross_checks_section.raw_xml
+        xml = bt.cross_checks_section.to_xml()
         required = [
             "RetestWithHigherPrecision",
             "MonteCarloRetest",
@@ -495,7 +506,7 @@ class TestAutomaticRetestRenderer:
 
     def test_no_generic_monte_carlo_or_walk_forward(self):
         bt = self._render_automatic_retest()
-        xml = bt.cross_checks_section.raw_xml
+        xml = bt.cross_checks_section.to_xml()
         # Generic Retest CrossChecks use standalone <MonteCarlo> and <WalkForward>
         # elements; AutomaticRetest must NOT contain those standalone elements.
         # Nested <WalkForward> inside WalkForwardOptimization/WalkForwardMatrix is expected.

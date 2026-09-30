@@ -24,6 +24,8 @@ from quantlab.dsl.models import (
     StrategyDirection,
     Timeframe,
 )
+from quantlab.agents.economic_sense.validator import EconomicSenseValidator
+from quantlab.agents.tag_calibrator import TagCalibrator
 
 logger = logging.getLogger(__name__)
 
@@ -540,6 +542,19 @@ class ResearchAgent:
                 confidence=0.4,
             )
         )
+
+        # Economic-sense validation: attach non-blocking warnings to each
+        # hypothesis. The validator never raises, so this is always safe.
+        validator = EconomicSenseValidator()
+        for hypothesis in hypotheses:
+            warnings = validator.validate(hypothesis)
+            if warnings:
+                hypothesis.validation_warnings = warnings
+
+        # Historical calibration via per-tag Sharpe statistics.
+        if query_results:
+            calibrator = TagCalibrator()
+            hypotheses = calibrator.calibrate(hypotheses, query_results)
 
         return hypotheses
 

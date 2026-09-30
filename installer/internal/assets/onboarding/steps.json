@@ -1,0 +1,34 @@
+{
+  "steps": [
+    {
+      "id": "campaigns-folder",
+      "title": "Carpeta de campañas",
+      "description": "Creá una carpeta dedicada para tus campañas de trading (ej: ~/trading/).",
+      "always": true
+    },
+    {
+      "id": "opencode",
+      "title": "Abrí OpenCode",
+      "description": "Abrí OpenCode en la carpeta de campañas. OpenCode es el centro de control que orquesta los agentes.",
+      "check": "opencode"
+    },
+    {
+      "id": "gentle-ai",
+      "title": "gentle-ai (opcional)",
+      "description": "Si lo instalaste, gentle-ai provee skills adicionales y revisión de código.",
+      "check": "gentle-ai"
+    },
+    {
+      "id": "primary-agent",
+      "title": "Elegí el agente primario",
+      "description": "quantlab-orchestrator: campañas de investigación (14 fases). guardian-orchestrator: live-ops 24/7 (monitoreo, alertas, reemplazo).",
+      "check": "none"
+    },
+    {
+      "id": "example-prompt",
+      "title": "Ejemplo de prompt",
+      "description": "Ejecuta una campaña completa para EURUSD M5 con riesgo 1%.",
+      "always": true
+    }
+  ]
+}

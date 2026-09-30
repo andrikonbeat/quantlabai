@@ -265,19 +265,36 @@ class TestFullChainContract:
         assert not violations, "\n".join(violations)
 
 
+class _ConcreteDataProvider:
+    """Minimal concrete provider standing in for a real injected collector."""
+
+    def collect(self, *_args, **_kwargs):
+        return {}
+
+    def get_all_strategy_scores(self):
+        return {}
+
+
 class TestGuardianEvaluationAgentStage:
     """GuardianEvaluationAgentStage.execute() behavior — REQ-641 (PR1)."""
 
+    @staticmethod
+    def _ctx_with_providers() -> PipelineContext:
+        return PipelineContext(
+            config={
+                "portfolio_data_provider": _ConcreteDataProvider(),
+                "strategy_performance_provider": _ConcreteDataProvider(),
+            },
+            artifacts={"research_config": {}},
+        )
+
     @pytest.mark.asyncio
     async def test_execute_produces_guardian_state(self) -> None:
-        """GIVEN a pipeline context with a research config artifact
+        """GIVEN a pipeline context with concrete guardian providers
         WHEN GuardianEvaluationAgentStage.execute() runs
         THEN it produces guardian_state and portfolio_state in the outcome
         dict and writes them into the context artifacts."""
-        ctx = PipelineContext(
-            config={},
-            artifacts={"research_config": {}},
-        )
+        ctx = self._ctx_with_providers()
         stage = GuardianEvaluationAgentStage()
 
         outcome = await stage.execute(ctx)
@@ -288,3 +305,16 @@ class TestGuardianEvaluationAgentStage:
         assert "portfolio_state" in ctx.artifacts
         assert isinstance(outcome["guardian_state"], dict)
         assert "portfolio_state" in outcome["guardian_state"]
+
+    @pytest.mark.asyncio
+    async def test_execute_without_providers_fails_closed(self) -> None:
+        """GIVEN a context with no guardian providers
+        WHEN GuardianEvaluationAgentStage.execute() runs
+        THEN GuardianProviderError is raised instead of degrading to a
+        pass-through provider."""
+        from quantlab.pipeline.errors import GuardianProviderError
+
+        ctx = PipelineContext(config={}, artifacts={"research_config": {}})
+
+        with pytest.raises(GuardianProviderError):
+            await GuardianEvaluationAgentStage().execute(ctx)

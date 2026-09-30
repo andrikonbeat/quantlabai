@@ -522,9 +522,12 @@ class TestPatcherPhase4Instructions:
         patcher.apply([instr])
 
         assert task.cross_checks_section is not None
-        assert "MonteCarlo" in task.cross_checks_section.raw_xml
-        assert "enabled=\"true\"" in task.cross_checks_section.raw_xml
-        assert "WalkForward" in task.cross_checks_section.raw_xml
+        assert task.cross_checks_section.dialect == "generic"
+        assert task.cross_checks_section.generic is not None
+        assert task.cross_checks_section.generic.mc_enabled is True
+        assert task.cross_checks_section.generic.mc_runs == 100
+        assert task.cross_checks_section.generic.wf_enabled is True
+        assert task.cross_checks_section.generic.wf_cycles == 5
 
     def test_set_crosschecks_invalid_confidence(self):
         task = BuildTask()

@@ -25,6 +25,37 @@ from quantlab.campaign.flow import (
 )
 
 
+class _ConcreteProvider:
+    """Minimal stand-in for a real injected data provider (Slice A).
+
+    Slice A removed the ``_NullDataProvider`` pass-through: the guardian
+    stage requires concrete providers in ``ctx.config``. This duck-typed stub
+    is a legitimate test double for the flow-integrity check.
+    """
+
+    def get_risk_metrics(self) -> dict:
+        return {
+            "current_drawdown": 0.05,
+            "max_drawdown": 0.08,
+            "sharpe_ratio": 1.2,
+            "total_exposure": 0.6,
+            "kelly_fraction": 0.15,
+            "var_95": 0.02,
+        }
+
+    def get_strategy_returns(self) -> dict[str, list[float]]:
+        return {
+            "Strategy_A": [0.01, -0.005, 0.02, 0.015, -0.01, 0.008, -0.003, 0.012],
+            "Strategy_B": [0.008, 0.012, -0.003, 0.01, 0.005, -0.002, 0.007, -0.001],
+        }
+
+    def get_strategy_performance(self) -> dict:
+        return {"Strategy_A": 0.04, "Strategy_B": 0.021}
+
+    def get_all_strategy_scores(self) -> dict:
+        return {"Strategy_A": 0.9, "Strategy_B": 0.85}
+
+
 def _orchestrated_stages() -> list[str]:
     """Stage-name sequence of the orchestrated pipeline (retest+optimize set).
 
@@ -213,8 +244,15 @@ class TestAgentRunFlowIntegrity:
 
         mapping_before = dict(STAGE_FOR_PHASE)
 
+        # Slice A: the guardian stage fails closed without concrete providers,
+        # so the SDK entry receives a minimal concrete provider config.
+        provider = _ConcreteProvider()
         await execute_guardian_directive(
-            GuardianDirective(kind="evaluate", campaign_id="camp-seg", points=[])
+            GuardianDirective(kind="evaluate", campaign_id="camp-seg", points=[]),
+            pipeline_config={
+                "portfolio_data_provider": provider,
+                "strategy_performance_provider": provider,
+            },
         )
 
         assert len(PHASES) == 14

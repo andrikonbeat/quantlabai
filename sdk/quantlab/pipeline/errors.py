@@ -79,3 +79,48 @@ class ConfigurationError(PipelineError):
         super().__init__(message)
         self.config_path = config_path
         self.validation_errors = validation_errors or []
+
+
+class GuardianProviderError(PipelineError):
+    """Raised when a guardian is constructed without a concrete data provider.
+
+    Guardians fail closed: a missing provider is a wiring defect, not an empty
+    dataset. The orchestrator raises this at construction time instead of
+    substituting a silent pass-through provider.
+
+    Attributes:
+        guardian_name: Class name of the guardian with the missing provider.
+        provider_name: Name of the provider slot that was ``None`` or absent.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        guardian_name: str | None = None,
+        provider_name: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.guardian_name = guardian_name
+        self.provider_name = provider_name
+
+
+class PortfolioStateBlockedError(PipelineError):
+    """Raised when a stage refuses to run under a blocked ``PortfolioState``.
+
+    ``QUARANTINE`` and ``DEFENSIVE`` block downstream stages until an explicit
+    human override is granted through the relevant approval gate.
+
+    Attributes:
+        portfolio_state: The blocking portfolio state value.
+        stage_name: Name of the stage that refused to run.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        portfolio_state: str | None = None,
+        stage_name: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.portfolio_state = portfolio_state
+        self.stage_name = stage_name

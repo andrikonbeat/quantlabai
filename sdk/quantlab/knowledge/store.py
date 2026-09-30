@@ -1524,3 +1524,36 @@ class TimeSeriesStore:
         )
         return [dict(row) for row in cursor.fetchall()]
 
+    def query_guardian_metrics(
+        self,
+        campaign_id: str,
+        knowledge_root: str | Path = "knowledge",
+        guardian_name: str | None = None,
+        source: str | None = None,
+    ) -> list[dict]:
+        """Read guardian metric records for a campaign.
+
+        Guardian records are persisted as append-only JSONL by
+        :class:`~quantlab.knowledge.guardian_store.GuardianFeedbackStore`; this
+        is the knowledge-store facing read API over that file, mirroring
+        :meth:`query_metrics` for the guardian domain.
+
+        Args:
+            campaign_id: Campaign identifier to read.
+            knowledge_root: Knowledge Lake root holding ``guardian-feedback/``.
+            guardian_name: Optional guardian filter.
+            source: Optional source filter (``evaluation``, ``live_stream``,
+                ``manual``).
+
+        Returns:
+            JSON-safe dicts, oldest first. Empty when the campaign is unknown.
+        """
+        from quantlab.knowledge.guardian_store import GuardianFeedbackStore
+
+        return [
+            record.model_dump(mode="json")
+            for record in GuardianFeedbackStore(knowledge_root).query(
+                campaign_id, guardian_name=guardian_name, source=source
+            )
+        ]
+

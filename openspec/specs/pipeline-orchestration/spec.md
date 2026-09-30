@@ -58,8 +58,8 @@ The system MUST register `"live_ops"` as a valid stage type in `StageRegistry`, 
 
 ### Requirement: Built-in Abstract Stages
 
-The system MUST provide 16 abstract Stage subclasses: ValidateStage, TranslateStage, DaemonStartStage, CampaignStage, ExportStage, ReadStage, ComputeStatsStage, KnowledgeStoreStage, ReportStage, CostInjectionStage, PortfolioStage, CompileStage, DeployStage, DemoStage, ArchiveStage, and LiveOpsStage. Each SHALL declare requires/provides context keys for its I/O contract.
-(Previously: 10 abstract stages)
+The system MUST provide 18 abstract Stage subclasses: ValidateStage, TranslateStage, DaemonStartStage, CampaignStage, ExportStage, ReadStage, ComputeStatsStage, KnowledgeStoreStage, ReportStage, CostInjectionStage, PortfolioStage, CompileStage, DeployStage, DemoStage, ArchiveStage, LiveOpsStage, GuardianEvaluationStage, and BuilderStage. Each SHALL declare requires/provides context keys for its I/O contract. `GuardianEvaluationStage` MUST run before `BuilderStage`; `BuilderStage` MUST require `portfolio_state` and `correction_events`.
+(Previously: 16 abstract stages; BuilderStage only required research_config)
 
 | Stage | requires | provides |
 |-------|----------|----------|
@@ -79,10 +79,46 @@ The system MUST provide 16 abstract Stage subclasses: ValidateStage, TranslateSt
 | DemoStage | deployment_status, demo_account_config | demo_status |
 | ArchiveStage | demo_status, guardian_feedback | archive_status |
 | LiveOpsStage | archive_status, maintenance_plan | live_ops_status |
+| GuardianEvaluationStage | research_config, data_providers | guardian_state, portfolio_state, correction_events |
+| BuilderStage | portfolio_state, correction_events, cfx_bytes | build_status |
 
 #### Scenario: Full stage chain contract
 
-- GIVEN all 16 stages in pipeline order
+- GIVEN all 18 stages in pipeline order
 - WHEN each stage executes sequentially
 - THEN each stage's requires are satisfied by previous stages' provides
 - AND new stages integrate with existing artifact flow
+
+#### Scenario: Guardian-to-builder handshake
+
+- GIVEN a pipeline with `GuardianEvaluationStage` followed by `BuilderStage`
+- WHEN `GuardianEvaluationStage` completes
+- THEN `BuilderStage` receives `portfolio_state` and `correction_events`
+- AND the stage chain validates end-to-end
+
+#### Scenario: Builder blocks on QUARANTINE
+
+- GIVEN `portfolio_state` is `QUARANTINE`
+- WHEN `BuilderStage.execute()` is invoked
+- THEN the stage raises `PortfolioStateBlockedError`
+- AND no CFX dispatch is attempted
+
+## ADDED Requirements
+
+### Requirement: GuardianEvaluationStage Gate Contract
+
+`GuardianEvaluationStage` MUST declare `requires: ["research_config", "data_providers"]` and `provides: ["guardian_state", "portfolio_state", "correction_events"]`. The stage SHALL raise `GuardianProviderError` if any required provider is missing. The stage SHALL publish `CorrectionEvent` objects to the `CorrectionBus` after evaluation.
+
+#### Scenario: Stage contract validation
+
+- GIVEN a pipeline with `GuardianEvaluationStage`
+- WHEN the stage is registered
+- THEN its `requires` include `data_providers`
+- AND its `provides` include `correction_events`
+
+#### Scenario: Missing providers fail at stage execution
+
+- GIVEN `GuardianEvaluationStage` with incomplete provider set
+- WHEN `execute()` is called
+- THEN `GuardianProviderError` is raised
+- AND no partial guardian state is produced

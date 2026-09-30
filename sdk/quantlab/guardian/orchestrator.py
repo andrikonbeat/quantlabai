@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Callable
-from typing import Dict, List, Tuple
+from datetime import datetime
+from typing import TYPE_CHECKING, Dict, List, Tuple
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from quantlab.knowledge.guardian_store import GuardianFeedbackStore
 
 from .base import BaseGuardian
+from .capital import CapitalGuardian
+from .execution import ExecutionGuardian
 from .models import (
     GuardianResult,
     GuardianStatus,
@@ -15,23 +22,88 @@ from .models import (
     PortfolioState,
     StrategyState,
 )
+from .portfolio import PortfolioGuardian
+from .quality import QualityGuardian
+from .risk import RiskGuardian
+
+logger = logging.getLogger(__name__)
+
+# Guardian class -> attributes that MUST hold a concrete provider instance.
+# The attribute names are the ones the guardian stores on ``self`` at
+# construction time, not the constructor keyword.
+REQUIRED_GUARDIAN_PROVIDERS: Dict[type, Tuple[str, ...]] = {
+    RiskGuardian: ("portfolio_data",),
+    PortfolioGuardian: ("returns_data",),
+    CapitalGuardian: ("performance_data",),
+    QualityGuardian: ("health_system",),
+    ExecutionGuardian: ("broker",),
+}
+
+
+def validate_guardian_providers(guardians: List[BaseGuardian]) -> None:
+    """Assert every known guardian received a concrete provider.
+
+    Args:
+        guardians: Guardian instances about to be orchestrated.
+
+    Raises:
+        GuardianProviderError: If any required provider attribute is ``None``
+            or absent. There is no silent pass-through fallback.
+    """
+    # Deferred: quantlab.pipeline imports the stages, which import this module.
+    from quantlab.pipeline.errors import GuardianProviderError
+
+    for guardian in guardians:
+        required = REQUIRED_GUARDIAN_PROVIDERS.get(type(guardian))
+        if required is None:
+            continue
+        for provider_name in required:
+            if getattr(guardian, provider_name, None) is None:
+                raise GuardianProviderError(
+                    f"{type(guardian).__name__} requires a concrete "
+                    f"'{provider_name}' provider; got None",
+                    guardian_name=type(guardian).__name__,
+                    provider_name=provider_name,
+                )
 
 
 class MetaGuardianOrchestrator:
     """Coordinates all guardians and manages the state machine."""
 
     def __init__(self, config: MetaGuardianConfig, guardians: List[BaseGuardian],
-                 action_hooks: List[Callable[[PortfolioState, PortfolioState], None]] | None = None):
+                 action_hooks: List[Callable[[PortfolioState, PortfolioState], None]] | None = None,
+                 feedback_store: "GuardianFeedbackStore | None" = None,
+                 campaign_id: str | None = None,
+                 correlation_id: str | None = None):
         """Initialize the orchestrator.
+
+        Providers are injected through the guardian instances themselves; a
+        guardian missing its provider aborts construction instead of degrading
+        to an empty result set.
 
         Args:
             config: Configuration for the orchestrator
             guardians: List of guardian instances to coordinate
             action_hooks: Optional list of callables(old_state, new_state) for state transitions
+            feedback_store: Optional store that receives one
+                ``GuardianMetricRecord`` per guardian result on every
+                ``evaluate()``. Persistence is opt-in.
+            campaign_id: Campaign the metrics belong to. Required together
+                with ``feedback_store``; without it nothing is written.
+            correlation_id: Optional envelope/phase link recorded on every
+                persisted metric.
+
+        Raises:
+            GuardianProviderError: If a guardian was built without a concrete
+                provider.
         """
+        validate_guardian_providers(guardians)
         self.config = config
         self.guardians = guardians
         self.action_hooks = action_hooks or []
+        self.feedback_store = feedback_store
+        self.campaign_id = campaign_id
+        self.correlation_id = correlation_id
         self.state = PortfolioState.NORMAL
         self.state_history: List[Tuple[PortfolioState, float]] = []
         self.strategy_states: Dict[str, StrategyState] = {}
@@ -69,11 +141,45 @@ class MetaGuardianOrchestrator:
         
         # Update strategy-specific states
         self._update_strategy_states(results)
-        
+
         # Update last evaluation time
         self.last_evaluation_time = current_time
+
+        # Persist this evaluation's guardian observations
+        self._persist_metrics(results)
         
         return self.state
+
+    def _persist_metrics(self, results: List[GuardianResult]) -> None:
+        """Write one ``GuardianMetricRecord`` per guardian result.
+
+        Opt-in: no store or no campaign id means no writes. Persistence is
+        observability, not authority — a failing sink is logged and skipped so
+        a broken metrics path can never take down the governance loop.
+        """
+        if self.feedback_store is None or not self.campaign_id:
+            return
+
+        # Deferred: quantlab.knowledge imports the guardian models.
+        from quantlab.knowledge.guardian_store import GuardianMetricRecord
+
+        for result in results:
+            record = GuardianMetricRecord(
+                campaign_id=self.campaign_id,
+                timestamp=datetime.fromtimestamp(result.timestamp.timestamp()),
+                guardian_name=result.guardian_type.value,
+                score=result.score,
+                portfolio_state=self.state,
+                risk_metrics={"status": result.status.value, "message": result.message},
+                correlation_id=self.correlation_id,
+                source="evaluation",
+            )
+            try:
+                self.feedback_store.write(record)
+            except Exception:
+                logger.exception(
+                    "Failed to persist guardian metric for campaign %s", self.campaign_id
+                )
 
     def _collect_guardian_results(self) -> List[GuardianResult]:
         """Collect results from all guardians.
@@ -198,8 +304,6 @@ class MetaGuardianOrchestrator:
             old_state: Previous state
             new_state: New state
         """
-        import logging
-        logger = logging.getLogger(__name__)
         logger.info("Portfolio state transition: %s -> %s", old_state, new_state)
         
         # Execute configured action hooks

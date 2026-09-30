@@ -32,6 +32,7 @@ async def execute_guardian_directive(
     directive: GuardianDirective,
     *,
     ops_surface: Any | None = None,
+    pipeline_config: dict[str, Any] | None = None,
 ) -> GuardianReport:
     """Execute a bounded orchestrator directive via the guardian agent (REQ-641).
 
@@ -54,6 +55,12 @@ async def execute_guardian_directive(
         ops_surface: Optional 24-7 ops surface (REQ-36) for escalation acks.
             When ``None`` an ``escalation_ack`` directive is a graceful
             no-op — the report claims no acked ids.
+        pipeline_config: Optional pipeline configuration carrying the
+            concrete data providers (``portfolio_data_provider``,
+            ``strategy_performance_provider``) the guardian stage requires.
+            When ``None``, an ``evaluate`` directive fails closed with
+            :class:`GuardianProviderError` — a missing provider is a wiring
+            defect, never an excuse for a shadow null provider.
 
     Returns:
         A :class:`GuardianReport` with ``guardian_state`` (evaluate only),
@@ -73,13 +80,16 @@ async def execute_guardian_directive(
     if directive.kind == "live_ops_status":
         return await _live_ops_status()
 
-    return await _evaluate(directive)
+    return await _evaluate(directive, pipeline_config)
 
 
-async def _evaluate(directive: GuardianDirective) -> GuardianReport:
+async def _evaluate(
+    directive: GuardianDirective,
+    pipeline_config: dict[str, Any] | None = None,
+) -> GuardianReport:
     """Run the existing Guardian evaluation stage plus a live evaluation."""
     ctx = PipelineContext(
-        config={},
+        config=pipeline_config or {},
         artifacts={"research_config": directive.research_config or {}},
     )
     stage = GuardianEvaluationAgentStage()

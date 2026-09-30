@@ -231,7 +231,7 @@ class TestKnowledgeStoreReconciledLayout:
         store = KnowledgeStore(root)
         store.initialize()
 
-        assert len(STRUCTURED_SUB_LAYOUTS) == 7
+        assert len(STRUCTURED_SUB_LAYOUTS) == 9
         for rel in STRUCTURED_SUB_LAYOUTS:
             sub = root / rel
             assert sub.is_dir(), f"sub-layout {rel} was not created"
