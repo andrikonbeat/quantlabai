@@ -93,6 +93,21 @@ jobs:
   # ============================================================
   # Integration Tests with SQX (requires SQX installation)
   # ============================================================
+  # DO NOT ACTIVATE WITHOUT AN OWNER DECISION. This job is dead for two
+  # independent reasons, and fixing only the first turns a silent no-op into
+  # a hard CI failure:
+  #
+  #   1. The `if:` guard below compares github.repository against
+  #      'quantlab/quantlab-ai', but the remote is andrikonbeat/quantlabai.
+  #      The condition can never be true, so this job has never run.
+  #   2. The "Start SQX Daemon" step does `cd assets/SQX_144_2953_linux_20260601`,
+  #      and that path is a git-ignored symlink to a machine-local SQX install
+  # (.gitignore ignores assets/SQX_*; no symlink is tracked). On a fresh
+  #      CI checkout the path does not exist at all.
+  #
+  # So the guard is left untouched on purpose: correcting reason 1 alone would
+  # immediately fail reason 2. Provisioning the SQX install in CI is a
+  # separate piece of work and is out of scope for this change.
   integration:
     name: Integration Tests (SQX)
     runs-on: ubuntu-latest
