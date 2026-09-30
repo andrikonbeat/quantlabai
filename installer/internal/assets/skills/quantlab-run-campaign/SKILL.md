@@ -145,7 +145,7 @@ explicitly requested. Crypto/CSV/yahoo raise `NotSupportedError`.
 
 ## Files
 
-- Agent prompt: `AI/opencode/agents/campaign.md`
+- Agent prompt: `ai/opencode/agents/campaign.md`
 - Flow constant: `sdk/quantlab/campaign/flow.py` (`PHASES`, `assert_flow`)
 - Pipeline wiring: `sdk/quantlab/agents/research_director.py`
   (`build_pipeline(orchestrated=True)`)

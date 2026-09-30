@@ -340,4 +340,4 @@ This checks:
 
 - [Agent Reference](agents.md) - Detailed agent specifications
 - [Running Multi-Agent Campaigns](../guides/running-campaigns.md) - Execution guide
-- [Research Configuration Reference](../dsl/research-config.md) - DSL configuration
+- [Research Configuration Reference](../../openspec/specs/research-dsl/spec.md) - DSL configuration

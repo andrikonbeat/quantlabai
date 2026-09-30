@@ -276,7 +276,7 @@ quantlab-ai/
 │   └── ...                       # Unit + integration tests
 ├── sdk/tests/                    # SDK test suite
 ├── app_movil/                    # Android companion app (Kotlin, Jetpack Compose)
-├── AI/opencode/                  # Agent prompts, skills, and orchestrator config
+├── ai/opencode/                  # Agent prompts, skills, and orchestrator config
 ├── docs/                         # PRD, STATE, changelog, reference guides
 │   └── sqx-builder-config/       # SQX Builder config reference (KB seed source)
 ├── infra/                        # Infrastructure assets (DB init schema)

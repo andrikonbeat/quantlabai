@@ -71,7 +71,7 @@ execution policy above.
 
 ## Files
 
-- Canonical contract: `AI/opencode/agents/campaign.md`
+- Canonical contract: `ai/opencode/agents/campaign.md`
 - Flow constant: `sdk/quantlab/campaign/flow.py` (`PHASES`, `assert_flow`)
 - Pipeline wiring: `sdk/quantlab/agents/research_director.py`
   (`build_pipeline(orchestrated=True)`)

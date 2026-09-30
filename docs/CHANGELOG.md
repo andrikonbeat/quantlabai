@@ -7,7 +7,7 @@ All notable changes to QuantLab AI will be documented in this file.
 ### Repository Reorganization (2026-08-14)
 - Reorganized the repository for GitHub readiness: root docs moved under
   `docs/`, SQX Builder reference under `docs/sqx-builder-config/`, DB init
-  schema under `infra/`, prompt registry under `AI/opencode/`.
+  schema under `infra/`, prompt registry under `ai/opencode/`.
 - Added complete `.gitignore` / `.gitattributes` (LFS), `LICENSE` (MIT), and
   `SECURITY.md`; removed dead code and duplicated knowledge trees.
 - First push to GitHub: `main` + `feat/per-phase-subagent-delegation-pr5`.

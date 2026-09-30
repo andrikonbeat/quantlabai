@@ -185,7 +185,7 @@ agents:
       export_format: cfx
 ```
 
-See [Pipeline Configuration Reference](pipeline-config.md) for complete details.
+See [Pipeline Configuration Reference](../configuration/pipeline-config.md) for complete details.
 
 ## Extending Agents
 
@@ -198,6 +198,6 @@ To create a custom agent:
 
 ## See Also
 
-- [Pipeline Configuration Reference](pipeline-config.md)
-- [Pipeline Stages Reference](pipeline-stages.md)
+- [Pipeline Configuration Reference](../configuration/pipeline-config.md)
+- [Pipeline Stages Reference](pipeline.md)
 - [Running Multi-Agent Campaigns](../guides/running-campaigns.md)

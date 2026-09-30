@@ -2,7 +2,7 @@
 
 Pipeline YAML files define automated campaigns for the QuantLab SDK. Each pipeline is a directed acyclic graph (DAG) of stages that execute sequentially against the StrategyQuant X daemon.
 
-> **SDK Reference**: [`sdk/quantlab/pipeline/`](../sdk/quantlab/pipeline/)
+> **SDK Reference**: [`sdk/quantlab/pipeline/`](../../sdk/quantlab/pipeline/)
 
 ---
 
