@@ -1,224 +1,188 @@
-# QuantLab AI — Estado Completo del Proyecto
+# QuantLab AI — Project State
 
-> **Actualizado**: 2026-08-14
-> Proyecto: `/home/ogzuz/Proyectos/QuantLab AI`
-> Rama: `feat/per-phase-subagent-delegation-pr5` — sincronizada con `origin/main` (ambas en `fe49a6f` tras el push a GitHub, 2026-08-14)
-> Test suite (ambos árboles, `SQX_FORCE_MOCK=1`): **3449 passed, 44 failed, 12 skipped, 11 errors** en ~390s
-> Los 44 fallos y los 11 errores son pre-existentes y fuera del alcance de la reorganización actual (ver §Tests)
+> This page describes the shape of the project and how to verify it. It is
+> deliberately **not** a live dashboard — counts go stale the moment a commit
+> lands. For current state use the commands in [Live status](#live-status).
 
----
+## Live status
 
-## 📋 Resumen General
+These are the sources of truth. Prefer them over any number written on this page.
 
-QuantLab AI es un SDK cuantitativo para trading algorítmico con StrategyQuant X.
-**Stack**: Python 3.14, Pydantic, PyYAML, Plotly, Pandas, Jinja2, Matplotlib (opcional).
-El trabajo se gobierna por **SDD** (spec-driven development): cada cambio tiene
-proposal/spec/design/tasks y se archiva en `openspec/changes/archive/` al completarse.
+```bash
+git log --oneline -20              # what actually landed, and when
+git status                         # is the tree clean
+git branch --show-current          # which branch you are on
 
-### Estructura
+# CI is authoritative for lint, types, and the sdk/ test tree
+gh run list --limit 5
+gh run view --log-failed
+```
+
+| Question | Authoritative source |
+|----------|---------------------|
+| What is implemented? | `git log`, plus `openspec/changes/archive/YYYY-MM-DD-<slug>/` |
+| Is the suite green? | `gh run list` for CI; the local command below for the full tree |
+| Which changes are in flight? | `ls openspec/changes/` (active) vs `openspec/changes/archive/` |
+| What is the code contract? | `openspec/specs/`, asserted by `tests/` |
+| What do the agents actually do? | `ai/opencode/` (repo-canonical) |
+
+> **Scope difference worth knowing:** CI (`.github/workflows/ci.yml`) runs
+> `pytest` with `working-directory: ./sdk`, so it covers the **`sdk/tests`
+> tree only**, on Python 3.11. The root **`tests/` tree** is not run by CI and
+> is only exercised locally. A green CI badge therefore does **not** mean the
+> full local suite is green. Run both when you change shared SDK code.
+
+## Verified snapshot
+
+A point-in-time observation, recorded once. It is **not** the live status.
+
+| Field | Value |
+|-------|-------|
+| Observed on | 2026-09-30 |
+| Branch | `wip/migration-checkpoint` |
+| Commit | `486da48` |
+| Full suite | **4111 passed, 9 skipped, 0 failed** in 406s |
+| Command | `SQX_FORCE_MOCK=1 python3 -m pytest -q` from the repo root |
+| Active SDD changes | 14 |
+| Archived SDD entries | 37 |
+| Docs under `docs/` | 26 |
+
+`SQX_FORCE_MOCK=1` is required: without it the tests try to bind the real
+StrategyQuant X daemon on port 5050.
+
+## What this project is
+
+A quantitative research SDK for algorithmic trading built on StrategyQuant X.
+The product is an AI-directed research engine: OpenCode acts as research
+director, StrategyQuant X is the computation engine, and work is governed by
+**SDD** (spec-driven development) — each change carries proposal, specs, design,
+and tasks, and is archived under `openspec/changes/archive/` on completion.
+
+**Stack**: Python 3.11+ (local `.venv` runs 3.14.4; CI pins 3.11), Pydantic,
+PyYAML, pandas/numpy, httpx, Plotly (matplotlib optional), MCP, OpenAI SDK.
+
+## Layout
 
 ```
 sdk/
 ├── quantlab/
-│   ├── agents/         # agent stages + ResearchDirector + refutation/ + adaptive_retest_agent
-│   ├── campaign/       # delegación por fase (PhaseResult, delegation)
+│   ├── agents/         # agent stages + ResearchDirector + refutation/
+│   ├── campaign/       # flow.py (PHASES, assert_flow*), delegation (PhaseResult)
 │   ├── cfx/            # CFX reader/writer/patcher/dom/models
-│   ├── cli/            # pipeline, agent_memory, campaign, api, sq commands + main
+│   ├── cli/            # pipeline, campaign, sq, knowledge, monitor, report, daemon
+│   ├── customproject/  # project templates (metadata + AutomaticRetest renderer)
 │   ├── data/           # DataManager (Dukascopy) + market/ (providers, registry)
 │   ├── dsl/            # ResearchConfig models + parser
-│   ├── gates/          # HumanGateOrchestrator, notifiers, models
-│   ├── knowledge/      # KnowledgeStore, Indexer, KB (models/store/seeder/seeding_flow)
-│   ├── phase4/         # JForex, Portfolio, Optimizer, Retester, template_registry, models
-│   ├── pipeline/       # Pipeline runner, stages, registry, config, license, progress
-│   ├── substrate/      # executor (PhaseResult), soporte de ejecución
-│   ├── customproject/  # templates (metadata + renderer de AutomaticRetest)
-│   └── ...             # readers/, reporting/, stats/, tools/, translate/
-├── tests/              # árbol canónico (testpaths incluye ambos árboles)
+│   ├── gates/          # HumanGateOrchestrator, notifiers, models, callbacks
+│   ├── knowledge/      # KnowledgeStore, Indexer, KB (models/store/seeder)
+│   ├── phase4/         # JForex, Portfolio, Optimizer, Retester, template_registry
+│   ├── pipeline/       # Pipeline runner, stages, registry, config, progress
+│   ├── substrate/      # executor + lifecycle support
+│   └── reporting/ stats/ translate/ tools/
+├── tests/              # canonical tree (included by testpaths)
 └── examples/           # pipeline.yaml, research-config.yaml
-docs/                   # docs raíz reorganizadas + docs/sqx-builder-config/ (fuente KB seeder)
-infra/                  # init-schema.sql (DB init, referenciado por docker-compose)
-app_movil/              # app Android demo (standalone, 112 archivos trackeados)
-knowledge/              # knowledge lake (agent-memory/, structured/, timeseries/)
-AI/opencode/            # prompts canónicos (campaign.md + phase-*.md + guardian.md), skills
+tests/                  # second test tree (also included by testpaths)
+docs/                   # docs, indexed by docs/index.md
+  └── sqx-builder-config/  # SQX builder reference; the KB seeder's source doc
+openspec/
+├── specs/              # normative capability specs (the contract layer)
+└── changes/            # active changes; archive/ holds completed history
+ai/opencode/            # repo-canonical agent prompts + skills (source of truth)
+infra/                  # init-schema.sql (DB init, referenced by docker-compose)
+knowledge/              # Knowledge Lake (agent-memory/, structured/, timeseries/)
+app_movil/              # standalone Android demo app (112 tracked files)
 ```
 
-Además: `tests/` en la raíz y `sdk/tests/` (**dos árboles de test** — deuda
-conocida; `testpaths = tests sdk/tests` recoge ambos).
+Two test trees exist (`tests/` and `sdk/tests/`); `testpaths` in `pytest.ini`
+collects both.
 
----
+## Campaign flow
 
-## 🏁 Fases y Cambios SDD Completados (archivados)
+The campaign is LLM-driven and runs **14 phases** in canonical order:
 
-| Cambio | Fecha | Estado |
-|--------|-------|--------|
-| Fase 1 — SDK Core → Fase 5f-i + Reporting/Config/Docs | 2026-07 | ✅ Archivado |
-| Sistema Multi-Agent (6 PRs) | 2026-07 | ✅ Archivado |
-| Production Readiness (Slice 1 — Foundation) | 2026-08-02 | ✅ Archivado |
-| Orchestrated Campaign Flow (REQ-01..21) | 2026-08-06/09 | ✅ Archivado |
-| Knowledge Memory System + Consumption Wiring | 2026-08-08 | ✅ Archivado |
-| Flow Integrity Gates + Monitoring | 2026-08-10 | ✅ Archivado |
-| Knowledge Seeding + Education (KB seeder, REQ-203/209) | 2026-08-11 | ✅ Archivado |
-| Research Real Analysis Frame | 2026-08-11 | ✅ Archivado |
-| Project Template + Retest Strategy | 2026-08-12 | ✅ Archivado |
-| Guardian Orchestrator Feedback | 2026-08-13 | ✅ Archivado |
-| JForex4 Integration | 2026-08-13 | ✅ Archivado |
-| **Per-Phase Subagent Delegation** | 2026-08-13 | ✅ Archivado (rama actual) |
-| Repo Organization + GitHub Prep | 2026-08-14 | 🔄 PR 2/3 en curso |
-
----
-
-## 🧠 Sistema Multi-Agent
-
-11 agentes + 5 gates (no orquestado) / 17 agentes + 8 gates (orquestado) / 19 agentes + 8 gates (con retest/optimize) orquestados via PipelineRunner (ver detalle en
-secciones previas de este doc y en `openspec/changes/archive/`).
-
----
-
-## 🧭 Orchestrated Campaign Flow (14 fases, delegación por fase)
-
-El flujo de campaña es **LLM-driven con 14 fases**:
-
-`research → hypothesis → config → review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops`
-
-Cada fase se delega a un **subagente dedicado** vía los prompts canónicos en
-`AI/opencode/agents/phase-*.md` (14 fases) + `campaign.md` (harness) +
-`guardian.md` (observación/retroalimentación en live-ops). El repo
-`AI/opencode/agents/` es la **única fuente de verdad**: `sync_prompts.py`
-copia repo → `~/.config/opencode/prompts/quantlab/` (idempotente; los archivos
-no gestionados — `guardian.md`, `orchestrator.md`, etc. — nunca se tocan).
-
-Cada fase devuelve el envelope Result Contract (`status`,
-`executive_summary`, `artifacts`, `next_recommended`, `risks`). Los gates
-humanos son **fail-closed** (REQ-11): decisión por archivo en
-`/tmp/sqx-gates/{campaign_id}/`, `question` como canal primario, stdin como
-fallback. `DataManager` es **solo Dukascopy** (FX M1/M5/H1).
-
----
-
-## 🧩 Módulos Recientemente Agregados
-
-| Módulo | Propósito |
-|--------|-----------|
-| `sdk/quantlab/data/market/` | Proveedores de datos de mercado + registry (`providers.py`, `registry.py`) |
-| `sdk/quantlab/agents/adaptive_retest_agent.py` | Agente de retest adaptativo |
-| `sdk/quantlab/customproject/templates.py` | Plantillas de proyecto + metadata `template_name` + renderer AutomaticRetest |
-| `sdk/quantlab/phase4/template_registry.py` | Registro de plantillas |
-| `app_movil/` | App Android demo standalone (112 archivos trackeados; `.gradle`/`build/` pendientes de ignore) |
-| `sdk/quantlab/campaign/delegation.py`, `substrate/executor.py` | Delegación por fase y ejecución (per-phase-subagent-delegation) |
-
----
-
-## 🔍 Hallazgos de la Auditoría (2026-08-14, previos al PR de reorg)
-
-- **Islas huérfanas** (código sin referencias activas): `sdk/quantlab/broker/`,
-  `sdk/quantlab/evolution/`, `sdk/quantlab/health/`, `sdk/quantlab/mcp/` —
-  pendientes de triaje/eliminación (fuera del alcance de PR 1-3).
-- **Tipos `PhaseResult` duplicados (x3)**: definidos en
-  `sdk/quantlab/phase4/models.py`, `sdk/quantlab/campaign/delegation.py` y
-  `sdk/quantlab/substrate/executor.py` — consolidar en un único tipo.
-- **Dos árboles de test** (`tests/` + `sdk/tests/`): deuda heredada; el
-  `testpaths` unificado los recoge, pero la duplicación persiste.
-- **Reorganización aplicada (PR 1-2)**: triaje de untracked (valiosos
-  commiteados, rotos/duplicados eliminados), docs movidas a `docs/` y
-  `docs/sqx-builder-config/`, refs de `DEFAULT_DOC_PATH` actualizadas,
-  `infra/init-schema.sql` movido de `docker/`.
-
----
-
-## 🧪 Tests
-
-```bash
-# Desde la raíz del repo (mock obligatorio: el daemon real bloquea puerto 5050)
-SQX_FORCE_MOCK=1 python -m pytest -q
+```
+research → hypothesis → config → review → dispatch → monitor → retest
+        → optimize → portfolio → compile → deploy → demo → archive → live-ops
 ```
 
-| Suite | Recogidos | Pasados | Fallos | Saltados | Errores |
-|-------|-----------|---------|--------|----------|---------|
-| Ambos árboles (2026-08-14) | **3516** | **3449** | **44** | **12** | **11** |
+The order lives in `PHASES` at `sdk/quantlab/campaign/flow.py:33` and is
+mirrored in `ai/opencode/agents/campaign.md`; a test extracts the literal from
+the prompt and compares it to the tuple, so the two cannot drift.
 
-Desglose (pre-existente, NO causado por la reorg de docs):
-- **11 errors**: `tests/phase4/test_campaign_orchestrator.py` — fallan por
-  orden/estado en la suite completa; cada test pasa individualmente (flaky
-  de fixtures, pre-existente).
-- **44 fallos**: deuda heredada en `tests/robustness/*`, dashboard,
-  news/llm lazy-init, `test_knowledge.py`, cfx reader, retester (flake de
-  orden), etc. — mismo set pre-existente, sin relación con los cambios de
-  docs/refs (PR 2 no toca código funcional).
-- Suites KB (fuente movida): `test_kb.py` + `test_kb_seed_validation.py` →
-  **62 passed** ✓ (valida `DEFAULT_DOC_PATH` → `docs/sqx-builder-config/SQX Builder Config.md`).
+`retest` and `optimize` are conditional — they are only required when the
+matching DSL block is present in the config. Every other phase must be present.
 
----
+How to actually run it: [Running Multi-Agent Campaigns](guides/running-campaigns.md).
 
-## ✅ Verificación End-to-End (2026-08-14)
+Human gates are **fail-closed** (REQ-11) — no auto-approval, and an unanswered
+gate stops the run. Decisions travel by file under `/tmp/sqx-gates/{campaign_id}/`.
+`DataManager` is **Dukascopy-only** at launch (FX M1/M5/H1).
 
-Validación completa de las dos capas de QuantLab:
+## Prompt and skill sync contract
 
-- **SDK + CLI**: install limpio desde `sdk/` en venv nuevo (Python 3.14, `pip>=26`),
-  `import quantlab 0.1.0` OK, binario `quantlab` con 14 comandos, `pipeline list`
-  (SQXCampaign 11 stages) y `pipeline run SQXCampaign --dry-run` OK sin daemon.
-  Fue bloqueado temporalmente por caída de `files.pythonhosted.org`; verificado al
-  recuperarse la red.
-- **Flujo orquestado (dry-run)**: agente `quantlab-campaign` con `SQX_FORCE_MOCK=1`
-  validó `assert_flow(PHASES)` (14 fases), parseo de `examples/research-config.yaml`
-  (EURUSD H1, 4 hipótesis, 5 gates), `BuildConfig` (3 blocks), CFX dry-run
-  (`_output/*.cfx.json`), `ConfigReviewStage` → **APPROVE**, y CLI dry-run exit 0.
-  Los 4 gates humanos (`HUMAN_APPROVE_CONFIG`, `HUMAN_APPROVE_DEPLOY`,
-  `HUMAN_APPROVE_DEMO`, `HUMAN_APPROVE_ARCHIVE`) confirmados
-  **fail-closed** (sin decisión → HOLD). Sin daemon real, sin gates respondidos.
-- **Fixes aplicados en esta sesión** (absorbidos por `fe49a6f`):
-  - `sdk/pyproject.toml`: `ta>=0.11` + `jinja2>=3.0` en deps core; extra
-    `reporting-matplotlib` (matplotlib opcional).
-  - `sdk/quantlab/agents/llm_research_agent.py`: `call_llm` ahora usa
-    `os.environ.get(llm_config.api_key_env)` (patrón de `llm_generation_monitor.py`);
-    soporta OpenCode Zen (`OPENCODE_API_KEY`, `deepseek-v4-flash-free`).
-  - `.env.example` / `README.md`: `SQX_INSTALL_PATH` real + requisito `pip>=26`.
-- **Modo orquestado es el correcto**: la campaña LLM-driven corre con los
-  subagentes OpenCode (`quantlab-orchestrator` → `quantlab-campaign` →
-  `quantlab-phase-*`), que consumen el modelo LLM activo del usuario en
-  OpenCode — sin API key propia. El stage `research_llm` / `LLMConfig` es SOLO
-  para el modo autónomo/headless del SDK (CLI, servidor, CI): con
-  `provider="opencode"` sus defaults apuntan a OpenCode Zen free
-  (`https://opencode.ai/zen/v1`, `deepseek-v4-flash-free`, `OPENCODE_API_KEY`).
-- **Pendiente externo**: llamada LLM real a OpenCode Zen devuelve 429
-  (`FreeUsageLimitError`, cuota free) — bloqueo temporal, no es defecto.
-
----
-
-## 🗺️ Pendientes y Deuda Técnica
-
-- [ ] **PR 3 (GitHub prep)**: `.gitignore`/`.gitattributes`, compose →
-  `infra/init-schema.sql`, README/LICENSE/SECURITY, remote add + push
-- [ ] Islas huérfanas (`broker/`, `evolution/`, `health/`, `mcp/`): triaje
-- [ ] Consolidar los 3 tipos `PhaseResult`
-- [ ] Unificar los dos árboles de test
-- [ ] `test_full_17_stage_pipeline_dry_run` — fixture roto, `@skip` deliberado
-- [ ] `LicenseManager` exportado sin uso; `PipelineRunner.run_with_gates()`
-  sin manejo de `GateTimeoutError`
-- [ ] `app_movil/**/build/`, `.gradle/` y `*.Zone.Identifier` pendientes de `.gitignore`
-- [ ] Backup `backup/pre-cleanup` — no borrar hasta verificar el push a GitHub
-
----
-
-## 🔧 Comandos Útiles
+`ai/opencode/` is the **single source of truth** for agent prompts and skills.
+The live copies under `~/.config/opencode/` are generated artifacts — never
+hand-edit them.
 
 ```bash
-# Configuración de SQX (instalación real, fuera del repo)
+python3 ai/opencode/sync_prompts.py --check   # exit 1 on drift
+python3 ai/opencode/sync_skills.py --check    # exit 1 on drift
+```
+
+Both scripts are idempotent and allowlist-scoped, and support `--dry-run`.
+
+## Tests
+
+```bash
+# From the repo root. SQX_FORCE_MOCK=1 is mandatory.
+SQX_FORCE_MOCK=1 python3 -m pytest -q
+
+# Focused, during iteration
+SQX_FORCE_MOCK=1 python3 -m pytest -q tests/campaign/
+```
+
+The KB suites (`sdk/tests/test_kb.py`, `test_kb_seed_validation.py`) validate
+`DEFAULT_DOC_PATH` end-to-end → `docs/sqx-builder-config/SQX Builder Config.md`.
+That filename is load-bearing: it is pinned in the seeder and cited by ~15
+`evidence_ref` entries under `knowledge/structured/sqx-kb/**`.
+
+CI additionally runs `ruff check`, `ruff format --check`, and
+`mypy quantlab --strict` — none of which are installed in the local `.venv`.
+
+## Known debt
+
+Verified present as of the snapshot above:
+
+- **Orphaned modules** with no active references, pending triage or removal:
+  `sdk/quantlab/broker/`, `sdk/quantlab/evolution/`, `sdk/quantlab/health/`,
+  `sdk/quantlab/mcp/`.
+- **Three duplicate `PhaseResult` types** — `phase4/models.py`,
+  `campaign/delegation.py`, `substrate/executor.py`. They are deliberately
+  aliased on import in `delegation.py` (AD-6) rather than consolidated.
+- **Two test trees** (`tests/` + `sdk/tests/`) — inherited debt; `testpaths`
+  unifies collection but the duplication persists.
+- `LicenseManager` is exported but unused; `PipelineRunner.run_with_gates()`
+  does not handle `GateTimeoutError`.
+
+## Useful commands
+
+```bash
+# SQX installation (outside the repo)
 export SQX_INSTALL_PATH="$HOME/Proyectos/SQX_144_2953_linux_20260601"
 export SQX_PORT=5050
 
-# Tests completos (ambos árboles, con mock)
-SQX_FORCE_MOCK=1 python -m pytest -q
+# Prompt/skill parity
+python3 ai/opencode/sync_prompts.py --check
+python3 ai/opencode/sync_skills.py --check
 
-# Sync de prompts (repo → live; --check sale 1 si hay drift)
-python3 AI/opencode/sync_prompts.py --check
-
-# KB seeder: ruta por defecto resuelta
-python -c "from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH; print(DEFAULT_DOC_PATH)"
+# KB seeder default path
+python3 -c "from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH; print(DEFAULT_DOC_PATH)"
 
 # CLI
-sdk/.venv/bin/python -m quantlab.cli api --help
-
-# Ver estado
-git status
-git log --oneline -10
+sdk/.venv/bin/python -m quantlab.cli campaign run-flow --help
 ```
+
+## Next step
+
+- [docs/index.md](index.md) — index of all 26 documents
+- [AGENTS.md](../AGENTS.md) — the contracts this repo enforces
