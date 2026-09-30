@@ -170,6 +170,21 @@ DEFAULT_GATE_POLICIES: dict[str, GatePolicyConfig] = {
         fallback=FallbackPolicy.HOLD,
         notifications=["webhook", "console"],
     ),
+    "HUMAN_APPROVE_REPLACEMENT": GatePolicyConfig(
+        gate_id="HUMAN_APPROVE_REPLACEMENT",
+        timeout_hours=24.0,
+        # Replaces a live position, so it must fail closed harder than the
+        # campaign gates. ABORT is the only fallback that cannot be read as
+        # "wait and carry on": an unanswered replacement stops the Guardian
+        # loop instead of leaving the live account in an unreviewed state.
+        # HOLD matches the deploy-gate posture but reads as a pending queue,
+        # which is wrong here — a queued live mutation is still a mutation.
+        # CONTINUE is never acceptable on this gate: it is the only fallback
+        # that resolves to GateDecisionAction.APPROVE (orchestrator.py), i.e.
+        # the auto-approval path that REQ-10 and REQ-11 prohibit.
+        fallback=FallbackPolicy.ABORT,
+        notifications=["email", "slack"],
+    ),
 }
 
 
