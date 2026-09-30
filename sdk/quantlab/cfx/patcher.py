@@ -113,9 +113,14 @@ def _render_attributes(source: Any, spec: tuple[tuple[str, str], ...]) -> str:
 def build_conditions_xml(conditions: list[AdvancedRankingCondition], indent: str = "  ") -> str:
     """Render ``conditions`` as the inner ``<Conditions>`` block of a Rankings section.
 
-    Every SQX attribute is emitted, defaults included, because a real SQX
-    144/2953 Retester CFX always writes the full attribute set. Only the
-    genuinely optional ``class`` and ``name`` attributes are omitted.
+    Every attribute is emitted, defaults included. SQX itself is not
+    consistent here: a real 144/2953 Retester CFX writes the full set on
+    ``<Column-Value>`` but only ``use`` on ``<Condition>``, leaving the rest
+    to the reader's defaults. Writing them explicitly is equivalent while
+    each extra attribute carries that same default, and
+    ``tests/phase4/test_project_builder_golden_rankings.py`` asserts exactly
+    that against the real export. Only the genuinely optional ``class`` and
+    ``name`` attributes are omitted.
 
     Public because two entry points need this exact dialect: the patcher
     (instruction-driven edits) and the custom-project renderers (task-driven
