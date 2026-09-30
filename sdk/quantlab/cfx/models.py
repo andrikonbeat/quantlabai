@@ -374,16 +374,72 @@ class RetestWithHigherPrecision(_RawXmlPassthrough):
 
 
 class MonteCarloRetest(_RawXmlPassthrough):
-    """Typed model for <MonteCarloRetest> element."""
+    """Typed model for the ``<MonteCarloRetest>`` element.
+
+    Attributes:
+        use: The tab's ``use`` flag.
+        number_of_simulations: Simulation count, parsed from the
+            ``<NumberOfSimulations>`` element *text* and serialized back the
+            same way. SQX stores this as element text, not as a ``value``
+            attribute, so writing it as an attribute would make the field
+            silently read back as the 100 default.
+        methods: The six randomization methods in real SQX 144.2953 evidence:
+            ``RandomizeHistoryData``, ``RandomizeMinDistance``,
+            ``RandomizeSlippage``, ``RandomizeSpread``,
+            ``RandomizeStartingBar`` and ``RandomizeStrategyParameters``.
+    """
 
     use: bool = False
     number_of_simulations: int = 100
+    methods: list[CrossChecksMethod] | None = None
 
 
 class MonteCarloManipulation(_RawXmlPassthrough):
     """Typed model for <MonteCarloManipulation> element."""
 
     use: bool = False
+
+
+class CrossChecksMethod(BaseModel):
+    """Typed model for a single ``<Method>`` inside CrossChecks Settings/Methods.
+
+    ``<Method>`` is reused by several robustness tabs (commission, both
+    MonteCarlo tabs, WhatIf), so ``type`` — the SQX method-type string such as
+    ``RandomizeSpread`` or ``ByDays`` — is the only thing that identifies a
+    method within a document.
+
+    Attributes:
+        use: The method's ``use`` flag, serialized as the ``use`` attribute.
+        type: SQX method type, serialized as the ``type`` attribute.
+        params: ``<Param key="...">`` leaves of this method, keyed by param
+            name and keeping their literal type (``str | int | float | bool``).
+            Keys repeat across methods, so they are only meaningful together
+            with ``type``; see the builder's ``_method_scope`` / ``_param``,
+            which anchor the match on ``type`` to keep sibling methods
+            untouched.
+    """
+
+    use: bool = False
+    type: str = ""
+    params: dict[str, str | int | float | bool] = Field(default_factory=dict)
+
+
+class WhatIfConfig(BaseModel):
+    """Typed model for the ``<WhatIf>`` element with method-level params.
+
+    What-If simulations rewrite the backtest to isolate event dependence. The
+    real SQX 144.2953 project template carries 15 method slots, each with a
+    ``use`` flag and its own params: ``ByDays``, ``ByHours``, ``ByMonths``,
+    ``ExcludePctTradesWithBiggestPl``, ``ExcludePctTradesWithLowestPl``,
+    ``ExcludeShortTrades``, ``ExcludeTradesWithBiggestPl``,
+    ``ExcludeTradesWithLowestPl``, ``ExludeOverlappingTrades`` (the SQX typo is
+    preserved verbatim), ``RemoveBalanceTransactions``,
+    ``RemovePendingTrades``, ``Swap``, ``TakeEverySecondTrade``,
+    ``TakeMaxTradesPerDay`` and ``UseFixedLots``.
+    """
+
+    use: bool = False
+    methods: list[CrossChecksMethod] = Field(default_factory=list)
 
 
 class RetestOnAdditionalMarkets(_RawXmlPassthrough):
@@ -414,6 +470,53 @@ class OptProfileSysParamPermutation(BaseModel):
     raw_xml: str = ""
 
 
+def _param_type(value: str | int | float | bool) -> str:
+    """Return SQX param type string for a Python value."""
+    if isinstance(value, bool):
+        return "Boolean"
+    if isinstance(value, int):
+        return "Integer"
+    if isinstance(value, float):
+        return "Double"
+    return "String"
+
+
+def _parse_method_params(params_el: ET.Element) -> dict[str, str | int | float | bool]:
+    """Parse <Params> child elements into a typed dict."""
+    params: dict[str, str | int | float | bool] = {}
+    if params_el is None:
+        return params
+    for param_el in params_el.findall("Param"):
+        key = param_el.get("key", "")
+        ptype = param_el.get("type", "")
+        value_raw = param_el.text
+        if value_raw is None:
+            continue
+        value = value_raw.strip()
+        if ptype == "Integer":
+            value = int(value)
+        elif ptype == "Double":
+            value = float(value)
+        elif ptype == "Boolean":
+            value = _str_to_bool(value, False)
+        params[key] = value
+    return params
+
+
+def _parse_methods(methods_el: ET.Element) -> list[CrossChecksMethod]:
+    """Parse <Methods> child elements into a list of CrossChecksMethod."""
+    methods: list[CrossChecksMethod] = []
+    if methods_el is None:
+        return methods
+    for method_el in methods_el.findall("Method"):
+        m_use = _str_to_bool(method_el.get("use"), False)
+        m_type = method_el.get("type", "")
+        params_el = method_el.find("Params")
+        params = _parse_method_params(params_el)
+        methods.append(CrossChecksMethod(use=m_use, type=m_type, params=params))
+    return methods
+
+
 class CrossChecksAutomaticRetest(BaseModel):
     """Typed model for AutomaticRetest CrossChecks dialect."""
 
@@ -425,6 +528,7 @@ class CrossChecksAutomaticRetest(BaseModel):
     walk_forward_optimization: WalkForwardOptimization | None = None
     walk_forward_matrix: WalkForwardMatrix | None = None
     opt_profile_sys_param_permutation: OptProfileSysParamPermutation | None = None
+    what_if: WhatIfConfig | None = None
 
 
 class CrossChecksConfig(BaseModel):
@@ -469,6 +573,7 @@ class CrossChecksConfig(BaseModel):
                 "WalkForwardOptimization",
                 "WalkForwardMatrix",
                 "OptProfileSysParamPermutation",
+                "WhatIf",
             }
 
             if any(t in generic_tags for t in child_tags):
@@ -556,11 +661,30 @@ class CrossChecksConfig(BaseModel):
             if ar.monte_carlo_retest is not None:
                 mc = ar.monte_carlo_retest
                 if mc.raw_xml:
+                    # Re-emit the source element verbatim. raw_xml is the only
+                    # carrier for content the typed fields do not model (the
+                    # full <Methods> tree, acceptance conditions), so
+                    # re-synthesizing here would drop it.
                     parts.append(f"  {mc.raw_xml.strip()}")
                 else:
+                    methods_xml = ""
+                    if mc.methods:
+                        method_parts = []
+                        for method in mc.methods:
+                            params_xml = "".join(
+                                f'<Param key="{k}" type="{_param_type(v)}">{v}</Param>'
+                                for k, v in method.params.items()
+                            )
+                            method_parts.append(
+                                f'<Method use="{str(method.use).lower()}" type="{method.type}">'
+                                f"<Params>{params_xml}</Params>"
+                                f"</Method>"
+                            )
+                        methods_xml = "".join(method_parts)
                     parts.append(
                         f"  <MonteCarloRetest use=\"{str(mc.use).lower()}\">"
-                        f"<Settings><NumberOfSimulations value=\"{mc.number_of_simulations}\"/></Settings>"
+                        f"<Settings><Methods>{methods_xml}</Methods>"
+                        f"<NumberOfSimulations>{mc.number_of_simulations}</NumberOfSimulations></Settings>"
                         f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
                         f"</MonteCarloRetest>"
                     )
@@ -612,6 +736,30 @@ class CrossChecksConfig(BaseModel):
             if ar.opt_profile_sys_param_permutation is not None and ar.opt_profile_sys_param_permutation.raw_xml:
                 parts.append(f"  {ar.opt_profile_sys_param_permutation.raw_xml.strip()}")
 
+            if ar.what_if is not None:
+                wi = ar.what_if
+                methods_xml = ""
+                if wi.methods:
+                    method_parts = []
+                    for method in wi.methods:
+                        params_xml = "".join(
+                            f'<Param key="{k}" type="{_param_type(v)}">{v}</Param>'
+                            for k, v in method.params.items()
+                        )
+                        method_parts.append(
+                            f'<Method use="{str(method.use).lower()}" type="{method.type}">'
+                            f"<Params>{params_xml}</Params>"
+                            f"</Method>"
+                        )
+                    methods_xml = "".join(method_parts)
+                parts.append(
+                    f"  <WhatIf use=\"{str(wi.use).lower()}\">"
+                    f"<Settings><Methods>{methods_xml}</Methods>"
+                    f"</Settings>"
+                    f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
+                    f"</WhatIf>"
+                )
+
             if self.raw_xml:
                 parts.append(f"  {self.raw_xml.strip()}")
             parts.append("</CrossChecks>")
@@ -625,16 +773,78 @@ class CrossChecksConfig(BaseModel):
         """Return a readable summary of configured parameters.
 
         Returns:
-            Dictionary with dialect and typed field values.
+            A superset of two contracts, so neither consumer breaks:
+
+            * ``json`` — dialect, enabled flags, typed sub-models,
+              ``enabled_tabs`` and ``typed_values``; plus ``text``, a
+              single-line log envelope.
+            * flat — ``dialect``, ``generic`` and ``automatic_retest`` read
+              directly off the top level, kept for callers that predate the
+              ``json``/``text`` envelope.
+
+            ``json`` aliases the same mapping as the flat view, so the two
+            cannot drift apart.
         """
         result: dict = {"dialect": self.dialect}
+        enabled_tabs: list[str] = []
+        typed_values: dict[str, str | int | float | bool] = {}
+
         if self.generic is not None:
-            result["generic"] = self.generic.model_dump()
+            g = self.generic
+            result["generic"] = g.model_dump()
+            if g.mc_enabled:
+                enabled_tabs.append("MonteCarlo")
+                typed_values["mc_runs"] = g.mc_runs
+                typed_values["mc_percentile"] = g.mc_percentile
+            if g.wf_enabled:
+                enabled_tabs.append("WalkForward")
+                typed_values["wf_cycles"] = g.wf_cycles
+            typed_values["confidence_level"] = g.confidence_level
+
         if self.automatic_retest is not None:
             ar = self.automatic_retest.model_dump()
-            # Remove None values for cleaner summary
             result["automatic_retest"] = {k: v for k, v in ar.items() if v is not None}
-        return result
+            if ar.get("retest_with_higher_precision"):
+                enabled_tabs.append("RetestWithHigherPrecision")
+            if ar.get("monte_carlo_retest"):
+                enabled_tabs.append("MonteCarloRetest")
+                mc = ar["monte_carlo_retest"]
+                typed_values["mc_number_of_simulations"] = mc.get("number_of_simulations", 100)
+            if ar.get("monte_carlo_manipulation"):
+                enabled_tabs.append("MonteCarloManipulation")
+            if ar.get("retest_on_additional_markets"):
+                enabled_tabs.append("RetestOnAdditionalMarkets")
+            if ar.get("walk_forward_optimization"):
+                enabled_tabs.append("WalkForwardOptimization")
+                wfo = ar["walk_forward_optimization"]
+                if wfo.get("period"):
+                    typed_values["wf_period"] = wfo["period"]
+                if wfo.get("optimization"):
+                    typed_values["wf_optimization"] = wfo["optimization"]
+            if ar.get("walk_forward_matrix"):
+                enabled_tabs.append("WalkForwardMatrix")
+            if ar.get("opt_profile_sys_param_permutation"):
+                enabled_tabs.append("OptProfileSysParamPermutation")
+            if ar.get("what_if"):
+                enabled_tabs.append("WhatIf")
+
+        result["enabled_tabs"] = enabled_tabs
+        result["typed_values"] = typed_values
+
+        text_parts = [f"dialect={self.dialect or 'none'}"]
+        if enabled_tabs:
+            text_parts.append(f"tabs={','.join(enabled_tabs)}")
+        for k, v in typed_values.items():
+            text_parts.append(f"{k}={v}")
+        text = " ".join(text_parts)
+
+        # Return the superset of both contracts so neither caller breaks:
+        #   * nested: ``json`` / ``text`` (single-line log envelope), and
+        #   * flat:   ``dialect`` / ``generic`` / ``automatic_retest`` read
+        #              directly off the top level.
+        # ``json`` is the same mapping, aliased rather than copied, so the two
+        # views cannot drift.
+        return {**result, "json": result, "text": text}
 
     @staticmethod
     def _parse_generic(root: ET.Element) -> CrossChecksGeneric:
@@ -697,6 +907,7 @@ class CrossChecksConfig(BaseModel):
         walk_forward_optimization = None
         walk_forward_matrix = None
         opt_profile_sys_param_permutation = None
+        what_if = None
 
         for child in root:
             # Keep the original markup for every recognized element: to_xml()
@@ -720,13 +931,20 @@ class CrossChecksConfig(BaseModel):
             elif child.tag == "MonteCarloRetest":
                 mc_use = _str_to_bool(child.get("use"), False)
                 num_sim = 100
+                methods = None
                 settings = child.find("Settings")
                 if settings is not None:
                     nos = settings.find("NumberOfSimulations")
                     if nos is not None and nos.text:
                         num_sim = int(nos.text.strip())
+                    methods_el = settings.find("Methods")
+                    if methods_el is not None:
+                        methods = _parse_methods(methods_el)
                 monte_carlo_retest = MonteCarloRetest(
-                    use=mc_use, number_of_simulations=num_sim, raw_xml=raw_xml
+                    use=mc_use,
+                    number_of_simulations=num_sim,
+                    methods=methods,
+                    raw_xml=raw_xml,
                 )
             elif child.tag == "MonteCarloManipulation":
                 mc_use = _str_to_bool(child.get("use"), False)
@@ -772,6 +990,15 @@ class CrossChecksConfig(BaseModel):
                 opt_profile_sys_param_permutation = OptProfileSysParamPermutation(
                     use=opsp_use, raw_xml=raw_xml
                 )
+            elif child.tag == "WhatIf":
+                wi_use = _str_to_bool(child.get("use"), False)
+                methods = []
+                settings = child.find("Settings")
+                if settings is not None:
+                    methods_el = settings.find("Methods")
+                    if methods_el is not None:
+                        methods = _parse_methods(methods_el)
+                what_if = WhatIfConfig(use=wi_use, methods=methods)
 
         return CrossChecksAutomaticRetest(
             use=use,
@@ -782,6 +1009,7 @@ class CrossChecksConfig(BaseModel):
             walk_forward_optimization=walk_forward_optimization,
             walk_forward_matrix=walk_forward_matrix,
             opt_profile_sys_param_permutation=opt_profile_sys_param_permutation,
+            what_if=what_if,
         )
 
 
