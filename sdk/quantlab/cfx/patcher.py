@@ -61,8 +61,12 @@ class ValidationError(CfxParseError):
 
 
 # Attribute emission order for advanced ranking filters. The order reproduces a
-# real SQX 144/2953 Retester CFX export; every attribute is always emitted
-# because SQX writes the full attribute set, defaults included.
+# real SQX 144/2953 Retester CFX export. Every attribute is always emitted, but
+# the justification is not simply "SQX does the same": SQX writes the full set
+# on <Column-Value> and only ``use`` on <Condition>, leaving the rest to reader
+# defaults. Writing them explicitly is equivalent while each carries that
+# default, and tests/phase4/test_project_builder_golden_rankings.py asserts
+# exactly that against the real export.
 _CONDITION_ATTRS: tuple[tuple[str, str], ...] = (
     ("result_type", "resultType"),
     ("sample_type", "sampleType"),

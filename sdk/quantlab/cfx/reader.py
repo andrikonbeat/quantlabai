@@ -410,6 +410,24 @@ def _parse_settings_element(
     the flat lane. Used for ``<Data>``, which also feeds the typed
     ``DataRangeParts`` model: capturing the same element in both lanes would
     duplicate it on the next write.
+
+    .. warning::
+       The flat lane does not round-trip a real SQX ``<Setting>``. SQX writes
+       ``<Setting key="EURUSD_H1" value="true"/>``, but the flattener treats
+       ``key`` and ``value`` as nested elements and produces
+       ``Setting@key``/``Setting@value``, so the next write emits
+
+       .. code-block:: xml
+
+           <Setting key="Setting@key" value="EURUSD_H1"/>
+           <Setting key="Setting@value" value="true"/>
+
+       The original pairing is lost on the first save. The count settles at
+       two rather than growing without bound, but the databank selection is
+       gone. This predates the typed ranking and data-range work and affects
+       every section, so it is a separate change; do not treat a flat
+       ``<Data>`` section as a faithful representation of the file. The typed
+       lanes added for rankings and data ranges are unaffected.
     """
     settings: dict[str, str] = {}
     if setting_children_only:

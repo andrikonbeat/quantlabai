@@ -220,6 +220,19 @@ class DataRangeParts(BaseModel):
 
     ``validation_ratio`` and ``test_ratio`` are kept as distinct fields and are
     never folded into a training ratio: the spec forbids that reinterpretation.
+
+    .. note::
+       The typed element *names* are a QuantLab convention, not verified SQX
+       output. Real SQX writes ``<Setups>`` and ``<OutOfSample>`` where this
+       model writes ``<IST>`` and ``<OOSEvery>``; no SQX 144/2953 export was
+       found carrying these names, and the golden fixture in
+       ``tests/cfx/fixtures/`` is a ``<Data>`` block SQX itself produced. Until
+       a real export shows otherwise, read the typed names as internal and use
+       ``raw_xml`` for anything that must survive a real SQX round trip. The
+       ranking lane has verified SQX evidence and does not carry this caveat;
+       ``tests/phase4/test_project_builder_golden_rankings.py`` deliberately
+       holds the data-range names out of its parity assertions for the same
+       reason.
     """
 
     ist: str | None = None
