@@ -50,11 +50,11 @@ Threat-matrix RED tests: N/A
 
 ## Phase 4: Testing / Verification
 
-- [ ] 4.1 RED: golden CFX round-trip test using retester-advanced-rankings.cfx
-- [ ] 4.2 GREEN: create fixture and make round-trip pass
-- [ ] 4.3 GREEN: mixed simple + advanced conditions compatibility test
-- [ ] 4.4 GREEN: project builder golden test for phase4 emission
+- [x] 4.1 RED: golden CFX round-trip test using retester-advanced-rankings.cfx
+- [x] 4.2 GREEN: create fixture and make round-trip pass
+- [x] 4.3 GREEN: mixed simple + advanced conditions compatibility test
+- [x] 4.4 GREEN: project builder golden test for phase4 emission
 
 ## Phase 5: Cleanup
 
-- [ ] 5.1 Update docstrings/comments and remove temporary scaffolding
+- [x] 5.1 Update docstrings/comments and remove temporary scaffolding

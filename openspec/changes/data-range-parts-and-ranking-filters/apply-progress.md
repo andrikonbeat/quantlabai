@@ -319,3 +319,120 @@ the single merged `<Rankings>`.
 PR 3: `CfxReader` does not yet populate `BuildTask.data_range_parts`, so a typed
 round-trip assertion will need the reader wired first — deliberately left out of PR 2 to
 keep the stacked boundaries clean.
+
+## Work Unit 4 — Golden round-trip + mixed compatibility (PR 3), tasks 4.1–4.4 + 5.1 — COMPLETE
+
+Five commits, each a self-contained reviewable unit. `chained-to-main`, targeting
+`ff6336f` (the reader prerequisite).
+
+| Commit | Unit | Authored lines |
+|---|---|---|
+| `228ec63` | Golden fixture + writer round trip (4.1, 4.2) | 400 (fixture is binary, excluded) |
+| `54735cd` | Reader-fidelity half of the golden (4.1, 4.2) | 183 |
+| `826659a` | Mixed compatibility + real silent-drop fix (4.3) | 336 |
+| `89a38bb` | phase4 emission judged against real SQX (4.4) | 326 |
+| `58283c2` | Docstring corrections + gap records (5.1) | 39 |
+
+### TDD Cycle Evidence
+
+| Task | RED | GREEN | REFACTOR |
+|---|---|---|---|
+| 4.1, 4.2 | Golden written first; it failed until the writer preserved `<Comparator>` / `<Right-Side>` via `raw_xml` and stopped duplicating `<Data>` on save | 19 passed (C1), 22 passed (C1+C2) | Split into two classes so a 400-line review slice and a 183-line slice each stand alone |
+| 4.1 reader half | 9 of 12 `<Column-Value>` attributes carry exactly the model default, so a defaulting reader is indistinguishable from a correct one | Perturbed-archive tests pass only if the reader reads the file | Perturb the whole attribute set, not two attributes — a spot check leaves the rest reachable by a hard-coded constant |
+| 4.3 | `test_simple_condition_survives_next_to_an_advanced_one` failed with `KeyError: 'Criterion1@metric'` at HEAD | 10 passed; `tests/cfx/` 193 → 202 | One assertion initially demanded fixing the unrelated `SettingsSection` projection defect; narrowed to this change's contract |
+| 4.4 | Characterization tests for behaviour shipped in PR 2 — no genuine defect in the emission. Mutation testing is the non-vacuity proof, and it found a real weakness in the first draft (below) | 12 passed | Added `_sqx_all_attribute_names` as an independent name oracle |
+| 5.1 | Documentation only | 9 failures before and after, identical set | — |
+
+### The RED that found a real bug (4.3)
+
+`_apply_add_ranking_condition()` was guarded by `if self._task.rankings`, so on any
+task that had not pre-seeded that section the instruction was discarded with no error
+and no trace. The phase4 retester template seeds only the complex
+`rankings_section` lane, so **every** mixed simple + advanced build lost its simple
+half. The lane is now created on demand. Behaviour-preserving wherever the lane
+already exists, which is every pre-existing caller.
+
+### Mutation verification
+
+All mutants applied in isolated clean-HEAD worktrees, never against the shared index.
+Each run asserted the target string occurred exactly once, so a silently-unapplied
+mutation can never be miscounted as a survivor.
+
+| Suite | Mutants | Killed | Survivors |
+|---|---|---|---|
+| Golden (C1) | 6 relevant + 1 equivalent | 6/6 | 0 |
+| Reader-fidelity (C2) | 6 (`class_`, `name`, `resultType`, `column`, `format`, `use`) | 6/6 | 0 |
+| Mixed compatibility (4.3) | 8 (lazy-lane removal, criterion index, unmerged `<Rankings>`, duplicate `<Data>`, prepended flat settings, …) | 8/8 | 0 |
+| phase4 golden (4.4) | 9 | 9/9 | 0 |
+
+**The 4.4 survivor that was not a weak mutant.** The first draft derived the default
+`<Condition>` attribute values from the renderer itself, then compared the emission
+against them. SQX writes only `use` on `<Condition>`, so renaming an attribute moved
+both sides of the comparison and the test passed. The name dimension was
+tautological. Fixed by anchoring the name check on the global set of attribute names
+SQX writes anywhere in the export — the only independent record of which names it
+understands. A survivor there is a real gap, not a weak mutant.
+
+### Work Unit Evidence
+
+| Evidence | Result |
+|---|---|
+| Focused command (tasks.md PR3 row) | `SQX_FORCE_MOCK=1 python3 -m pytest -q tests/cfx/test_patcher.py tests/phase4/test_project_builder.py` → **188 passed** |
+| Change surface | `tests/cfx/ tests/phase4/ tests/dsl/ tests/customproject/` → **1085 passed, 4 skipped, 0 failed** (baseline 1063 passed, 4 skipped) |
+| Runtime harness | Real archive path, no mocks: every golden builds and re-reads an actual `.cfx` zip through `CfxReader`/`CfxWriter`; the 4.4 golden cross-checks the phase4 emission against the real SQX export through the same reader. There is no mock/SQX-daemon boundary in this unit. |
+| Rollback boundary | Each commit reverts independently. `228ec63`+`54735cd` are test-only (revert both and no production behaviour changes). `826659a` reverts to a silent drop on mixed builds. `89a38bb` is test-only. `58283c2` is documentation-only. |
+
+### Regression attribution
+
+The concurrent session's CrossChecks work (typed `cross_checks_section` in
+`models.py`, and `tests/phase4/test_project_builder.py` +650/-40) was **uncommitted**
+throughout PR 3, so a clean HEAD worktree fails 8 `tests/cfx/` + 1 `tests/phase4/`
+CrossChecks tests that pass in the main working tree. Every isolation run therefore
+compared failure *sets*, never counts, before and after each staged change:
+
+- clean HEAD: `tests/cfx/` 8 failed / 163 passed → HEAD+4.3 8 failed / 173 passed — **identical failure set**
+- clean HEAD: `tests/phase4/` 1 failed / 638 passed → HEAD+4.4 1 failed / 650 passed — **identical failure set**
+- clean HEAD: `tests/cfx/ tests/phase4/` 9 failed → HEAD+5.1 9 failed — **identical failure set**
+
+With that work present in the working tree: **898 passed, 0 failed**.
+
+### Deviations from design.md
+
+- **Merge order (4.3).** Real Retester *and* Builder SQX exports contain zero flat
+  `<Setting>` elements inside `<Rankings>` and zero `Criterion*@` keys. The flat lane
+  is a QuantLab extension with no SQX-defined position, so "preserve SQX order" has
+  no meaning for it. The merge leaves SQX's verified child order untouched and
+  appends the flat lane last. Recorded as a test rather than assumed.
+- **4.4 is additive, not a rewrite of `tests/phase4/test_project_builder.py`.** Task
+  3.5's hand-written expectations are correct for our own output but cannot answer
+  "would SQX understand it?" — every expectation in them is one this project chose, so
+  a wrong dialect chosen consistently passes all of them. The new module adds the
+  second oracle rather than re-deciding the first. It also avoids the file the
+  concurrent session owns.
+
+### Issues found
+
+1. **Flat lane destroys a real `<Setting>`** — pre-existing, affects every section,
+   now documented in `_parse_settings_element` with a measured four-cycle trace:
+   1 `<Setting>` → 2, then holds at 2. Data loss (the databank pairing is gone), not
+   unbounded growth — the weaker and more accurate of the two failure descriptions I
+   had been carrying. Separate change; not fixed here.
+2. **`DataRangeParts` typed element names have no verified SQX counterpart.** SQX
+   writes `<Setups>` / `<OutOfSample>`; the model writes `<IST>` / `<OOSEvery>`. Noted
+   in the model, and deliberately excluded from the 4.4 parity assertions.
+3. **A comment presented an assumption as evidence** — `_CONDITION_ATTRS` claimed SQX
+   "always writes the full attribute set". It writes the full set on `<Column-Value>`
+   and only `use` on `<Condition>`. The code was right; the stated reason was wrong.
+   Corrected in `patcher.py` and `build_conditions_xml`.
+
+### Task status
+
+- [x] 4.1 golden fixture `retester-advanced-rankings.cfx` + round trip
+- [x] 4.2 mixed simple + advanced conditions compatibility
+- [x] 4.3 writer merge-order check against native SQX
+- [x] 4.4 project builder golden
+- [x] 5.1 cleanup (docstrings, scaffolding, corrected claims)
+
+### Status
+
+**20/20 tasks complete.** PR 3 is done. Next: `sdd-verify`.
