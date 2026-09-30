@@ -17,6 +17,7 @@ needs_review, REQ-208).
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -26,6 +27,24 @@ from quantlab.knowledge.store import KnowledgeStore
 
 class KbParamNotFoundError(KeyError):
     """Raised when a parameter does not exist for the requested version."""
+
+
+@dataclass(frozen=True)
+class VersionDriftResult:
+    """Outcome of a version-drift check (REQ-208).
+
+    ``drifted`` tells the consumer whether the catalog it is about to read still
+    matches the installed SQX build. ``blocked`` is always ``False`` here: drift
+    invalidates entries and warns, it never refuses. Callers running in a strict
+    mode decide for themselves to abort based on ``drifted``.
+    """
+
+    catalog_version: str
+    current_version: str
+    drifted: bool
+    invalidated: int
+    blocked: bool = False
+    warnings: list[str] = field(default_factory=list)
 
 
 def _format_param_path(tab: str, param: str) -> str:
@@ -268,6 +287,62 @@ class KbStore:
             self._save_file(entry)
             count += 1
         return count
+
+    def invalidate_on_version_drift(
+        self,
+        current_version: str,
+        *,
+        catalog_version: str | None = None,
+        tab: str | None = None,
+    ) -> VersionDriftResult:
+        """Invalidate the catalog when the installed SQX build drifted (REQ-208).
+
+        Compares the installed build against the version bucket the catalog was
+        extracted from. On a mismatch every entry of the old bucket is demoted
+        to ``needs_review`` so it is never served as ``verified`` again, and the
+        returned result carries the warnings a consumer must surface.
+
+        Drift **warns, it never blocks**: the method does not raise and
+        ``blocked`` stays ``False``. Strict-mode consumers abort on
+        ``result.drifted`` themselves.
+
+        Args:
+            current_version: Installed SQX build, e.g. ``"145.1"``.
+            catalog_version: Catalog bucket to check; defaults to the pinned one.
+            tab: Optional tab to scope the invalidation to.
+
+        Returns:
+            A :class:`VersionDriftResult` describing what happened.
+        """
+        version = self._resolve_version(catalog_version)
+        if current_version == version:
+            return VersionDriftResult(
+                catalog_version=version,
+                current_version=current_version,
+                drifted=False,
+                invalidated=0,
+            )
+
+        params = self.list(tab=tab, sqx_version=version)
+        invalidated = 0
+        for param in params:
+            if param.status == "needs_review":
+                continue
+            param.status = "needs_review"
+            self._save_file(param)
+            invalidated += 1
+
+        return VersionDriftResult(
+            catalog_version=version,
+            current_version=current_version,
+            drifted=True,
+            invalidated=invalidated,
+            warnings=[
+                f"SQX version drift: catalog sqx-kb/{version} does not match the "
+                f"installed build {current_version}. {invalidated} entry(ies) "
+                f"demoted to needs_review — re-verify before relying on them.",
+            ],
+        )
 
     def status(self, sqx_version: str | None = None) -> dict[str, object]:
         """Summary counts by status for a version (or the pinned version)."""
