@@ -1,3 +1,5 @@
+# Automated Strategy Factory Architecture
+
 > From: https://chatgpt.com/g/g-p-6a536ecee7b88191aa45638bcb873158-algotrading/c/6a5665e3-65dc-83ea-8f8d-5d8032bd8966
 
 # you asked

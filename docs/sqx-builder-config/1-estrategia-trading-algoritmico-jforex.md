@@ -1,3 +1,5 @@
+# JForex 4 Algorithmic Trading Strategy
+
 > From: https://chatgpt.com/g/g-p-6a536ecee7b88191aa45638bcb873158-algotrading/c/6a53b070-0e3c-83ea-ad48-e5a87ae4df39
 
 # you asked
