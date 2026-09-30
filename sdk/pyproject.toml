@@ -33,6 +33,11 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    # Required by the root pytest.ini: `asyncio_mode = auto` is a pytest-asyncio
+    # option, and the suite has async tests in both tests/ and sdk/tests/.
+    # Without the plugin, pytest >= 8.4 fails unhandled coroutines instead of
+    # running them, so this is a hard requirement, not a convenience.
+    "pytest-asyncio>=1.0",
 ]
 reporting = [
     "plotly>=5.18",
