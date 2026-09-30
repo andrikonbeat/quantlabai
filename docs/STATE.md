@@ -130,8 +130,12 @@ gate stops the run. The three gates that always block a dispatch are:
 | `HUMAN_APPROVE_DEMO` | the demo account |
 | `HUMAN_APPROVE_ARCHIVE` | archiving the campaign |
 
-The full registry is eight gates — see `DEFAULT_GATE_POLICIES` at
-`sdk/quantlab/gates/models.py:122-176`. Decisions travel by file under
+The full registry is the keys of `DEFAULT_GATE_POLICIES` in
+`sdk/quantlab/gates/models.py` (referenced here without a count on purpose —
+the count drifts every time a gate is registered, so read it from the dict).
+`HUMAN_APPROVE_REPLACEMENT` is registered but is the one entry no
+pipeline stage invokes yet; it is enforced at the prompt level. Decisions
+travel by file under
 `/tmp/sqx-gates/{campaign_id}/`. `DataManager` is **Dukascopy-only** at launch
 (FX M1/M5/H1).
 
