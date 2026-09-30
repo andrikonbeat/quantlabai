@@ -277,6 +277,189 @@ class TestReaderAgainstRealSqxCfx:
         assert 'restartCount="5"' in raw
 
 
+def _replace_in_fixture(
+    tmp_path: Path, replacements: list[tuple[str, str, int]]
+) -> Path:
+    """Copy the fixture into ``tmp_path``, editing the given strings.
+
+    Each replacement is ``(old, new, occurrence)`` where ``occurrence`` is the
+    1-based index of the match to edit. All replacements are applied to a
+    single copy: chaining calls would re-read the pristine fixture and discard
+    earlier edits, silently turning a two-attribute test into a one-attribute
+    one.
+
+    The occurrence index is required because the real export repeats the same
+    attribute set three times, once per ranked column. Replacing the first
+    match would perturb ``AvgTradesPerMonth`` while the assertion reads
+    ``ProfitFactor`` — a test that passes only because it looked at the wrong
+    element.
+
+    The perturbed archive must still *be* SQX output apart from the stated
+    attributes, so perturbation happens on a per-test copy rather than by
+    editing the committed fixture.
+    """
+    with zipfile.ZipFile(FIXTURE) as zf:
+        entries = {name: zf.read(name) for name in zf.namelist()}
+    task_xml = entries["Build-Task1.xml"].decode("utf-8")
+    for old, new, occurrence in replacements:
+        assert task_xml.count(old) >= occurrence, (
+            f"fixture has {task_xml.count(old)} occurrence(s) of {old!r}, "
+            f"needed at least {occurrence}"
+        )
+        head, sep, tail = task_xml.partition(old) if occurrence == 1 else _nth_split(
+            task_xml, old, occurrence
+        )
+        assert sep, f"fixture does not contain {old!r}"
+        task_xml = f"{head}{new}{tail}"
+    entries["Build-Task1.xml"] = task_xml.encode("utf-8")
+
+    label = "-".join(str(abs(hash(k))) for k, _, _ in replacements) or "copy"
+    out = tmp_path / f"perturbed-{label}.cfx"
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, payload in entries.items():
+            zf.writestr(name, payload)
+    return out
+
+
+def _nth_split(text: str, needle: str, occurrence: int) -> tuple[str, str, str]:
+    """Split ``text`` around the ``occurrence``-th (1-based) ``needle``."""
+    index = -1
+    for _ in range(occurrence):
+        index = text.index(needle, index + 1)
+    return text[:index], needle, text[index + len(needle) :]
+
+
+class TestReaderReadsAttributesRatherThanAssumingDefaults:
+    """Triangulation for the fidelity tests above.
+
+    Every ``<Column-Value>`` in the real SQX export carries the *same* value as
+    the model default for nine of its twelve attributes (``columnType="0"``,
+    ``confidenceLevel="50"``, …). A reader that ignored the file and returned
+    the defaults would therefore pass every fidelity assertion in this module —
+    a green that proves nothing.
+
+    These tests perturb the fixture to values SQX never emits, so reading the
+    file and returning a default are distinguishable. They also confirm the
+    attribute *names* are honoured, which a hard-coded constant cannot do.
+    """
+
+    def test_every_column_attribute_is_read_not_defaulted(
+        self, tmp_path: Path
+    ) -> None:
+        """GIVEN a column whose attributes differ from **every** model default
+        WHEN the archive is read
+        THEN all ten file values win. Perturbing the whole set rather than two
+        attributes is deliberate: a per-attribute spot check leaves the other
+        eight reachable by a hard-coded constant that happens to match SQX.
+        """
+        source = _replace_in_fixture(
+            tmp_path,
+            [
+                (
+                    'column="ProfitFactor" columnType="0" format="Decimal2"'
+                    ' resultType="main" direction="0" sampleType="127"'
+                    ' plType="10" confidenceLevel="50" market="1"'
+                    ' subresult="30" pctRatio="0" class="ProfitFactor"',
+                    'column="ProfitFactor" columnType="7" format="Decimal4"'
+                    ' resultType="secondary" direction="3" sampleType="42"'
+                    ' plType="77" confidenceLevel="93" market="8"'
+                    ' subresult="31" pctRatio="4" class="ProfitFactor"'
+                    ' name="pf"',
+                    1,
+                )
+            ],
+        )
+
+        task = _read_task(source, tmp_path, "perturbed.cfx")
+
+        (column,) = task.advanced_rankings.conditions[1].column_values
+        assert column.model_dump(by_alias=True) == {
+            "column": "ProfitFactor",
+            "columnType": "7",
+            "format": "Decimal4",
+            "resultType": "secondary",
+            "direction": "3",
+            "sampleType": "42",
+            "plType": "77",
+            "confidenceLevel": "93",
+            "market": "8",
+            "subresult": "31",
+            "pctRatio": "4",
+            "class": "ProfitFactor",
+            "name": "pf",
+        }
+
+    def test_every_condition_attribute_is_read_not_defaulted(
+        self, tmp_path: Path
+    ) -> None:
+        """The same guard for the ``<Condition>``-level attributes.
+
+        Note the shape this exposes: in the real export ``<Condition>`` carries
+        **only** ``use`` — ``subresult``, ``pctRatio`` and the rest live on the
+        nested ``<Column-Value>``, so every condition-level field in the typed
+        model is populated from a default, not from the file. Perturbing the
+        ``<Condition>`` element is therefore the only way to prove those nine
+        fields are read rather than assumed.
+        """
+        source = _replace_in_fixture(
+            tmp_path,
+            # 2nd occurrence = the ProfitFactor condition.
+            [
+                (
+                    '<Condition use="true">',
+                    '<Condition use="false" resultType="secondary" sampleType="42"'
+                    ' direction="3" pctRatio="4" confidenceLevel="93" market="8"'
+                    ' plType="77" subresult="31" class="Custom" name="profit-gate">',
+                    2,
+                )
+            ],
+        )
+
+        task = _read_task(source, tmp_path, "perturbed-cond.cfx")
+
+        condition = task.advanced_rankings.conditions[1]
+        assert condition.model_dump(by_alias=True) == {
+            "use": False,
+            "resultType": "secondary",
+            "sampleType": "42",
+            "direction": "3",
+            "pctRatio": "4",
+            "confidenceLevel": "93",
+            "market": "8",
+            "plType": "77",
+            "subresult": "31",
+            "class": "Custom",
+            "name": "profit-gate",
+            "column_values": [EXPECTED_PROFIT_FACTOR_COLUMN | {"name": None}],
+        }
+
+    def test_perturbed_values_survive_the_round_trip(self, tmp_path: Path) -> None:
+        """The fidelity assertions above would also pass if the writer emitted
+        the typed model rather than the original XML — provided every default
+        matched. With perturbed values, an emit-from-typed-model writer shows up
+        as a re-render, which is detectable because the native ``<Left-Side>``,
+        ``<Comparator>`` and ``<Right-Side>`` would be gone.
+        """
+        source = _replace_in_fixture(
+            tmp_path,
+            [('spread="3"', 'spread="17"', 1),
+             ('confidenceLevel="50"', 'confidenceLevel="93"', 1)],
+        )
+
+        out = _round_trip(source, tmp_path / "rt.cfx")
+        settings = _settings(out)
+
+        assert settings.find("Data/Setups/Setup/Chart").get("spread") == "17"
+        assert (
+            settings.find("Rankings/Conditions/Condition/Left-Side/Column-Value").get(
+                "confidenceLevel"
+            )
+            == "93"
+        )
+        # The native dialect is still intact, so the writer used raw_xml.
+        assert settings.find("Rankings/Conditions/Condition/Comparator").get("value") == ">"
+
+
 class TestGoldenRoundTrip:
     def test_round_trip_is_byte_stable(self, tmp_path: Path) -> None:
         """Read → write → read → write must converge on the first pass. A second
