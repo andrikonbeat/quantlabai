@@ -591,24 +591,34 @@ class CfxPatcher:
     def _apply_add_ranking_condition(
         self, instruction: AddRankingConditionInstruction
     ) -> None:
-        """Add a ranking condition to Rankings/Acceptance."""
-        if self._task.rankings:
-            # Find next available criterion index - count unique criterion prefixes
-            existing_prefixes = set()
-            for k in self._task.rankings.settings.keys():
-                if k.startswith("Criterion"):
-                    # Extract the prefix (e.g., "Criterion1" from "Criterion1@metric")
-                    prefix = k.split("@")[0]
-                    existing_prefixes.add(prefix)
-            next_idx = len(existing_prefixes) + 1
-            prefix = f"Criterion{next_idx}"
-            self._task.rankings.settings[f"{prefix}@metric"] = instruction.metric
-            self._task.rankings.settings[f"{prefix}@operator"] = instruction.operator
-            # Format value: remove .0 for whole numbers
-            value = instruction.value
-            if isinstance(value, float) and value == int(value):
-                value = int(value)
-            self._task.rankings.settings[f"{prefix}@value"] = str(value)
+        """Add a ranking condition to Rankings/Acceptance.
+
+        The flat lane is created on demand. This applier used to be guarded by
+        ``if self._task.rankings``, so on any task that did not pre-seed the
+        section the instruction was discarded with no error and no trace. The
+        phase4 retester template seeds only the complex ``rankings_section`` lane,
+        so a mixed simple + advanced build silently lost its simple half. Both
+        lanes now merge losslessly in the writer, so creating the section is
+        enough; behaviour is unchanged whenever the lane already exists.
+        """
+        if self._task.rankings is None:
+            self._task.rankings = SettingsSection(name="Rankings", settings={})
+        # Find next available criterion index - count unique criterion prefixes
+        existing_prefixes = set()
+        for k in self._task.rankings.settings.keys():
+            if k.startswith("Criterion"):
+                # Extract the prefix (e.g., "Criterion1" from "Criterion1@metric")
+                prefix = k.split("@")[0]
+                existing_prefixes.add(prefix)
+        next_idx = len(existing_prefixes) + 1
+        prefix = f"Criterion{next_idx}"
+        self._task.rankings.settings[f"{prefix}@metric"] = instruction.metric
+        self._task.rankings.settings[f"{prefix}@operator"] = instruction.operator
+        # Format value: remove .0 for whole numbers
+        value = instruction.value
+        if isinstance(value, float) and value == int(value):
+            value = int(value)
+        self._task.rankings.settings[f"{prefix}@value"] = str(value)
 
     def _apply_enable_crosscheck(self, instruction: EnableCrosscheckInstruction) -> None:
         """Enable walk-forward and Monte-Carlo cross-checks."""
