@@ -408,6 +408,12 @@ Query, tag, link, and export campaigns from the Knowledge Lake.
 
 See [Knowledge Query Reference](docs/guides/knowledge-query.md) for filter syntax, API, and schema details.
 
+## Documentation
+
+**[docs/index.md](docs/index.md)** is the index of every document in `docs/`,
+grouped by directory. New to the project, start with
+[Running Multi-Agent Campaigns](docs/guides/running-campaigns.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

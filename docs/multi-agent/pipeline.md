@@ -1,6 +1,11 @@
-# Pipeline YAML Reference
+# Multi-Agent Pipeline YAML Reference
 
 Reference guide for configuring the Multi-Agent Research System pipeline using YAML.
+
+> This page documents the **Multi-Agent Research System** configuration
+> (`agents`, `gates`, `memory`). For the plain **SDK** pipeline schema
+> (`name` / `stages` / builtin stage `type`s) used by `quantlab pipeline run`,
+> see [SDK Pipeline YAML Reference](../configuration/pipeline-yaml.md).
 
 ## Overview
 

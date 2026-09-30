@@ -1,8 +1,13 @@
-# Pipeline YAML Reference
+# SDK Pipeline YAML Reference
 
 Pipeline YAML files define automated campaigns for the QuantLab SDK. Each pipeline is a directed acyclic graph (DAG) of stages that execute sequentially against the StrategyQuant X daemon.
 
 > **SDK Reference**: [`sdk/quantlab/pipeline/`](../../sdk/quantlab/pipeline/)
+>
+> This page documents the **SDK** pipeline schema (`name` / `stages` / stage
+> `type`s) used by `quantlab pipeline run`. For the **Multi-Agent Research
+> System** configuration — `agents`, `gates`, and `memory` sections — see
+> [Multi-Agent Pipeline YAML Reference](../multi-agent/pipeline.md).
 
 ---
 
