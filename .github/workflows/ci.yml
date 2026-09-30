@@ -64,15 +64,29 @@ jobs:
       - name: Install dependencies
         run: pip install -e "sdk[dev]"
 
+      - name: Run Flow Integrity Contract
+        # Runs first and standalone, with no --maxfail, so the REQ-37 14-phase
+        # invariant and the prompt/skill sync contracts can never be skipped by
+        # an early abort in the full suite below.
+        env:
+          SQX_FORCE_MOCK: '1'
+        run: pytest -q --tb=short tests/campaign/
+
       - name: Run Tests
-        working-directory: ./sdk
-        run: pytest -q --tb=short --maxfail=5 --cov=quantlab --cov-report=xml:coverage.xml
+        # Canonical root suite (AGENTS.md): testpaths = tests + sdk/tests.
+        # Running from ./sdk would collect only sdk/tests/ via
+        # sdk/pyproject.toml testpaths and silently skip the whole root
+        # tests/ tree. SQX_FORCE_MOCK=1 is mandatory: it keeps the suite off
+        # the real SQX daemon on port 5050, which does not exist in CI.
+        env:
+          SQX_FORCE_MOCK: '1'
+        run: pytest -q --tb=short --cov=quantlab --cov-report=xml:coverage.xml
 
       - name: Upload Coverage
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./sdk/coverage.xml
+          files: ./coverage.xml
           flags: unittests
           fail_ci_if_error: false
 
