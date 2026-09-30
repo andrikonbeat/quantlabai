@@ -2,7 +2,7 @@
 
 Query, tag, link, and export campaigns from the Knowledge Lake — the filesystem-first research artifact repository.
 
-> **SDK Reference**: [`sdk/quantlab/knowledge/`](../sdk/quantlab/knowledge/)
+> **SDK Reference**: [`sdk/quantlab/knowledge/`](../../sdk/quantlab/knowledge/)
 
 ---
 

@@ -26,7 +26,7 @@ The system MUST register 14 literal phase subagents — one per phase of `PHASES
 
 ### Requirement: Repo-Canonical Prompt Source (REQ-806)
 
-The repo directory `AI/opencode/agents/` MUST be the single source of truth for the campaign prompt, all phase prompts, `orchestrator.md`, and `guardian-orchestrator.md`. The live `~/.config/opencode/prompts/quantlab/` copies MUST be generated from it by a sync script; hand-editing live prompts is not permitted. The sync MUST merge the existing guardian delegation into the repo canonical copy. `deploy.md` and `monitor.md` are retired from live and versioned as legacy in repo only.
+The repo directory `ai/opencode/agents/` MUST be the single source of truth for the campaign prompt, all phase prompts, `orchestrator.md`, and `guardian-orchestrator.md`. The live `~/.config/opencode/prompts/quantlab/` copies MUST be generated from it by a sync script; hand-editing live prompts is not permitted. The sync MUST merge the existing guardian delegation into the repo canonical copy. `deploy.md` and `monitor.md` are retired from live and versioned as legacy in repo only.
 (Previously: the allowlist covered only `campaign.md`, `phase-*.md`, and `guardian-orchestrator.md`; `orchestrator.md` was not managed, and `deploy.md`/`monitor.md` were live orphans.)
 
 #### Scenario: Sync propagates to live
@@ -65,7 +65,7 @@ The repo directory `AI/opencode/agents/` MUST be the single source of truth for 
 
 ### Requirement: Prompt Parity Test (REQ-807)
 
-A parity test MUST assert byte-equality between every repo prompt under `AI/opencode/agents/` and its live generated counterpart. A mismatch MUST fail the test and identify the drifted file.
+A parity test MUST assert byte-equality between every repo prompt under `ai/opencode/agents/` and its live generated counterpart. A mismatch MUST fail the test and identify the drifted file.
 
 #### Scenario: Parity holds
 

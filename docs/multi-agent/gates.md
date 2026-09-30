@@ -330,4 +330,4 @@ gates:
 - [Agent Reference](agents.md) - Understand what each stage produces
 - [Pipeline Configuration Reference](pipeline.md) - Full YAML specification
 - [Running Multi-Agent Campaigns](../guides/running-campaigns.md) - Execution procedures
-- [Research Director API](../sdk/quantlab/agents/research_director.md) - Technical details
+- [Research Director API](../../sdk/quantlab/agents/research_director.py) - Technical details

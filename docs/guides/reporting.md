@@ -2,7 +2,7 @@
 
 Generates interactive HTML and JSON campaign reports with Plotly charts, matplotlib fallback, and customizable Jinja2 templates.
 
-> **SDK Reference**: [`sdk/quantlab/reporting/`](../sdk/quantlab/reporting/)
+> **SDK Reference**: [`sdk/quantlab/reporting/`](../../sdk/quantlab/reporting/)
 
 ---
 

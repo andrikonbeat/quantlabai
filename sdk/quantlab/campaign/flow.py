@@ -6,7 +6,7 @@ MUST NOT remove, reorder, merge, or auto-approve any flow phase. Phase count
 and order MUST be asserted at campaign start and after any harness change.
 
 ``PHASES`` is the single canonical list, mirrored in
-``AI/opencode/agents/campaign.md`` (kept in sync by test). ``assert_flow``
+``ai/opencode/agents/campaign.md`` (kept in sync by test). ``assert_flow``
 aborts with :class:`FlowIntegrityError` before any execution begins when a
 phase is dropped, reordered, merged, duplicated, or unknown.
 ``assert_flow_segments`` is the segment-preserving preflight for a built
