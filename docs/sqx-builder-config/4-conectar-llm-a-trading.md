@@ -1,3 +1,5 @@
+# Connecting an LLM Agent to a Trading Platform
+
 > From: https://chatgpt.com/g/g-p-6a536ecee7b88191aa45638bcb873158-algotrading/c/6a566ca2-db80-83ea-8040-7b60b56f5e06
 
 # you asked

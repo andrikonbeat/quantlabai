@@ -1,3 +1,5 @@
+# Trading Profitability Analysis
+
 > From: https://chatgpt.com/g/g-p-6a536ecee7b88191aa45638bcb873158-algotrading/c/6a58230f-0960-83ea-8deb-b30deac8d712
 
 # you asked

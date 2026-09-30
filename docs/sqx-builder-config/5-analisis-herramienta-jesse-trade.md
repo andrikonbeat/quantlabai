@@ -1,3 +1,5 @@
+# Jesse.trade Tool Analysis
+
 > From: https://chatgpt.com/g/g-p-6a536ecee7b88191aa45638bcb873158-algotrading/c/6a5bc40a-c0c4-83ea-8773-c5f9de7f3bf6
 
 # you asked
