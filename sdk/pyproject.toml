@@ -38,6 +38,16 @@ dev = [
     # Without the plugin, pytest >= 8.4 fails unhandled coroutines instead of
     # running them, so this is a hard requirement, not a convenience.
     "pytest-asyncio>=1.0",
+    # Required by the `lint` job in .github/workflows/ci.yml, which runs
+    # `ruff check .`, `ruff format --check .` and `mypy quantlab --strict`
+    # from ./sdk. Without these the job died at exit 127 (command not found)
+    # and, because `test` declares `needs: lint`, the whole test job was
+    # skipped. Declared here so the gate can actually report a verdict;
+    # the violations it now surfaces are tracked as a separate work unit.
+    # Not pinned on purpose: pinning is part of that work unit, because an
+    # unpinned linter can turn the gate red on an unrelated commit.
+    "ruff>=0.6",
+    "mypy>=1.10",
 ]
 reporting = [
     "plotly>=5.18",

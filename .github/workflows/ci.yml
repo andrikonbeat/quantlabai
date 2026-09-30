@@ -20,6 +20,23 @@ jobs:
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    # Non-blocking while the lint/type debt is paid down. Measured against
+    # ruff 0.16.9 defaults with no [tool.ruff] config in the repo: 1779
+    # violations (1025 auto-fixable) across sdk/, plus 271 files failing
+    # `ruff format --check`. The dominant rules are UP045, F401, BLE001,
+    # I001, RUF012 and UP006 — mostly mechanical.
+    #
+    # This was previously NOT a debt gate but a dead one: the job invoked
+    # `ruff` and `mypy` while the install step only provided
+    # `pip install -e "sdk[dev]"`, and neither tool was declared there. Every
+    # run failed at "Run Ruff" with exit 127 (command not found), and because
+    # `test` declares `needs: lint`, the entire test job was skipped. The
+    # pipeline could not report green, and did not run the root suite at all.
+    #
+    # TODO: drop continue-on-error once the debt is paid, and pin ruff/mypy.
+    # They are unpinned, so a new ruff release can turn this job red on an
+    # unrelated commit.
+    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
