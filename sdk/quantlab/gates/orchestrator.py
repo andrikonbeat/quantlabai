@@ -1,4 +1,9 @@
-"""HumanGateOrchestrator — central async approval hub for all 5 human gates.
+"""HumanGateOrchestrator — central async approval hub for every registered human gate.
+
+The managed set is not fixed: it is exactly the keys of
+``quantlab.gates.models.DEFAULT_GATE_POLICIES``. Read the count from there
+rather than restating it here, so this docstring cannot drift when a gate is
+registered.
 
 Responsibilities:
 - Manage gate policies (timeout, fallback, escalation contacts).

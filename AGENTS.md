@@ -34,9 +34,10 @@
 ### Decision-File Gates
 - Human gates use lossless blocking-prompt discipline: present the complete envelope, accept exactly one answer, and re-present + STOP on missing or invalid input.
 - Auto-approval is prohibited. Unanswered gates fail closed.
-- The registry of enforced gates is `DEFAULT_GATE_POLICIES` at `sdk/quantlab/gates/models.py:122-176`. It defines exactly eight: `HUMAN_REVIEW_OBJECTIVES`, `HUMAN_APPROVE_CONFIG`, `HUMAN_APPROVE_ITERATION`, `HUMAN_APPROVE_PORTFOLIO`, `HUMAN_APPROVE_DEPLOY`, `HUMAN_APPROVE_DEMO`, `HUMAN_APPROVE_ARCHIVE`, `HUMAN_REVIEW_PERFORMANCE`.
+- The registry of enforced gates is `DEFAULT_GATE_POLICIES` at `sdk/quantlab/gates/models.py`. It defines exactly nine: `HUMAN_REVIEW_OBJECTIVES`, `HUMAN_APPROVE_CONFIG`, `HUMAN_APPROVE_ITERATION`, `HUMAN_APPROVE_PORTFOLIO`, `HUMAN_APPROVE_DEPLOY`, `HUMAN_APPROVE_DEMO`, `HUMAN_APPROVE_ARCHIVE`, `HUMAN_REVIEW_PERFORMANCE`, `HUMAN_APPROVE_REPLACEMENT`. `HUMAN_GATE_IDS` is derived from its keys, so the two cannot drift.
 - `README.md` documents the four that always block a dispatch (`HUMAN_APPROVE_CONFIG`, `HUMAN_APPROVE_DEPLOY`, `HUMAN_APPROVE_DEMO`, `HUMAN_APPROVE_ARCHIVE`).
-- ⚠️ `HUMAN_APPROVE_REPLACEMENT` is **not** in the registry. It exists only as prompt-level instruction, so nothing in code fails closed on it. Treat any reference to it as advisory until it is added to `DEFAULT_GATE_POLICIES`. Do not rely on it for a deploy- or replace-time block.
+- `HUMAN_APPROVE_REPLACEMENT` is registered with `fallback=ABORT`, so an unanswered live-replacement request aborts the Guardian loop instead of auto-approving. `CONTINUE` is the only fallback that resolves to `GateDecisionAction.APPROVE`, so it is never acceptable on this gate.
+- ⚠️ Registering a policy is **not** the same as wiring a live block. `HUMAN_APPROVE_REPLACEMENT` has a registered policy but is still not a `build_pipeline` stage, so no prompt-blocking stage is injected by it. Do not rely on it for a deploy-time block; do rely on it when a Guardian path resolves the gate through `HumanGateOrchestrator.on_gate()`, which will fail closed with `ABORT`.
 
 ### Result Contract
 Every phase or subagent result must conform to this envelope. `PhaseResult`

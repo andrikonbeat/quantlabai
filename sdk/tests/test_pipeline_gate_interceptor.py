@@ -60,17 +60,36 @@ class TestGateInterceptorStage:
 
     def test_human_gate_ids(self) -> None:
         """GIVEN HUMAN_GATE_IDS
-        THEN all 8 canonical gate IDs are defined (OQ1 sync with
-        quantlab.gates.models.HUMAN_GATE_IDS)."""
-        assert len(HUMAN_GATE_IDS) == 8
-        assert "HUMAN_REVIEW_OBJECTIVES" in HUMAN_GATE_IDS
-        assert "HUMAN_APPROVE_ITERATION" in HUMAN_GATE_IDS
-        assert "HUMAN_APPROVE_PORTFOLIO" in HUMAN_GATE_IDS
-        assert "HUMAN_APPROVE_DEPLOY" in HUMAN_GATE_IDS
-        assert "HUMAN_REVIEW_PERFORMANCE" in HUMAN_GATE_IDS
-        assert "HUMAN_APPROVE_DEMO" in HUMAN_GATE_IDS
-        assert "HUMAN_APPROVE_ARCHIVE" in HUMAN_GATE_IDS
-        assert "HUMAN_APPROVE_CONFIG" in HUMAN_GATE_IDS
+        THEN the 8 pipeline-stage gate IDs are defined, in injection order."""
+        assert HUMAN_GATE_IDS == [
+            "HUMAN_REVIEW_OBJECTIVES",
+            "HUMAN_APPROVE_ITERATION",
+            "HUMAN_APPROVE_PORTFOLIO",
+            "HUMAN_APPROVE_DEPLOY",
+            "HUMAN_APPROVE_DEMO",
+            "HUMAN_APPROVE_ARCHIVE",
+            "HUMAN_REVIEW_PERFORMANCE",
+            "HUMAN_APPROVE_CONFIG",
+        ]
+
+    def test_stage_gate_ids_are_registered_policies(self) -> None:
+        """GIVEN the stage gate list and the policy registry
+        WHEN comparing them
+        THEN every ID this stage injects has a registered policy. The lists are
+        intentionally NOT equal: HUMAN_APPROVE_REPLACEMENT is a registered
+        policy resolved by the Guardian, not a pipeline stage, so deriving this
+        list from the registry would inject a live blocking gate the registry
+        does not authorize.
+        """
+        from quantlab.gates.models import DEFAULT_GATE_POLICIES
+
+        missing = [g for g in HUMAN_GATE_IDS if g not in DEFAULT_GATE_POLICIES]
+        assert missing == [], f"unregistered stage gates: {missing}"
+
+        registry_only = [
+            g for g in DEFAULT_GATE_POLICIES if g not in HUMAN_GATE_IDS
+        ]
+        assert registry_only == ["HUMAN_APPROVE_REPLACEMENT"]
 
     def test_set_callback(self) -> None:
         """GIVEN a GateInterceptorStage
