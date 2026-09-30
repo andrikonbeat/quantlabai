@@ -233,9 +233,16 @@ class GateInterceptorStage(Stage, ABC):
 
 # ─── Predefined Gate IDs ──────────────────────────────────────────────────────
 
-# Synced with the canonical 8 IDs in ``quantlab.gates.models.HUMAN_GATE_IDS``
-# (OQ1): DEMO and ARCHIVE land after DEPLOY, CONFIG at the tail — the exact
-# ``DEFAULT_GATE_POLICIES`` order.
+# The gate IDs this stage injects as pipeline stages, in injection order (OQ1):
+# DEMO and ARCHIVE land after DEPLOY, CONFIG at the tail.
+#
+# Deliberately NOT imported from ``quantlab.gates.models.HUMAN_GATE_IDS``: that
+# list is the policy registry and now also contains HUMAN_APPROVE_REPLACEMENT,
+# which is resolved by the Guardian rather than injected as a pipeline stage.
+# Deriving this list would create a live blocking gate, which the registry entry
+# does not authorize. Keep the two sets distinct;
+# ``sdk/tests/test_pipeline_gate_interceptor.py`` pins the difference and guards
+# against drift in either direction.
 HUMAN_GATE_IDS: list[str] = [
     "HUMAN_REVIEW_OBJECTIVES",
     "HUMAN_APPROVE_ITERATION",
