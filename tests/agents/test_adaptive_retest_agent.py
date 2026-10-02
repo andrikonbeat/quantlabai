@@ -390,13 +390,27 @@ class TestApplyAdaptiveMutations:
         assert cc.generic.wf_enabled is True
 
     def test_preserves_unrelated_cfx_content(self, tmp_path: Path):
-        """GIVEN a CFX archive with multiple settings sections
-        WHEN apply_adaptive_mutations runs
-        THEN non-retest sections are unchanged.
+        """GIVEN a CFX archive with a populated <Data> and two sibling sections
+        WHEN apply_adaptive_mutations rewrites that same path in place
+        THEN each non-retest section round-trips key-for-key and value-for-value.
+
+        REQ-FLAT-7. The four-key ``<Data>`` is the canary: market symbol,
+        timeframe and both date bounds are exactly what the pre-inversion codec
+        destroyed, collapsing the section to a single ``Setting@key`` /
+        ``Setting@value`` pair. That is why the previous probe —
+        ``any("EURUSD" in v for v in ...)`` — stayed green through the defect:
+        a substring match cannot see a key collapse or a mangled key name.
+        Exact dict equality is the assertion that can.
         """
         cfx = tmp_path / "preserve.cfx"
+        data_keys = {
+            "Symbol@symbol": "EURUSD",
+            "Timeframe1@value": "H1",
+            "FromDate@value": "2015.01.01",
+            "ToDate@value": "2024.12.31",
+        }
         task = BuildTask(
-            data=SettingsSection(name="Data", settings={"Symbol@symbol": "EURUSD"}),
+            data=SettingsSection(name="Data", settings=dict(data_keys)),
             what_to_build=SettingsSection(name="WhatToBuild", settings={"StrategyType@type": "simple"}),
             cross_checks_section=CrossChecksConfig(raw_xml="<CrossChecks></CrossChecks>"),
             notes=SettingsSection(name="Notes", settings={"Note@text": "keep me"}),
@@ -406,11 +420,11 @@ class TestApplyAdaptiveMutations:
 
         archive = CfxReader.read(cfx)
         task = archive.config.task
-        # SettingsSection keys flatten on round-trip; verify the original values
-        # are still present in the read-back structure.
-        assert any("EURUSD" in v for v in task.data.settings.values())
-        assert any("simple" in v for v in task.what_to_build.settings.values())
-        assert any("keep me" in v for v in task.notes.settings.values())
+        assert task.data.settings == data_keys
+        assert task.what_to_build.settings == {"StrategyType@type": "simple"}
+        assert task.notes.settings == {"Note@text": "keep me"}
+        # The mangled literals must not reappear as keys in their own right.
+        assert not task.data.settings.keys() & {"Setting@key", "Setting@value"}
 
 
 # ── RetesterConfig.from_cfx ───────────────────────────────────────────────────
