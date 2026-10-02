@@ -2,12 +2,15 @@
 
 Subcommands: ``list [--tab] [--status]``, ``get {tab}/{param}``,
 ``seed [--doc]`` (full flow + REQ-209 gate), ``validate`` (gate re-check),
-``verify {tab}/{param} --evidence-ref``, ``status``, ``check-version``.
+``verify {tab}/{param} --evidence-ref``, ``status``, ``check-version``,
+``reverify --evidence <path> [--tab] [--apply]``.
 
 Exit contract: 0 on success; 1 with a "not found" message for unknown
 parameters (REQ-207 scenario), and 1 on any operational failure or when the
 REQ-209 gate fails (REQ-209 scenarios). ``check-version`` exits 0 in-sync,
-1 drift, 0 unknown (fail-open).
+1 drift, 0 unknown (fail-open). ``reverify`` exits 0 when it ran (dry-run or
+applied), 1 on a refused version bucket, and :data:`EXIT_EVIDENCE_UNREADABLE`
+(3) on unreadable evidence — argparse keeps 2 for usage errors.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from pathlib import Path
 from quantlab.data import DataManager
 from quantlab.data.market.models import Bar
 from quantlab.knowledge.kb.models import KB_TABS, SQX_VERSION
+from quantlab.knowledge.kb.reverify import UnknownVersionBucketError
 from quantlab.knowledge.kb.seeding_flow import (
     _default_evidence_base,
     run_seed_flow,
@@ -41,6 +45,11 @@ _DEFAULT_EVIDENCE_BASE_FACTORY = _default_evidence_base
 # G6 seed-ohlc defaults (Q3): a single symbol keeps CI deterministic.
 DEFAULT_SEED_SYMBOLS = ("EURUSD",)
 DEFAULT_SEED_TIMEFRAMES = ("M1", "M5", "H1")
+
+# D6: unreadable evidence gets its own exit code so automation can tell "the run
+# happened and nothing was promoted" (0) from "no verdict was computed at all"
+# (3). 1 stays operational failure and argparse's 2 stays the usage error.
+EXIT_EVIDENCE_UNREADABLE = 3
 
 
 def print_human(message: str, *, error: bool = False) -> None:
@@ -324,6 +333,53 @@ async def cmd_kb_verify(args: argparse.Namespace) -> int:
         return 1
 
 
+async def cmd_kb_reverify(args: argparse.Namespace) -> int:
+    """Re-verify the catalog against operator-supplied build XML (kb-reverification).
+
+    Renders the report produced by :meth:`KbStore.reverify_against_build` and nothing
+    else — every decision already lives in the pure ``reverify`` module, and every
+    promotion already goes through ``verify()``. Dry-run unless ``--apply`` (spec), so
+    stdout carries per-entry verdicts plus per-outcome counts (D7; the report file is
+    deferred, which leaves stdout as the only report surface).
+
+    Exit contract (D6): 0 the run happened — verdicts printed, and promotions written
+    only under ``--apply``; 1 the version bucket was refused; 3 the evidence could not be
+    read, in which case no entry was classified and nothing was written.
+    """
+    try:
+        store = _kb_store(args)
+        report = store.reverify_against_build(
+            args.evidence,
+            tab=args.tab,
+            sqx_version=args.sqx_version,
+            apply=args.apply,
+        )
+    except UnknownVersionBucketError as e:
+        print_error(str(e))
+        return 1
+    except Exception as e:  # pragma: no cover - defensive
+        print_error(f"KB reverify failed: {e}")
+        return 1
+
+    print_human(f"evidence: {report.artifact}")
+    print_table(
+        ["tab", "name", "verdict", "reason"],
+        [[e.tab, e.name, e.verdict.value, e.reason] for e in report.entries],
+    )
+    print_human(
+        "counts: " + ", ".join(f"{outcome} {n}" for outcome, n in report.counts.items())
+    )
+    if not report.evidence_ok:
+        print_error(f"evidence unreadable: {report.unreadable_reason}")
+        return EXIT_EVIDENCE_UNREADABLE
+    print_human(
+        "dry-run (no changes)"
+        if not args.apply
+        else f"applied {len(report.promotable)} promotion(s) via verify()"
+    )
+    return 0
+
+
 async def cmd_kb_status(args: argparse.Namespace) -> int:
     """Show KB status counts by status and tab."""
     try:
@@ -544,6 +600,39 @@ def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Evidence reference (e.g. path to the real .cfx config)",
     )
     p_verify.set_defaults(func=cmd_kb_verify)
+
+    # ── sqx kb reverify ──────────────────────────────────────────────────────
+    p_reverify = kb_sub.add_parser(
+        "reverify",
+        help="Re-verify the catalog against build XML (dry-run unless --apply)",
+        description=(
+            "Re-verify the SQX parameter KB against operator-supplied build XML. "
+            "Prints per-entry verdicts and per-outcome counts on stdout; the report "
+            "file is deferred, so stdout is the only report surface. Dry-run unless "
+            "--apply is passed. Exit codes: 0 the run happened, 1 the SQX version "
+            f"bucket was refused, {EXIT_EVIDENCE_UNREADABLE} the evidence could not be "
+            f"read (no entry classified, nothing written). Argparse keeps 2 for a "
+            "usage error such as omitting --evidence."
+        ),
+    )
+    _add_common(p_reverify)
+    p_reverify.add_argument(
+        "--evidence",
+        required=True,
+        help=(
+            "SQX build evidence: a .cfx/.sqx-template archive or a bare XML file "
+            "(e.g. assets/SQX_*/user/projects/Builder/project.cfx)"
+        ),
+    )
+    p_reverify.add_argument(
+        "--tab", choices=KB_TABS, help="Scope the population to one tab"
+    )
+    p_reverify.add_argument(
+        "--apply",
+        action="store_true",
+        help="Promote verified entries through verify() (default: dry-run)",
+    )
+    p_reverify.set_defaults(func=cmd_kb_reverify)
 
     # ── sqx kb status ────────────────────────────────────────────────────────
     p_status = kb_sub.add_parser("status", help="Show KB status counts")
