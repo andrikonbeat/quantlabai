@@ -348,22 +348,24 @@ class TestDataRangePartsParsing:
 
 
 class TestDataLanesAreDisjoint:
-    """``<Data>`` feeds two lanes: the flat ``<Setting>`` SettingsSection and the
-    typed sub-range model. If the reader hands the same child to both, the
+    """``<Data>`` feeds two lanes: the flat unclaimed-leaf SettingsSection and
+    the typed sub-range model. If the reader hands the same child to both, the
     writer merges them back and the section **grows on every cycle**.
     """
 
     def test_flat_lane_holds_only_setting_children(self, tmp_path: Path) -> None:
+        """The flat lane admits an unclaimed **leaf**, whatever its tag, and keys
+        it ``Tag@attr`` with no section prefix. ``<IST>`` is claimed by the
+        typed sub-range lane and ``<OutOfSample>`` by the passthrough lane, so
+        neither reaches ``data.settings`` — one predicate decides all three.
+        """
         task = _read_task(
             '<Settings><Data><Setting key="Symbol@symbol" value="EURUSD" />'
             '<IST value="0.5" /><OutOfSample showGraph="false" /></Data></Settings>',
             tmp_path,
         )
 
-        assert task.data.settings == {
-            "Setting@key": "Symbol@symbol",
-            "Setting@value": "EURUSD",
-        }
+        assert task.data.settings == {"Symbol@symbol": "EURUSD"}
 
     def test_nested_elements_do_not_leak_into_the_flat_lane(
         self, tmp_path: Path
@@ -386,12 +388,9 @@ class TestDataLanesAreDisjoint:
         read must not add elements. Growth means the two lanes captured the
         same child, and the writer merged both copies back.
 
-        Scoped to the typed lane and the ``<Rankings>`` complex lane, which is
-        what this change owns. The flat key-value lane has a *separate*,
-        pre-existing defect — the reader keys entries ``Setting@key`` and the
-        writer re-emits them under that mangled key, so a real SQX ``<Setting>``
-        set does not survive a cycle verbatim. Fixing that is a redesign of the
-        SettingsSection projection for every section, out of scope here.
+        The flat lane takes part now that the codec is invertible: its entry
+        round-trips as the ``<Symbol>`` element it was read from, so the second
+        cycle re-reads the same key and the signature is unchanged.
         """
         first = _round_trip(
             '<Settings><Data><Setting key="Symbol@symbol" value="EURUSD" />'
@@ -409,8 +408,8 @@ class TestDataLanesAreDisjoint:
     def test_flat_settings_are_not_duplicated_into_the_typed_lane(
         self, tmp_path: Path
     ) -> None:
-        """Each ``<Setting>`` belongs to exactly one lane. Copying it into the
-        typed model's ``raw_xml`` makes the writer emit it twice.
+        """Each child belongs to exactly one lane. Copying the flat lane's entry
+        into the typed model's ``raw_xml`` makes the writer emit it twice.
         """
         task = _read_task(
             '<Settings><Data><Setting key="Symbol@symbol" value="EURUSD" />'
@@ -419,10 +418,8 @@ class TestDataLanesAreDisjoint:
         )
 
         assert "<Setting" not in task.data_range_parts.raw_xml
-        assert task.data.settings == {
-            "Setting@key": "Symbol@symbol",
-            "Setting@value": "EURUSD",
-        }
+        assert "<Symbol" not in task.data_range_parts.raw_xml
+        assert task.data.settings == {"Symbol@symbol": "EURUSD"}
 
 
 def _data_element_signature(task_xml: bytes) -> list[tuple[str, str | None]]:

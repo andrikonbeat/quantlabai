@@ -30,6 +30,7 @@ from quantlab.cfx.models import (
     CfxProject,
     ColumnValue,
     CrossChecksConfig,
+    DATA_RANGE_PART_TAGS,
     DataBankConfig,
     DatabanksConfig,
     DataRangeParts,
@@ -75,6 +76,15 @@ _COMPLEX_SECTIONS = frozenset({
     "CrossChecks",
     "RetesterData",
 })
+
+# ``<Data>`` children that no lane owns, so they are excluded from the flat lane
+# and parked verbatim in ``DataRangeParts.raw_xml`` instead. Real SQX writes
+# ``<Setups>`` and ``<OutOfSample>`` here and they have no typed field.
+_DATA_PASSTHROUGH_TAGS: frozenset[str] = frozenset({"Setups", "OutOfSample"})
+
+# The tags a sibling ``<Data>`` lane claims: the typed sub-ranges plus the
+# passthrough subtrees above.
+_DATA_OWNED_TAGS: frozenset[str] = DATA_RANGE_PART_TAGS | _DATA_PASSTHROUGH_TAGS
 
 
 class CfxReader:
@@ -348,16 +358,14 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
         tag = child.tag
         if tag in _SETTINGS_SECTIONS:
             if tag == "Data":
-                # <Data> feeds two lanes: the flat <Setting> key-value section
-                # and the typed sub-range model. Restricting the flat lane to
-                # <Setting> children keeps the two disjoint — flattening the
-                # whole subtree would copy every typed sub-range into the flat
-                # lane as well, and the writer merges both lanes back, so the
-                # section would grow on every read/write cycle.
-                settings = _parse_settings_element(
-                    child, setting_children_only=True
+                # <Data> feeds two lanes: the flat key-value section and the
+                # typed sub-range model. `_DATA_OWNED_TAGS` keeps them disjoint
+                # — admitting the whole subtree would copy every typed
+                # sub-range into the flat lane as well, and the writer merges
+                # both lanes back, so the section would grow on every cycle.
+                sections[tag] = _parse_settings_element(
+                    child, exclude_tags=_DATA_OWNED_TAGS
                 )
-                sections[tag] = settings
                 data_el = child
             else:
                 sections[tag] = _parse_settings_element(child)
@@ -400,42 +408,55 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
     )
 
 
+def _is_flat_lane_child(
+    child: ElementTree.Element, exclude: frozenset[str]
+) -> bool:
+    """True when ``child`` belongs to a flat section's key-value lane.
+
+    Both halves of the test matter: a child must be a **leaf**, so a nested
+    subtree such as ``<Setups><Setup dateFrom=.../></Setups>`` cannot be
+    rewritten as key-value pairs, and its tag must be unclaimed by a sibling
+    lane in ``exclude``, so the typed sub-ranges and the passthrough subtrees
+    of ``<Data>`` stay out of it.
+
+    This is the *single* flat-lane predicate. ``_parse_settings_element`` calls
+    it to **admit** a child and ``_parse_data_range_parts`` calls it to
+    **strip** one; the two must agree, or a section is captured by both lanes,
+    the writer merges both copies back, and the section grows on every
+    read/write cycle. Re-implementing the rule at either call site reintroduces
+    exactly that duplication, so both call this function instead.
+    """
+    return len(child) == 0 and child.tag not in exclude
+
+
 def _parse_settings_element(
-    el: ElementTree.Element, *, setting_children_only: bool = False
+    el: ElementTree.Element, *, exclude_tags: frozenset[str] = frozenset()
 ) -> SettingsSection:
-    """Convert an ElementTree element to a flat key-value SettingsSection.
+    """Convert a flat section element to a key-value SettingsSection.
 
-    ``setting_children_only`` restricts the result to direct ``<Setting>``
-    children, leaving nested elements such as ``<Setups>`` or ``<IST>`` out of
-    the flat lane. Used for ``<Data>``, which also feeds the typed
-    ``DataRangeParts`` model: capturing the same element in both lanes would
-    duplicate it on the next write.
+    The section's *children* are flattened with an empty prefix, so no key ever
+    carries the section tag: ``<WhatToBuild><BuildType value="genetic"/>`` yields
+    ``BuildType@value``, never ``WhatToBuild.BuildType@value``. The writer
+    inverts this by grouping ``Tag@attr`` keys back into one element per tag.
 
-    .. warning::
-       The flat lane does not round-trip a real SQX ``<Setting>``. SQX writes
-       ``<Setting key="EURUSD_H1" value="true"/>``, but the flattener treats
-       ``key`` and ``value`` as nested elements and produces
-       ``Setting@key``/``Setting@value``, so the next write emits
+    A leaf ``<Setting key="K" value="V"/>`` becomes **one** entry
+    ``settings[K] = V`` rather than two entries keyed by the literal strings
+    ``Setting@key`` and ``Setting@value``; the pairing survives in the dict and
+    the writer's grouping re-emits it. Any other admitted leaf reuses
+    ``_flatten_element`` unchanged and becomes ``Tag@attr``.
 
-       .. code-block:: xml
-
-           <Setting key="Setting@key" value="EURUSD_H1"/>
-           <Setting key="Setting@value" value="true"/>
-
-       The original pairing is lost on the first save. The count settles at
-       two rather than growing without bound, but the databank selection is
-       gone. This predates the typed ranking and data-range work and affects
-       every section, so it is a separate change; do not treat a flat
-       ``<Data>`` section as a faithful representation of the file. The typed
-       lanes added for rankings and data ranges are unaffected.
+    ``exclude_tags`` names the tags a sibling lane owns — see
+    ``_is_flat_lane_child``. ``<Data>`` passes ``_DATA_OWNED_TAGS`` so its flat
+    and typed lanes stay disjoint; every other flat section passes the empty set.
     """
     settings: dict[str, str] = {}
-    if setting_children_only:
-        for child in el:
-            if child.tag == "Setting":
-                _flatten_element(child, settings, prefix="")
-        return SettingsSection(name=el.tag, settings=settings)
-    _flatten_element(el, settings, prefix="")
+    for child in el:
+        if not _is_flat_lane_child(child, exclude_tags):
+            continue
+        if child.tag == "Setting" and "key" in child.attrib:
+            settings[child.get("key", "")] = child.get("value", "")
+            continue
+        _flatten_element(child, settings, prefix="")
     return SettingsSection(name=el.tag, settings=settings)
 
 
@@ -557,14 +578,14 @@ def _parse_data_range_parts(el: ElementTree.Element | None) -> DataRangeParts | 
     sibling in ``raw_xml`` — the real SQX ``<Data>`` holds ``<Setups>`` and
     ``<OutOfSample>``, which have no typed field but must not be lost.
 
-    ``<Setting>`` children are stripped first: they belong to the flat
-    key-value lane, and parking a copy of them in ``raw_xml`` too would make
-    the writer emit each of them twice.
+    Flat-lane children are stripped first, using the *same*
+    ``_is_flat_lane_child`` predicate that admitted them: parking a second copy
+    in ``raw_xml`` would make the writer emit each of them twice.
     """
     if el is None:
         return None
     payload = ElementTree.fromstring(ElementTree.tostring(el, encoding="unicode"))
-    for child in [c for c in payload if c.tag == "Setting"]:
+    for child in [c for c in payload if _is_flat_lane_child(c, _DATA_OWNED_TAGS)]:
         payload.remove(child)
     return DataRangeParts.from_xml(ElementTree.tostring(payload, encoding="unicode"))
 

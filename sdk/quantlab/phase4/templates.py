@@ -216,6 +216,13 @@ class CfxTemplateBuilder:
         ``advanced_ranking_filters`` and ``data_range_parts`` are optional
         placeholders. When unset the emitted XML is byte-identical to what this
         method produced before they existed.
+
+        The ``<Data>`` settings below are **bare keys** — ``{db: "true"}``, no
+        ``@``. That is the emitted-XML dialect decision for flat keys: a key
+        with no ``@`` is written as ``<Setting key="db" value="true"/>``, so
+        ``Setting[@key='GBPUSD_H1']`` stays addressable downstream. Only
+        ``Tag@attr`` keys change form, and those render grouped by tag as
+        ``<Tag attr="value"/>``. See ``cfx.writer._append_settings_section``.
         """
         task = BuildTask()
         task.rankings_section = RankingsConfig(

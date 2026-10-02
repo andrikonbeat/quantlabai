@@ -33,7 +33,20 @@ def _xml_text(el: ET.Element | None, default: str = "") -> str:
 
 
 class SettingsSection(BaseModel):
-    """Simple key-value section (Options, Data, Rankings, etc.)."""
+    """Simple key-value section (Options, Data, Rankings, etc.).
+
+    ``settings`` holds one flat lane per section, keyed by one of two grammars
+    that ``cfx.writer`` inverts back to XML:
+
+    * ``Tag@attr`` — one leaf element's attribute, re-emitted grouped by tag as
+      ``<Tag attr="value" .../>``. Every producer (patcher, translator,
+      templates, risk_mapper) writes this form.
+    * a bare key with no ``@`` — re-emitted as ``<Setting key="K" value="V"/>``.
+      Retester databank selections use this form.
+
+    Keys never carry the section tag: ``<WhatToBuild><BuildType value="genetic"/>``
+    yields ``BuildType@value``, not ``WhatToBuild.BuildType@value``.
+    """
 
     name: str
     settings: dict[str, str]
@@ -204,6 +217,14 @@ _DATA_RANGE_PART_ELEMENTS: tuple[tuple[str, str], ...] = (
 )
 
 _RATIO_FIELDS: frozenset[str] = frozenset({"validation_ratio", "test_ratio"})
+
+# Public tag set derived from the table above — importing the private tuple
+# across modules is the coupling this avoids. Adding a typed sub-range means
+# adding it to ``_DATA_RANGE_PART_ELEMENTS``; the reader's flat-lane exclusion
+# and the writer's typed lane then follow automatically.
+DATA_RANGE_PART_TAGS: frozenset[str] = frozenset(
+    element for _, element in _DATA_RANGE_PART_ELEMENTS
+)
 
 
 class DataRangeParts(BaseModel):

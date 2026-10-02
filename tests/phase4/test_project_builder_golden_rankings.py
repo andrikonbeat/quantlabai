@@ -280,10 +280,9 @@ class TestCrossOracleEquivalence:
     def test_data_range_parts_survive_the_reader_writer_cycle(
         self, tmp_path: Path
     ) -> None:
-        """Scoped to the typed lane on purpose. The flat key-value lane mangles
-        a real ``<Setting>`` into ``Setting@key``/``Setting@value`` and grows
-        with each cycle; that projection defect predates this change and
-        affects every section, so it is recorded rather than asserted here.
+        """Both lanes survive the cycle: the typed sub-ranges come back typed,
+        and the flat lane comes back as the bare ``<Setting key= value=/>``
+        elements ``build_retester_cfx`` emitted for each databank.
         """
         from quantlab.cfx.writer import CfxWriter
 

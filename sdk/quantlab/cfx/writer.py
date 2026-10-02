@@ -553,6 +553,21 @@ def _append_settings_section(
 ) -> ElementTree.Element | None:
     """Append a simple key-value section element if the section is set.
 
+    De-flattens ``SettingsSection.settings`` back into the XML the reader
+    parses it from, so the round trip is a bijection:
+
+    * a **bare** key (no ``@``) emits its own
+      ``<Setting key="K" value="V"/>``. Retester databank selections use this
+      form, and it is what keeps ``Setting[@key='GBPUSD_H1']`` addressable;
+    * ``Tag@attr`` keys split once on ``@`` and are **grouped by tag** into a
+      single ``<Tag attr="v" .../>`` per tag, tags in first-appearance order.
+
+    Grouping is what makes the emitted dialect match what SQX reads: one
+    ``<Criterion1>`` rather than three half-elements that read as three
+    criteria, one ``<Symbol symbol= name=/>`` rather than two, and a legacy
+    ``Setting@key``/``Setting@value`` pair rejoined into the single
+    ``<Setting key= value=/>`` it came from.
+
     Returns the created element so a second lane (complex raw XML, or typed
     ``<Data>`` sub-ranges) can be merged into it rather than emitted as a
     sibling. Returns ``None`` when the section is absent.
@@ -560,8 +575,18 @@ def _append_settings_section(
     if section is None:
         return None
     el = ElementTree.SubElement(parent, tag)
+    grouped: dict[str, dict[str, str]] = {}
     for key, value in section.settings.items():
-        ElementTree.SubElement(el, "Setting", attrib={"key": key, "value": value})
+        element_tag, sep, attr = key.partition("@")
+        # A key with no tag part is bare, not an attribute of an empty tag:
+        # grouping it would emit an element with an invalid name and make the
+        # file unreadable on the next cycle.
+        if not sep or not element_tag:
+            ElementTree.SubElement(el, "Setting", attrib={"key": key, "value": value})
+        else:
+            grouped.setdefault(element_tag, {})[attr] = value
+    for element_tag, attrib in grouped.items():
+        ElementTree.SubElement(el, element_tag, attrib=attrib)
     return el
 
 
@@ -585,15 +610,16 @@ def _append_merged_complex_section(
     ),
     flat_el: ElementTree.Element | None,
 ) -> None:
-    """Append a complex section, folding in the flat ``<Setting>`` lane.
+    """Append a complex section, folding in the flat key-value lane.
 
     The two lanes used to be appended independently, so a task carrying both a
     flat ``SettingsSection`` and a complex raw-XML block produced **two**
     sibling ``<Rankings>`` elements. The SQX ``<Settings>`` schema admits one, so
-    the flat ``<Setting>`` children are moved into the complex element and the
+    the flat-lane children are moved into the complex element and the
     now-redundant sibling is dropped. Using the complex element as the base keeps
-    its attributes and its native child order intact; the generic ``<Setting>``
-    entries land last. Neither lane loses content.
+    its attributes and its native child order intact; the flat entries — a bare
+    ``<Setting key= value=/>`` or a grouped ``<Tag attr=.../>`` — land last.
+    Neither lane loses content.
     """
     if config is None or not config.raw_xml:
         return

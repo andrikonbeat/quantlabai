@@ -86,16 +86,16 @@ class TestGenerateCfxArchive:
             root = ET.fromstring(task_xml)
             assert root.tag == "Settings"
 
-            # Data section should have market symbol
+            # Data section should have market symbol. The codec de-flattens
+            # `Symbol@symbol`/`Symbol@name` into one `<Symbol>` element.
             data_section = root.find("Data")
             assert data_section is not None
-            symbol_setting = data_section.find("Setting[@key='Symbol@symbol']")
-            assert symbol_setting is not None
-            assert symbol_setting.get("value") == "EURUSD"
+            (symbol_setting,) = data_section.findall("Symbol")
+            assert symbol_setting.get("symbol") == "EURUSD"
+            assert symbol_setting.get("name") == "EURUSD"
 
             # Timeframe should be present
-            tf_setting = data_section.find("Setting[@key='Timeframe1@value']")
-            assert tf_setting is not None
+            (tf_setting,) = data_section.findall("Timeframe1")
             assert tf_setting.get("value") == "H1"
 
     def test_archive_round_trip_preserves_structure(self, tmp_path: Path) -> None:
@@ -170,9 +170,8 @@ class TestGenerateCfxXmlBackwardCompatibility:
         # Data section with market
         data_section = root.find("Data")
         assert data_section is not None
-        symbol = data_section.find("Setting[@key='Symbol@symbol']")
-        assert symbol is not None
-        assert symbol.get("value") == "EURUSD"
+        (symbol,) = data_section.findall("Symbol")
+        assert symbol.get("symbol") == "EURUSD"
 
     def test_building_blocks_reflected_in_blocks_section(self) -> None:
         """Building blocks should appear in the Blocks complex section."""

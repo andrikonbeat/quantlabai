@@ -2,7 +2,9 @@
 
 Covers task 3.1 of ``data-range-parts-and-ranking-filters``: the writer must
 emit exactly one ``<Rankings>`` / ``<Data>`` element per ``<Settings>`` root
-while preserving both the flat ``<Setting>`` lane and the complex raw-XML lane.
+while preserving both the flat lane — ``Tag@attr`` keys grouped back into one
+element per tag, bare keys as ``<Setting key= value=/>`` — and the complex
+raw-XML lane.
 """
 
 import zipfile
@@ -82,13 +84,12 @@ class TestRankingsSectionMerge:
         child_tags = [child.tag for child in rankings]
 
         assert "Conditions" in child_tags, "advanced lane was dropped by the merge"
-        flat_settings = [c for c in rankings if c.tag == "Setting"]
-        assert [s.get("key") for s in flat_settings] == [
-            "Criterion1@metric",
-            "Criterion1@operator",
-            "Criterion1@value",
-        ]
-        assert [s.get("value") for s in flat_settings] == ["sharpe", ">", "1"]
+        (criterion,) = [c for c in rankings if c.tag == "Criterion1"]
+        assert dict(criterion.attrib) == {
+            "metric": "sharpe",
+            "operator": ">",
+            "value": "1",
+        }
 
     def test_complex_children_are_nested_not_flattened(self) -> None:
         """The advanced lane must keep its own nesting: <Condition> and
@@ -113,7 +114,7 @@ class TestRankingsSectionMerge:
         root = _task_xml(_flat_rankings_task())
 
         (rankings,) = [c for c in root if c.tag == "Rankings"]
-        assert [c.tag for c in rankings] == ["Setting", "Setting", "Setting"]
+        assert [c.tag for c in rankings] == ["Criterion1"]
 
     def test_complex_lane_alone_still_emits_one_element(self) -> None:
         """The advanced-only path (no flat criteria) is unchanged: one element."""

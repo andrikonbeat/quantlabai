@@ -177,14 +177,14 @@ class TestSimpleRankingCompatibility:
 
         (rankings,) = _rankings(root)
         assert "Conditions" in [c.tag for c in rankings]
-        assert "Setting" in [c.tag for c in rankings]
+        assert "Criterion1" in [c.tag for c in rankings]
 
     def test_simple_only_campaign_is_unchanged(self) -> None:
         """A campaign with no advanced filters must not grow a <Conditions> block."""
         root = _root(_config(criteria=[AcceptanceCriterion(metric="sharpe", operator=">", value=1.0)]))
 
         (rankings,) = _rankings(root)
-        assert [c.tag for c in rankings] == ["Setting", "Setting", "Setting"]
+        assert [c.tag for c in rankings] == ["Criterion1"]
         assert rankings_section_xml(root) is None
 
 
@@ -224,9 +224,8 @@ class TestDataRangePartsMapping:
 
         (data,) = [c for c in root if c.tag == "Data"]
         assert [c.tag for c in data] == [
-            "Setting",
-            "Setting",
-            "Setting",
+            "Symbol",
+            "Timeframe1",
             "ProprietaryRange",
         ]
         assert data.find("ProprietaryRange").get("value") == "x"
@@ -238,11 +237,10 @@ class TestDataRangePartsMapping:
         root = _root(_config())
 
         (data,) = [c for c in root if c.tag == "Data"]
-        assert [c.tag for c in data] == ["Setting", "Setting", "Setting"]
-        assert [s.get("key") for s in data] == [
-            "Symbol@symbol",
-            "Symbol@name",
-            "Timeframe1@value",
+        assert [c.tag for c in data] == ["Symbol", "Timeframe1"]
+        assert [dict(c.attrib) for c in data] == [
+            {"symbol": "EURUSD", "name": "EURUSD"},
+            {"value": "H1"},
         ]
 
 

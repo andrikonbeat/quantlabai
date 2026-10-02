@@ -20,12 +20,9 @@ survivor before it had a test:
    converge; growth means the two lanes captured the same element.
 
 Idempotence is asserted on the ``<Rankings>``/``<Data>`` subtrees rather than on
-the whole file because the flat key-value lane mangles real SQX ``<Setting>``
-elements into ``Setting@key``/``Setting@value`` on every cycle. That projection
-defect predates this change and affects every section (see the PR 3 apply
-progress); fixing it would redesign ``SettingsSection`` for all sections, so it
-is recorded rather than absorbed here. Building these tasks without an
-``<Options>`` section keeps that lane out of the comparison entirely.
+the whole file so a divergence is attributed to the lane under test rather than
+to an unrelated section. Building these tasks without an ``<Options>`` section
+keeps that lane out of the comparison entirely.
 """
 
 from __future__ import annotations
@@ -102,12 +99,10 @@ class TestNeitherLaneIsDropped:
 
         root = _settings(_write(archive, tmp_path, "mixed.cfx")).find("Rankings")
 
-        settings = {
-            s.get("key"): s.get("value") for s in root.findall("Setting")
-        }
-        assert settings["Criterion1@metric"] == "ProfitFactor"
-        assert settings["Criterion1@operator"] == ">"
-        assert settings["Criterion1@value"] == "1.3"
+        (criterion,) = root.findall("Criterion1")
+        assert criterion.get("metric") == "ProfitFactor"
+        assert criterion.get("operator") == ">"
+        assert criterion.get("value") == "1.3"
         assert root.find("Conditions/Condition/Column-Value") is not None
 
     def test_simple_condition_is_kept_when_the_flat_lane_exists(
@@ -123,7 +118,7 @@ class TestNeitherLaneIsDropped:
 
         root = _settings(_write(archive, tmp_path, "mixed2.cfx")).find("Rankings")
 
-        assert root.find("Setting[@key='Criterion1@metric']").get("value") == "Sharpe"
+        assert root.find("Criterion1").get("metric") == "Sharpe"
         assert root.find("Conditions") is not None
 
 
@@ -146,19 +141,19 @@ class TestMergeIsLossless:
     ) -> None:
         """Pin *where* the flat lane goes, because there is no native answer.
 
-        SQX never writes a flat ``<Setting>`` inside ``<Rankings>``: both real
-        144/2953 exports (``Retester`` and ``Builder``) contain zero such
-        elements and zero ``Criterion*@`` keys. So the flat lane is a QuantLab
-        extension with **no SQX-defined position**, and "native order" is not
-        defined for it.
+SQX never writes a flat criterion inside ``<Rankings>``: both real
+        144/2953 exports (``Retester`` and ``Builder``) contain zero
+        ``<Criterion*>`` elements and zero ``Criterion*@`` keys. So the flat
+        lane is a QuantLab extension with **no SQX-defined position**, and
+        "native order" is not defined for it.
 
         What *is* verified is the block it is merged into. SQX orders
         ``<Rankings>`` children as ``MaxStrategies``, ``FitnessCriteria``,
         ``ConditionsType``, ``Conditions``, ``AutomaticDismissal``,
-        ``StopCondition`` — so the merge must leave that verified prefix exactly
-        as it found it and append the extension. Inserting the ``<Setting>``
-        entries ahead of ``<Conditions>`` would rewrite the one part of the
-        section SQX actually defines.
+        ``<StopCondition>`` — so the merge must leave that verified prefix exactly
+        as it found it and append the extension. Inserting the flat lane's
+        ``<Criterion1>`` element ahead of ``<Conditions>`` would rewrite the one
+        part of the section SQX actually defines.
         """
         archive = _archive(rankings=SettingsSection(name="Rankings", settings={}))
         patcher = CfxPatcher(archive)
@@ -169,15 +164,13 @@ class TestMergeIsLossless:
 
         assert [child.tag for child in root] == [
             "Conditions",
-            "Setting",
-            "Setting",
-            "Setting",
+            "Criterion1",
         ]
 
     def test_advanced_block_keeps_its_full_column_attributes(
         self, tmp_path: Path
     ) -> None:
-        """The flat merge appends ``<Setting>`` children; it must not disturb the
+        """The flat merge appends ``<Criterion1>``; it must not disturb the
         nested block, whose twelve attributes are the actual ranking criteria.
         """
         archive = _archive(rankings=SettingsSection(name="Rankings", settings={}))
@@ -235,8 +228,8 @@ class TestMergeIsLossless:
 
         root = _settings(_write(archive, tmp_path, "two-simple.cfx")).find("Rankings")
 
-        assert root.find("Setting[@key='Criterion1@metric']").get("value") == "ProfitFactor"
-        assert root.find("Setting[@key='Criterion2@metric']").get("value") == "Sharpe"
+        assert root.find("Criterion1").get("metric") == "ProfitFactor"
+        assert root.find("Criterion2").get("metric") == "Sharpe"
 
 
 class TestMergeIsStable:
@@ -275,11 +268,13 @@ class TestMergeIsStable:
         assert len(data.findall("IST")) == 1
         assert len(data.findall("OOSEvery")) == 1
         # The flat lane contributes exactly its own two entries and does not
-        # absorb the typed sub-ranges. Their *key names* are not asserted: the
-        # reader mangles a real `<Setting>` into `Setting@key`/`Setting@value`,
-        # a pre-existing projection defect recorded in the module docstring.
-        assert len(data.findall("Setting")) == 2
-        assert all(s.get("key") != "IST" for s in data.findall("Setting"))
+        # absorb the typed sub-ranges: `set_date_range` writes
+        # `FromDate@value`/`ToDate@value`, which the codec de-flattens back into
+        # one `<FromDate>`/`<ToDate>` element each — never a `<Setting>` pair and
+        # never a second copy of `<IST>`/`<OOSEvery>`.
+        assert len(data.findall("FromDate")) == 1
+        assert len(data.findall("ToDate")) == 1
+        assert len(data.findall("Setting")) == 0
 
 
 class TestSimpleOnlyTaskIsUnchanged:
@@ -293,7 +288,7 @@ class TestSimpleOnlyTaskIsUnchanged:
 
         root = _settings(_write(archive, tmp_path, "simple.cfx")).find("Rankings")
 
-        assert [c.tag for c in root] == ["Setting", "Setting", "Setting"]
+        assert [c.tag for c in root] == ["Criterion1"]
         assert root.find("Conditions") is None
         assert archive.config.task.rankings_section is None
 
