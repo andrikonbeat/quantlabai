@@ -8,7 +8,9 @@ context: |
     Potential Python for SDK/automation layer.
   Architecture: AI-directed research engine — OpenCode as research director,
     SQX as computation engine. Custom Projects + Template Mode + CLI.
-  Testing: None yet. strict_tdd: false.
+  Testing: pytest, strict_tdd: true. Run the suite with
+    `SQX_FORCE_MOCK=1 python3 -m pytest -q` (the env var keeps the real SQX
+    daemon off port 5050).
   Style: Quant research workflow, component-based strategy library.
 
 rules:
@@ -30,8 +32,8 @@ rules:
   apply:
     rules:
       - Follow existing code patterns
-    tdd: false
-    test_command: ""
+    tdd: true
+    test_command: "SQX_FORCE_MOCK=1 python3 -m pytest -q"
   verify:
     test_command: ""
     build_command: ""
@@ -74,8 +76,8 @@ agents:
         - duration_ms
 
 testing:
-  strict_tdd: false
-  runner: none
+  strict_tdd: true
+  runner: pytest
   unit: false
   integration: false
   e2e: false
