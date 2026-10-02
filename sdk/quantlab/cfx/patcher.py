@@ -148,6 +148,94 @@ def build_advanced_rankings_xml(conditions: list[AdvancedRankingCondition]) -> s
     return "\n".join(["<Rankings>", build_conditions_xml(conditions), "</Rankings>"])
 
 
+# Attribute names for the generic CrossChecks children, in both dialects the
+# reader accepts: the attribute form ``<WalkForward enabled= cycles=/>`` that
+# ``to_xml()`` synthesises, and the nested-child form
+# ``<WalkForward><Use/><Cycles/></WalkForward>`` that older SQX blocks use.
+_GENERIC_CROSS_CHECKS_ATTRS: dict[str, tuple[tuple[str, str], ...]] = {
+    "MonteCarlo": (
+        ("enabled", "mc_enabled"),
+        ("runs", "mc_runs"),
+        ("percentile", "mc_percentile"),
+    ),
+    "WalkForward": (("enabled", "wf_enabled"), ("cycles", "wf_cycles")),
+}
+
+# Nested-child spelling of the same fields.
+_GENERIC_CROSS_CHECKS_CHILDREN: dict[str, tuple[tuple[str, str], ...]] = {
+    "MonteCarlo": (("Use", "mc_enabled"),),
+    "WalkForward": (("Use", "wf_enabled"), ("Cycles", "wf_cycles")),
+}
+
+
+def _sync_generic_cross_checks_xml(generic: CrossChecksGeneric) -> None:
+    """Write the typed ``generic`` fields back into the kept source markup.
+
+    ``CrossChecksConfig.from_xml`` parks the recognised children verbatim in
+    ``CrossChecksGeneric.raw_xml`` so ``to_xml()`` can re-emit them without
+    rewriting the dialect. That fidelity cuts the other way too: a typed-field
+    mutation never reaches the output, because ``to_xml()`` prefers the stored
+    markup over the fields. Mutating ``mc_enabled`` / ``wf_enabled`` /
+    ``wf_cycles`` therefore has to be mirrored into that markup or the write is
+    lost.
+
+    The existing element form is preserved — attributes stay attributes, nested
+    children stay nested children — because changing the form would rewrite the
+    dialect. A child that is absent is appended in the synthesised attribute
+    form, which is what a caller enabling a cross-check for the first time
+    needs. Values other than the three patched fields (``runs``, ``percentile``)
+    are left untouched.
+    """
+    if not generic.raw_xml:
+        # No stored markup: to_xml() synthesises from the typed fields already.
+        return
+    wrapper = f"<CrossChecks>{generic.raw_xml}</CrossChecks>"
+    try:
+        root = ET.fromstring(wrapper)
+    except ET.ParseError:
+        # Unparseable stored markup is emitted verbatim; leave it untouched
+        # rather than risk rewriting it into something else.
+        return
+
+    for tag, attrs in _GENERIC_CROSS_CHECKS_ATTRS.items():
+        child = root.find(tag)
+        if child is None:
+            continue
+        if child.attrib:
+            for attr, field in attrs:
+                child.set(attr, _cross_check_value(getattr(generic, field)))
+            continue
+        # Nested-child dialect: patch the matching sub-elements by name.
+        for name, field in _GENERIC_CROSS_CHECKS_CHILDREN[tag]:
+            sub = child.find(name)
+            if sub is not None:
+                sub.text = _cross_check_value(getattr(generic, field))
+
+    for tag, attrs in _GENERIC_CROSS_CHECKS_ATTRS.items():
+        if root.find(tag) is None:
+            ET.SubElement(
+                root,
+                tag,
+                {attr: _cross_check_value(getattr(generic, field)) for attr, field in attrs},
+            )
+
+    # Drop the wrapper: only the inner children are stored. Tails are cleared
+    # first so the indentation whitespace of the original markup does not
+    # accumulate into blank lines between the re-serialised children.
+    parts = []
+    for child in root:
+        child.tail = None
+        parts.append(ET.tostring(child, encoding="unicode").strip())
+    generic.raw_xml = "\n".join(parts)
+
+
+def _cross_check_value(value: object) -> str:
+    """Render a typed CrossChecks field the way the markup spells it."""
+    if isinstance(value, bool):
+        return str(value).lower()
+    return str(value)
+
+
 class CfxPatcher:
     """Mutates a CfxArchive via validated instruction sequences.
 
@@ -630,17 +718,54 @@ class CfxPatcher:
         self._task.rankings.settings[f"{prefix}@value"] = str(value)
 
     def _apply_enable_crosscheck(self, instruction: EnableCrosscheckInstruction) -> None:
-        """Enable walk-forward and Monte-Carlo cross-checks."""
-        if self._task.cross_checks:
-            self._task.cross_checks.settings["WalkForward@enabled"] = str(
-                instruction.wf_enabled
-            ).lower()
-            self._task.cross_checks.settings["MonteCarlo@enabled"] = str(
-                instruction.mc_enabled
-            ).lower()
-            self._task.cross_checks.settings["WalkForward@cycles"] = str(
-                instruction.wf_cycles
-            )
+        """Enable walk-forward and Monte-Carlo cross-checks.
+
+        This applier used to be guarded by ``if self._task.cross_checks``, so on
+        a real SQX archive the instruction was discarded with no error and no
+        trace: the reader populates ``cross_checks_section`` and leaves the flat
+        ``cross_checks`` lane empty, so the guard was false on precisely the
+        files that matter.
+
+        Two lanes, chosen by what the task actually carries:
+
+        * ``cross_checks_section`` in the **generic** dialect owns typed
+          ``mc_enabled`` / ``wf_enabled`` / ``wf_cycles`` fields, so those are
+          updated — mirroring ``_apply_set_crosschecks`` and
+          ``_apply_add_ranking_condition``;
+        * anything else (no section, an unrecognised dialect, or no typed
+          generic model) creates the flat lane on demand and fills it with the
+          same keys it always used.
+
+        The typed fields are not write-only: ``CrossChecksGeneric.to_xml()``
+        re-emits the source children it kept verbatim in ``raw_xml``, so the
+        values are synced back into that markup as well. Without that sync the
+        typed fields would change while the emitted document did not, trading
+        one silent discard for another.
+        """
+        section = self._task.cross_checks_section
+        if (
+            section is not None
+            and section.dialect == "generic"
+            and section.generic is not None
+        ):
+            generic = section.generic
+            generic.mc_enabled = instruction.mc_enabled
+            generic.wf_enabled = instruction.wf_enabled
+            generic.wf_cycles = instruction.wf_cycles
+            _sync_generic_cross_checks_xml(generic)
+            return
+
+        if self._task.cross_checks is None:
+            self._task.cross_checks = SettingsSection(name="CrossChecks", settings={})
+        self._task.cross_checks.settings["WalkForward@enabled"] = str(
+            instruction.wf_enabled
+        ).lower()
+        self._task.cross_checks.settings["MonteCarlo@enabled"] = str(
+            instruction.mc_enabled
+        ).lower()
+        self._task.cross_checks.settings["WalkForward@cycles"] = str(
+            instruction.wf_cycles
+        )
 
     # ── Phase 4 Appliers ────────────────────────────────────────────────
 

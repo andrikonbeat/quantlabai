@@ -1,5 +1,7 @@
 """Tests for CfxPatcher — validate-then-apply semantics and domain methods."""
 
+import xml.etree.ElementTree as ET
+
 import pytest
 
 from quantlab.cfx import (
@@ -399,6 +401,174 @@ class TestSetCrossChecksTyped:
         assert '<MonteCarlo enabled="true" runs="250" percentile="90"/>' in xml
         assert '<WalkForward enabled="false" cycles="10"/>' in xml
         assert '<ConfidenceLevel value="0.9"/>' in xml
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# EnableCrosscheck — the lane actually present on a real SQX read
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+# Shaped like a real SQX <CrossChecks> block: from_xml recognises the three
+# generic children, keeps their source markup verbatim in ``generic.raw_xml``
+# and leaves ``raw_xml`` for unrecognised children only (none here).
+_SQX_CROSS_CHECKS_XML = (
+    "<CrossChecks>"
+    '<MonteCarlo enabled="false" runs="200" percentile="99"/>'
+    '<WalkForward enabled="false" cycles="3"/>'
+    '<ConfidenceLevel value="0.9"/>'
+    "</CrossChecks>"
+)
+
+
+def _make_typed_cross_checks_archive() -> CfxArchive:
+    """An archive whose task carries ONLY the complex CrossChecks lane.
+
+    This is the shape a real SQX archive has: the reader populates
+    ``cross_checks_section`` and leaves ``cross_checks`` empty, so the flat
+    lane the applier used to require is absent.
+    """
+    task = BuildTask(
+        options=SettingsSection(name="Options", settings={"Campaign@name": "Test"}),
+        what_to_build=SettingsSection(name="WhatToBuild", settings={}),
+    )
+    task.cross_checks_section = CrossChecksConfig.from_xml(_SQX_CROSS_CHECKS_XML)
+    return CfxArchive(config=CfxConfig(task=task, schema_version="141.2219"))
+
+
+class TestEnableCrossChecksOnTypedLane:
+    """``_apply_enable_crosscheck`` was guarded by ``if self._task.cross_checks``.
+
+    On any real SQX archive that lane is absent — the reader fills
+    ``cross_checks_section`` instead — so the instruction was discarded with no
+    error, no trace and no effect on the task.
+    """
+
+    def test_typed_fields_are_updated_when_only_the_complex_lane_exists(self) -> None:
+        """GIVEN a task carrying only ``cross_checks_section`` (dialect generic)
+        WHEN enable_crosscheck is applied
+        THEN the typed generic fields take the instruction's values instead of
+        the instruction being silently dropped.
+        """
+        archive = _make_typed_cross_checks_archive()
+
+        CfxPatcher(archive).enable_crosscheck(
+            wf_enabled=True, mc_enabled=True, wf_cycles=10
+        )
+
+        generic = archive.config.task.cross_checks_section.generic
+        assert generic.mc_enabled is True
+        assert generic.wf_enabled is True
+        assert generic.wf_cycles == 10
+
+    def test_typed_update_reaches_the_emitted_xml(self) -> None:
+        """The typed fields must not be write-only: ``to_xml()`` re-emits the
+        verbatim source children it kept, so the instruction is only effective
+        if the values actually land in the serialised document.
+
+        Asserted on the parsed element rather than on the markup text, because
+        the stored children are re-serialised (``<WalkForward ... />`` with a
+        space) while a freshly synthesised one is not (``<WalkForward .../>``).
+        """
+        archive = _make_typed_cross_checks_archive()
+
+        CfxPatcher(archive).enable_crosscheck(
+            wf_enabled=True, mc_enabled=True, wf_cycles=10
+        )
+
+        root = ET.fromstring(archive.config.task.cross_checks_section.to_xml())
+
+        assert dict(root.find("MonteCarlo").attrib) == {
+            "enabled": "true",
+            "runs": "200",
+            "percentile": "99",
+        }
+        assert dict(root.find("WalkForward").attrib) == {
+            "enabled": "true",
+            "cycles": "10",
+        }
+        # An untouched value must survive the update.
+        assert root.find("ConfidenceLevel").get("value") == "0.9"
+
+    def test_nested_child_dialect_is_preserved_and_patched(self) -> None:
+        """Older SQX blocks spell the same fields as nested children
+        (``<WalkForward><Use/><Cycles/></WalkForward>``). Patching must write that
+        form, not convert it to the attribute form and rewrite the dialect.
+        """
+        archive = CfxArchive(
+            config=CfxConfig(task=BuildTask(), schema_version="141.2219")
+        )
+        archive.config.task.cross_checks_section = CrossChecksConfig.from_xml(
+            "<CrossChecks>"
+            "<MonteCarlo><Use>false</Use><NumberOfSimulations>250</NumberOfSimulations></MonteCarlo>"
+            "<WalkForward><Use>false</Use><Cycles>3</Cycles></WalkForward>"
+            '<ConfidenceLevel value="0.9"/>'
+            "</CrossChecks>"
+        )
+
+        CfxPatcher(archive).enable_crosscheck(
+            wf_enabled=True, mc_enabled=False, wf_cycles=11
+        )
+
+        root = ET.fromstring(archive.config.task.cross_checks_section.to_xml())
+
+        assert root.find("MonteCarlo").find("Use").text == "false"
+        assert root.find("MonteCarlo").find("NumberOfSimulations").text == "250"
+        assert root.find("WalkForward").find("Use").text == "true"
+        assert root.find("WalkForward").find("Cycles").text == "11"
+
+    def test_flat_lane_is_created_on_demand_for_a_bare_task(self) -> None:
+        """A bare task has neither lane, so the flat lane is created and filled —
+        the instruction must always have an effect.
+        """
+        archive = CfxArchive(
+            config=CfxConfig(task=BuildTask(), schema_version="141.2219")
+        )
+
+        CfxPatcher(archive).enable_crosscheck(
+            wf_enabled=True, mc_enabled=True, wf_cycles=10
+        )
+
+        settings = archive.config.task.cross_checks.settings
+        assert settings["WalkForward@enabled"] == "true"
+        assert settings["MonteCarlo@enabled"] == "true"
+        assert settings["WalkForward@cycles"] == "10"
+
+    def test_flat_lane_is_created_on_demand_when_only_a_bare_section_exists(
+        self,
+    ) -> None:
+        """An empty-but-present flat lane must be filled, not treated as absent."""
+        archive = _make_archive()
+        archive.config.task.cross_checks = SettingsSection(
+            name="CrossChecks", settings={}
+        )
+
+        CfxPatcher(archive).enable_crosscheck(
+            wf_enabled=True, mc_enabled=False, wf_cycles=25
+        )
+
+        settings = archive.config.task.cross_checks.settings
+        assert settings["WalkForward@enabled"] == "true"
+        assert settings["MonteCarlo@enabled"] == "false"
+        assert settings["WalkForward@cycles"] == "25"
+
+    def test_automatic_retest_dialect_still_reaches_the_flat_lane(self) -> None:
+        """Only the generic dialect carries mc_enabled/wf_enabled/wf_cycles. A
+        section in another dialect has no typed fields to update, so the flat
+        lane is still created rather than discarding the instruction.
+        """
+        archive = _make_archive()
+        archive.config.task.cross_checks_section = CrossChecksConfig(
+            dialect="automatic_retest", raw_xml='<CrossChecks use="false"/>'
+        )
+
+        CfxPatcher(archive).enable_crosscheck(
+            wf_enabled=True, mc_enabled=True, wf_cycles=7
+        )
+
+        settings = archive.config.task.cross_checks.settings
+        assert settings["WalkForward@enabled"] == "true"
+        assert settings["MonteCarlo@enabled"] == "true"
+        assert settings["WalkForward@cycles"] == "7"
 
 
 # ═══════════════════════════════════════════════════════════════════════════
