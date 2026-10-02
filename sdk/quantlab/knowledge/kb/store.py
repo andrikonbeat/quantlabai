@@ -271,8 +271,11 @@ class KbStore:
     def invalidate(self, sqx_version: str) -> int:
         """Mark every parameter of a version ``needs_review`` (REQ-208).
 
-        Called by the version-drift hook: after 144.2953 → 145.x, no old
-        entry may be served as verified until re-verified.
+        Legacy simple form: returns only the count of demoted entries.
+        Production drift handling goes through
+        :meth:`invalidate_on_version_drift`, which returns a
+        ``VersionDriftResult`` with ``drifted``/``warnings`` for consumers
+        (used by ``DriftWorkflow`` in :mod:`quantlab.versioning`).
         """
         version_dir = self._version_dir(sqx_version)
         if not version_dir.is_dir():

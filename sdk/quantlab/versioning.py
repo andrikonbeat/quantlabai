@@ -178,6 +178,10 @@ class DriftWorkflow:
     def run(self, from_version: str, to_version: str) -> dict[str, object]:
         """Write the checklist and invalidate the old KB version (REQ-305).
 
+        Invalidation goes through the REQ-208 drift hook so the checklist
+        records the full ``VersionDriftResult`` (``drifted``, ``invalidated``,
+        ``warnings``) instead of a bare count.
+
         Returns the checklist document; re-runs overwrite the same path.
         """
         checklist: dict[str, object] = {
@@ -186,6 +190,8 @@ class DriftWorkflow:
             "detected_at": datetime.now(timezone.utc).isoformat(),
             "affected_files": self.impact_scan(from_version),
             "kb_invalidated": 0,
+            "drifted": False,
+            "warnings": [],
             "status": "drift",
         }
         path = self.checklist_path(from_version, to_version)
@@ -193,9 +199,12 @@ class DriftWorkflow:
         try:
             from quantlab.knowledge.kb.store import KbStore
 
-            checklist["kb_invalidated"] = KbStore(root=self.root).invalidate(
-                from_version
+            result = KbStore(root=self.root).invalidate_on_version_drift(
+                current_version=to_version, catalog_version=from_version
             )
+            checklist["kb_invalidated"] = result.invalidated
+            checklist["drifted"] = result.drifted
+            checklist["warnings"] = result.warnings
         except Exception as exc:  # pragma: no cover - defensive
             logger.warning("KB invalidation failed (continuing): %s", exc)
         path.write_text(yaml.safe_dump(checklist, sort_keys=False), encoding="utf-8")
