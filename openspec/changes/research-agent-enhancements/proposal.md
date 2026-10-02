@@ -2,7 +2,22 @@
 
 ## Intent
 
-The current Research sub-agent generates hypotheses by combining a small set of hardcoded technical indicators (RSI, BB, Donchian, EMA, ATR) and calibrates confidence using a single global historical Sharpe average. LLM mode only consumes YahooFinance, FRED, web search, and RSS. This limits the system to rediscovering known indicator combinations and leaves it blind to quantitative literature, advanced SQX built-ins, and strategy-type-specific performance patterns. We need to upgrade Research into a true multi-source research engine that reads external knowledge, diversifies hypotheses, validates them against known SQX capabilities, and learns from its own campaign history.
+The current Research sub-agent generates hypotheses by combining a small set of hardcoded technical
+indicators (RSI, BB, Donchian, EMA, ATR). LLM mode only consumes YahooFinance, FRED, web search, and RSS.
+This limits the system to rediscovering known indicator combinations and leaves it blind to quantitative
+literature, advanced SQX built-ins, and strategy-type-specific performance patterns. We need to upgrade
+Research into a true multi-source research engine that reads external knowledge, diversifies hypotheses,
+validates them against known SQX capabilities, and learns from its own campaign history.
+
+> **Correction (2026-09-30).** The original Intent stated that confidence "calibrates confidence using a
+> single global historical Sharpe average." That was already inaccurate when written. `TagCalibrator`
+> (per-tag Sharpe percentiles with Bayesian smoothing, `sdk/quantlab/agents/tag_calibrator.py`, commit
+> `9c22cde` 2026-08-19) has been wired into `ResearchAgent.formulate_hypotheses()` since that commit and
+> calibrates per-tag whenever `query_results` is non-empty. The real gap is narrower: **the LLM path
+> never sees that calibration.** `LLMResearchAgent.build_prompt()` does not consult it, so in LLM mode the
+> per-tag statistics are effectively unused. Scope item "Tag-based Sharpe calibration" should be read as
+> *expose the existing calibrator to the LLM prompt path* — see task 3.5 — not as greenfield calibration.
+> See `apply-progress.md` → "Resume Handoff" for the full staleness audit.
 
 ## Scope
 
