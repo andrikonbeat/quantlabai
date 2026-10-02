@@ -102,6 +102,21 @@ All notable changes to QuantLab AI will be documented in this file.
 - Domain modules fully async with `httpx.AsyncClient` + `asyncio` (PR 1–3)
 - KnowledgeStore fixed: recursion in `read_index()`/`rebuild_index()` broken by implementing proper filesystem scanning in `rebuild_index()` (PR 3 cleanup)
 
+### Fixed (2026-10-02 — Flat-Lane CFX Codec, 5 commits)
+- Inverted the flat `SettingsSection` codec in `sdk/quantlab/cfx/`: reader and
+  writer now share one `_is_flat_lane_child` predicate, so a
+  reader→writer→reader cycle no longer mangles keys (`Setting@key`/`Setting@value`)
+  or collapses a multi-element section to its last element.
+- `adaptive_retest_agent` no longer destroys the `.cfx` it mutates in place on
+  every retest cycle (data-loss fix, REQ-FLAT-7).
+- **Breaking change for external consumers**: the emitted dialect for flat
+  settings changed. Keys once emitted as `<Setting key="Tag@attr" value="v"/>`
+  are now grouped per tag as `<Tag attr="v" .../>` (one element per tag); bare
+  keys still emit `<Setting key="K" value="v"/>`. Consumers that looked up
+  `Setting[@key='Tag@attr']` must switch to the grouped form. Legacy files with
+  the old form converge to the new stable dialect after one read/write cycle
+  rather than being repaired losslessly.
+
 ## [Phase 3] — 2026-07-15
 
 ### Added

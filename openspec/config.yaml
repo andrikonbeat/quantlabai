@@ -35,9 +35,9 @@ rules:
     tdd: true
     test_command: "SQX_FORCE_MOCK=1 python3 -m pytest -q"
   verify:
-    test_command: ""
-    build_command: ""
-    coverage_threshold: 0
+    test_command: "SQX_FORCE_MOCK=1 python3 -m pytest -q"
+    build_command: ""  # no build step in this project
+    coverage_threshold: 0  # coverage off (testing.coverage: false)
   archive:
     - Warn before merging destructive deltas
 

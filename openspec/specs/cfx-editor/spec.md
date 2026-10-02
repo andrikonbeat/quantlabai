@@ -4,6 +4,12 @@
 
 Read, modify, and write StrategyQuant `.cfx` files — Config CFX (`<Task>` root, single XML) and Project CFX (`<Project>` root, multi-file) — using Pydantic models that map 1:1 to the real CFX XML structure.
 
+> **Relationship to `cfx-serialization`**: `cfx-editor` is the umbrella spec for
+> the whole `.cfx` read/write/patch domain. The flat-lane key grammar and its
+> invertible codec (reader↔writer round-trip) are specified in the narrower
+> capability spec `openspec/specs/cfx-serialization/spec.md`; this spec does not
+> restate them.
+
 ## Requirements
 
 ### Requirement: CFX Archive Read/Write
