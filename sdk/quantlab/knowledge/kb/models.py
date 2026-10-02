@@ -1,6 +1,6 @@
 """SQX Parameter KB models (REQ-201, D7).
 
-Each parameter is a 22-field pydantic model persisted as YAML at
+Each parameter is a 24-field pydantic model persisted as YAML at
 ``structured/sqx-kb/{sqx_version}/parameters/{tab}/{param}.yaml``.
 
 WU4 (REQ-302): ``SQX_VERSION`` resolves through ``PINNED_SQX_VERSION`` from
@@ -62,7 +62,7 @@ class SmallAccountRecommendation(BaseModel):
 
 
 class KbParameter(BaseModel):
-    """A single SQX builder parameter (REQ-201, 22 fields).
+    """A single SQX builder parameter (REQ-201, 24 fields).
 
     ``what_it_does`` is required: a KB YAML missing it MUST fail validation
     naming the field. ``default``/``range`` are free-form (scalar or string
@@ -95,6 +95,13 @@ class KbParameter(BaseModel):
     status: Status = "seeded"
     sqx_version: str = SQX_VERSION
     evidence_ref: str | None = None
+    # XML traceability pair (REQ-201). Declared as explicit optional fields —
+    # NOT ``ConfigDict(extra="allow")`` — so ``to_yaml`` stays deterministic
+    # and the catalog schema stays truthful. Before this, pydantic's
+    # ``extra="ignore"`` dropped both on load and every store write
+    # (verify / invalidate / drift demotion) deleted them from the catalog.
+    xml_path: str | None = None
+    element_name: str | None = None
 
     @property
     def is_usable(self) -> bool:

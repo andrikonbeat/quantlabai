@@ -2,7 +2,7 @@
 
 The KB is version-isolated: each parameter lives at
 ``structured/sqx-kb/{sqx_version}/parameters/{tab}/{param}.yaml`` with a
-22-field pydantic schema. Parameters are seeded from
+24-field pydantic schema. Parameters are seeded from
 ``docs/sqx-builder-config/SQX Builder Config.md`` (status ``seeded`` + evidence_ref), doc
 gaps become ``needs_review`` (never inventing semantics), and verification
 against real configs promotes entries to ``verified``.
@@ -88,7 +88,7 @@ def make_kb_dir(tmp_path: Path) -> KbStore:
 
 
 class TestKbParameterModel:
-    """REQ-201 schema: 22 fields, tab Literal[8], status enum, pinned version."""
+    """REQ-201 schema: 24 fields, tab Literal[8], status enum, pinned version."""
 
     def _minimal(self, **overrides: object) -> dict:
         base: dict[str, object] = {
