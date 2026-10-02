@@ -1340,10 +1340,33 @@ class TestCrosscheckMissingScopePreservesXml:
     def test_leaf_absent_inside_its_own_scope_warns(
         self, template_build_xml: str, caplog: pytest.LogCaptureFixture
     ) -> None:
-        """A scope that exists but holds no such leaf is also reported, not ignored."""
-        xml = _apply_build_config(template_build_xml, BuildConfig(rc_check="all"))
+        """A scope that exists but holds no such leaf is also reported, not ignored.
+
+        ``rc_pf_min`` targets a ``minValue`` attribute SQX 144.2953 never writes
+        on Column-Value; the scope exists but the leaf matches nothing, so this
+        must keep warning (unlike an idempotent write, see
+        test_idempotent_write_is_not_reported_as_missing).
+        """
+        xml = _apply_build_config(template_build_xml, BuildConfig(rc_pf_min=1.25))
         assert xml == template_build_xml
-        assert "rc_check" in caplog.text
+        assert "rc_pf_min" in caplog.text
+
+    def test_idempotent_write_is_not_reported_as_missing(
+        self, template_build_xml: str, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """W-1: writing the value already present must stay silent.
+
+        The template ships ``<Conditions thresholdPct="80">``; an agent that
+        explicitly sets wf_acceptance_threshold_pct=80 is making a successful
+        no-op write, not addressing a missing field. The old comparison of the
+        rewritten region against the original (equal when the value is
+        unchanged) emitted a false "pattern found no match" warning.
+        """
+        xml = _apply_build_config(
+            template_build_xml, BuildConfig(wf_acceptance_threshold_pct=80)
+        )
+        assert 'thresholdPct="80"' in xml
+        assert "no match" not in caplog.text, caplog.text
 
 
 class TestCrosscheckTemplateDefaults:

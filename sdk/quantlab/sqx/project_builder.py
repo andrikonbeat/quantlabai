@@ -1932,7 +1932,7 @@ def _apply_in_scope(
         return xml
 
     patched = re.sub(leaf, replacement, region.group(0), flags=re.DOTALL)
-    if patched == region.group(0):
+    if re.search(leaf, region.group(0), flags=re.DOTALL) is None:
         logger.warning(
             "BuildConfig field '%s': pattern found no match inside its own tab scope — "
             "leaving XML unchanged.",
