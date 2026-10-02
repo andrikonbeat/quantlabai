@@ -14,16 +14,12 @@ import pytest
 from quantlab.knowledge.kb.models import KbParameter
 from quantlab.knowledge.kb.store import KbStore
 
-_KNOWLEDGE_ROOT = Path("/home/ogzuz/Proyectos/QuantLab AI/knowledge/structured/sqx-kb/144.2953")
-_PROJECT_ROOT = _KNOWLEDGE_ROOT.parent.parent.parent.parent
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_KNOWLEDGE_ROOT = _REPO_ROOT / "knowledge" / "structured" / "sqx-kb" / "144.2953"
+_PROJECT_ROOT = _REPO_ROOT
 _CROSSCHECKS_DIR = _KNOWLEDGE_ROOT / "parameters" / "Cross checks"
-_CFX_PATH = Path(
-    "/home/ogzuz/Proyectos/QuantLab AI/sdk/assets/SQX_144_2953_linux_20260601"
-    "/user/projects/sqx_4fdea2e7519c/project.cfx"
-)
-_TEMPLATE_PATH = Path(
-    "/home/ogzuz/Proyectos/QuantLab AI/sdk/quantlab/sqx/templates/default-project.sqx-template"
-)
+_CFX_PATH = _REPO_ROOT / "sdk" / "assets" / "SQX_144_2953_linux_20260601" / "user" / "projects" / "sqx_4fdea2e7519c" / "project.cfx"
+_TEMPLATE_PATH = _REPO_ROOT / "sdk" / "quantlab" / "sqx" / "templates" / "default-project.sqx-template"
 
 # 8 robustness tabs extracted from CFX evidence (spec requirement)
 _EXPECTED_TABS = {
@@ -58,6 +54,8 @@ def _extract_cfx_crosschecks() -> str:
     """Extract CrossChecks XML from the CFX archive."""
     import zipfile
 
+    if not _CFX_PATH.exists():
+        pytest.skip(f"machine-local CFX asset absent: {_CFX_PATH}")
     with zipfile.ZipFile(_CFX_PATH) as z:
         # The CFX stores CrossChecks in Build-Task1.xml, not config.xml
         xml = z.read("Build-Task1.xml").decode("utf-8", errors="replace")
