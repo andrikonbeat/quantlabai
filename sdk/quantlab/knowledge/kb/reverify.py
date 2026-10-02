@@ -220,6 +220,19 @@ class EntryVerdict:
         """True when this entry may be promoted (delegates to its verdict)."""
         return self.verdict.promotes
 
+    @property
+    def reason(self) -> str:
+        """Why this entry drew its verdict, in the operator's terms."""
+        if self.verdict is Verdict.VERIFIED:
+            return f"{self.xml_path} resolves in the evidence CrossChecks block"
+        if self.verdict is Verdict.FIELD_ABSENT:
+            return f"{self.xml_path} does not resolve in the evidence CrossChecks block"
+        if self.verdict is Verdict.EVIDENCE_UNREADABLE:
+            return "evidence could not be read; no entry was probed"
+        if self.xml_path is None:
+            return "no xml_path declared, so the entry is not XML-backed"
+        return f"{self.xml_path} is a documentation anchor, not an XML anchor"
+
 
 @dataclass(frozen=True)
 class ReverifyReport:
@@ -227,10 +240,16 @@ class ReverifyReport:
 
     The report is the pipeline's only surface — stdout prints ``counts``, and a caller
     promotes exactly the entries whose ``verdict`` promotes.
+
+    ``evidence_ok`` carries the run-level ``evidence_unreadable`` outcome: when it is
+    ``False`` nothing was classified or written, and ``unreadable_reason`` says why.
+    ``counts`` still reports that outcome once, so the four-outcome contract stays whole.
     """
 
     artifact: str
     entries: tuple[EntryVerdict, ...] = ()
+    evidence_ok: bool = True
+    unreadable_reason: str = ""
 
     @classmethod
     def from_entries(
@@ -239,13 +258,21 @@ class ReverifyReport:
         """Build a report from per-entry verdicts."""
         return cls(artifact=artifact, entries=tuple(entries))
 
+    @classmethod
+    def unreadable(cls, artifact: str, reason: str) -> ReverifyReport:
+        """Build the run-level report for evidence that could not be read."""
+        return cls(artifact=artifact, evidence_ok=False, unreadable_reason=reason)
+
     @property
     def counts(self) -> dict[str, int]:
         """Per-outcome counts (D7), always reporting all four outcomes."""
-        return {
+        counts = {
             outcome.value: sum(1 for e in self.entries if e.verdict is outcome)
             for outcome in Verdict
         }
+        if not self.evidence_ok:
+            counts[Verdict.EVIDENCE_UNREADABLE.value] = 1
+        return counts
 
     @property
     def promotable(self) -> tuple[EntryVerdict, ...]:
