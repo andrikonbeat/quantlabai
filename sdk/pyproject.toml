@@ -27,6 +27,14 @@ dependencies = [
     "duckduckgo-search>=7.0",
     "ta>=0.11",
     "jinja2>=3.0",
+    # Needed by production code paths, not only by tests:
+    # sqx/campaign_monitor.py:908 and sqx/llm_generation_monitor.py:353 do a
+    # function-local `from rich.prompt import Confirm` on the CLI-mode branch
+    # (no _gate_writer, no _on_watcher_event). The import is deferred, but there
+    # is no fallback, so a CLI campaign that hits a WARNING/CRITICAL watcher
+    # event died with ModuleNotFoundError instead of prompting. Base dependency
+    # because any user running the documented CLI flow needs it.
+    "rich>=13.0",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +56,23 @@ dev = [
     # unpinned linter can turn the gate red on an unrelated commit.
     "ruff>=0.6",
     "mypy>=1.10",
+    # The canonical suite (AGENTS.md: testpaths = tests + sdk/tests) collects
+    # tests/dashboard/ and sdk/tests/dashboard/, which import quantlab.dashboard,
+    # which imports flask at module level. flask lived only in the optional
+    # `dashboard` extra, so `pip install -e "sdk[dev]"` produced an environment
+    # that could not run the suite it was meant to enable. The extra stays for
+    # end users; dev needs it because the tests need it.
+    "flask>=3.0",
+    # tests/phase5/test_reporting.py::test_charts_generated_list asserts
+    # 'equity_curve' in result.charts_generated, and the two smoke tests assert
+    # `report generate` exits 0. reporting/generator.py guards plotly with
+    # try/except and warns "HTML report generated without charts", but
+    # ReportResult.is_successful() is False in that case, so the CLI returns 2
+    # and the chart assertion fails. The source degrades gracefully; the tested
+    # contract requires a charting backend. dev provides it so the canonical
+    # suite is runnable. Note: this means CI no longer exercises the
+    # no-backend degradation branch.
+    "plotly>=5.18",
 ]
 reporting = [
     "plotly>=5.18",
