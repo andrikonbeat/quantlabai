@@ -7,25 +7,64 @@ QuantLab AI is a Python SDK that bridges quantitative research with the Strategy
 ## Architecture
 
 ```
-research.yaml ──→ [dsl/parser] ──→ ResearchConfig ──→ [translate/] ──→ XML string
-                      ↑                                                  │
-                      |                                     ┌── dry_run? ──→ return XML
-                      |                                     │
-                      |                               [cfx writer] ──→ .cfx file
-                      |                                     │
- knowledge/index.yaml ← [knowledge/ store]                  │
-                      │                                     ▼
-                      │                              [cli/ runner] ──→ sqcli.exe
-                      │                                     │
-                      │                            ┌── dry_run? ──→ MockExecutor
-                      │                            │                (canned result)
-                      │                            ▼
-                      │                     Databank CSV/XLSX
-                      │                            │
-                      │                            ▼
-                      │                     [readers/] ──→ Trade[], Equity[], Summary
-                      │                            │
-                      └──────────────────────── [stats/] ──→ Metrics (PF, Sharpe, DD, MAR, Expectancy)
+  ┌───────────────────────────────────────────────────────┐
+  │ knowledge/index.yaml  —  convergence feedback,        │
+  │ written by [knowledge/ store] at the end of a run     │
+  └───────────────────────────┬───────────────────────────┘
+                              │
+                              ▼
+                        research.yaml
+                              │
+                              ▼
+                        [dsl/parser]
+                              │
+                              ▼
+                       ResearchConfig
+                              │
+                              ▼
+                        [translate/]
+                              │
+                              ▼
+                 ┌────────────┴────────────┐
+           dry_run? yes               dry_run? no
+                 │                         │
+                 ▼                         ▼
+         return XML string           [cfx writer]
+                              │
+                              ▼
+                          .cfx file
+                              │
+                              ▼
+    [cli/ runner] ──→ sqcli.exe
+                              │
+                 ┌────────────┴────────────┐
+           dry_run? yes               dry_run? no
+                 │                         │
+                 ▼                         ▼
+           MockExecutor              backtest runs
+          (canned result)                  │
+                 │                         │
+                 └────────────┴────────────┘
+                              ▼
+                      Databank CSV/XLSX
+                              │
+                              ▼
+                         [readers/]
+                              │
+                              ▼
+                 Trade[], Equity[], Summary
+                              │
+                              ▼
+                          [stats/]
+                              │
+                              ▼
+          Metrics (PF, Sharpe, DD, MAR, Expectancy)
+                              │
+                              ▼
+                     [knowledge/ store]
+                              │
+                              ▼
+           knowledge/index.yaml   ↺  (loop closes)
 ```
 
 ## Installation
@@ -182,7 +221,7 @@ print(f"Expectancy: {result.expectancy:.2f}")
 from quantlab.knowledge.store import KnowledgeStore
 
 store = KnowledgeStore(root="knowledge")
-store.initialize()  # Creates 5 subdirectories with .gitkeep
+store.initialize()  # Creates 11 subdirectories with .gitkeep
 store.rebuild_index()  # Scans all files and writes index.yaml
 warnings = store.validate_formats()  # Checks for non-standard formats
 ```
@@ -257,42 +296,52 @@ quantlab-ai/
 ├── README.md
 ├── LICENSE
 ├── SECURITY.md
+├── AGENTS.md
+├── pytest.ini            # pytest configuration (asyncio_mode=auto)
+├── conftest.py           # Root test fixtures
+├── opencode.json         # OpenCode agent/orchestrator config
+├── docker-compose.yml    # API, SQX daemon, Postgres, Redis
+├── Dockerfile
 ├── sdk/
 │   ├── pyproject.toml
 │   └── quantlab/
-│       ├── __init__.py           # Package root + version
-│       ├── dsl/                  # YAML DSL — models + parser
-│       ├── translate/            # Model → CFX XML → ZIP
-│       ├── cli/                  # SQX CLI wrapper (executor protocol)
-│       ├── readers/              # Databank CSV/XLSX result readers
-│       ├── stats/                # Trading metrics computation
-│       ├── knowledge/            # Knowledge Lake management
-│       ├── data/                 # Market data providers
-│       ├── agents/               # Multi-agent research pipeline agents
-│       └── tools/                # Platform, errors, utilities
-├── tests/                        # Root test suite
-│   ├── conftest.py
-│   ├── fixtures/                 # Sample CSV, YAML files
-│   └── ...                       # Unit + integration tests
-├── sdk/tests/                    # SDK test suite
-├── app_movil/                    # Android companion app (Kotlin, Jetpack Compose)
-├── ai/opencode/                  # Agent prompts, skills, and orchestrator config
-├── docs/                         # PRD, STATE, changelog, reference guides
-│   └── sqx-builder-config/       # SQX Builder config reference (KB seed source)
-├── infra/                        # Infrastructure assets (DB init schema)
-├── docker-compose.yml            # API, SQX daemon, Postgres, Redis
-├── knowledge/                    # Knowledge Lake (data)
+│       ├── __init__.py       # Package root + version
+│       ├── versioning.py     # Semantic version + compatibility
+│       ├── dsl/              # YAML DSL — models + parser
+│       ├── translate/        # Model → CFX XML → ZIP
+│       ├── cli/              # SQX CLI wrapper (executor protocol)
+│       ├── readers/          # Databank CSV/XLSX result readers
+│       ├── stats/            # Trading metrics computation
+│       ├── knowledge/        # Knowledge Lake management
+│       ├── data/             # Market data providers (Dukascopy-only)
+│       ├── agents/           # Multi-agent research pipeline agents
+│       ├── tools/            # Platform, errors, utilities
+│       └── …                 # 20 more: campaign, gates, guardian, evolution,
+│                                 # pipeline, mcp, reporting, robustness, dashboard,
+│                                 # cfx, compiler, analysis, sqx, substrate, costs,
+│                                 # broker, health, jforex, phase4, customproject
+│                                 # Full index in docs/index.md
+├── tests/                # Root test suite (per-area subpackages)
+├── sdk/tests/            # SDK test suite
+├── app_movil/            # Android companion app (Kotlin, Jetpack Compose)
+├── ai/opencode/          # Agent prompts, skills, and orchestrator config
+├── installer/            # Go installer + release tooling
+├── examples/             # Sample pipeline.yaml / research-config.yaml
+├── docs/                 # PRD, STATE, changelog, reference guides
+│   └── sqx-builder-config/ # SQX Builder config (KB seed source)
+├── infra/                # Infrastructure assets (DB init schema)
+├── knowledge/            # Knowledge Lake (data)
 │   ├── index.yaml
-│   ├── raw/
-│   ├── structured/
-│   ├── graph/
-│   ├── embeddings/
-│   └── datasets/
-├── openspec/                     # Spec-driven development artifacts
-├── sdd/                          # SDD change planning artifacts
-├── pipelines/                    # Pipeline YAML definitions
-└── strategies/
-    └── HelloWorldStrategy.java   # JForex 4 strategy template
+│   ├── raw/ structured/ graph/ embeddings/ datasets/
+│   └── pipeline-runs/ agent-memory/ campaign-phases/ …
+├── openspec/             # Spec-driven development artifacts
+├── sdd/                  # SDD change planning artifacts
+├── pipelines/            # Pipeline YAML definitions
+├── strategies/
+│   └── HelloWorldStrategy.java # JForex 4 strategy template
+├── deploy/               # Generated deployment bundles (git-ignored)
+├── reports/              # Generated campaign reports (git-ignored)
+└── _output/              # Generated campaign artifacts (git-ignored)
 ```
 
 > The `assets/` directory holds the local StrategyQuant X distribution and is
