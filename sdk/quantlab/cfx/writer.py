@@ -506,16 +506,16 @@ def _serialise_task(task: BuildTask) -> bytes:
     root = ElementTree.Element("Settings")
 
     # Simple sections (SettingsSection) — in the order they appear
-    # in the CFX schema. The <Data> and <Rankings> elements are kept so the
-    # typed sub-range / advanced-conditions lanes can merge into them below
-    # instead of emitting a second sibling element.
+    # in the CFX schema. The <Data>, <Rankings> and <CrossChecks> elements are
+    # kept so the typed sub-range / advanced-conditions / cross-check lanes can
+    # merge into them below instead of emitting a second sibling element.
     _append_settings_section(root, "Options", task.options)
     _append_settings_section(root, "RiskMoneyManagement", task.risk_money_mgmt)
     _append_settings_section(root, "WhatToBuild", task.what_to_build)
     data_el = _append_settings_section(root, "Data", task.data)
     rankings_el = _append_settings_section(root, "Rankings", task.rankings)
     _append_settings_section(root, "PartsToImprove", task.parts_to_improve)
-    _append_settings_section(root, "CrossChecks", task.cross_checks)
+    cross_checks_el = _append_settings_section(root, "CrossChecks", task.cross_checks)
     _append_settings_section(root, "Notes", task.notes)
 
     # Complex sections — raw XML passthrough.
@@ -530,7 +530,9 @@ def _serialise_task(task: BuildTask) -> bytes:
     _append_complex_section(root, "Databanks", task.databanks_section)
     _append_complex_section(root, "PortfolioSettings", task.portfolio_settings)
     _append_merged_complex_section(root, "Rankings", task.rankings_section, rankings_el)
-    _append_complex_section(root, "CrossChecks", task.cross_checks_section)
+    _append_merged_complex_section(
+        root, "CrossChecks", task.cross_checks_section, cross_checks_el
+    )
     _append_complex_section(root, "RetesterData", task.retester_data)
     _append_data_range_parts(root, task.data_range_parts, data_el)
 
@@ -614,17 +616,32 @@ def _append_merged_complex_section(
 
     The two lanes used to be appended independently, so a task carrying both a
     flat ``SettingsSection`` and a complex raw-XML block produced **two**
-    sibling ``<Rankings>`` elements. The SQX ``<Settings>`` schema admits one, so
-    the flat-lane children are moved into the complex element and the
-    now-redundant sibling is dropped. Using the complex element as the base keeps
-    its attributes and its native child order intact; the flat entries — a bare
-    ``<Setting key= value=/>`` or a grouped ``<Tag attr=.../>`` — land last.
-    Neither lane loses content.
+    sibling ``<Rankings>`` / ``<CrossChecks>`` elements. The SQX ``<Settings>``
+    schema admits one, so the flat-lane children are moved into the complex
+    element and the now-redundant sibling is dropped. Using the complex element
+    as the base keeps its attributes and its native child order intact; the flat
+    entries — a bare ``<Setting key= value=/>`` or a grouped ``<Tag attr=.../>``
+    — land last. Neither lane loses content.
+
+    Returns without touching ``parent`` when the complex lane has nothing to
+    emit, which leaves the already-appended flat element as the single
+    ``<Tag>`` child — the flat-only task is unchanged.
     """
-    if config is None or not config.raw_xml:
+    if config is None:
+        return
+    xml_source = config.raw_xml
+    if isinstance(config, CrossChecksConfig) and (
+        config.dialect or config.generic is not None or config.automatic_retest is not None
+    ):
+        # Typed CrossChecks: serialise through to_xml() so the typed fields are
+        # emitted and raw_xml extras are merged at the end. Without this branch a
+        # typed-only lane would be skipped entirely — its raw_xml holds just the
+        # unrecognised children, or several unwrapped sibling elements.
+        xml_source = config.to_xml()
+    if not xml_source:
         return
     try:
-        complex_el = ElementTree.fromstring(config.raw_xml)
+        complex_el = ElementTree.fromstring(xml_source)
     except ElementTree.ParseError:
         return
     if flat_el is not None:

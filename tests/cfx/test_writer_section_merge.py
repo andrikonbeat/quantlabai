@@ -17,6 +17,8 @@ from quantlab.cfx.models import (
     CfxArchive,
     CfxConfig,
     ColumnValue,
+    CrossChecksConfig,
+    CrossChecksGeneric,
     DataRangeParts,
     SetAdvancedRankingsInstruction,
     SettingsSection,
@@ -220,3 +222,105 @@ class TestDataRangePartsEmission:
         root = _task_xml(build_task)
 
         assert [c.tag for c in root].count("Data") == 0
+
+
+# The attribute dialect is what CrossChecksConfig.to_xml() synthesises and what
+# test_reader_crosschecks.py parses back, so it is the canonical shape here.
+_SQX_CROSS_CHECKS_XML = (
+    "<CrossChecks>"
+    '<MonteCarlo enabled="true" runs="200" percentile="99"/>'
+    '<WalkForward enabled="false" cycles="3"/>'
+    '<ConfidenceLevel value="0.9"/>'
+    "</CrossChecks>"
+)
+
+
+def _parsed_complex_cross_checks() -> CrossChecksConfig:
+    """A complex lane shaped like a real SQX read.
+
+    ``from_xml`` keeps the recognised source children verbatim in
+    ``generic.raw_xml`` and leaves ``raw_xml`` for the unrecognised ones only.
+    Hand-building ``CrossChecksConfig(dialect=..., generic=...)`` would give an
+    empty ``raw_xml`` and exercise a different writer branch, so the parse path
+    is used deliberately.
+    """
+    return CrossChecksConfig.from_xml(_SQX_CROSS_CHECKS_XML)
+
+
+def _flat_cross_checks_task() -> BuildTask:
+    """A task on the flat lane only — one ``WalkForward@enabled`` entry."""
+    build_task = BuildTask()
+    build_task.cross_checks = SettingsSection(
+        name="CrossChecks", settings={"WalkForward@enabled": "true"}
+    )
+    return build_task
+
+
+def _mixed_cross_checks_task() -> BuildTask:
+    """A task carrying the flat lane AND the complex lane a real read produced."""
+    build_task = _flat_cross_checks_task()
+    build_task.cross_checks_section = _parsed_complex_cross_checks()
+    return build_task
+
+
+class TestCrossChecksSectionMerge:
+    """``<CrossChecks>`` has the same dual-emit defect ``<Rankings>`` had: the flat
+    ``SettingsSection`` lane and the complex raw-XML lane were appended
+    independently, so a task holding both produced two sibling elements and the
+    SQX ``<Settings>`` schema admits one.
+    """
+
+    def test_flat_and_complex_cross_checks_emit_a_single_element(self) -> None:
+        """GIVEN the flat ``WalkForward@enabled`` lane AND the complex lane
+        WHEN the task is serialised
+        THEN exactly one <CrossChecks> element is emitted.
+        """
+        root = _task_xml(_mixed_cross_checks_task())
+
+        assert [child.tag for child in root].count("CrossChecks") == 1
+
+    def test_merge_keeps_both_lanes_inside_the_single_element(self) -> None:
+        """Merging must not silently drop either lane: the complex lane's
+        MonteCarlo/WalkForward/ConfidenceLevel children and the flat lane's
+        ``<WalkForward enabled="true"/>`` all have to survive in the one element.
+        """
+        root = _task_xml(_mixed_cross_checks_task())
+
+        (cross_checks,) = [c for c in root if c.tag == "CrossChecks"]
+        child_tags = [child.tag for child in cross_checks]
+
+        assert "MonteCarlo" in child_tags, "complex lane was dropped by the merge"
+        assert "ConfidenceLevel" in child_tags, "complex lane was dropped by the merge"
+
+        walk_forwards = [c for c in cross_checks if c.tag == "WalkForward"]
+        # The complex lane's own WalkForward keeps its cycles; the flat lane's
+        # entry is merged in alongside it rather than replacing it.
+        assert [c.get("cycles") for c in walk_forwards] == ["3", None]
+        assert walk_forwards[-1].get("enabled") == "true"
+
+    def test_flat_lane_alone_still_emits_one_element(self) -> None:
+        """Regression guard: with no complex lane the writer keeps emitting the
+        flat <CrossChecks> it always did.
+        """
+        root = _task_xml(_flat_cross_checks_task())
+
+        (cross_checks,) = [c for c in root if c.tag == "CrossChecks"]
+        (walk_forward,) = [c for c in cross_checks if c.tag == "WalkForward"]
+        assert walk_forward.get("enabled") == "true"
+
+    def test_complex_lane_alone_still_emits_one_element(self) -> None:
+        """The complex-only path (no flat lane) is unchanged: one element
+        carrying the typed children.
+        """
+        build_task = BuildTask()
+        build_task.cross_checks_section = _parsed_complex_cross_checks()
+
+        root = _task_xml(build_task)
+
+        assert [c.tag for c in root].count("CrossChecks") == 1
+        (cross_checks,) = [c for c in root if c.tag == "CrossChecks"]
+        assert [c.tag for c in cross_checks] == [
+            "MonteCarlo",
+            "WalkForward",
+            "ConfidenceLevel",
+        ]
