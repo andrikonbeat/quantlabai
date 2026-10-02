@@ -322,6 +322,7 @@ class TestSummaryContract:
         assert summary["json"]["dialect"] == "automatic_retest"
         assert "enabled_tabs" in summary["json"]
         assert "typed_values" in summary["json"]
+        assert "\n" not in summary["text"] and "\r" not in summary["text"]
 
 
 # ── CrossChecksConfig dialect container tests ─────────────────────────
@@ -649,6 +650,7 @@ class TestCrossChecksConfigSummary:
         assert "generic" in summary["json"]
         assert summary["json"]["generic"]["mc_enabled"] is True
         assert summary["json"]["generic"]["mc_runs"] == 200
+        assert "\n" not in summary["text"] and "\r" not in summary["text"]
 
     def test_automatic_retest_summary(self):
         from quantlab.cfx.models import CrossChecksConfig
@@ -661,6 +663,7 @@ class TestCrossChecksConfigSummary:
         assert summary["json"]["dialect"] == "automatic_retest"
         assert "automatic_retest" in summary["json"]
         assert summary["json"]["automatic_retest"]["use"] is True
+        assert "\n" not in summary["text"] and "\r" not in summary["text"]
 
     def test_empty_config_summary(self):
         from quantlab.cfx.models import CrossChecksConfig
