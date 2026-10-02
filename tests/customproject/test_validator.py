@@ -36,6 +36,39 @@ def _probe_ok() -> bool:
     return True
 
 
+def _has_sqcli() -> bool:
+    """True when the production resolver can find a sqcli binary for SQX_ROOT."""
+    from quantlab.customproject.validator import ValidationError, resolve_sqcli
+
+    try:
+        resolve_sqcli(SQX_ROOT)
+        return True
+    except ValidationError:
+        return False
+
+
+SQCLI_ABSENT = (
+    "no resolvable sqcli binary (pinned StrategyQuant install absent at "
+    f"{SQX_ROOT}); install StrategyQuant to run the real golden validation"
+)
+
+
+def _has_sqx_root_sqcli() -> bool:
+    """True when ``SQX_ROOT`` itself carries the sqcli launcher.
+
+    Distinct from ``_has_sqcli``: ``resolve_sqcli`` also falls back to
+    ``/usr/local/bin/sqcli``, but the resolver nodes below assert specifically
+    that the ``<sqx_root>/sqcli`` candidate wins.
+    """
+    return (SQX_ROOT / "sqcli").is_file()
+
+
+SQX_ROOT_SQCLI_ABSENT = (
+    f"pinned StrategyQuant install absent at {SQX_ROOT}; install StrategyQuant "
+    "so sqcli resolves from the SQX root this suite pins"
+)
+
+
 def _four_task_project() -> CustomProject:
     return CustomProject(
         name="four-task",
@@ -56,12 +89,14 @@ def _four_task_project() -> CustomProject:
 class TestGoldenValidation:
     """REQ-24: valid archives pass; deviations raise ValidationError."""
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_valid_four_task_archive_passes(self):
         archive = generate_cfx_archive(_four_task_project())
         # probe injected: fast unit test; the real sqcli -h gate runs in E2E.
         result = validate_golden(archive, SQX_ROOT, probe_runner=_probe_ok)
         assert result is None
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_valid_single_task_passes(self):
         project = CustomProject(
             name="single",
@@ -71,6 +106,7 @@ class TestGoldenValidation:
         archive = generate_cfx_archive(project)
         assert validate_golden(archive, SQX_ROOT, probe_runner=_probe_ok) is None
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_schema_version_deviation_fails_closed(self):
         project = CustomProject(
             name="wrongver",
@@ -83,6 +119,7 @@ class TestGoldenValidation:
             validate_golden(archive, SQX_ROOT, probe_runner=_probe_ok)
         assert "version" in str(exc.value).lower()
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_missing_tasks_section_fails_closed(self):
         # A Project config with no <Tasks> element at all.
         archive = _archive_from_project(CfxProject(name="no-tasks", tasks={}, schema_version="144.2953"))
@@ -90,6 +127,7 @@ class TestGoldenValidation:
             validate_golden(archive, SQX_ROOT, probe_runner=_probe_ok)
         assert "Tasks" in str(exc.value)
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_task_without_type_fails_closed_naming_element(self):
         # Constructed at the CfxProject level (as a faulty renderer would):
         # a packaged task whose <Task> element carries an empty type.
@@ -105,6 +143,7 @@ class TestGoldenValidation:
             validate_golden(archive, SQX_ROOT, probe_runner=_probe_ok)
         assert "Tasks" in str(exc.value) and "Task" in str(exc.value)
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_missing_databanks_section_fails_closed_naming_element(self):
         project = CustomProject(
             name="nodb",
@@ -116,6 +155,7 @@ class TestGoldenValidation:
             validate_golden(archive, SQX_ROOT, probe_runner=_probe_ok)
         assert "Databanks" in str(exc.value)
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_databank_without_name_fails_closed(self):
         project = CustomProject(
             name="noname",
@@ -141,6 +181,7 @@ class TestProbe:
             validate_golden(archive, SQX_ROOT, probe_runner=probe_fails)
         assert "sqcli" in str(exc.value).lower()
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_probe_runs_before_structural_validation(self):
         """Even a malformed archive raises the probe error first (probe SHALL
         run before validation per REQ-24)."""
@@ -185,6 +226,7 @@ class TestNoDispatchOnDeviation:
 
         assert dispatched == []
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_valid_archive_does_dispatch(self):
         archive = generate_cfx_archive(_four_task_project())
 
@@ -204,10 +246,12 @@ class TestNoDispatchOnDeviation:
 
 
 class TestResolveSqcli:
+    @pytest.mark.skipif(not _has_sqx_root_sqcli(), reason=SQX_ROOT_SQCLI_ABSENT)
     def test_resolves_from_sqx_root(self):
         path = resolve_sqcli(SQX_ROOT)
         assert path == SQX_ROOT / "sqcli"
 
+    @pytest.mark.skipif(not _has_sqx_root_sqcli(), reason=SQX_ROOT_SQCLI_ABSENT)
     def test_env_var_takes_precedence(self, monkeypatch):
         fake = SQX_ROOT / "sqcli"
         monkeypatch.setenv("SQCLI_PATH", str(fake))

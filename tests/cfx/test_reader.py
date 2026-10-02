@@ -16,6 +16,12 @@ from quantlab.cfx.reader import CfxReader
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
+# These two samples are git-ignored (``.gitignore`` excludes ``*.cfx``); on a
+# fresh clone they only exist when the pinned StrategyQuant install is linked
+# into ``tests/cfx/fixtures/``. Install it to run the type-detection nodes.
+NQ_CFD_H1 = FIXTURES / "NQ_CFD_H1.cfx"
+NQ_MULTI_TIMEFRAME = FIXTURES / "NQ_MULTI_TIMEFRAME.cfx"
+
 
 # ── Fixture helpers ──────────────────────────────────────────────────
 
@@ -105,12 +111,23 @@ class TestVersionGate:
 
 
 class TestTypeDetection:
+    @pytest.mark.skipif(
+        not NQ_CFD_H1.is_file(),
+        reason=f"pinned SQX sample absent at {NQ_CFD_H1}; install StrategyQuant "
+        "and link its user/settings/Configs samples into tests/cfx/fixtures/",
+    )
     def test_single_task_detected_as_config(self):
-        archive = CfxReader.read(FIXTURES / "NQ_CFD_H1.cfx")
+        archive = CfxReader.read(NQ_CFD_H1)
         assert archive.config.task_type == "config"
 
+    @pytest.mark.skipif(
+        not NQ_MULTI_TIMEFRAME.is_file(),
+        reason=f"pinned SQX sample absent at {NQ_MULTI_TIMEFRAME}; install "
+        "StrategyQuant and link the multi-timeframe project into "
+        "tests/cfx/fixtures/",
+    )
     def test_multi_file_detected_as_project(self):
-        archive = CfxReader.read(FIXTURES / "NQ_MULTI_TIMEFRAME.cfx")
+        archive = CfxReader.read(NQ_MULTI_TIMEFRAME)
         assert archive.config.task_type == "project"
 
 

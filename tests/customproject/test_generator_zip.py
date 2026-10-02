@@ -8,6 +8,8 @@ from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree
 
+import pytest
+
 from quantlab.customproject.generator import generate_cfx_archive
 from quantlab.customproject.models import (
     CustomProject,
@@ -153,6 +155,11 @@ class TestZipShape:
 class TestSingleTaskByteIdentity:
     """REQ-23 scenario 2: single-task output identical to the golden CFX."""
 
+    @pytest.mark.skipif(
+        not GOLDEN_E2E.is_file(),
+        reason=f"golden SQX sample absent at {GOLDEN_E2E}; install StrategyQuant "
+        "and load the e2e-test project once so SQX writes it under user/projects/",
+    )
     def test_config_xml_matches_golden_bytes(self):
         assert GOLDEN_E2E.exists(), f"golden sample missing: {GOLDEN_E2E}"
 

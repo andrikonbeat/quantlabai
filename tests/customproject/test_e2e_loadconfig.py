@@ -38,6 +38,23 @@ STANDARD_DATABANKS = [
 ]
 
 
+def _has_sqcli() -> bool:
+    """True when the production resolver can find a sqcli binary for SQX_ROOT."""
+    from quantlab.customproject.validator import ValidationError, resolve_sqcli
+
+    try:
+        resolve_sqcli(SQX_ROOT)
+        return True
+    except ValidationError:
+        return False
+
+
+SQCLI_ABSENT = (
+    "no resolvable sqcli binary (pinned StrategyQuant install absent at "
+    f"{SQX_ROOT}); install StrategyQuant to run the real golden validation"
+)
+
+
 def _four_task_project(name: str = "four-task") -> CustomProject:
     return CustomProject(
         name=name,
@@ -74,6 +91,7 @@ def _four_task_project(name: str = "four-task") -> CustomProject:
 class TestFastE2EPortion:
     """Always runs: archive generation + structural validation + rollback flag."""
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_four_task_archive_generates_and_validates(self):
         archive = generate_cfx_archive(_four_task_project())
         # Structural validation against the golden format (fast, injected probe).

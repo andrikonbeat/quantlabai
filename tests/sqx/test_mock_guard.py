@@ -177,6 +177,11 @@ def _patch_dispatch_internals(monkeypatch: pytest.MonkeyPatch) -> None:
                         lambda sqx, cid: [])
 
 
+BUILDER_CFX = (
+    Path(__file__).resolve().parents[2] / "tests" / "cfx" / "fixtures" / "Builder.cfx"
+)
+
+
 class TestOrchestratedDispatchWiring:
     """T8.4: orchestrated dispatch registers gate callbacks + webhook/console
     notifiers on the spawned monitors; non-orchestrated stays unchanged."""
@@ -291,6 +296,11 @@ class TestOrchestratedDispatchWiring:
         assert fake_monitor.add_notifier_calls == []
         assert fake_monitor.kwargs.get("gate_writer") is None
 
+    @pytest.mark.skipif(
+        not BUILDER_CFX.is_file(),
+        reason=f"pinned SQX sample absent at {BUILDER_CFX}; install StrategyQuant "
+        "and link its user/projects/Builder/project.cfx into tests/cfx/fixtures/",
+    )
     @pytest.mark.asyncio
     async def test_orchestrated_blocks_validation_fixture_fallback(
         self, monkeypatch: pytest.MonkeyPatch
@@ -300,8 +310,7 @@ class TestOrchestratedDispatchWiring:
         every intended block reported missing."""
         from quantlab.sqx.project_builder import BuildConfig
 
-        fixture = Path(__file__).resolve().parents[2] / "tests" / "cfx" \
-            / "fixtures" / "Builder.cfx"
+        fixture = BUILDER_CFX
         assert fixture.is_file()
         fake_monitor = _FakeMonitor()
         monkeypatch.setattr("quantlab.sqx.cli_wrapper.CampaignMonitor",

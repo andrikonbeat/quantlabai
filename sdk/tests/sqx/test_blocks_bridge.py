@@ -137,6 +137,11 @@ class TestValidateExportedBlocks:
         assert report.missing == []
         assert report.ok
 
+    @pytest.mark.skipif(
+        not FIXTURE_CFX.exists(),
+        reason=f"fixture fallback missing at {FIXTURE_CFX}; install StrategyQuant "
+        "and link its user/projects/Builder/project.cfx into tests/cfx/fixtures/",
+    )
     def test_fixture_fallback_remains_available(self) -> None:
         """REQ-04: the fixture fallback path SHALL remain for untrusted CFX."""
         assert FIXTURE_CFX.exists(), (

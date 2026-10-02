@@ -55,6 +55,23 @@ def _probe_ok() -> bool:
     return True
 
 
+def _has_sqcli() -> bool:
+    """True when the production resolver can find a sqcli binary for SQX_ROOT."""
+    from quantlab.customproject.validator import ValidationError, resolve_sqcli
+
+    try:
+        resolve_sqcli(SQX_ROOT)
+        return True
+    except ValidationError:
+        return False
+
+
+SQCLI_ABSENT = (
+    "no resolvable sqcli binary (pinned StrategyQuant install absent at "
+    f"{SQX_ROOT}); install StrategyQuant to run the real golden validation"
+)
+
+
 class TestTemplateParams:
     """TemplateParams defaults and overrides."""
 
@@ -162,6 +179,7 @@ class TestStandardResearchTemplate:
         archive = generate_cfx_archive(project)
         assert archive is not None
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_passes_golden_validation(self):
         project = StandardResearchTemplate.build()
         archive = generate_cfx_archive(project)
@@ -235,6 +253,7 @@ class TestQuickValidationTemplate:
         archive = generate_cfx_archive(project)
         assert archive is not None
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_passes_golden_validation(self):
         project = QuickValidationTemplate.build()
         archive = generate_cfx_archive(project)
@@ -330,6 +349,7 @@ class TestDeepRobustnessTemplate:
         archive = generate_cfx_archive(project)
         assert archive is not None
 
+    @pytest.mark.skipif(not _has_sqcli(), reason=SQCLI_ABSENT)
     def test_passes_golden_validation(self):
         project = DeepRobustnessTemplate.build()
         archive = generate_cfx_archive(project)

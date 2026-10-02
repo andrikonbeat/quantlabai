@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 
 class TestGitignoreEnforcement:
     """Raw corpus under knowledge/raw/ must never appear in git status."""
@@ -23,7 +25,7 @@ class TestGitignoreEnforcement:
         subprocess.run(["git", "config", "user.name", "Test"], cwd=repo, check=True, capture_output=True)
 
         # Copy the repo .gitignore rule into the temp repo
-        source_gitignore = Path("/home/ogzuz/Proyectos/QuantLab AI/.gitignore")
+        source_gitignore = REPO_ROOT / ".gitignore"
         (repo / ".gitignore").write_text(source_gitignore.read_text(encoding="utf-8"), encoding="utf-8")
 
         raw_dir = repo / "knowledge" / "raw" / "sqx" / "144.2953"

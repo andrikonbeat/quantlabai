@@ -13,7 +13,14 @@ from quantlab.cfx.models import (
 from quantlab.cfx.reader import CfxReader
 from quantlab.cfx.writer import CfxWriter
 
+import pytest
+
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+# Git-ignored samples (``.gitignore`` excludes ``*.cfx``): present only when the
+# pinned StrategyQuant install is linked into ``tests/cfx/fixtures/``.
+NQ_CFD_H1 = FIXTURES / "NQ_CFD_H1.cfx"
+BUILDER = FIXTURES / "Builder.cfx"
 
 
 def _get_xml_text(zip_bytes: bytes, entry: str = "config.xml") -> str:
@@ -97,8 +104,13 @@ class TestZipStructure:
 
 
 class TestRoundTrip:
+    @pytest.mark.skipif(
+        not NQ_CFD_H1.is_file(),
+        reason=f"pinned SQX sample absent at {NQ_CFD_H1}; install StrategyQuant "
+        "and link its user/settings/Configs samples into tests/cfx/fixtures/",
+    )
     def test_read_write_config_preserves_version(self, tmp_path: Path):
-        original = CfxReader.read(FIXTURES / "NQ_CFD_H1.cfx")
+        original = CfxReader.read(NQ_CFD_H1)
 
         out = tmp_path / "roundtrip.cfx"
         CfxWriter.write(original, out)
@@ -106,8 +118,13 @@ class TestRoundTrip:
         re_read = CfxReader.read(out)
         assert re_read.config.schema_version == original.config.schema_version
 
+    @pytest.mark.skipif(
+        not BUILDER.is_file(),
+        reason=f"pinned SQX sample absent at {BUILDER}; install StrategyQuant and "
+        "link its user/projects/Builder/project.cfx into tests/cfx/fixtures/",
+    )
     def test_write_project_then_read_preserves_version(self, tmp_path: Path):
-        original = CfxReader.read(FIXTURES / "Builder.cfx")
+        original = CfxReader.read(BUILDER)
         assert original.config.task_type == "project"
 
         out = tmp_path / "project_rt.cfx"
