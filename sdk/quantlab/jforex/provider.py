@@ -79,8 +79,7 @@ class JForexProvider(DatasourceHandler):
         """Fail-closed check that local JForex history exists."""
         if self.state_dir is None:
             raise DataManagerError(
-                "JForex datasource not configured: set jforex_state_dir "
-                "on DataManager"
+                "JForex datasource not configured: set jforex_state_dir on DataManager"
             )
         path = self.state_dir / "history" / f"{sqx_name}.json"
         if not path.is_file():

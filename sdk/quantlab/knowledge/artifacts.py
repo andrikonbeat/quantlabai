@@ -134,9 +134,7 @@ def write_proposal_artifact(
     rel = _PROPOSAL_REL.format(campaign_id=campaign_id)
     target = Path(root) / rel
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(
-        render_proposal_markdown(campaign_id, outcome), encoding="utf-8"
-    )
+    target.write_text(render_proposal_markdown(campaign_id, outcome), encoding="utf-8")
     return rel
 
 

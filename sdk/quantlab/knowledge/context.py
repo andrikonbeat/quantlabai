@@ -159,7 +159,9 @@ def _load_prior_decisions(
         return []
 
     agent_dirs = (
-        [memory_root / agent] if agent else [d for d in memory_root.iterdir() if d.is_dir()]
+        [memory_root / agent]
+        if agent
+        else [d for d in memory_root.iterdir() if d.is_dir()]
     )
 
     decisions: list[dict[str, Any]] = []
@@ -217,7 +219,9 @@ def render_prior_context(
     if not decisions and not similar:
         return _placeholder(phase)
 
-    lines.append(f"Prior campaign memory for phase `{phase}` ({len(decisions)} decision(s)):")
+    lines.append(
+        f"Prior campaign memory for phase `{phase}` ({len(decisions)} decision(s)):"
+    )
     lines.append("")
     for decision in decisions:
         label = _decision_label(

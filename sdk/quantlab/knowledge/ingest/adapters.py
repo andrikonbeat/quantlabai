@@ -104,15 +104,8 @@ class DocsJsonAdapter:
                 "fqn": fqn,
             }
             # Deterministic sha256: stable fields + body only (no timestamp).
-            provenance["sha256"] = _sha256_of(
-                provenance["source"] + body
-            )
-            content = (
-                f"---\n"
-                f"{_front_matter(provenance)}"
-                f"---\n"
-                f"{body}"
-            )
+            provenance["sha256"] = _sha256_of(provenance["source"] + body)
+            content = f"---\n{_front_matter(provenance)}---\n{body}"
             yield DocRecord(
                 slug=slug,
                 kind=kind,
@@ -153,22 +146,14 @@ class SnippetsAdapter:
                 continue
             for snippet_file in sorted(snippet_dir.glob("*.java")):
                 slug = _slugify(snippet_file.stem)
-            body = (
-                f"# Snippet: {snippet_file.name}\n\n"
-                f"_Source: {snippet_file}_\n"
-            )
+            body = f"# Snippet: {snippet_file.name}\n\n_Source: {snippet_file}_\n"
             provenance: dict[str, str] = {
                 "source": str(snippet_file),
                 "license": "licensed-install/personal-use",
                 "fetched_at": _now_iso(),
             }
             provenance["sha256"] = _sha256_of(provenance["source"] + body)
-            content = (
-                f"---\n"
-                f"{_front_matter(provenance)}"
-                f"---\n"
-                f"{body}"
-            )
+            content = f"---\n{_front_matter(provenance)}---\n{body}"
             yield DocRecord(
                 slug=slug,
                 kind="block",
@@ -195,22 +180,14 @@ class TemplatesAdapter:
                 continue
             slug = _slugify(template_file.stem)
             kind = "jforex"
-            body = (
-                f"# Template: {template_file.name}\n\n"
-                f"_Source: {template_file}_\n"
-            )
+            body = f"# Template: {template_file.name}\n\n_Source: {template_file}_\n"
             provenance: dict[str, str] = {
                 "source": str(template_file),
                 "license": "licensed-install/personal-use",
                 "fetched_at": _now_iso(),
             }
             provenance["sha256"] = _sha256_of(provenance["source"] + body)
-            content = (
-                f"---\n"
-                f"{_front_matter(provenance)}"
-                f"---\n"
-                f"{body}"
-            )
+            content = f"---\n{_front_matter(provenance)}---\n{body}"
             yield DocRecord(
                 slug=slug,
                 kind=kind,

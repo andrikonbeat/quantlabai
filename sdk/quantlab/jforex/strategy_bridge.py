@@ -47,11 +47,7 @@ class JForexStrategyBridge:
                 code.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
-        javac = (
-            self.java_home / "bin" / "javac"
-            if self.java_home
-            else Path("javac")
-        )
+        javac = self.java_home / "bin" / "javac" if self.java_home else Path("javac")
         cmd = [
             str(javac),
             "-d",
@@ -60,9 +56,7 @@ class JForexStrategyBridge:
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"Compilation failed: {result.stderr.strip()}"
-            )
+            raise RuntimeError(f"Compilation failed: {result.stderr.strip()}")
         return output_dir / f"{source_path.stem}.class"
 
     def deploy(self, jfx_path: Path) -> None:
@@ -76,16 +70,12 @@ class JForexStrategyBridge:
                 code.
         """
         jforex = (
-            self.jforex_home / "bin" / "jforex"
-            if self.jforex_home
-            else Path("jforex")
+            self.jforex_home / "bin" / "jforex" if self.jforex_home else Path("jforex")
         )
         cmd = [str(jforex), "deploy", str(jfx_path)]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"Deploy failed: {result.stderr.strip()}"
-            )
+            raise RuntimeError(f"Deploy failed: {result.stderr.strip()}")
 
     def start(self, strategy_id: str) -> None:
         """Start a deployed strategy by identifier.
@@ -98,16 +88,12 @@ class JForexStrategyBridge:
                 code.
         """
         jforex = (
-            self.jforex_home / "bin" / "jforex"
-            if self.jforex_home
-            else Path("jforex")
+            self.jforex_home / "bin" / "jforex" if self.jforex_home else Path("jforex")
         )
         cmd = [str(jforex), "start", strategy_id]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"Start failed: {result.stderr.strip()}"
-            )
+            raise RuntimeError(f"Start failed: {result.stderr.strip()}")
 
     def stop(self, strategy_id: str) -> None:
         """Stop a running strategy by identifier.
@@ -120,13 +106,9 @@ class JForexStrategyBridge:
                 code.
         """
         jforex = (
-            self.jforex_home / "bin" / "jforex"
-            if self.jforex_home
-            else Path("jforex")
+            self.jforex_home / "bin" / "jforex" if self.jforex_home else Path("jforex")
         )
         cmd = [str(jforex), "stop", strategy_id]
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError(
-                f"Stop failed: {result.stderr.strip()}"
-            )
+            raise RuntimeError(f"Stop failed: {result.stderr.strip()}")

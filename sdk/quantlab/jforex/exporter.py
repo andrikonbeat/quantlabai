@@ -53,7 +53,9 @@ def indicator_export_path(
     Defaults to ``~/JForex4/exports/quantlab-indicators-<strategy>.json``;
     pass *export_dir* to override the base directory (tests, custom setups).
     """
-    base = Path(export_dir) if export_dir is not None else Path.home() / JFOREX_EXPORTS_DIR
+    base = (
+        Path(export_dir) if export_dir is not None else Path.home() / JFOREX_EXPORTS_DIR
+    )
     return base / f"{INDICATOR_FILE_PREFIX}{strategy}.json"
 
 

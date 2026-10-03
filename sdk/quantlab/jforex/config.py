@@ -24,4 +24,6 @@ class JForexCredentials(BaseModel):
     password: SecretStr = Field(..., description="JForex4 platform password")
     host: str = Field(default="127.0.0.1", description="JForex4 server host")
     port: int = Field(default=11111, ge=1, le=65535, description="JForex4 server port")
-    account_id: str | None = Field(default=None, description="Optional trading account identifier")
+    account_id: str | None = Field(
+        default=None, description="Optional trading account identifier"
+    )

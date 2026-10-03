@@ -130,9 +130,7 @@ class Indexer:
     # ── Tag & Link Management ────────────────────────────────────────────────────
 
     @staticmethod
-    def tag_campaign(
-        store: Any, campaign_id: str, tags: list[str]
-    ) -> None:
+    def tag_campaign(store: Any, campaign_id: str, tags: list[str]) -> None:
         """Tag a campaign with the given tags.
 
         Tags are stored as individual files in ``knowledge/tags/{campaign_id}.yaml``.
@@ -190,9 +188,7 @@ class Indexer:
         return []
 
     @staticmethod
-    def link_campaigns(
-        store: Any, parent: str, children: list[str]
-    ) -> None:
+    def link_campaigns(store: Any, parent: str, children: list[str]) -> None:
         """Create parent-child links between campaigns.
 
         Links are stored bidirectionally in
@@ -347,7 +343,13 @@ class Indexer:
             entry["metrics"] = metrics
 
         # Extract campaign metadata from stats
-        for meta_field in ("name", "symbol", "timeframe", "created_at", "campaign_type"):
+        for meta_field in (
+            "name",
+            "symbol",
+            "timeframe",
+            "created_at",
+            "campaign_type",
+        ):
             if meta_field in stats_data:
                 entry[meta_field] = stats_data[meta_field]
 

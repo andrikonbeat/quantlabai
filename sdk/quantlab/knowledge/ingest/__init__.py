@@ -41,7 +41,11 @@ class DocIndexer:
         install_path: Path to the licensed SQX install (for sqx-install source).
     """
 
-    def __init__(self, knowledge_root: Path | str | None = None, install_path: Path | str | None = None) -> None:
+    def __init__(
+        self,
+        knowledge_root: Path | str | None = None,
+        install_path: Path | str | None = None,
+    ) -> None:
         self._root = Path(knowledge_root) if knowledge_root else Path("knowledge")
         self._install = Path(install_path) if install_path else None
         self._store = KnowledgeStore(root=self._root)
@@ -77,14 +81,18 @@ class DocIndexer:
         self._store.rebuild_index()
         return stats
 
-    def _build_sqx_install_adapters(self, version: str) -> list[DocsJsonAdapter | SnippetsAdapter | TemplatesAdapter]:
+    def _build_sqx_install_adapters(
+        self, version: str
+    ) -> list[DocsJsonAdapter | SnippetsAdapter | TemplatesAdapter]:
         """Build adapters from the licensed SQX install."""
         if self._install is None:
             return []
         base = self._install
         return [
             DocsJsonAdapter(base / "internal" / "autocomplete" / "docs.json", version),
-            SnippetsAdapter(base / "internal" / "extend" / "Snippets" / "SQ" / "Blocks", version),
+            SnippetsAdapter(
+                base / "internal" / "extend" / "Snippets" / "SQ" / "Blocks", version
+            ),
             TemplatesAdapter(base / "internal" / "extend" / "Code" / "JForex", version),
         ]
 
@@ -98,7 +106,9 @@ class DocIndexer:
         }.get(record.kind)
 
         if kind_dir is None:
-            logger.warning("DocIndexer: unknown kind %r for %s", record.kind, record.slug)
+            logger.warning(
+                "DocIndexer: unknown kind %r for %s", record.kind, record.slug
+            )
             return False
 
         if record.kind == "jforex":
@@ -128,6 +138,7 @@ class DocIndexer:
     @staticmethod
     def _sha256_of(text: str) -> str:
         import hashlib
+
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 

@@ -119,8 +119,7 @@ def assert_conformance(writer: str, relative_path: str) -> None:
             {d for dests in WRITER_DESTINATIONS.values() for d in dests}
         )
         raise ConformanceError(
-            f"Unknown writer {writer!r}; "
-            f"valid destinations: {', '.join(destinations)}"
+            f"Unknown writer {writer!r}; valid destinations: {', '.join(destinations)}"
         )
     if not is_conformant(writer, relative_path):
         raise ConformanceError(

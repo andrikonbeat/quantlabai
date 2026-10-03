@@ -51,9 +51,13 @@ class HealthScore(BaseModel):
             performing any time-windowing logic.
     """
 
-    overall_score: float = Field(ge=0, le=100, description="Composite health score 0–100")
+    overall_score: float = Field(
+        ge=0, le=100, description="Composite health score 0–100"
+    )
     state: HealthState = Field(description="Categorical band for this score")
-    metric_scores: dict[str, float] = Field(description="Per-metric normalised scores (0–1 range)")
+    metric_scores: dict[str, float] = Field(
+        description="Per-metric normalised scores (0–1 range)"
+    )
     period: str = Field(default="all", description="Time window label (pass-through)")
 
 
@@ -105,6 +109,10 @@ class HealthRecord(BaseModel):
     """
 
     strategy_id: str = Field(..., description="Unique strategy identifier")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Assessment timestamp")
+    timestamp: datetime = Field(
+        default_factory=datetime.now, description="Assessment timestamp"
+    )
     score: HealthScore = Field(..., description="Health assessment result")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary metadata payload")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Arbitrary metadata payload"
+    )

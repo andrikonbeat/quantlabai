@@ -40,7 +40,7 @@ METRICS_FILENAME: Final[str] = "metrics.jsonl"
 GuardianMetricSource = Literal["evaluation", "live_stream", "manual"]
 
 #: Characters rejected in a campaign id — a campaign id becomes a path segment.
-_FORBIDDEN_PATH_CHARS: Final[frozenset[str]] = frozenset("/\\:*?\"<>|")
+_FORBIDDEN_PATH_CHARS: Final[frozenset[str]] = frozenset('/\\:*?"<>|')
 
 
 class GuardianMetricRecord(BaseModel):
@@ -113,9 +113,7 @@ class GuardianFeedbackStore:
             raise ValueError(
                 f"campaign_id must be a single safe path segment, got {campaign_id!r}"
             )
-        return (
-            self.root / GUARDIAN_FEEDBACK_DIR / campaign_id / METRICS_FILENAME
-        )
+        return self.root / GUARDIAN_FEEDBACK_DIR / campaign_id / METRICS_FILENAME
 
     # ── Write ───────────────────────────────────────────────────────────────────
 

@@ -43,7 +43,9 @@ class WikiAdapter:
         knowledge_root: Knowledge Lake root.
     """
 
-    def __init__(self, urls: list[str], version: str, knowledge_root: Path | str | None = None) -> None:
+    def __init__(
+        self, urls: list[str], version: str, knowledge_root: Path | str | None = None
+    ) -> None:
         self._urls = urls
         self._version = version
         self._root = Path(knowledge_root) if knowledge_root else Path("knowledge")
@@ -72,12 +74,7 @@ class WikiAdapter:
                 "fetched_at": _sha256_of(markdown)[:16],  # stable pseudo-timestamp
             }
             provenance["sha256"] = _sha256_of(provenance["source"] + markdown)
-            content = (
-                f"---\n"
-                f"{_front_matter(provenance)}"
-                f"---\n"
-                f"{markdown}"
-            )
+            content = f"---\n{_front_matter(provenance)}---\n{markdown}"
             yield DocRecord(
                 slug=slug,
                 kind="jforex",
@@ -95,18 +92,36 @@ class WikiAdapter:
     def _html_to_markdown(html: str, source_url: str) -> str:
         """Minimal HTML→Markdown normalization for wiki pages."""
         # Remove scripts, styles, and comments.
-        cleaned = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE)
-        cleaned = re.sub(r"<style[^>]*>.*?</style>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(
+            r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL | re.IGNORECASE
+        )
+        cleaned = re.sub(
+            r"<style[^>]*>.*?</style>", "", cleaned, flags=re.DOTALL | re.IGNORECASE
+        )
         cleaned = re.sub(r"<!--.*?-->", "", cleaned, flags=re.DOTALL)
         # Headings.
-        cleaned = re.sub(r"<h[1-6][^>]*>(.*?)</h[1-6]>", lambda m: f"\n{'#' * int(m.group(0)[2])} {m.group(1)}\n", cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(
+            r"<h[1-6][^>]*>(.*?)</h[1-6]>",
+            lambda m: f"\n{'#' * int(m.group(0)[2])} {m.group(1)}\n",
+            cleaned,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
         # Paragraphs and line breaks.
-        cleaned = re.sub(r"<p[^>]*>(.*?)</p>", r"\1\n\n", cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(
+            r"<p[^>]*>(.*?)</p>", r"\1\n\n", cleaned, flags=re.DOTALL | re.IGNORECASE
+        )
         cleaned = re.sub(r"<br\s*/?>", "\n", cleaned, flags=re.IGNORECASE)
         # Links.
-        cleaned = re.sub(r'<a[^>]+href="([^"]*)"[^>]*>(.*?)</a>', lambda m: f"[{m.group(2)}]({m.group(1)})", cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(
+            r'<a[^>]+href="([^"]*)"[^>]*>(.*?)</a>',
+            lambda m: f"[{m.group(2)}]({m.group(1)})",
+            cleaned,
+            flags=re.DOTALL | re.IGNORECASE,
+        )
         # Lists.
-        cleaned = re.sub(r"<li[^>]*>(.*?)</li>", r"- \1\n", cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(
+            r"<li[^>]*>(.*?)</li>", r"- \1\n", cleaned, flags=re.DOTALL | re.IGNORECASE
+        )
         # Strip remaining tags.
         cleaned = re.sub(r"<[^>]+>", "", cleaned)
         # Normalize whitespace.

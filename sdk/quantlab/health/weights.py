@@ -70,7 +70,9 @@ def normalize_profit_factor(pf: float | None) -> float:
     A PF of 1.0 (breakeven) maps to 0.3 — it is not ideal but not terrible.
     PF of 2.0+ is good; 3.0+ is exceptional (capped at 0.95).
     """
-    return _interpolate(pf, [(0.0, 0.0), (1.0, 0.3), (1.5, 0.6), (2.0, 0.8), (3.0, 0.95)])
+    return _interpolate(
+        pf, [(0.0, 0.0), (1.0, 0.3), (1.5, 0.6), (2.0, 0.8), (3.0, 0.95)]
+    )
 
 
 def normalize_sharpe_ratio(sr: float | None) -> float:
@@ -104,7 +106,10 @@ def normalize_max_drawdown(mdd: float | None) -> float:
     A 50%+ drawdown scores 0.0 (complete failure for this metric).
     ``mdd`` is expected as a percentage (e.g. 12.5 for 12.5%).
     """
-    return _interpolate(mdd, [(0.0, 1.0), (5.0, 0.9), (10.0, 0.7), (20.0, 0.4), (30.0, 0.1), (50.0, 0.0)])
+    return _interpolate(
+        mdd,
+        [(0.0, 1.0), (5.0, 0.9), (10.0, 0.7), (20.0, 0.4), (30.0, 0.1), (50.0, 0.0)],
+    )
 
 
 def normalize_recovery_factor(rf: float | None) -> float:
@@ -115,7 +120,9 @@ def normalize_recovery_factor(rf: float | None) -> float:
     Recovery factor measures how quickly a strategy recovers from drawdowns.
     RF of 5+ is solid; 10+ is excellent.
     """
-    return _interpolate(rf, [(0.0, 0.0), (1.0, 0.3), (2.0, 0.6), (5.0, 0.85), (10.0, 0.95)])
+    return _interpolate(
+        rf, [(0.0, 0.0), (1.0, 0.3), (2.0, 0.6), (5.0, 0.85), (10.0, 0.95)]
+    )
 
 
 def normalize_win_rate(wr: float | None) -> float:
@@ -139,7 +146,9 @@ def normalize_expectancy_ratio(er: float | None) -> float:
     Expectancy ratio > 1.0 means the average winner is larger than the
     average loser — a positive risk/reward signal.
     """
-    return _interpolate(er, [(0.0, 0.0), (0.5, 0.3), (1.0, 0.6), (2.0, 0.85), (5.0, 0.95)])
+    return _interpolate(
+        er, [(0.0, 0.0), (0.5, 0.3), (1.0, 0.6), (2.0, 0.85), (5.0, 0.95)]
+    )
 
 
 # ── Dispatcher ───────────────────────────────────────────────────────────────
@@ -171,5 +180,7 @@ def normalize_metric(name: str, value: float | None) -> float:
     """
     normalizer = _NORMALIZERS.get(name)
     if normalizer is None:
-        raise KeyError(f"Unknown metric '{name}'. Known: {', '.join(sorted(_NORMALIZERS))}")
+        raise KeyError(
+            f"Unknown metric '{name}'. Known: {', '.join(sorted(_NORMALIZERS))}"
+        )
     return normalizer(value)
