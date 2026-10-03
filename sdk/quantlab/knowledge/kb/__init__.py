@@ -21,12 +21,12 @@ from quantlab.knowledge.kb.store import (
 __all__ = [
     "KB_TABS",
     "SQX_VERSION",
-    "KbParameter",
-    "SmallAccountRecommendation",
-    "SeedResult",
-    "seed_from_doc",
     "KbParamNotFoundError",
+    "KbParameter",
     "KbStore",
+    "SeedResult",
+    "SmallAccountRecommendation",
     "get_parameter",
     "list_parameters",
+    "seed_from_doc",
 ]

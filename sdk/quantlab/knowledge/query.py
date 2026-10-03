@@ -7,7 +7,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from quantlab.knowledge.models import CampaignSummary, CampaignMetrics, QueryFilter, QueryResult
+from quantlab.knowledge.models import (
+    CampaignMetrics,
+    CampaignSummary,
+    QueryFilter,
+    QueryResult,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +62,7 @@ class QueryBuilder:
         self._root = root
         self._filter = QueryFilter()
 
-    def filter_by_sharpe(self, min_val: float = None, max_val: float = None) -> "QueryBuilder":
+    def filter_by_sharpe(self, min_val: float = None, max_val: float = None) -> QueryBuilder:
         """Filter by Sharpe ratio range."""
         if min_val is not None:
             self._filter.sharpe_min = min_val
@@ -65,27 +70,27 @@ class QueryBuilder:
             self._filter.sharpe_max = max_val
         return self
 
-    def filter_by_profit_factor(self, min_val: float = None) -> "QueryBuilder":
+    def filter_by_profit_factor(self, min_val: float = None) -> QueryBuilder:
         """Filter by minimum profit factor."""
         self._filter.profit_factor_min = min_val
         return self
 
-    def filter_by_win_rate(self, min_val: float = None) -> "QueryBuilder":
+    def filter_by_win_rate(self, min_val: float = None) -> QueryBuilder:
         """Filter by minimum win rate."""
         self._filter.win_rate_min = min_val
         return self
 
-    def filter_by_max_drawdown(self, max_val: float = None) -> "QueryBuilder":
+    def filter_by_max_drawdown(self, max_val: float = None) -> QueryBuilder:
         """Filter by maximum drawdown (upper bound)."""
         self._filter.max_drawdown_max = max_val
         return self
 
-    def filter_by_tags(self, tags: list[str], match_all: bool = True) -> "QueryBuilder":
+    def filter_by_tags(self, tags: list[str], match_all: bool = True) -> QueryBuilder:
         """Filter by tags (AND match by default)."""
         self._filter.tags = tags
         return self
 
-    def filter_by_date(self, start: str | datetime = None, end: str | datetime = None) -> "QueryBuilder":
+    def filter_by_date(self, start: str | datetime = None, end: str | datetime = None) -> QueryBuilder:
         """Filter by creation date range."""
         if isinstance(start, str):
             start = datetime.fromisoformat(start)
@@ -95,33 +100,33 @@ class QueryBuilder:
         self._filter.date_end = end
         return self
 
-    def search_text(self, text: str) -> "QueryBuilder":
+    def search_text(self, text: str) -> QueryBuilder:
         """Full-text search across campaign names and tags."""
         self._filter.text_search = text
         return self
 
-    def sort_by(self, field: str, ascending: bool = False) -> "QueryBuilder":
+    def sort_by(self, field: str, ascending: bool = False) -> QueryBuilder:
         """Set sort field and order."""
         self._filter.sort_by = field
         self._filter.sort_ascending = ascending
         return self
 
-    def limit(self, n: int) -> "QueryBuilder":
+    def limit(self, n: int) -> QueryBuilder:
         """Limit number of results."""
         self._filter.limit = n
         return self
 
-    def offset(self, n: int) -> "QueryBuilder":
+    def offset(self, n: int) -> QueryBuilder:
         """Skip first N results."""
         self._filter.offset = n
         return self
 
-    def filter_by_agent(self, agent_name: str) -> "QueryBuilder":
+    def filter_by_agent(self, agent_name: str) -> QueryBuilder:
         """Filter to specific agent's memory entries."""
         self._filter.agent_name = agent_name
         return self
 
-    def filter_by_campaign(self, campaign_id: str) -> "QueryBuilder":
+    def filter_by_campaign(self, campaign_id: str) -> QueryBuilder:
         """Filter to specific campaign across all agents."""
         self._filter.campaign_id = campaign_id
         return self
@@ -256,7 +261,7 @@ class QueryBuilder:
                     )
 
         campaigns.sort(key=lambda c: _text_cosine(query_vector, {
-            **{f"{c.campaign_id}": 1},
+            f"{c.campaign_id}": 1,
             **{tag: 1 for tag in c.tags},
         }), reverse=True)
 
@@ -369,8 +374,10 @@ class QueryBuilder:
     ) -> list[tuple[str, dict[str, object], float]] | None:
         """Attempt embedding-based similarity; return None when unavailable."""
         try:
-            from sentence_transformers import SentenceTransformer  # type: ignore[import-untyped]
             import numpy as np
+            from sentence_transformers import (
+                SentenceTransformer,  # type: ignore[import-untyped]
+            )
         except ImportError:
             logger.warning("query_docs: sentence-transformers not installed; falling back to ngram cosine")
             return None
@@ -394,7 +401,7 @@ class QueryBuilder:
             scored.append((rel_path, meta, score))
         return scored
 
-    def execute(self, root: Path = None) -> "QueryResult":
+    def execute(self, root: Path = None) -> QueryResult:
         """Execute the query and return results."""
         import time
         start = time.time()
@@ -491,7 +498,7 @@ class QueryBuilder:
 
         return filtered
 
-    def _matches_filters(self, campaign: "CampaignSummary") -> bool:
+    def _matches_filters(self, campaign: CampaignSummary) -> bool:
         """Check if campaign matches all filters."""
         f = self._filter
         m = campaign.metrics

@@ -4,6 +4,16 @@ SDK for reading, writing, and patching StrategyQuant .cfx archives
 using Pydantic v2 models backed by stdlib xml.etree.ElementTree.
 """
 
+from quantlab.cfx.dom import (
+    add_ranking_condition,
+    add_timeframe,
+    disable_block,
+    enable_block,
+    enable_crosscheck,
+    set_date_range,
+    set_genetic,
+    set_market,
+)
 from quantlab.cfx.errors import (
     CfxCorruptError,
     CfxNotFoundError,
@@ -30,16 +40,6 @@ from quantlab.cfx.models import (
     SetGeneticInstruction,
     SetMarketInstruction,
     SettingsSection,
-)
-from quantlab.cfx.dom import (
-    add_ranking_condition,
-    add_timeframe,
-    disable_block,
-    enable_block,
-    enable_crosscheck,
-    set_date_range,
-    set_genetic,
-    set_market,
 )
 from quantlab.cfx.patcher import CfxPatcher, ValidationError
 from quantlab.cfx.reader import CfxReader

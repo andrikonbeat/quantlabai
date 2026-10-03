@@ -324,4 +324,4 @@ class SQXDocProvider:
         return None
 
 
-__all__ = ["SQXDocProvider", "DocRef"]
+__all__ = ["DocRef", "SQXDocProvider"]

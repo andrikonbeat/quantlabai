@@ -22,33 +22,36 @@ import base64
 import dataclasses
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from quantlab.campaign.flow import PHASES, STAGE_FOR_PHASE
+from quantlab.phase4.models import PhaseResult as Phase4PhaseResult  # noqa: F401
 
 # Name-collision guard (AD-6): import the other PhaseResult definitions under
 # explicit aliases so the three distinct envelope types are visible in this
 # module's namespace without renaming the existing types.
-from quantlab.substrate.executor import PhaseResult as SubstratePhaseResult  # noqa: F401
-from quantlab.phase4.models import PhaseResult as Phase4PhaseResult  # noqa: F401
+from quantlab.substrate.executor import (
+    PhaseResult as SubstratePhaseResult,  # noqa: F401
+)
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "PhaseDirective",
-    "PhaseResult",
     "PHASE_AGENTS",
     "PRODUCTION_EXECUTORS",
-    "PhaseExecutor",
-    "execute_phase",
-    "validate_phase_result",
-    "run_stage_for_handoff",
-    "PhaseNotFoundError",
     "AuthorityViolationError",
     "LongOpSpec",
+    "PhaseDirective",
+    "PhaseExecutor",
+    "PhaseNotFoundError",
+    "PhaseResult",
+    "execute_phase",
+    "run_stage_for_handoff",
+    "validate_phase_result",
 ]
 
 
@@ -201,7 +204,7 @@ def _json_safe(value: Any) -> Any:
 
 def _utc_now_iso() -> str:
     """Current UTC time as a zero-padded ISO-8601 timestamp (Q2)."""
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 async def _persist_stage_success(

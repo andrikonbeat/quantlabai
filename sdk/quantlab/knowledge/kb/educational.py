@@ -17,12 +17,13 @@ deterministic and idempotent. Parameters absent from the template are flagged
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Literal, Sequence
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from quantlab.knowledge.kb.models import KbParameter, SQX_VERSION
+from quantlab.knowledge.kb.models import SQX_VERSION, KbParameter
 from quantlab.knowledge.kb.teaching import TABLE_HEADERS
 
 # Spanish-doc / KB name → tpl_build.xml camelCase key mapping. Curated against

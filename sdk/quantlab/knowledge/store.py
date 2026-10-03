@@ -31,20 +31,20 @@ import hashlib
 import json
 import os
 import warnings
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 import yaml
 
 from quantlab.data.market.models import Bar
-from quantlab.tools.exceptions import ParseError
 from quantlab.robustness.circuit_breaker import CircuitBreaker
 from quantlab.robustness.knowledge_health import (
     HealthCheckResult,
     HealthStatus,
     KnowledgeStoreHealthCheck,
 )
+from quantlab.tools.exceptions import ParseError
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -296,7 +296,7 @@ class KnowledgeStore:
                 remaining.append(entry)
         self._write_buffer = remaining
 
-    async def health_check(self) -> "HealthCheckResult":
+    async def health_check(self) -> HealthCheckResult:
         """Probe store writability and replay buffered writes.
 
         Runs a ``KnowledgeStoreHealthCheck`` probe against this store; on a
@@ -368,7 +368,7 @@ class KnowledgeStore:
         runs_dir.mkdir(parents=True, exist_ok=True)
         return runs_dir
 
-    def save_pipeline_run(self, run: "PipelineRun") -> str:
+    def save_pipeline_run(self, run: PipelineRun) -> str:
         """Save a pipeline run to the Knowledge Lake.
 
         Args:
@@ -393,7 +393,7 @@ class KnowledgeStore:
 
     def load_pipeline_runs(
         self, limit: int = 10, status: str | None = None
-    ) -> list["PipelineRun"]:
+    ) -> list[PipelineRun]:
         """Load pipeline runs from the Knowledge Lake.
 
         Args:
@@ -434,7 +434,7 @@ class KnowledgeStore:
 
         return runs
 
-    def get_pipeline_run(self, run_id: str) -> "PipelineRun | None":
+    def get_pipeline_run(self, run_id: str) -> PipelineRun | None:
         """Load a single pipeline run by ID.
 
         Args:
@@ -478,7 +478,7 @@ class KnowledgeStore:
             The index data as a nested dict.
         """
         directories: dict[str, dict[str, object]] = {}
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
 
         for dir_name in KNOWLEDGE_DIRS:
             dir_path = self.root / dir_name
@@ -679,13 +679,13 @@ class KnowledgeStore:
         phase: str,
         *,
         status: str,
-        started_at: Optional[str] = None,
-        completed_at: Optional[str] = None,
-        duration: Optional[float] = None,
-        artifacts: Optional[list[str]] = None,
-        error: Optional[str] = None,
-        next_gate: Optional[str] = None,
-        gate_decision: Optional[str] = None,
+        started_at: str | None = None,
+        completed_at: str | None = None,
+        duration: float | None = None,
+        artifacts: list[str] | None = None,
+        error: str | None = None,
+        next_gate: str | None = None,
+        gate_decision: str | None = None,
     ) -> Path:
         """Persist a phase execution envelope (full-campaign-lifecycle REQ-3).
 
@@ -828,7 +828,7 @@ class KnowledgeStore:
             return {}
 
         entries: dict[str, object] = {}
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
 
         for memory_file in agent_memory_dir.rglob("memory.yaml"):
             rel = str(memory_file.relative_to(self.root))

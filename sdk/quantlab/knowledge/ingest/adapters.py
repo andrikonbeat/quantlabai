@@ -8,13 +8,13 @@ expected by :class:`DocIndexer`.
 
 from __future__ import annotations
 
-import logging
 import hashlib
 import json
+import logging
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
-from typing import Iterator
 
 import yaml
 
@@ -56,7 +56,7 @@ def _sha256_of(data: str | bytes) -> str:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _front_matter(provenance: dict[str, str]) -> str:

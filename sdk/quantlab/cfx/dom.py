@@ -298,16 +298,16 @@ def set_data_range_parts(
 # ── Public API ────────────────────────────────────────────────────────
 
 __all__ = [
-    "set_market",
-    "add_timeframe",
-    "enable_block",
-    "disable_block",
-    "set_genetic",
-    "set_date_range",
+    "add_advanced_ranking_condition",
     "add_ranking_condition",
+    "add_timeframe",
+    "disable_block",
+    "enable_block",
     "enable_crosscheck",
     "set_commission_settings",
-    "set_spread_settings",
-    "add_advanced_ranking_condition",
     "set_data_range_parts",
+    "set_date_range",
+    "set_genetic",
+    "set_market",
+    "set_spread_settings",
 ]

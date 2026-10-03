@@ -8,9 +8,9 @@ Raw corpus stays under gitignored ``knowledge/raw/`` (REQ-KDI-01).
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
 
 from quantlab.knowledge.ingest.adapters import (
     DocRecord,

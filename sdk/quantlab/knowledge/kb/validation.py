@@ -210,11 +210,11 @@ def validate_seed(
 
 
 __all__ = [
-    "SEED_TOTAL",
-    "VERIFIED_MIN",
-    "VERIFIED_MAX",
-    "NEEDS_REVIEW_MIN",
     "NEEDS_REVIEW_MAX",
+    "NEEDS_REVIEW_MIN",
+    "SEED_TOTAL",
+    "VERIFIED_MAX",
+    "VERIFIED_MIN",
     "SeedValidationReport",
     "validate_seed",
 ]

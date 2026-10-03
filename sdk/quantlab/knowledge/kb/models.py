@@ -112,7 +112,7 @@ class KbParameter(BaseModel):
         )
 
     @classmethod
-    def from_yaml(cls, raw: str) -> "KbParameter":
+    def from_yaml(cls, raw: str) -> KbParameter:
         """Parse and validate a KB YAML document (REQ-201 loader)."""
         import yaml
 

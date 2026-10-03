@@ -55,7 +55,7 @@ STRATEGY_COLUMNS = {
 }
 
 
-def _find_column(columns: list[str], aliases: list[str]) -> Optional[str]:
+def _find_column(columns: list[str], aliases: list[str]) -> str | None:
     """Find the first matching column name from a list of aliases."""
     for alias in aliases:
         if alias in columns:
@@ -185,7 +185,7 @@ def _parse_strategies(df: pd.DataFrame) -> list[StrategySummary]:
     return strategies
 
 
-def _safe_float(value: object) -> Optional[float]:
+def _safe_float(value: object) -> float | None:
     """Safely convert a value to float, returning None on failure."""
     if value is None:
         return None
@@ -195,7 +195,7 @@ def _safe_float(value: object) -> Optional[float]:
         return None
 
 
-def _safe_int(value: object) -> Optional[int]:
+def _safe_int(value: object) -> int | None:
     """Safely convert a value to int, returning None on failure."""
     if value is None:
         return None

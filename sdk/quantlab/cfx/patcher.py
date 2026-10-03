@@ -35,9 +35,9 @@ from quantlab.cfx.models import (
     SetAdvancedRankingsInstruction,
     SetAutomaticPortfolioBuilderInstruction,
     SetCrossChecksInstruction,
+    SetDatabanksInstruction,
     SetDataRangePartsInstruction,
     SetDateRangeInstruction,
-    SetDatabanksInstruction,
     SetGeneticInstruction,
     SetMarketInstruction,
     SetOptimizationInstruction,
@@ -45,8 +45,8 @@ from quantlab.cfx.models import (
     SetPortfolioSettingsInstruction,
     SetRankingsInstruction,
     SetRetesterDataInstruction,
-    SetWalkForwardInstruction,
     SettingsSection,
+    SetWalkForwardInstruction,
     WalkForwardConfig,
 )
 
@@ -57,7 +57,6 @@ if TYPE_CHECKING:
 class ValidationError(CfxParseError):
     """Raised when a patch instruction fails validation."""
 
-    pass
 
 
 # Attribute emission order for advanced ranking filters. The order reproduces a

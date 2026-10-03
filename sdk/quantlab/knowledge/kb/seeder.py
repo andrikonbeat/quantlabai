@@ -17,9 +17,9 @@ fabricated content (REQ-203).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 from quantlab.knowledge.kb.models import KbParameter
 from quantlab.knowledge.kb.store import KbStore

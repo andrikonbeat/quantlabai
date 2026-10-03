@@ -10,7 +10,7 @@ prompts so agents see KB guidance alongside the prior-context block
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from quantlab.knowledge.kb.models import KbParameter
 

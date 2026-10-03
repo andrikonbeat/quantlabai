@@ -17,10 +17,10 @@ needs_review, REQ-208).
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from pathlib import Path
-from typing import Iterable, Sequence
 
-from quantlab.knowledge.kb.models import KbParameter, SQX_VERSION
+from quantlab.knowledge.kb.models import SQX_VERSION, KbParameter
 from quantlab.knowledge.store import KnowledgeStore
 
 

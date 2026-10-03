@@ -11,13 +11,13 @@ from typing import Optional
 @dataclass
 class CampaignMetrics:
     """Key metrics for a campaign."""
-    sharpe_ratio: Optional[float] = None
-    profit_factor: Optional[float] = None
-    win_rate: Optional[float] = None
-    max_drawdown: Optional[float] = None
-    total_trades: Optional[int] = None
-    net_profit: Optional[float] = None
-    total_return: Optional[float] = None
+    sharpe_ratio: float | None = None
+    profit_factor: float | None = None
+    win_rate: float | None = None
+    max_drawdown: float | None = None
+    total_trades: int | None = None
+    net_profit: float | None = None
+    total_return: float | None = None
 
 
 @dataclass
@@ -25,33 +25,33 @@ class CampaignSummary:
     """Summary of a campaign for query results."""
     campaign_id: str
     name: str
-    metrics: Optional[CampaignMetrics] = None
+    metrics: CampaignMetrics | None = None
     tags: list[str] = field(default_factory=list)
-    created: Optional[datetime] = None
-    path: Optional[Path] = None
-    market: Optional[str] = None
-    timeframe: Optional[str] = None
-    status: Optional[str] = None
+    created: datetime | None = None
+    path: Path | None = None
+    market: str | None = None
+    timeframe: str | None = None
+    status: str | None = None
 
 
 @dataclass
 class QueryFilter:
     """Filters for campaign queries."""
-    sharpe_min: Optional[float] = None
-    sharpe_max: Optional[float] = None
-    profit_factor_min: Optional[float] = None
-    win_rate_min: Optional[float] = None
-    max_drawdown_max: Optional[float] = None
+    sharpe_min: float | None = None
+    sharpe_max: float | None = None
+    profit_factor_min: float | None = None
+    win_rate_min: float | None = None
+    max_drawdown_max: float | None = None
     tags: list[str] = field(default_factory=list)
-    date_start: Optional[datetime] = None
-    date_end: Optional[datetime] = None
-    text_search: Optional[str] = None
+    date_start: datetime | None = None
+    date_end: datetime | None = None
+    text_search: str | None = None
     sort_by: str = "created"
     sort_ascending: bool = False
-    limit: Optional[int] = None
+    limit: int | None = None
     offset: int = 0
-    agent_name: Optional[str] = field(default=None)
-    campaign_id: Optional[str] = field(default=None)
+    agent_name: str | None = field(default=None)
+    campaign_id: str | None = field(default=None)
 
 @dataclass
 class QueryResult:
@@ -79,9 +79,9 @@ class AgentMemoryEntry:
     campaign_id: str
     memory_path: str
     checkpoint_paths: list[str] = field(default_factory=list)
-    last_updated: Optional[str] = None
-    embedding_ref: Optional[str] = None
-    memory_content: Optional[dict] = field(default=None)
+    last_updated: str | None = None
+    embedding_ref: str | None = None
+    memory_content: dict | None = field(default=None)
 
     def to_dict(self) -> dict[str, object]:
         d: dict[str, object] = {
@@ -104,13 +104,13 @@ class PhaseEnvelope:
     campaign_id: str
     phase: str
     status: str
-    started_at: Optional[str] = None
-    completed_at: Optional[str] = None
-    duration: Optional[float] = None
+    started_at: str | None = None
+    completed_at: str | None = None
+    duration: float | None = None
     artifacts: list[str] = field(default_factory=list)
-    error: Optional[str] = None
-    next_gate: Optional[str] = None
-    gate_decision: Optional[str] = None
+    error: str | None = None
+    next_gate: str | None = None
+    gate_decision: str | None = None
 
 
 @dataclass
@@ -123,7 +123,7 @@ class ParameterMatrixEntry:
     rationale: str
     source: str = "default"
     confidence: float = 0.5
-    hypothesis_ref: Optional[str] = None
+    hypothesis_ref: str | None = None
 
 
 @dataclass
@@ -131,13 +131,13 @@ class FeedbackRecord:
     """Guardian feedback record for live degradation or parameter drift."""
 
     campaign_id: str
-    strategy_id: Optional[str] = None
+    strategy_id: str | None = None
     event_type: str = "DEGRADING"
     severity: str = "WARNING"
-    metric_delta: Optional[dict[str, float]] = None
+    metric_delta: dict[str, float] | None = None
     parameter_deltas: list[dict[str, Any]] = field(default_factory=list)
-    detected_at: Optional[str] = None
-    recommended_action: Optional[str] = None
+    detected_at: str | None = None
+    recommended_action: str | None = None
 
 
 @dataclass
@@ -149,5 +149,5 @@ class MaintenancePlan:
     replacement_candidates: list[str] = field(default_factory=list)
     live_strategy_ids: list[str] = field(default_factory=list)
     disconnected_strategy_ids: list[str] = field(default_factory=list)
-    notes: Optional[str] = None
-    updated_at: Optional[str] = None
+    notes: str | None = None
+    updated_at: str | None = None

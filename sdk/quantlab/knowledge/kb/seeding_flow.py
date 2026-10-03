@@ -29,7 +29,6 @@ from quantlab.knowledge.kb.validation import (
     validate_seed,
 )
 
-
 CFX_EVIDENCE_MAP: dict[tuple[str, str], str] = {
     ('What to build', 'Strategy type'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
     ('What to build', 'Trading directions'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
