@@ -80,7 +80,7 @@ def _template_xml() -> str:
     return _TEMPLATE_XML_CACHE
 
 
-def _extract_template_value(match: re.Match) -> str:
+def _extract_template_value(match: re.Match[str]) -> str:
     """Extract the value text from a build-config regex match.
 
     The map patterns are shape-heterogeneous: some wrap the value between two

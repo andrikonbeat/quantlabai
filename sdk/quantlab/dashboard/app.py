@@ -79,16 +79,16 @@ def _knowledge_store() -> KnowledgeStore:
 
 def _load_campaign_export_data(
     store: KnowledgeStore, campaign_id: str
-) -> tuple[list, list, dict]:
+) -> tuple[list[Any], list[Any], dict[str, Any]]:
     """Load real campaign export data from the Knowledge Lake (T24).
 
     Returns ``(trades, equity, statistics)`` — empty-safe when the lake
     holds no artifacts for the campaign, so report generation never fails
     on missing data.
     """
-    trades: list = []
-    equity: list = []
-    statistics: dict = {}
+    trades: list[Any] = []
+    equity: list[Any] = []
+    statistics: dict[str, Any] = {}
 
     structured_dir = store.root / "structured"
     if not structured_dir.is_dir():
@@ -131,7 +131,7 @@ def _load_campaign_export_data(
     return trades, equity, statistics
 
 
-def _campaign_entry(c: Any) -> dict:
+def _campaign_entry(c: Any) -> dict[str, Any]:
     """Build the campaign API entry carrying the DSH-MOD spec field contract.
 
     Spec: each entry SHALL carry ``campaign_id, market, timeframe, sharpe,
@@ -187,7 +187,7 @@ def _campaign_exists(store: KnowledgeStore, campaign_id: str) -> bool:
     ).is_file()
 
 
-def _as_typed_export(trades: list, equity: list, statistics: dict):
+def _as_typed_export(trades: list[Any], equity: list[Any], statistics: dict[str, Any]):
     """Convert raw lake JSON export data into the typed models the
     ReportGenerator expects, falling back to the raw dicts when a payload
     does not match the model shape (the generator is attribute-tolerant).
@@ -195,7 +195,7 @@ def _as_typed_export(trades: list, equity: list, statistics: dict):
     The dashboard JSON endpoints keep the raw lake data; only the report
     generator consumes typed ``Trade`` / ``EquityPoint`` / ``StatsResult``.
     """
-    typed_trades: list = []
+    typed_trades: list[Any] = []
     for item in trades:
         if isinstance(item, dict):
             try:
@@ -205,7 +205,7 @@ def _as_typed_export(trades: list, equity: list, statistics: dict):
         else:
             typed_trades.append(item)
 
-    typed_equity: list = []
+    typed_equity: list[Any] = []
     for item in equity:
         if isinstance(item, dict):
             try:
@@ -215,7 +215,7 @@ def _as_typed_export(trades: list, equity: list, statistics: dict):
         else:
             typed_equity.append(item)
 
-    typed_stats: dict | StatsResult = statistics
+    typed_stats: dict[str, Any] | StatsResult = statistics
     if isinstance(statistics, dict) and statistics:
         try:
             typed_stats = StatsResult(**statistics)

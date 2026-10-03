@@ -5,13 +5,14 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any
 
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.reporting.generator import generate_report
 from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
 
 
-def add_report_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_report_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add the ``report`` subcommand parser with subcommands.
 
     Registers::
@@ -113,7 +114,7 @@ def report_generate_command(args: argparse.Namespace) -> int:
 
 def _load_campaign_data(
     store: KnowledgeStore, campaign_id: str
-) -> tuple[list, list, object]:
+) -> tuple[list[Any], list[Any], object]:
     """Load campaign data from Knowledge Lake.
 
     Args:

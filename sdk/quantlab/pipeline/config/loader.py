@@ -166,7 +166,7 @@ def save_multi_agent_pipeline_config(
 
 
 # Backward compatibility
-def load_pipeline_config(path: str) -> dict:
+def load_pipeline_config(path: str) -> dict[str, Any]:
     """Load legacy pipeline configuration from YAML.
 
     Args:

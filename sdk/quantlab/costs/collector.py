@@ -7,6 +7,8 @@ Implements the duck-typed protocol expected by ``ExecutionGuardian`` and
 
 from __future__ import annotations
 
+from typing import Any
+
 from quantlab.costs.engine import CostEngine
 
 # ── Defaults ─────────────────────────────────────────────────────────────────────
@@ -75,7 +77,7 @@ class CostCollector:
 
     # ── Full collection ──────────────────────────────────────────────────────────
 
-    def collect_all(self, symbols: list[str]) -> dict[str, dict]:
+    def collect_all(self, symbols: list[str]) -> dict[str, dict[str, Any]]:
         """Collect cost data for all requested symbols.
 
         Returns a dict keyed by symbol, each containing ``spread_pips``,
@@ -85,7 +87,7 @@ class CostCollector:
         patterns — both ``hasattr(pair_data, 'spread_pips')`` (which
         returns ``False`` for plain dicts) and the dict-key fallback.
         """
-        result: dict[str, dict] = {}
+        result: dict[str, dict[str, Any]] = {}
         for sym in symbols:
             result[sym] = {
                 "spread_pips": self.spread_pips(sym),

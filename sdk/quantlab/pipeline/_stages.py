@@ -6,6 +6,8 @@ Concrete SQX implementations live in ``quantlab.phase4.stages``.
 This is a private module — import via ``quantlab.pipeline.stages`` instead.
 """
 
+from typing import Any
+
 from quantlab.pipeline.base import PipelineContext, Stage
 
 
@@ -16,7 +18,7 @@ class ValidateStage(Stage):
     requires = []
     provides = ["validated_config"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         # Abstract — concrete implementation in phase4
         raise NotImplementedError(
             "ValidateStage must be implemented by SQX-specific subclass"
@@ -30,7 +32,7 @@ class TranslateStage(Stage):
     requires = ["validated_config"]
     provides = ["cfx_bytes", "cfx_path"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "TranslateStage must be implemented by SQX-specific subclass"
         )
@@ -43,7 +45,7 @@ class DaemonStartStage(Stage):
     requires = []
     provides = ["daemon_url", "daemon_manager"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "DaemonStartStage must be implemented by SQX-specific subclass"
         )
@@ -56,7 +58,7 @@ class LoadConfigStage(Stage):
     requires = ["dispatcher", "cfx_bytes"]
     provides = []
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "LoadConfigStage must be implemented by SQX-specific subclass"
         )
@@ -69,7 +71,7 @@ class RunCampaignStage(Stage):
     requires = ["dispatcher"]
     provides = ["campaign_name"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "RunCampaignStage must be implemented by SQX-specific subclass"
         )
@@ -82,7 +84,7 @@ class PollCampaignStage(Stage):
     requires = ["dispatcher", "campaign_name"]
     provides = ["campaign_status"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "PollCampaignStage must be implemented by SQX-specific subclass"
         )
@@ -95,7 +97,7 @@ class CampaignStage(Stage):
     requires = ["daemon_url", "cfx_path"]
     provides = ["campaign_name", "campaign_status"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "CampaignStage must be implemented by SQX-specific subclass"
         )
@@ -108,7 +110,7 @@ class ExportStage(Stage):
     requires = ["campaign_name", "daemon_url"]
     provides = ["export_paths"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "ExportStage must be implemented by SQX-specific subclass"
         )
@@ -121,7 +123,7 @@ class ReadStage(Stage):
     requires = ["export_paths"]
     provides = ["parsed_results"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "ReadStage must be implemented by SQX-specific subclass"
         )
@@ -134,7 +136,7 @@ class ComputeStatsStage(Stage):
     requires = ["parsed_results"]
     provides = ["statistics"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "ComputeStatsStage must be implemented by SQX-specific subclass"
         )
@@ -147,7 +149,7 @@ class KnowledgeStoreStage(Stage):
     requires = ["parsed_results", "statistics"]
     provides = ["knowledge_keys"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "KnowledgeStoreStage must be implemented by SQX-specific subclass"
         )
@@ -165,7 +167,7 @@ class CostInjectionStage(Stage):
     requires = ["config.broker_profile"]
     provides = ["cost_config"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "CostInjectionStage must be implemented by SQX-specific subclass"
         )
@@ -178,7 +180,7 @@ class ReportStage(Stage):
     requires = ["parsed_results", "statistics"]
     provides = ["report_path"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         raise NotImplementedError(
             "ReportStage must be implemented by SQX-specific subclass"
         )

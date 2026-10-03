@@ -44,7 +44,7 @@ class ResilientNotifier:
         notifier: Any,
         retry_policy: RetryPolicy | None = None,
         queue_max_size: int = DEFAULT_QUEUE_MAX_SIZE,
-        queue_file: str | os.PathLike = DEFAULT_QUEUE_FILE,
+        queue_file: str | os.PathLike[str] = DEFAULT_QUEUE_FILE,
     ) -> None:
         self._notifier = notifier
         self._retry_policy = retry_policy or RetryPolicy()

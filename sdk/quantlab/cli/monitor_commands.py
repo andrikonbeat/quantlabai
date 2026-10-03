@@ -111,7 +111,7 @@ async def cmd_monitor_status(args: argparse.Namespace) -> int:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def add_monitor_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_monitor_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add ``monitor`` subcommand with ``start``, ``stop``, ``status``.
 
     Registers a ``monitor`` parser on *subparsers* with three subcommands:

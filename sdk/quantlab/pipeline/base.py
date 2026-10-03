@@ -28,9 +28,9 @@ class PipelineContext:
         error: Set by runner on first failure; subsequent stages skipped.
     """
 
-    config: dict
-    artifacts: dict = field(default_factory=dict)
-    metadata: dict = field(default_factory=dict)
+    config: dict[str, Any]
+    artifacts: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     error: Exception | None = None
 
 

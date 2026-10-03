@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from quantlab.phase4.errors import (
     JForexStrategyNotFoundError,
@@ -111,7 +112,7 @@ class PortfolioComposer:
 
     @staticmethod
     def _parse_weights(
-        result: dict,
+        result: dict[str, Any],
         fitness: str = "ReturnDDRatio",
     ) -> PortfolioWeightResult:
         """Parse and validate portfolio weight results from SQX API response.

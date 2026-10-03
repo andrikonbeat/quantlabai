@@ -6,6 +6,7 @@ import json
 from collections.abc import Awaitable, Callable, Iterable
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from quantlab.jforex.models import OrderEvent
 from quantlab.readers.models import EquityPoint
@@ -103,7 +104,7 @@ class JForexLiveFeed:
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
-    def _read_json(self, filename: str) -> list[dict]:
+    def _read_json(self, filename: str) -> list[dict[str, Any]]:
         """Read a JSON array from *filename* inside the state directory.
 
         Returns an empty list when the directory/file is missing or the
@@ -123,7 +124,7 @@ class JForexLiveFeed:
             return []
 
     @staticmethod
-    def _parse_equity(raw: list[dict]) -> list[EquityPoint]:
+    def _parse_equity(raw: list[dict[str, Any]]) -> list[EquityPoint]:
         """Convert raw JSON dicts to EquityPoint objects."""
         points: list[EquityPoint] = []
         for item in raw:
@@ -135,7 +136,7 @@ class JForexLiveFeed:
         return points
 
     @staticmethod
-    def _parse_orders(raw: list[dict]) -> list[OrderEvent]:
+    def _parse_orders(raw: list[dict[str, Any]]) -> list[OrderEvent]:
         """Convert raw JSON dicts to OrderEvent objects."""
         events: list[OrderEvent] = []
         for item in raw:

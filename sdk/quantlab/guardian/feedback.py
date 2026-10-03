@@ -165,7 +165,7 @@ class GuardianDirective:
     campaign_id: str
     alert_id: str | None = None
     points: Sequence[EquityPoint] | Iterable[EquityPoint] | None = None
-    research_config: dict = field(default_factory=dict)
+    research_config: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.kind not in DIRECTIVE_KINDS:

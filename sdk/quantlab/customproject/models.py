@@ -108,5 +108,5 @@ class CustomProject:
     databanks: list[DatabankSpec] = field(default_factory=list)
     schema_version: str = PINNED_SQX_VERSION
     phase_type: str | None = None
-    checkpoint_metadata: dict | None = None
+    checkpoint_metadata: dict[str, Any] | None = None
     template_name: str | None = None

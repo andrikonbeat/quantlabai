@@ -11,6 +11,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -25,7 +26,7 @@ from quantlab.pipeline.runner import PipelineRunner
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def print_json(data: dict | list, pretty: bool = True) -> None:
+def print_json(data: dict[str, Any] | list[Any], pretty: bool = True) -> None:
     """Print JSON to stdout."""
     import json
 
@@ -415,7 +416,7 @@ async def cmd_pipeline_history(args: argparse.Namespace) -> int:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def add_pipeline_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_pipeline_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add pipeline subcommands to main parser."""
     p_pipeline = subparsers.add_parser(
         "pipeline", help="Pipeline execution and management"

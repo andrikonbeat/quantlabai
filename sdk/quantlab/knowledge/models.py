@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -72,7 +73,7 @@ class TaggedCampaign:
 
     campaign_id: str
     tags: dict[str, str] = field(default_factory=dict)
-    metadata: dict = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -85,7 +86,7 @@ class AgentMemoryEntry:
     checkpoint_paths: list[str] = field(default_factory=list)
     last_updated: str | None = None
     embedding_ref: str | None = None
-    memory_content: dict | None = field(default=None)
+    memory_content: dict[str, Any] | None = field(default=None)
 
     def to_dict(self) -> dict[str, object]:
         d: dict[str, object] = {

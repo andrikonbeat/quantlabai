@@ -13,6 +13,7 @@ from abc import ABC
 from typing import Any
 
 from quantlab.guardian import (
+    BaseGuardian,
     CapitalGuardian,
     ExecutionGuardian,
     MarketGuardian,
@@ -460,7 +461,7 @@ class GuardianEvaluationAgentStage(GuardianEvaluationStage):
 
     def _build_guardians(
         self, research_config: dict[str, Any], pipeline_config: dict[str, Any]
-    ) -> list:
+    ) -> list[BaseGuardian]:
         market_context = (
             research_config.get("market_context")
             if isinstance(research_config, dict)

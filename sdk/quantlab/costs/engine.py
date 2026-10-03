@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 
 from quantlab.costs.models import CostBreakdown
 from quantlab.costs.profiles import BrokerProfile
@@ -125,7 +127,7 @@ class CostEngine:
 
         return breakdown
 
-    def compute_symbol(self, symbol: str) -> dict:
+    def compute_symbol(self, symbol: str) -> dict[str, float | int]:
         """Aggregate costs across all recorded trades for a symbol.
 
         Parameters

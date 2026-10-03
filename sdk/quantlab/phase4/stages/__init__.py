@@ -15,6 +15,7 @@ import re
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -53,7 +54,7 @@ class SQXValidateStage(ValidateStage):
     requires = []
     provides = ["validated_config"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         dry_run = config.get("dry_run", False)
 
@@ -85,7 +86,7 @@ class SQXTranslateStage(TranslateStage):
     requires = ["validated_config"]
     provides = ["cfx_bytes", "cfx_path"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         dry_run = config.get("dry_run", False)
         research_config_path = config.get("research_config_path")
@@ -130,7 +131,7 @@ class SQXDaemonStartStage(DaemonStartStage):
     requires = []
     provides = ["daemon_url", "daemon_manager", "dispatcher", "http_client"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         # Deferred imports: Phase 4 modules not guaranteed present at import time
         from quantlab.phase4.command_dispatcher import CommandDispatcher
         from quantlab.phase4.daemon import SQXDaemonManager
@@ -170,7 +171,7 @@ class SQXLoadConfigStage(LoadConfigStage):
     requires = ["dispatcher", "cfx_bytes"]
     provides = []
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         cfx_bytes = ctx.artifacts.get("cfx_bytes")
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
 
@@ -196,7 +197,7 @@ class SQXRunCampaignStage(RunCampaignStage):
     requires = ["dispatcher"]
     provides = ["campaign_name"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
 
@@ -213,7 +214,7 @@ class SQXPollCampaignStage(PollCampaignStage):
     requires = ["dispatcher", "campaign_name"]
     provides = ["campaign_status"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
         campaign_name = ctx.artifacts.get("campaign_name") or config.get(
@@ -255,7 +256,7 @@ class SQXCampaignStage(CampaignStage):
     requires = ["daemon_manager", "dispatcher", "cfx_bytes"]
     provides = ["campaign_name", "campaign_status"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         cfx_bytes = ctx.artifacts.get("cfx_bytes")
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
@@ -314,7 +315,7 @@ class SQXExportStage(ExportStage):
     requires = ["campaign_name", "dispatcher"]
     provides = ["export_paths"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         campaign_name = ctx.artifacts.get("campaign_name") or config.get(
             "campaign_name", "Campaign"
@@ -350,7 +351,7 @@ class SQXReadStage(ReadStage):
     requires = ["export_paths"]
     provides = ["parsed_results"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         export_paths = ctx.artifacts.get("export_paths", {})
         reader = DatabankCSVReader()
 
@@ -381,7 +382,7 @@ class SQXComputeStatsStage(ComputeStatsStage):
     requires = ["parsed_results"]
     provides = ["statistics"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         parsed = ctx.artifacts.get("parsed_results", {})
         trades = parsed.get("trades", [])
         equity = parsed.get("equity", [])
@@ -411,7 +412,7 @@ class SQXKnowledgeStoreStage(KnowledgeStoreStage):
     requires = ["parsed_results", "statistics", "cfx_bytes", "export_paths"]
     provides = ["artifact_paths"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         knowledge_root = config.get("knowledge_root")
 
@@ -471,7 +472,7 @@ class SQXReportStage(ReportStage):
     requires = ["parsed_results", "statistics"]
     provides = ["report_path", "report_html", "report_json", "report_charts"]
 
-    async def execute(self, ctx: PipelineContext) -> dict:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         # Delegate to Phase 5b ReportGenerator
         from pathlib import Path
 

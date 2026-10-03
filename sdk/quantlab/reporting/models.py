@@ -2,6 +2,7 @@
 
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -31,7 +32,7 @@ class ChartColors(BaseModel):
     background: str = "#FFFFFF"
     text: str = "#1A1A2E"
 
-    def to_plotly_template(self, theme: "ReportTheme") -> dict:
+    def to_plotly_template(self, theme: "ReportTheme") -> dict[str, Any]:
         """Convert to Plotly template color overrides."""
         if theme == ReportTheme.DARK:
             return {
@@ -96,7 +97,7 @@ class ReportConfig(BaseModel):
     theme: ReportTheme = ReportTheme.LIGHT
     template_path: Path | None = None
     title: str | None = None
-    benchmark_equity: list | None = None
+    benchmark_equity: list[Any] | None = None
     include_agent_decisions: bool = Field(
         default=False, description="Include agent audit sections"
     )

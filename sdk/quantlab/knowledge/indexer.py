@@ -271,7 +271,7 @@ class Indexer:
     # ── Legacy v1 → v2 Migration ────────────────────────────────────────────────
 
     @staticmethod
-    def migrate_v1_to_v2(v1_index: dict) -> dict:
+    def migrate_v1_to_v2(v1_index: dict[str, Any]) -> dict[str, Any]:
         """Migrate a v1 index schema to v2.
 
         v1 schema::

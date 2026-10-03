@@ -22,6 +22,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 from quantlab.cli.agent_commands import add_agent_subparser
 from quantlab.cli.campaign_commands import (
@@ -85,7 +86,7 @@ EXIT_ERROR = 1
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def print_json(data: dict | list, pretty: bool = True) -> None:
+def print_json(data: dict[str, Any] | list[Any], pretty: bool = True) -> None:
     """Print JSON to stdout."""
     if pretty:
         print(json.dumps(data, indent=2, default=str))

@@ -66,10 +66,10 @@ class CampaignResult:
     cfx_bytes: bytes | None = None
     campaign_status: CampaignStatus | None = None
     export_paths: dict[str, Path] = field(default_factory=dict)
-    trades: list = field(default_factory=list)
-    equity: list = field(default_factory=list)
-    summary: dict = field(default_factory=dict)
-    statistics: dict = field(default_factory=dict)
+    trades: list[Any] = field(default_factory=list)
+    equity: list[Any] = field(default_factory=list)
+    summary: dict[str, Any] = field(default_factory=dict)
+    statistics: dict[str, Any] = field(default_factory=dict)
     artifact_paths: dict[str, Path] = field(default_factory=dict)
     watcher_events: list[WatcherEvent] = field(default_factory=list)
     total_duration: float = 0.0
@@ -117,7 +117,7 @@ class CampaignConfig:
     progress_callback: (
         Callable[[CampaignPhase, PhaseStatus, str | None], Any] | None
     ) = None
-    on_watcher_event: Callable | None = None
+    on_watcher_event: Callable[[WatcherEvent], Any] | None = None
 
 
 class CampaignOrchestrator:
@@ -452,8 +452,8 @@ async def run_campaign(
     sqx_install_path: str = "/opt/StrategyQuantX",
     poll_interval: float = 30.0,
     poll_timeout: float = 3600.0,
-    progress_callback: Callable | None = None,
-    on_watcher_event: Callable | None = None,
+    progress_callback: Callable[[CampaignPhase, PhaseStatus, str | None], Any] | None = None,
+    on_watcher_event: Callable[[WatcherEvent], Any] | None = None,
 ) -> CampaignResult:
     """High-level function to run a complete campaign.
 

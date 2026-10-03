@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from typing import Any
 
 import yaml
 
@@ -15,7 +16,7 @@ import yaml
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def print_json(data: dict | list, pretty: bool = True) -> None:
+def print_json(data: dict[str, Any] | list[Any], pretty: bool = True) -> None:
     """Print JSON to stdout."""
     import json
 
@@ -176,7 +177,7 @@ async def cmd_agent_memory(args: argparse.Namespace) -> int:
     return 1
 
 
-def add_agent_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_agent_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add agent subcommands to main parser."""
     p_agent = subparsers.add_parser("agent", help="Agent management and querying")
     agent_sub = p_agent.add_subparsers(dest="agent_cmd", required=True)

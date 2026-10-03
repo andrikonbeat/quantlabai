@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from quantlab.knowledge.models import (
     CampaignMetrics,
@@ -56,7 +57,7 @@ def _text_cosine(a: dict[str, int], b: dict[str, int]) -> float:
 class QueryBuilder:
     """Fluent query builder for Knowledge Lake campaigns."""
 
-    def __init__(self, index: dict, root: Path):
+    def __init__(self, index: dict[str, Any], root: Path):
         self._index = index
         self._root = root
         self._filter = QueryFilter()
@@ -455,14 +456,14 @@ class QueryBuilder:
             query_time_ms=(time.time() - start) * 1000,
         )
 
-    def _extract_campaigns(self, index: dict) -> list:
+    def _extract_campaigns(self, index: dict[str, Any]) -> list[CampaignSummary]:
         """Extract campaign summaries from index."""
         from quantlab.knowledge.models import (
             AgentMemoryEntry as AgentMemoryEntry,
             CampaignSummary,
         )
 
-        campaigns: list = []
+        campaigns: list[CampaignSummary] = []
 
         for dir_name in ["results", "campaigns"]:
             if dir_name not in index.get("directories", {}):
@@ -531,7 +532,7 @@ class QueryBuilder:
 
         return campaigns
 
-    def _apply_filters(self, campaigns: list) -> list:
+    def _apply_filters(self, campaigns: list[CampaignSummary]) -> list[CampaignSummary]:
         """Apply all filters to campaign list."""
         filtered = campaigns
 
@@ -595,7 +596,7 @@ class QueryBuilder:
 
         return True
 
-    def _sort_results(self, campaigns: list) -> list:
+    def _sort_results(self, campaigns: list[CampaignSummary]) -> list[CampaignSummary]:
         """Sort campaigns by specified field."""
         f = self._filter
 

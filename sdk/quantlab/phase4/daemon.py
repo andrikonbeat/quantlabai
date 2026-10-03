@@ -56,9 +56,9 @@ class SQXDaemonManager:
         self.restart_delay = restart_delay
         self._monitor_interval = 5.0
 
-        self._process: subprocess.Popen | None = None
+        self._process: subprocess.Popen[bytes] | None = None
         self._restart_count = 0
-        self._monitor_task: asyncio.Task | None = None
+        self._monitor_task: asyncio.Task[None] | None = None
         self._client: httpx.AsyncClient | None = None
         self._is_restarting = False
 

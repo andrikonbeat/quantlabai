@@ -10,6 +10,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from quantlab.dashboard.app import DashboardServer, ServerConfig
 
@@ -51,7 +52,7 @@ def write_pid_file(
     return pid_file
 
 
-def read_pid_file(pid_file: Path) -> dict | None:
+def read_pid_file(pid_file: Path) -> dict[str, Any] | None:
     """Read and parse the PID file, returning None when missing/invalid."""
     try:
         payload = json.loads(pid_file.read_text(encoding="utf-8"))
@@ -75,7 +76,7 @@ def _uptime_s(started_at: str | None) -> float | None:
     return max(0.0, time.time() - start.timestamp())
 
 
-def status(pid_file: Path) -> dict:
+def status(pid_file: Path) -> dict[str, Any]:
     """Report dashboard status, removing stale PID files."""
     payload = read_pid_file(pid_file)
     if payload is None:
@@ -97,7 +98,7 @@ def status(pid_file: Path) -> dict:
     }
 
 
-def stop(pid_file: Path) -> dict:
+def stop(pid_file: Path) -> dict[str, Any]:
     """Terminate the recorded dashboard process and remove the PID file.
 
     Returns a dict with ``stopped`` plus a human-readable ``reason``.
@@ -131,7 +132,7 @@ def stop(pid_file: Path) -> dict:
     return {"stopped": True, "reason": f"Terminated process {pid}"}
 
 
-def add_dashboard_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_dashboard_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add dashboard subcommands to the main parser."""
     dashboard_parser = subparsers.add_parser(
         "dashboard",

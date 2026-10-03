@@ -7,6 +7,7 @@ import csv
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.reporting.generator import (
@@ -82,7 +83,7 @@ def generate_report_command(args: argparse.Namespace) -> int:
         return 2
 
 
-def _load_benchmark_equity(path: str) -> list[dict]:
+def _load_benchmark_equity(path: str) -> list[dict[str, Any]]:
     """Load benchmark equity data from CSV file."""
 
     equity = []
@@ -205,7 +206,7 @@ def _load_campaign_data(store: KnowledgeStore, campaign_id: str):
     return trades, equity, statistics
 
 
-def add_report_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_report_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add `report` subcommand to main parser."""
 
     report_parser = subparsers.add_parser(

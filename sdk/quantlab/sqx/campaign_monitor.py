@@ -70,7 +70,7 @@ class WatcherEvent:
         "excessive_rejection",
     ]
     severity: Literal["INFO", "WARNING", "CRITICAL"]
-    details: dict
+    details: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable dictionary."""
@@ -1074,7 +1074,7 @@ class CampaignMonitor:
         self,
         event_type: str,
         severity: str,
-        details: dict,
+        details: dict[str, Any],
     ) -> WatcherEvent:
         """Create a WatcherEvent with the current timestamp."""
         return WatcherEvent(

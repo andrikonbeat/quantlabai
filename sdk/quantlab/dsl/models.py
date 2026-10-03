@@ -623,7 +623,7 @@ class ResearchConfig(BaseModel):
     )
 
     # MetaGuardian integration
-    guardian_state: dict | None = Field(
+    guardian_state: dict[str, Any] | None = Field(
         default=None, description="Current MetaGuardian state for DSL translation"
     )
 

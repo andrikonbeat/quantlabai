@@ -16,7 +16,7 @@ from typing import Any
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def print_json(data: dict | list, pretty: bool = True) -> None:
+def print_json(data: dict[str, Any] | list[Any], pretty: bool = True) -> None:
     """Print JSON to stdout."""
     import json
 
@@ -407,7 +407,7 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
     return 0
 
 
-def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_campaign_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add campaign subcommands to main parser."""
     p_campaign = subparsers.add_parser("campaign", help="Campaign lifecycle management")
     campaign_sub = p_campaign.add_subparsers(dest="campaign_cmd", required=True)
@@ -527,7 +527,7 @@ async def cmd_generation_status(args: argparse.Namespace) -> int:
     return 0
 
 
-def add_generation_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_generation_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add the top-level ``generation`` subcommand (status, REQ-38)."""
     p_gen = subparsers.add_parser(
         "generation",

@@ -13,7 +13,7 @@ from typing import Any
 from quantlab.data.fundamental.cache import SqliteCache
 from quantlab.data.fundamental.rate_limit import TokenBucket
 from quantlab.data.news.base import NewsProvider, ProviderError
-from quantlab.data.news.models import WebResult
+from quantlab.data.news.models import NewsItem, WebResult
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class WebSearchProvider(NewsProvider):
         """Run the duckduckgo-search text query, off the event loop."""
         return await asyncio.to_thread(self._search_sync, query)
 
-    async def fetch_news(self, query: str, **params: Any) -> list:
+    async def fetch_news(self, query: str, **params: Any) -> list[NewsItem]:
         """News fetching is not supported by WebSearchProvider.
 
         Raises:

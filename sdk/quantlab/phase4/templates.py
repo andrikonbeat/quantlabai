@@ -6,6 +6,7 @@ Generates CFX XML via cfx-editor models and CfxWriter.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from quantlab.cfx import BuildTask, CfxArchive, CfxWriter
 from quantlab.cfx.dom import set_spread_settings as set_spread_settings
@@ -205,7 +206,7 @@ class CfxTemplateBuilder:
         walkforward_cycles: int = 5,
         min_trades: int = 30,
         confidence_level: float = 0.95,
-        broker_profile: dict | None = None,
+        broker_profile: dict[str, Any] | None = None,
         advanced_ranking_filters: list[AdvancedRankingCondition] | None = None,
         data_range_parts: DataRangeParts | None = None,
     ) -> BuildTask:
@@ -291,7 +292,7 @@ class CfxTemplateBuilder:
         walkforward_cycles: int = 5,
         min_trades: int = 30,
         confidence_level: float = 0.95,
-        broker_profile: dict | None = None,
+        broker_profile: dict[str, Any] | None = None,
         advanced_ranking_filters: list[AdvancedRankingCondition] | None = None,
         data_range_parts: DataRangeParts | None = None,
     ) -> bytes:

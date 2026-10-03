@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .base import BaseGuardian
 from .models import GuardianResult, GuardianStatus, GuardianType
 
@@ -77,7 +79,7 @@ class RiskGuardian(BaseGuardian):
             message=message,
         )
 
-    def _get_risk_metrics(self) -> dict:
+    def _get_risk_metrics(self) -> dict[str, Any]:
         """Get risk metrics from the data provider.
 
         This is a placeholder - in reality, this would query the portfolio

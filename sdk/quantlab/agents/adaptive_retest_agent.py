@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Any
 
 from quantlab.cfx.models import (
     BuildTask,
@@ -142,7 +143,7 @@ def _extract_databank_coverage(raw_xml: str) -> float | None:
 
 def select_retest_mode(
     signals: RetestSignals,
-    metadata: dict | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> RetestMode:
     """Select retest mode based on CFX signals and optional metadata override.
 

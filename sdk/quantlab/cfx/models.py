@@ -7,6 +7,7 @@ accommodate string-typed attribute values from XML parsing.
 
 from __future__ import annotations
 
+from typing import Any
 import xml.etree.ElementTree as ET
 from typing import Union
 
@@ -630,13 +631,13 @@ class CrossChecksConfig(BaseModel):
             return self.raw_xml
         return "<CrossChecks/>"
 
-    def summary(self) -> dict:
+    def summary(self) -> dict[str, Any]:
         """Return a readable summary of configured parameters.
 
         Returns:
             Dictionary with dialect and typed field values.
         """
-        result: dict = {"dialect": self.dialect}
+        result: dict[str, Any] = {"dialect": self.dialect}
         if self.generic is not None:
             result["generic"] = self.generic.model_dump()
         if self.automatic_retest is not None:
@@ -885,7 +886,7 @@ class CfxProject(BaseModel):
     schema_version: str
     databanks: list[DatabankSpec] = Field(default_factory=list)
     task_meta: dict[str, TaskMeta] = Field(default_factory=dict)
-    metadata: dict | None = None
+    metadata: dict[str, Any] | None = None
 
     @property
     def task_type(self) -> str:

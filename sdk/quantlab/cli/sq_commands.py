@@ -451,7 +451,7 @@ async def cmd_sqx_check_version(args: argparse.Namespace) -> int:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
+def add_sqx_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     """Add the ``sqx`` command group (``sqx kb ...``) to the main parser."""
     p_sqx = subparsers.add_parser("sqx", help="SQX parameter knowledge base (KB)")
     sqx_sub = p_sqx.add_subparsers(dest="sqx_cmd", required=True)

@@ -90,10 +90,10 @@ class ReportGenerator:
         trades: list[Trade],
         equity: list[EquityPoint],
         statistics: StatsResult,
-        phase_results: list[dict] | None = None,
-        summary: dict | None = None,
-        agent_decisions: list[dict] | None = None,
-        comparison_campaigns: list[dict] | None = None,
+        phase_results: list[dict[str, Any]] | None = None,
+        summary: dict[str, Any] | None = None,
+        agent_decisions: list[dict[str, Any]] | None = None,
+        comparison_campaigns: list[dict[str, Any]] | None = None,
     ) -> ReportResult:
         """Generate report from campaign data."""
 
@@ -157,10 +157,10 @@ class ReportGenerator:
         trades: list[Trade],
         equity: list[EquityPoint],
         statistics: StatsResult,
-        phase_results: list[dict] | None,
-        summary: dict | None,
-        agent_decisions: list[dict] | None = None,
-        comparison_campaigns: list[dict] | None = None,
+        phase_results: list[dict[str, Any]] | None,
+        summary: dict[str, Any] | None,
+        agent_decisions: list[dict[str, Any]] | None = None,
+        comparison_campaigns: list[dict[str, Any]] | None = None,
     ) -> Path:
         """Generate machine-readable JSON report."""
 
@@ -228,10 +228,10 @@ class ReportGenerator:
         trades: list[Trade],
         equity: list[EquityPoint],
         statistics: StatsResult,
-        phase_results: list[dict] | None,
-        summary: dict | None,
-        agent_decisions: list[dict] | None = None,
-        comparison_campaigns: list[dict] | None = None,
+        phase_results: list[dict[str, Any]] | None,
+        summary: dict[str, Any] | None,
+        agent_decisions: list[dict[str, Any]] | None = None,
+        comparison_campaigns: list[dict[str, Any]] | None = None,
     ) -> Path:
         """Generate interactive HTML report with Plotly charts."""
 
@@ -748,7 +748,7 @@ class ReportGenerator:
             },
         ]
 
-    def _render_agent_audit_section(self, agent_decisions: list[dict]) -> str:
+    def _render_agent_audit_section(self, agent_decisions: list[dict[str, Any]]) -> str:
         """Render the agent audit section from agent decisions.
 
         Args:
@@ -802,7 +802,7 @@ class ReportGenerator:
             </div>
         </section>"""
 
-    def _render_comparison_section(self, comparison_campaigns: list[dict]) -> str:
+    def _render_comparison_section(self, comparison_campaigns: list[dict[str, Any]]) -> str:
         """Render the multi-campaign comparison section.
 
         Args:
@@ -865,8 +865,8 @@ class ReportGenerator:
         trades: list[Trade],
         equity: list[EquityPoint],
         charts: dict[str, str],
-        phase_results: list[dict] | None,
-        summary: dict | None,
+        phase_results: list[dict[str, Any]] | None,
+        summary: dict[str, Any] | None,
         plotly_available: bool,
         executive_summary: dict[str, Any] | None = None,
         benchmark_comparison: list[dict[str, Any]] | None = None,
@@ -1079,10 +1079,10 @@ def generate_report(
     equity: list[EquityPoint],
     statistics: StatsResult,
     config: ReportConfig | None = None,
-    phase_results: list[dict] | None = None,
-    summary: dict | None = None,
-    agent_decisions: list[dict] | None = None,
-    comparison_campaigns: list[dict] | None = None,
+    phase_results: list[dict[str, Any]] | None = None,
+    summary: dict[str, Any] | None = None,
+    agent_decisions: list[dict[str, Any]] | None = None,
+    comparison_campaigns: list[dict[str, Any]] | None = None,
 ) -> ReportResult:
     """Convenience function for generating a report."""
 

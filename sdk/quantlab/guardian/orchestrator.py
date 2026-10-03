@@ -7,6 +7,7 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING
+from typing import Any
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from quantlab.knowledge.guardian_store import GuardianFeedbackStore
@@ -359,7 +360,7 @@ class MetaGuardianOrchestrator:
         """
         return self.state
 
-    def get_state_history(self) -> list[tuple]:
+    def get_state_history(self) -> list[tuple[PortfolioState, float]]:
         """Get history of state changes.
 
         Returns:
@@ -367,7 +368,7 @@ class MetaGuardianOrchestrator:
         """
         return self.state_history.copy()
 
-    def get_strategy_states(self) -> dict:
+    def get_strategy_states(self) -> dict[str, StrategyState]:
         """Get current state of all strategies.
 
         Returns:

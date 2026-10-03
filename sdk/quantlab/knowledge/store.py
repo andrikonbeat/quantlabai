@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from typing import Any
 import warnings
 from datetime import UTC, datetime
 from pathlib import Path
@@ -101,7 +102,7 @@ class IndexEntry:
         sha256: str,
         created: str,
         tags: list[str] | None = None,
-        metrics: dict | None = None,
+        metrics: dict[str, Any] | None = None,
         linked_campaigns: list[str] | None = None,
     ) -> None:
         self.path = path
@@ -165,7 +166,7 @@ def _add_text(vector: dict[str, int], text: str) -> None:
             vector[gram] = vector.get(gram, 0) + 1
 
 
-def _record_text(record: dict) -> str:
+def _record_text(record: dict[str, Any]) -> str:
     """Concatenate the comparable fields of a decision record."""
     parts = [
         str(record.get("phase", "")),
@@ -615,7 +616,7 @@ class KnowledgeStore:
 
     # ── Querying ────────────────────────────────────────────────────────────────
 
-    def query(self, filters: dict | None = None):
+    def query(self, filters: dict[str, Any] | None = None):
         """Create a query builder for campaigns."""
         from quantlab.knowledge.query import QueryBuilder
 
@@ -742,7 +743,7 @@ class KnowledgeStore:
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 
-    def _write_index(self, index: dict) -> None:
+    def _write_index(self, index: dict[str, Any]) -> None:
         """Write the index dict to index.yaml."""
         index_path = self.root / INDEX_FILENAME
         index_path.write_text(
@@ -1466,7 +1467,7 @@ class TimeSeriesStore:
             )
         self._conn.commit()
 
-    def append_alert(self, alert: dict) -> None:
+    def append_alert(self, alert: dict[str, Any]) -> None:
         """Append an alert event.
 
         Args:
@@ -1480,7 +1481,7 @@ class TimeSeriesStore:
         )
         self._conn.commit()
 
-    def append_heartbeat(self, heartbeat: dict) -> None:
+    def append_heartbeat(self, heartbeat: dict[str, Any]) -> None:
         """Append a heartbeat record.
 
         Args:
@@ -1501,7 +1502,7 @@ class TimeSeriesStore:
 
     # ── Query ───────────────────────────────────────────────────────────────────
 
-    def query_metrics(self, strategy_id: str, since: float, until: float) -> list[dict]:
+    def query_metrics(self, strategy_id: str, since: float, until: float) -> list[dict[str, Any]]:
         """Query metric rows for a strategy within a time range.
 
         Args:
@@ -1528,7 +1529,7 @@ class TimeSeriesStore:
         knowledge_root: str | Path = "knowledge",
         guardian_name: str | None = None,
         source: str | None = None,
-    ) -> list[dict]:
+    ) -> list[dict[str, Any]]:
         """Read guardian metric records for a campaign.
 
         Guardian records are persisted as append-only JSONL by

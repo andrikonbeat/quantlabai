@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .base import BaseGuardian
 from .models import GuardianResult, GuardianStatus, GuardianType
 
@@ -83,7 +85,7 @@ class MarketGuardian(BaseGuardian):
             message=message,
         )
 
-    def _score_regime(self, regime_data: dict) -> float:
+    def _score_regime(self, regime_data: dict[str, Any]) -> float:
         """Score based on market regime."""
         regime = regime_data.get("regime", "UNKNOWN").upper()
         confidence = regime_data.get("confidence", 0.5)
@@ -98,7 +100,7 @@ class MarketGuardian(BaseGuardian):
         else:
             return 0.2  # Unknown regime
 
-    def _score_volatility(self, regime_data: dict) -> float:
+    def _score_volatility(self, regime_data: dict[str, Any]) -> float:
         """Score based on volatility levels."""
         # In a full implementation, this would use ATR percentile
         # For now, use regime as proxy
@@ -110,7 +112,7 @@ class MarketGuardian(BaseGuardian):
         else:
             return 0.8  # Normal volatility = good score
 
-    def _score_liquidity(self, cost_data: dict) -> float:
+    def _score_liquidity(self, cost_data: dict[str, Any]) -> float:
         """Score based on liquidity (inverse of spreads).
 
         Expects ``cost_data`` as returned by ``CostCollector.collect_all()``

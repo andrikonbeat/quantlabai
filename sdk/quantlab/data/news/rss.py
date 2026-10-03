@@ -13,7 +13,7 @@ from typing import Any
 import httpx
 
 from quantlab.data.news.base import NewsProvider, ProviderError as ProviderError
-from quantlab.data.news.models import NewsItem
+from quantlab.data.news.models import NewsItem, WebResult
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +156,7 @@ class RSSNewsProvider(NewsProvider):
 
         return results
 
-    async def search_web(self, query: str, **params: Any) -> list:
+    async def search_web(self, query: str, **params: Any) -> list[WebResult]:
         """Web search is not supported by RSSNewsProvider.
 
         Raises:

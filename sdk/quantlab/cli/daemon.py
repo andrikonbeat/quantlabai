@@ -8,9 +8,10 @@ Reduces CLI boilerplate by ~60% vs manual start/stop.
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import AsyncContextManager
+from typing import Any
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.daemon import SQXDaemonManager
@@ -94,7 +95,7 @@ async def run_with_daemon(
     sqx_install_path: str | Path = "/opt/StrategyQuantX",
     port: int = 8888,
     startup_timeout: float = 60.0,
-    func: Callable | None = None,
+    func: Callable[..., Awaitable[Any]] | None = None,
     *args,
     **kwargs,
 ):
@@ -134,7 +135,7 @@ async def daemon_context(
     sqx_install_path: str = "/opt/StrategyQuantX",
     port: int = 8888,
     startup_timeout: float = 60.0,
-) -> AsyncContextManager:
+) -> AsyncContextManager[DaemonContext]:
     """Async context manager for DaemonContext.
 
     Usage:
