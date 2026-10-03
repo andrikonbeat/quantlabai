@@ -30,80 +30,302 @@ from quantlab.knowledge.kb.validation import (
 )
 
 CFX_EVIDENCE_MAP: dict[tuple[str, str], str] = {
-    ('What to build', 'Strategy type'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('What to build', 'Trading directions'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('What to build', 'Build mode'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('What to build', 'Conditions in entry rule'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('What to build', 'Conditions in exit rule'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('What to build', 'Global Indicators period'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('What to build', 'Global Lookback period (Shift)'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('What to build', 'Stop Loss'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('What to build', 'Profit Target'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Max # of Generations'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Population Size (per island)'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Crossover Probability'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Mutation Probability'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Islands (separate evolution)'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Migrate every Xth generation, X ='): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Population migration rate'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Initial population size required'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Use strategies from Initial population databank as evolution start'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Generated decimation coefficient'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Profit factor > 1 (initial population filter)'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Detect same strategies in population and replace them with newly generated ones'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Replace % of weakest strategies with newly generated'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Every generation(s)'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Start again when finished (continuous repeating evolution)'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Genetic options', 'Restart evolution if fitness stagnates for X generation(s)'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Engine'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Symbol'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Timeframe'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Start day'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'End day'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Precision'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Commissions & swap'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Spread'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Slippage'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Data', 'Min. distance'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Trading options', "Don't trade on weekends"): 'assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx',
-    ('Trading options', 'Friday Close Time'): 'assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx',
-    ('Trading options', 'Sunday Open Time'): 'assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx',
-    ('Trading options', 'Exit At End Of Day'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Trading options', 'End Of Day Exit Time'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Trading options', 'Exit On Friday'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Trading options', 'Limit Time Range'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Trading options', 'Order Types To Close'): 'assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx',
-    ('Trading options', 'Max distance from market'): 'assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx',
-    ('Trading options', 'Maximum Trades Per Day'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Trading options', 'Minimum / Maximum SL'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Trading options', 'Minimum / Maximum PT'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Trading options', 'Realistic Gaps Handling'): 'assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx',
-    ('Trading options', 'Store Chart Data'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Building blocks', 'Signals (Predefined conditions)'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Building blocks', 'Indicators'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Building blocks', 'Stop/Limit entry blocks'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Building blocks', 'Order types'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Building blocks', 'Exit types'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Building blocks', 'Calibrate indicators'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Money management', 'Initial capital'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Money management', 'Choose Money Management method'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Money management', 'Order size'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Cross checks', 'What If simulations'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Cross checks', 'Monte Carlo trades manipulation'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Cross checks', 'Higher backtest precision'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Cross checks', 'Backtests on additional markets'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Cross checks', 'Monte Carlo retest methods'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Cross checks', 'Sequential Optimization'): 'assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx',
-    ('Cross checks', 'Opt. Profile / Sys. Param. Permutation'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Cross checks', 'Walk-Forward Optimization'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Cross checks', 'Walk-Forward Matrix'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Ranking', 'Maximum strategies to store in databank'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Ranking', 'Stop generation when'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Ranking', 'Compute from'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Ranking', 'Ranking Criterium'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Ranking', 'Custom filters'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Ranking', 'Dismiss strategies with these problems'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
-    ('Ranking', 'Fit to existing portfolio filter'): 'assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx',
+    (
+        "What to build",
+        "Strategy type",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "What to build",
+        "Trading directions",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "What to build",
+        "Build mode",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "What to build",
+        "Conditions in entry rule",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "What to build",
+        "Conditions in exit rule",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "What to build",
+        "Global Indicators period",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "What to build",
+        "Global Lookback period (Shift)",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "What to build",
+        "Stop Loss",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "What to build",
+        "Profit Target",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Max # of Generations",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Population Size (per island)",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Crossover Probability",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Mutation Probability",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Islands (separate evolution)",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Migrate every Xth generation, X =",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Population migration rate",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Initial population size required",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Use strategies from Initial population databank as evolution start",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Generated decimation coefficient",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Profit factor > 1 (initial population filter)",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Detect same strategies in population and replace them with newly generated ones",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Replace % of weakest strategies with newly generated",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Every generation(s)",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Start again when finished (continuous repeating evolution)",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Genetic options",
+        "Restart evolution if fitness stagnates for X generation(s)",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Engine",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Symbol",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Timeframe",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Start day",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "End day",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Precision",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Commissions & swap",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Spread",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Slippage",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Data",
+        "Min. distance",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Trading options",
+        "Don't trade on weekends",
+    ): "assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx",
+    (
+        "Trading options",
+        "Friday Close Time",
+    ): "assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx",
+    (
+        "Trading options",
+        "Sunday Open Time",
+    ): "assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx",
+    (
+        "Trading options",
+        "Exit At End Of Day",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Trading options",
+        "End Of Day Exit Time",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Trading options",
+        "Exit On Friday",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Trading options",
+        "Limit Time Range",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Trading options",
+        "Order Types To Close",
+    ): "assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx",
+    (
+        "Trading options",
+        "Max distance from market",
+    ): "assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx",
+    (
+        "Trading options",
+        "Maximum Trades Per Day",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Trading options",
+        "Minimum / Maximum SL",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Trading options",
+        "Minimum / Maximum PT",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Trading options",
+        "Realistic Gaps Handling",
+    ): "assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx",
+    (
+        "Trading options",
+        "Store Chart Data",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Building blocks",
+        "Signals (Predefined conditions)",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Building blocks",
+        "Indicators",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Building blocks",
+        "Stop/Limit entry blocks",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Building blocks",
+        "Order types",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Building blocks",
+        "Exit types",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Building blocks",
+        "Calibrate indicators",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Money management",
+        "Initial capital",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Money management",
+        "Choose Money Management method",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Money management",
+        "Order size",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Cross checks",
+        "What If simulations",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Cross checks",
+        "Monte Carlo trades manipulation",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Cross checks",
+        "Higher backtest precision",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Cross checks",
+        "Backtests on additional markets",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Cross checks",
+        "Monte Carlo retest methods",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Cross checks",
+        "Sequential Optimization",
+    ): "assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ CFD H1.cfx",
+    (
+        "Cross checks",
+        "Opt. Profile / Sys. Param. Permutation",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Cross checks",
+        "Walk-Forward Optimization",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Cross checks",
+        "Walk-Forward Matrix",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Ranking",
+        "Maximum strategies to store in databank",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Ranking",
+        "Stop generation when",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Ranking",
+        "Compute from",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Ranking",
+        "Ranking Criterium",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Ranking",
+        "Custom filters",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Ranking",
+        "Dismiss strategies with these problems",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
+    (
+        "Ranking",
+        "Fit to existing portfolio filter",
+    ): "assets/SQX_144_2953_linux_20260601/user/projects/Builder/project.cfx",
 }
 
 
@@ -203,7 +425,11 @@ def run_seed_flow(
     """
     version = sqx_version or SQX_VERSION
     table = evidence_map if evidence_map is not None else CFX_EVIDENCE_MAP
-    base = evidence_base if evidence_base is not None else _default_evidence_base(store.root)
+    base = (
+        evidence_base
+        if evidence_base is not None
+        else _default_evidence_base(store.root)
+    )
 
     result = seed_from_doc(store, doc_path=doc_path, sqx_version=version)
     _bulk_verify(store, base, version, table)
