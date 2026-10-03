@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from unittest.mock import AsyncMock
 
 import pytest
@@ -20,7 +19,7 @@ from quantlab.evolution.genetic import (
     single_point_crossover,
     tournament_select,
 )
-from quantlab.evolution.models import EvolutionCandidate
+from quantlab.evolution.models import EvolutionCandidate as EvolutionCandidate
 
 # ── Mutation operator tests ──────────────────────────────────────────
 

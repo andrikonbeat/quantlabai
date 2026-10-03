@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -11,9 +10,9 @@ import pytest
 
 from quantlab.guardian.live import LiveEvaluation, evaluate_live, max_drawdown
 from quantlab.jforex.live_feed import JForexLiveFeed
-from quantlab.jforex.models import OrderEvent
+from quantlab.jforex.models import OrderEvent as OrderEvent
 from quantlab.jforex.strategy_bridge import JForexStrategyBridge
-from quantlab.readers.models import EquityPoint
+from quantlab.readers.models import EquityPoint as EquityPoint
 
 
 class TestJForexIntegration:

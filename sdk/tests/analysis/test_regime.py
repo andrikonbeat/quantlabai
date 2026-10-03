@@ -8,9 +8,8 @@ Strict TDD: written first — FAIL (RED) until `RegimeClassifier` exists.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-import pytest
 
 from quantlab.data.market import Bar
 

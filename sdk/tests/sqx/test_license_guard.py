@@ -12,7 +12,7 @@ and verify the fail-closed behavior (unknown ⇒ UNLICENSED, never crashes).
 from unittest.mock import MagicMock
 
 from quantlab.cli.runner import CliResult
-from quantlab.pipeline.license import LicenseInfo, LicenseManager, LicenseStatus
+from quantlab.pipeline.license import LicenseInfo as LicenseInfo, LicenseManager, LicenseStatus
 
 # Trimmed but faithful excerpt of `sqcli -license action=info` real output
 # (first lines + the decisive license-status line).

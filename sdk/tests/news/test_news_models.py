@@ -10,7 +10,7 @@ from datetime import datetime
 
 import pytest
 
-from quantlab.data.fundamental.base import ProviderError
+from quantlab.data.fundamental.base import ProviderError as ProviderError
 
 
 class TestNewsItem:

@@ -8,7 +8,6 @@ Strict TDD: written first — FAIL (RED) until `Frame` exists.
 
 from __future__ import annotations
 
-import pytest
 
 
 class TestFrameModel:

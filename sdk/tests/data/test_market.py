@@ -8,14 +8,14 @@ Strict TDD: written first — FAIL (RED) until market models/providers exist.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from quantlab.data.market import (
     Bar,
     DukascopyProvider,
-    MarketDataProvider,
+    MarketDataProvider as MarketDataProvider,
     YahooProvider,
 )
 

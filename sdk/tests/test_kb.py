@@ -10,7 +10,6 @@ against real configs promotes entries to ``verified``.
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import pytest
@@ -20,7 +19,7 @@ from quantlab.knowledge.kb.models import (
     KB_TABS,
     SQX_VERSION,
     KbParameter,
-    SmallAccountRecommendation,
+    SmallAccountRecommendation as SmallAccountRecommendation,
 )
 from quantlab.knowledge.kb.seeder import GAP_WHAT_IT_DOES, seed_from_doc
 from quantlab.knowledge.kb.store import KbParamNotFoundError, KbStore

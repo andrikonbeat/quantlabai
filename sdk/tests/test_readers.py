@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
 
 from quantlab.readers.databank import (
     DatabankCSVReader,
@@ -345,7 +344,6 @@ class TestReadStrategies:
         # Create a minimal CSV with only strategy_name
         import tempfile
 
-        import pandas as pd
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("Name\n")

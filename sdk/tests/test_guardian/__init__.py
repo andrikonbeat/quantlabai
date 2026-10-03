@@ -14,18 +14,18 @@ def test_guardian_import():
 def test_guardian_submodule_imports():
     """Test that we can import the submodules."""
     from quantlab.guardian import (
-        BaseGuardian,
-        CapitalGuardian,
-        ExecutionGuardian,
-        GuardianResult,
+        BaseGuardian as BaseGuardian,
+        CapitalGuardian as CapitalGuardian,
+        ExecutionGuardian as ExecutionGuardian,
+        GuardianResult as GuardianResult,
         GuardianStatus,
         GuardianType,
-        MarketGuardian,
+        MarketGuardian as MarketGuardian,
         MetaGuardianConfig,
-        MetaGuardianOrchestrator,
+        MetaGuardianOrchestrator as MetaGuardianOrchestrator,
         PortfolioState,
-        QualityGuardian,
-        RiskGuardian,
+        QualityGuardian as QualityGuardian,
+        RiskGuardian as RiskGuardian,
         StrategyState,
     )
     

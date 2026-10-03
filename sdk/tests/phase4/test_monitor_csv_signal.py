@@ -14,7 +14,6 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
 
 from quantlab.sqx.campaign_monitor import (
     BaselineConfig,

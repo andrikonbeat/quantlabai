@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from quantlab.guardian.live import (
-    DEFAULT_LIVE_DRAWDOWN_THRESHOLD,
+    DEFAULT_LIVE_DRAWDOWN_THRESHOLD as DEFAULT_LIVE_DRAWDOWN_THRESHOLD,
     LiveEvaluation,
     evaluate_live,
     max_drawdown,

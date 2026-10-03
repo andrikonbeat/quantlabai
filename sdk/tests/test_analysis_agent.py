@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from quantlab.agents.analysis_agent import AnalysisAgent
-from quantlab.analysis.models import SelectionResult, StrategyAnalysis
+from quantlab.analysis.models import StrategyAnalysis as StrategyAnalysis
 from quantlab.pipeline.base import PipelineContext
 
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from quantlab.broker.jforex_adapter import JForexBrokerAdapter
 from quantlab.guardian.execution import ExecutionGuardian

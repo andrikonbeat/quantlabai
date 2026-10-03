@@ -9,7 +9,6 @@ PR 2: LLMMode prompt construction, JSON parse, fallback chain (RB-6).
 from __future__ import annotations
 
 import json
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest

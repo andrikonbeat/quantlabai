@@ -7,7 +7,6 @@ template-missing flagging for parameters absent from ``tpl_build.xml``.
 
 from __future__ import annotations
 
-import copy
 from pathlib import Path
 
 import pytest

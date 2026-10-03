@@ -16,7 +16,10 @@ import tempfile
 
 import pytest
 
-from quantlab.agents.deployment_agent import DeploymentAgent, DeploymentResult
+from quantlab.agents.deployment_agent import (
+    DeploymentAgent,
+    DeploymentResult as DeploymentResult,
+)
 from quantlab.pipeline.base import PipelineContext
 
 # ── Helpers ────────────────────────────────────────────────────────────────────

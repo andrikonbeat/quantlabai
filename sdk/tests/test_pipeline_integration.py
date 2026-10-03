@@ -6,7 +6,6 @@ Task 1.17: Regression test: basic 9-stage SQX pipeline executes without new stag
 
 import os
 import tempfile
-from pathlib import Path
 
 import pytest
 import yaml

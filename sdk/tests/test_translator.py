@@ -17,7 +17,7 @@ from quantlab.dsl.models import (
     ResearchConfig,
     Strategy,
 )
-from quantlab.tools.exceptions import TranslationError, ValidationError
+from quantlab.tools.exceptions import TranslationError, ValidationError as ValidationError
 from quantlab.translate.translator import generate_cfx_archive, generate_cfx_xml
 
 

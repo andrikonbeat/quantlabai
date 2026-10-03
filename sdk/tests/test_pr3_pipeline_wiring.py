@@ -11,7 +11,6 @@ Covers:
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -235,7 +234,7 @@ class TestPipelineIntegration:
         THEN it returns dict with the 5 required artifact keys.
         """
         from quantlab.pipeline.base import PipelineContext
-        from quantlab.pipeline.stages.agent_stages import LLMResearchStage
+        from quantlab.pipeline.stages.agent_stages import LLMResearchStage as LLMResearchStage
 
         # We need a concrete class — get it from the registry
         registry = StageRegistry()

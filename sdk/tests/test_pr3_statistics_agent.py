@@ -5,12 +5,9 @@ rolling metrics, and the run() pipeline contract.
 """
 
 import csv
-import json
 import logging
-import math
 import os
 import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -18,8 +15,8 @@ from quantlab.agents.statistics_agent import StatisticsAgent
 from quantlab.pipeline.base import PipelineContext
 from quantlab.readers.models import EquityPoint, Trade
 from quantlab.stats.models import (
-    AggregateStats,
-    RollingMetrics,
+    AggregateStats as AggregateStats,
+    RollingMetrics as RollingMetrics,
     StatsResult,
 )
 

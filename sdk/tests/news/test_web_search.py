@@ -6,7 +6,6 @@ Covers spec scenarios from:
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -107,7 +106,7 @@ class TestWebSearchProvider:
         WHEN search_web() called again
         THEN the cached response is returned AND no external request is made.
         """
-        from quantlab.data.news.models import WebResult
+        from quantlab.data.news.models import WebResult as WebResult
         from quantlab.data.news.web_search import WebSearchProvider
 
         provider = WebSearchProvider()

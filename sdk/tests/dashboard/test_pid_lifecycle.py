@@ -12,7 +12,6 @@ from __future__ import annotations
 import signal
 import subprocess
 import sys
-import time
 
 from quantlab.cli.dashboard_commands import status, stop, write_pid_file
 

@@ -21,7 +21,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
-from pytest import approx
 
 from quantlab.evolution.config import (
     ConcurrencyConfig,

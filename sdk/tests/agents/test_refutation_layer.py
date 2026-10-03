@@ -816,10 +816,10 @@ class TestRefutationLayerPR2Integration:
     ) -> None:
         """Default strategy list includes all three strategies."""
         from quantlab.agents.refutation.strategies.adversarial import (
-            LLMAdversarialStrategy,
+            LLMAdversarialStrategy as LLMAdversarialStrategy,
         )
         from quantlab.agents.refutation.strategies.historical import (
-            HistoricalCounterExampleStrategy,
+            HistoricalCounterExampleStrategy as HistoricalCounterExampleStrategy,
         )
 
         layer = RefutationLayer()

@@ -1,6 +1,5 @@
 """Tests for SEG MCP tools."""
 
-import json
 
 import pytest
 

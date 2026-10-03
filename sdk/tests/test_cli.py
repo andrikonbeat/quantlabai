@@ -13,7 +13,7 @@ from quantlab.cli.runner import (
     RealExecutor,
     resolve_sqcli_timeout,
 )
-from quantlab.tools.exceptions import SQXNotFoundError, TimeoutError
+from quantlab.tools.exceptions import SQXNotFoundError, TimeoutError as TimeoutError
 
 
 def _make_echo_binary(tmp_path) -> str:

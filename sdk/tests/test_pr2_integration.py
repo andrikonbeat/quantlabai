@@ -7,7 +7,6 @@ Task 2.20: DSL parsing test: extended ResearchConfig YAML loads with all new fie
 from pathlib import Path
 
 import pytest
-import yaml
 
 from quantlab.agents.builder_agent import BuilderAgent
 from quantlab.agents.research_agent import ResearchAgent

@@ -8,11 +8,10 @@ Strict TDD: written first — FAIL (RED) until `IndicatorEngine` exists.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-import pytest
 
-from quantlab.analysis.indicators import IndicatorEngine, IndicatorResult
+from quantlab.analysis.indicators import IndicatorEngine, IndicatorResult as IndicatorResult
 from quantlab.data.market import Bar
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
