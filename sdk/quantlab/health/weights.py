@@ -11,7 +11,6 @@ from typing import Final
 
 from quantlab.health.models import HealthWeights
 
-
 # ── Default weights ──────────────────────────────────────────────────────────
 
 DEFAULT_WEIGHTS: Final[HealthWeights] = HealthWeights()

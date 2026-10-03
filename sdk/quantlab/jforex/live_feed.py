@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable, Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Awaitable, Callable, Iterable, List
+from typing import List
 
 from quantlab.jforex.models import OrderEvent
 from quantlab.readers.models import EquityPoint
@@ -15,7 +16,7 @@ _ALIVE_PROGRESS = 0.5
 
 
 def jforex_progress_fn(
-    feed: "JForexLiveFeed | None" = None,
+    feed: JForexLiveFeed | None = None,
     *,
     poll_equity_count: int | None = None,
 ) -> Callable[[], Awaitable[tuple[bool, float | None]]]:
@@ -73,7 +74,7 @@ class JForexLiveFeed:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def read_equity(self) -> List[EquityPoint]:
+    def read_equity(self) -> list[EquityPoint]:
         """Return the equity curve from local state.
 
         Reads ``equity.json`` from the state directory and parses each
@@ -85,7 +86,7 @@ class JForexLiveFeed:
         """
         return self._parse_equity(self._read_json("equity.json"))
 
-    def read_orders(self) -> List[OrderEvent]:
+    def read_orders(self) -> list[OrderEvent]:
         """Return the order event stream from local state.
 
         Reads ``orders.json`` from the state directory and parses each
@@ -123,9 +124,9 @@ class JForexLiveFeed:
             return []
 
     @staticmethod
-    def _parse_equity(raw: list[dict]) -> List[EquityPoint]:
+    def _parse_equity(raw: list[dict]) -> list[EquityPoint]:
         """Convert raw JSON dicts to EquityPoint objects."""
-        points: List[EquityPoint] = []
+        points: list[EquityPoint] = []
         for item in raw:
             try:
                 ts = datetime.fromisoformat(item["timestamp"].replace("Z", "+00:00"))
@@ -135,9 +136,9 @@ class JForexLiveFeed:
         return points
 
     @staticmethod
-    def _parse_orders(raw: list[dict]) -> List[OrderEvent]:
+    def _parse_orders(raw: list[dict]) -> list[OrderEvent]:
         """Convert raw JSON dicts to OrderEvent objects."""
-        events: List[OrderEvent] = []
+        events: list[OrderEvent] = []
         for item in raw:
             try:
                 events.append(OrderEvent(**item))

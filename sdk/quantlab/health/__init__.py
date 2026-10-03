@@ -8,9 +8,9 @@ from quantlab.health.calculator import HealthScoreCalculator
 from quantlab.health.models import HealthRecord, HealthScore, HealthState, HealthWeights
 
 __all__ = [
-    "HealthScoreCalculator",
     "HealthRecord",
     "HealthScore",
+    "HealthScoreCalculator",
     "HealthState",
     "HealthWeights",
 ]

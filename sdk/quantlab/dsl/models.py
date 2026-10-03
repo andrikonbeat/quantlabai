@@ -15,7 +15,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from quantlab.costs.models import CostsConfig
 
-
 # ── Enums ──────────────────────────────────────────────────────────────────────
 
 
@@ -491,7 +490,7 @@ class ResearchConfig(BaseModel):
         description="Nested advanced ranking conditions (SQX <Rankings><Conditions>)",
     )
     # Typed IS / validation / OOS sub-ranges of the <Data> section.
-    data_range_parts: Optional[DataRangePartsDSL] = Field(
+    data_range_parts: DataRangePartsDSL | None = Field(
         default=None,
         description="Optional typed data range parts for the <Data> section",
     )
@@ -513,13 +512,13 @@ class ResearchConfig(BaseModel):
     risk: RiskConfig = Field(default_factory=RiskConfig, description="Portfolio risk limits")
     
     # LLM configuration (optional)
-    llm_config: Optional[LLMConfig] = Field(
+    llm_config: LLMConfig | None = Field(
         default=None,
         description="Optional LLM configuration for AI-powered research agents",
     )
 
     # Cost configuration (broker-aware cost modelling)
-    costs: Optional[CostsConfig] = Field(
+    costs: CostsConfig | None = Field(
         default=None,
         description="Optional cost configuration for broker-aware cost modelling",
     )
@@ -531,14 +530,14 @@ class ResearchConfig(BaseModel):
     )
 
     # MetaGuardian integration
-    guardian_state: Optional[dict] = Field(default=None, description="Current MetaGuardian state for DSL translation")
+    guardian_state: dict | None = Field(default=None, description="Current MetaGuardian state for DSL translation")
 
     # Retest / optimize blocks (REQ-19) — optional; absent means no block.
-    retest: Optional[RetestBlock] = Field(
+    retest: RetestBlock | None = Field(
         default=None,
         description="Optional retest block for the bounded retest loop",
     )
-    optimize: Optional[OptimizeBlock] = Field(
+    optimize: OptimizeBlock | None = Field(
         default=None,
         description="Optional optimize block for the optimizer stage",
     )

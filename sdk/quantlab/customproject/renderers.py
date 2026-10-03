@@ -11,7 +11,7 @@ never as a standalone task (REQ-25).
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 from xml.sax.saxutils import escape
 
 from quantlab.cfx.models import (

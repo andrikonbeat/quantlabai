@@ -81,7 +81,7 @@ class ChartConfig(BaseModel):
     chart_id: str = ""
     title: str = ""
     height: int = 400
-    width: Optional[int] = None
+    width: int | None = None
     colors: ChartColors = Field(default_factory=ChartColors)
 
 
@@ -93,9 +93,9 @@ class ReportConfig(BaseModel):
     formats: list[ReportFormat] = Field(default_factory=lambda: [ReportFormat.HTML, ReportFormat.JSON])
     include_charts: bool = True
     theme: ReportTheme = ReportTheme.LIGHT
-    template_path: Optional[Path] = None
-    title: Optional[str] = None
-    benchmark_equity: Optional[list] = None
+    template_path: Path | None = None
+    title: str | None = None
+    benchmark_equity: list | None = None
     include_agent_decisions: bool = Field(default=False, description="Include agent audit sections")
     include_comparison_view: bool = Field(default=False, description="Include multi-campaign comparison")
     comparison_campaign_ids: list[str] = Field(default_factory=list, description="Campaign IDs for comparison")
@@ -109,8 +109,8 @@ class ReportResult(BaseModel):
     """Result of report generation."""
 
     campaign_id: str
-    html_path: Optional[Path] = None
-    json_path: Optional[Path] = None
+    html_path: Path | None = None
+    json_path: Path | None = None
     charts_generated: list[str] = Field(default_factory=list)
     generation_time_ms: float = 0.0
     warnings: list[str] = Field(default_factory=list)

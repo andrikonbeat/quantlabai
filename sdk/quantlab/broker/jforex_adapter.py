@@ -26,7 +26,7 @@ class JForexBrokerAdapter:
     def __init__(
         self,
         credentials: JForexCredentials,
-        state_dir: Optional[Path] = None,
+        state_dir: Path | None = None,
     ) -> None:
         self.credentials = credentials
         self.state_dir = Path(state_dir) if state_dir else None
@@ -75,7 +75,7 @@ class JForexBrokerAdapter:
             raise ValueError(f"Health score out of range: {score}")
         return score
 
-    def get_recent_slippage(self) -> Optional[float]:
+    def get_recent_slippage(self) -> float | None:
         """Return recent slippage in basis points, or None if unavailable."""
         if self.state_dir is None:
             return None

@@ -15,7 +15,6 @@ from ta.volatility import AverageTrueRange
 
 from quantlab.data.market import Bar
 
-
 # ---------------------------------------------------------------------------
 # Types
 # ---------------------------------------------------------------------------

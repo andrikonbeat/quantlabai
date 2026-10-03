@@ -11,7 +11,13 @@ from __future__ import annotations
 
 import os
 
-from quantlab.cfx.models import BuildTask, CfxArchive, CfxProject, RawXmlSection, TaskMeta
+from quantlab.cfx.models import (
+    BuildTask,
+    CfxArchive,
+    CfxProject,
+    RawXmlSection,
+    TaskMeta,
+)
 from quantlab.customproject.catalog import render_task
 from quantlab.customproject.models import CustomProject, DatabankSpec
 

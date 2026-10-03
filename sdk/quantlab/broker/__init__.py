@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from quantlab.broker.protocol import BrokerAdapter
 from quantlab.broker.jforex_adapter import JForexBrokerAdapter
+from quantlab.broker.protocol import BrokerAdapter
 
 __all__ = ["BrokerAdapter", "JForexBrokerAdapter"]

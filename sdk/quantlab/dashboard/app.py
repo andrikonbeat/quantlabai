@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import os
-import sys
 import json
+import os
 import signal
 import statistics as py_stats
+import sys
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -16,8 +16,13 @@ from flask import Flask, jsonify, render_template, request
 
 from quantlab.cli.runner import CliRunner, MockExecutor
 from quantlab.knowledge.store import KnowledgeStore
-from quantlab.readers.models import Trade, EquityPoint
-from quantlab.reporting.generator import ReportGenerator, ReportConfig, ReportFormat, ReportTheme
+from quantlab.readers.models import EquityPoint, Trade
+from quantlab.reporting.generator import (
+    ReportConfig,
+    ReportFormat,
+    ReportGenerator,
+    ReportTheme,
+)
 from quantlab.stats.models import StatsResult
 from quantlab.tools.platform import get_sqcli_binary, resolve_sqcli_path
 
@@ -35,7 +40,7 @@ class ServerConfig:
         host: str = "127.0.0.1",
         port: int = 8080,
         debug: bool = False,
-        sqx_install_path: Optional[str] = None,
+        sqx_install_path: str | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -43,7 +48,7 @@ class ServerConfig:
         self.sqx_install_path = sqx_install_path
 
 
-def resolve_sqcli_binary(config: Optional[ServerConfig] = None) -> Optional[str]:
+def resolve_sqcli_binary(config: ServerConfig | None = None) -> str | None:
     """Resolve the sqcli binary by precedence (DSH-01).
 
     Chain: config → ``SQX_INSTALL_PATH`` env → documented default.
@@ -229,7 +234,7 @@ def success_response(data: Any, status: int = 200):
 
 # ─── Flask App Factory ────────────────────────────────────────────────────────
 
-def create_app(config: Optional[ServerConfig] = None) -> Flask:
+def create_app(config: ServerConfig | None = None) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
 
@@ -350,7 +355,7 @@ def create_app(config: Optional[ServerConfig] = None) -> Flask:
                 "benchmark_comparison": None,
                 "total_campaigns": campaigns.total_count,
                 "total_pipeline_runs": len(store.load_pipeline_runs()),
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             }
             return success_response(stats)
         except Exception as e:
@@ -445,7 +450,7 @@ class DashboardServer:
     def __init__(self, config: ServerConfig) -> None:
         self.config = config
         self._app: Flask = create_app(config)
-        self._server_thread: Optional[threading.Thread] = None
+        self._server_thread: threading.Thread | None = None
         self._shutdown_event = threading.Event()
         self._is_running = False
 
@@ -490,7 +495,7 @@ class DashboardServer:
         self._is_running = False
         self._shutdown_event.set()
 
-    def wait(self, timeout: Optional[float] = None) -> None:
+    def wait(self, timeout: float | None = None) -> None:
         """Wait for the server thread to finish."""
         if self._server_thread:
             self._server_thread.join(timeout=timeout)

@@ -7,7 +7,11 @@ package.
 
 from __future__ import annotations
 
-from quantlab.data.market.providers import DukascopyProvider, MarketDataProvider, YahooProvider
+from quantlab.data.market.providers import (
+    DukascopyProvider,
+    MarketDataProvider,
+    YahooProvider,
+)
 
 
 class MarketDataProviderRegistry:

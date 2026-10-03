@@ -36,7 +36,7 @@ class CompileError(CompilerError):
         message: str,
         *,
         report: Any = None,
-        history: Optional[list] = None,
+        history: list | None = None,
     ):
         super().__init__(message)
         self.message = message

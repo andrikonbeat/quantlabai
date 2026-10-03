@@ -17,26 +17,26 @@ from quantlab.compiler.compiler import (
     resolve_javac,
 )
 from quantlab.compiler.errors import (
+    CompileError,
     CompilerConfigError,
     CompilerError,
-    CompileError,
 )
 from quantlab.compiler.fixloop import FixIteration, FixLoopResult, run_fix_loop
 from quantlab.compiler.jfx import JfxArtifact, package_classes
 
 __all__ = [
-    "CompilerPipeline",
-    "JfxArtifact",
-    "CompileReport",
-    "CompilerError",
-    "CompilerConfigError",
-    "CompileError",
-    "resolve_javac",
-    "is_compiler_enabled",
-    "package_classes",
-    "run_fix_loop",
-    "FixIteration",
-    "FixLoopResult",
     "DEFAULT_MAX_FIX_ITERATIONS",
     "JDK_ENV_VAR",
+    "CompileError",
+    "CompileReport",
+    "CompilerConfigError",
+    "CompilerError",
+    "CompilerPipeline",
+    "FixIteration",
+    "FixLoopResult",
+    "JfxArtifact",
+    "is_compiler_enabled",
+    "package_classes",
+    "resolve_javac",
+    "run_fix_loop",
 ]

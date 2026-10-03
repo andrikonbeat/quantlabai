@@ -7,8 +7,8 @@ a standalone catalog task — it renders inside Retest/Optimize CrossChecks.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from quantlab.cfx.models import BuildTask
 from quantlab.customproject.models import CustomProjectTask

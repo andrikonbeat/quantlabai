@@ -12,7 +12,6 @@ from typing import Any
 
 from quantlab.data.fundamental.cache import SqliteCache
 from quantlab.data.fundamental.rate_limit import TokenBucket
-
 from quantlab.data.news.base import NewsProvider, ProviderError
 from quantlab.data.news.models import WebResult
 

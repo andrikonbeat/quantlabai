@@ -52,8 +52,8 @@ class CostEngine:
 
     def __init__(self, profile: BrokerProfile) -> None:
         self._profile = profile
-        self._history: Dict[str, List[CostBreakdown]] = {}
-        self._session_multipliers: Dict[str, float] = {
+        self._history: dict[str, list[CostBreakdown]] = {}
+        self._session_multipliers: dict[str, float] = {
             s.name: s.spread_multiplier for s in profile.sessions
         }
 

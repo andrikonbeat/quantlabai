@@ -29,8 +29,8 @@ def package_classes(
     classes_dir: str | Path,
     source: str | Path,
     *,
-    class_name: Optional[str] = None,
-    output: Optional[str | Path] = None,
+    class_name: str | None = None,
+    output: str | Path | None = None,
 ) -> JfxArtifact:
     """Package compiled classes into a ``.jfx`` ZIP archive.
 

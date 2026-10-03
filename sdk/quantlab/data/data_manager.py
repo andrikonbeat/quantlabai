@@ -86,7 +86,7 @@ async def _run_sqcli_command(sqcli_path: str, args: list[str], timeout: float = 
 
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         proc.kill()
         await proc.wait()
         raise DataManagerError(

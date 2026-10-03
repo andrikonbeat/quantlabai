@@ -24,8 +24,8 @@ class JForexStrategyBridge:
 
     def __init__(
         self,
-        java_home: Optional[str] = None,
-        jforex_home: Optional[str] = None,
+        java_home: str | None = None,
+        jforex_home: str | None = None,
     ) -> None:
         self.java_home = Path(java_home) if java_home else None
         self.jforex_home = Path(jforex_home) if jforex_home else None

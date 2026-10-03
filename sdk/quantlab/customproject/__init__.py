@@ -18,19 +18,19 @@ from quantlab.customproject.models import (
 )
 
 __all__ = [
+    "CATALOG",
+    "CATALOG_TYPES",
     "CustomProject",
     "CustomProjectTask",
     "DatabankSpec",
     "Filters",
     "GoToTask",
-    "CATALOG",
-    "CATALOG_TYPES",
     "TaskNotSupportedError",
+    "ValidationError",
     "generate_cfx_archive",
     "is_custom_project_enabled",
-    "ValidationError",
-    "validate_golden",
     "resolve_sqcli",
+    "validate_golden",
 ]
 
 _SUBMODULE_EXPORTS = {

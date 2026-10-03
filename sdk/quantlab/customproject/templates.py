@@ -8,9 +8,10 @@ presets. The generated ``CustomProject`` instances are serializable via
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import ClassVar, Mapping
+from typing import ClassVar
 
 from quantlab.customproject.models import (
     CustomProject,

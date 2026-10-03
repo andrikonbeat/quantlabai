@@ -11,7 +11,6 @@ from abc import abstractmethod
 from typing import Any
 
 from quantlab.data.fundamental.base import AbstractDataProvider, ProviderError
-
 from quantlab.data.news.models import NewsItem, WebResult
 
 __all__ = [

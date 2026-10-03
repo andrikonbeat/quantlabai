@@ -47,7 +47,7 @@ class IndicatorExport(BaseModel):
 
 def indicator_export_path(
     strategy: str,
-    export_dir: Optional[str | Path] = None,
+    export_dir: str | Path | None = None,
 ) -> Path:
     """Return the canonical export path for *strategy* (REQ-05).
 
@@ -84,7 +84,7 @@ def read_indicator_export(path: str | Path) -> IndicatorExport:
 def inject_indicator_exporter(
     jfx_path: str | Path,
     strategy: str,
-    export_dir: Optional[str | Path] = None,
+    export_dir: str | Path | None = None,
 ) -> Path:
     """Inject the Java helper and export manifest into a ``.jfx`` archive.
 

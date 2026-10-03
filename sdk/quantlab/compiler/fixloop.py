@@ -11,9 +11,10 @@ deployed").
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 from quantlab.compiler.compiler import CompileReport
 
@@ -36,7 +37,7 @@ class FixLoopResult:
 
     success: bool
     iterations: list[FixIteration] = field(default_factory=list)
-    final_report: Optional[CompileReport] = None
+    final_report: CompileReport | None = None
 
 
 CompileFn = Callable[[Path], CompileReport]

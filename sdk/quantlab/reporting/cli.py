@@ -9,9 +9,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from quantlab.reporting.generator import generate_report, ReportGenerator
-from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
 from quantlab.knowledge.store import KnowledgeStore
+from quantlab.reporting.generator import ReportGenerator, generate_report
+from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
 
 
 def generate_report_command(args: argparse.Namespace) -> int:
@@ -82,8 +82,6 @@ def generate_report_command(args: argparse.Namespace) -> int:
 
 def _load_benchmark_equity(path: str) -> list[dict]:
     """Load benchmark equity data from CSV file."""
-    import csv
-    from datetime import datetime
 
     equity = []
     with open(path, newline='') as f:
@@ -107,9 +105,10 @@ def _load_benchmark_equity(path: str) -> list[dict]:
 
 def _load_campaign_data(store: KnowledgeStore, campaign_id: str):
     """Load campaign trades, equity, and statistics from Knowledge Lake."""
-    from quantlab.readers.models import Trade, EquityPoint
-    from quantlab.stats.engine import StatisticsEngine
     import yaml
+
+    from quantlab.readers.models import EquityPoint, Trade
+    from quantlab.stats.engine import StatisticsEngine
 
     # Load stats YAML
     stats_path = store.root / "stats" / f"{campaign_id}.yaml"

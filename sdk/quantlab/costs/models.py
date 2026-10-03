@@ -7,7 +7,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-
 # ── Enums ──────────────────────────────────────────────────────────────────────
 
 
@@ -219,7 +218,7 @@ class CostsConfig(BaseModel):
         ...,
         description="Broker identifier (``dukascopy``, ``ib``, ``oanda``)",
     )
-    commission_override: Optional[CommissionSchema] = Field(
+    commission_override: CommissionSchema | None = Field(
         default=None,
         description="Override the broker's default commission schema",
     )
@@ -227,7 +226,7 @@ class CostsConfig(BaseModel):
         default="static",
         description="Slippage mode: ``static`` or ``session``",
     )
-    spread_config: Optional[SpreadConfig] = Field(
+    spread_config: SpreadConfig | None = Field(
         default=None,
         description="Override the broker's default spread config",
     )

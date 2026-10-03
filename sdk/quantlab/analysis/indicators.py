@@ -10,7 +10,7 @@ from typing import Any, Literal, TypedDict
 
 import pandas as pd
 from ta.momentum import RSIIndicator
-from ta.trend import ADXIndicator, EMAIndicator, MACD, SMAIndicator
+from ta.trend import MACD, ADXIndicator, EMAIndicator, SMAIndicator
 from ta.volatility import AverageTrueRange, BollingerBands
 
 from quantlab.data.market import Bar

@@ -145,11 +145,13 @@ class QuantLabMCPServer:
         that attaches tools to ``server.mcp`` via the ``@mcp.tool()``
         decorator or ``mcp.add_tool()``.
         """
-        from quantlab.mcp import pipeline_tools
-        from quantlab.mcp import evolution_tools
-        from quantlab.mcp import fundamental_tools
-        from quantlab.mcp import health_tools
-        from quantlab.mcp import seg_tools
+        from quantlab.mcp import (
+            evolution_tools,
+            fundamental_tools,
+            health_tools,
+            pipeline_tools,
+            seg_tools,
+        )
 
         pipeline_tools.register(self)
         evolution_tools.register(self)

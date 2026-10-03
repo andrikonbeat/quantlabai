@@ -15,11 +15,12 @@ import logging
 import os
 import shutil
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
-from quantlab.compiler.errors import CompilerConfigError, CompileError
+from quantlab.compiler.errors import CompileError, CompilerConfigError
 from quantlab.compiler.jfx import JfxArtifact, package_classes
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,7 @@ JDK_ENV_VAR = "QUANTLAB_JDK_HOME"
 DEFAULT_MAX_FIX_ITERATIONS = 5
 
 
-def is_compiler_enabled(env: Optional[dict[str, str]] = None) -> bool:
+def is_compiler_enabled(env: dict[str, str] | None = None) -> bool:
     """Rollback gate (design slice 3): ``QUANTLAB_COMPILER=0`` keeps the
     ``.java``-only path; the compiler pipeline is the default deploy route.
     """
@@ -38,9 +39,9 @@ def is_compiler_enabled(env: Optional[dict[str, str]] = None) -> bool:
 
 
 def resolve_javac(
-    jdk_home: Optional[str | Path] = None,
-    env: Optional[dict[str, str]] = None,
-) -> Optional[Path]:
+    jdk_home: str | Path | None = None,
+    env: dict[str, str] | None = None,
+) -> Path | None:
     """Resolve javac from the external JDK root, fail-closed.
 
     Order: explicit *jdk_home* argument → ``QUANTLAB_JDK_HOME`` env. Returns
@@ -123,13 +124,13 @@ class CompilerPipeline:
         src: str | Path | dict[str, Path],
         *,
         strategy_ids: list[str] | None = None,
-        jdk_home: Optional[str | Path] = None,
-        env: Optional[dict[str, str]] = None,
-        fixer: Optional[Fixer] = None,
+        jdk_home: str | Path | None = None,
+        env: dict[str, str] | None = None,
+        fixer: Fixer | None = None,
         max_fix_iterations: int = DEFAULT_MAX_FIX_ITERATIONS,
         timeout: float = 60.0,
-        classes_dir: Optional[str | Path] = None,
-        sqx_install_path: Optional[str | Path] = None,
+        classes_dir: str | Path | None = None,
+        sqx_install_path: str | Path | None = None,
     ) -> JfxArtifact | dict[str, JfxArtifact | CompileError]:
         """Compile *src* with the external JDK and package the result.
 
@@ -221,12 +222,12 @@ class CompilerPipeline:
         src: dict[str, Path],
         strategy_ids: list[str],
         *,
-        jdk_home: Optional[str | Path] = None,
-        env: Optional[dict[str, str]] = None,
-        fixer: Optional[Fixer] = None,
+        jdk_home: str | Path | None = None,
+        env: dict[str, str] | None = None,
+        fixer: Fixer | None = None,
         max_fix_iterations: int = DEFAULT_MAX_FIX_ITERATIONS,
         timeout: float = 60.0,
-        sqx_install_path: Optional[str | Path] = None,
+        sqx_install_path: str | Path | None = None,
     ) -> dict[str, JfxArtifact | CompileError]:
         """Compile multiple strategies independently.
 

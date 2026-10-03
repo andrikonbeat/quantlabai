@@ -9,16 +9,16 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from quantlab.readers.models import Trade, EquityPoint
+from quantlab.readers.models import EquityPoint, Trade
+from quantlab.reporting.models import (
+    ChartColors,
+    ReportConfig,
+    ReportFormat,
+    ReportResult,
+    ReportTheme,
+)
 from quantlab.stats.engine import StatisticsEngine
 from quantlab.stats.models import StatsResult
-from quantlab.reporting.models import (
-    ReportConfig,
-    ReportResult,
-    ReportFormat,
-    ReportTheme,
-    ChartColors,
-)
 
 # Chart IDs for tracking
 CHART_IDS = [
@@ -291,13 +291,13 @@ class ReportGenerator:
         Raises:
             ImportError: If matplotlib is not available.
         """
-        import io
         import base64
+        import io
 
         import matplotlib
         matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
+        import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(8, 3.5))
         colors = self._get_chart_colors()
@@ -804,7 +804,10 @@ class ReportGenerator:
     ) -> str:
         """Render the complete HTML report using Jinja2 template."""
 
-        from quantlab.reporting.templates import DEFAULT_TEMPLATE, CSS_VARIABLES_TEMPLATE
+        from quantlab.reporting.templates import (
+            CSS_VARIABLES_TEMPLATE,
+            DEFAULT_TEMPLATE,
+        )
 
         theme_value = theme.value
         colors = self._get_chart_colors()

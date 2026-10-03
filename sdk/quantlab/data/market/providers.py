@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from datetime import UTC
 from typing import Any
 
 from quantlab.data.market.models import Bar
@@ -68,7 +69,7 @@ class YahooProvider(MarketDataProvider):
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
             try:
                 dt = datetime.strptime(str(value), fmt)
-                return dt.replace(tzinfo=timezone.utc)
+                return dt.replace(tzinfo=UTC)
             except ValueError:
                 continue
         raise ValueError(f"Unparseable Yahoo date: {value!r}")
@@ -111,10 +112,10 @@ class DukascopyProvider(MarketDataProvider):
 
         if isinstance(value, datetime):
             if value.tzinfo is None:
-                return value.replace(tzinfo=timezone.utc)
-            return value.astimezone(timezone.utc)
+                return value.replace(tzinfo=UTC)
+            return value.astimezone(UTC)
         text = str(value).replace("Z", "+00:00")
         dt = datetime.fromisoformat(text)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
