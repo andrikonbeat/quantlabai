@@ -69,8 +69,17 @@ class SQXDocProvider:
         normalized = name.lower().strip()
         # Known indicators (covers F2 wiring + legacy tests without YAML).
         _KNOWN_INDICATORS: set[str] = {
-            "rsi", "bb", "bollingerbands", "ema", "sma", "atr",
-            "macd", "signal", "donchian", "volume", "economic",
+            "rsi",
+            "bb",
+            "bollingerbands",
+            "ema",
+            "sma",
+            "atr",
+            "macd",
+            "signal",
+            "donchian",
+            "volume",
+            "economic",
         }
         if normalized in _KNOWN_INDICATORS:
             return True
@@ -106,7 +115,9 @@ class SQXDocProvider:
         if isinstance(range_val, (list, tuple)) and len(range_val) == 2:
             return (float(range_val[0]), float(range_val[1]))
         # 2) Built-in fallback for known indicators.
-        fallback = self._INDICATOR_RANGES.get(indicator.lower(), {}).get(param_name.lower())
+        fallback = self._INDICATOR_RANGES.get(indicator.lower(), {}).get(
+            param_name.lower()
+        )
         if fallback is not None:
             return fallback
         return None
@@ -121,21 +132,17 @@ class SQXDocProvider:
             return [str(v) for v in enum_values]
         return None
 
-    def get_description(
-        self, indicator: str, param_name: str, sqx_version: str
-    ) -> str:
+    def get_description(self, indicator: str, param_name: str, sqx_version: str) -> str:
         """Return a human-readable description for an indicator parameter."""
         doc = self._load_parameter(indicator, param_name, sqx_version)
         desc = doc.get("description", "")
         if isinstance(desc, str) and desc:
             return desc
-        return self._INDICATOR_DESCRIPTIONS.get(
-            indicator.lower(), {}
-        ).get(param_name.lower(), "")
+        return self._INDICATOR_DESCRIPTIONS.get(indicator.lower(), {}).get(
+            param_name.lower(), ""
+        )
 
-    def get_type(
-        self, indicator: str, param_name: str, sqx_version: str
-    ) -> str:
+    def get_type(self, indicator: str, param_name: str, sqx_version: str) -> str:
         """Return the declared type for an indicator parameter."""
         doc = self._load_parameter(indicator, param_name, sqx_version)
         return str(doc.get("type", "unknown"))
@@ -167,12 +174,7 @@ class SQXDocProvider:
 
         slug = self._slugify(name)
         doc_path = (
-            self._root
-            / "structured"
-            / "sqx-kb"
-            / sqx_version
-            / kind_dir
-            / f"{slug}.md"
+            self._root / "structured" / "sqx-kb" / sqx_version / kind_dir / f"{slug}.md"
         )
         if not doc_path.is_file():
             logger.warning(
@@ -198,30 +200,58 @@ class SQXDocProvider:
     # ── Internal helpers ────────────────────────────────────────────────────
 
     _KNOWN_INDICATORS: set[str] = {
-        "rsi", "bb", "bollingerbands", "ema", "sma", "atr",
-        "macd", "signal", "donchian", "volume", "economic",
+        "rsi",
+        "bb",
+        "bollingerbands",
+        "ema",
+        "sma",
+        "atr",
+        "macd",
+        "signal",
+        "donchian",
+        "volume",
+        "economic",
     }
 
     # Parameter ranges aligned with EconomicSenseValidator and F2 build_prompt.
     _INDICATOR_RANGES: dict[str, dict[str, tuple[float, float]]] = {
-        "rsi": {"period": (2.0, 200.0), "oversold": (0.0, 100.0), "overbought": (0.0, 100.0)},
+        "rsi": {
+            "period": (2.0, 200.0),
+            "oversold": (0.0, 100.0),
+            "overbought": (0.0, 100.0),
+        },
         "bb": {"period": (2.0, 200.0), "deviation": (0.1, 5.0)},
         "sma": {"period": (2.0, 500.0)},
         "ema": {"period": (2.0, 500.0)},
         "atr": {"period": (2.0, 200.0)},
-        "macd": {"fast_period": (2.0, 200.0), "slow_period": (2.0, 200.0), "signal_period": (2.0, 100.0)},
+        "macd": {
+            "fast_period": (2.0, 200.0),
+            "slow_period": (2.0, 200.0),
+            "signal_period": (2.0, 100.0),
+        },
         "donchian": {"period": (2.0, 500.0)},
         "volume": {"period": (2.0, 500.0)},
         "signal": {"period": (2.0, 100.0)},
     }
 
     _INDICATOR_DESCRIPTIONS: dict[str, dict[str, str]] = {
-        "rsi": {"period": "RSI lookback period", "oversold": "RSI oversold threshold", "overbought": "RSI overbought threshold"},
-        "bb": {"period": "Bollinger Bands period", "deviation": "Standard deviation multiplier"},
+        "rsi": {
+            "period": "RSI lookback period",
+            "oversold": "RSI oversold threshold",
+            "overbought": "RSI overbought threshold",
+        },
+        "bb": {
+            "period": "Bollinger Bands period",
+            "deviation": "Standard deviation multiplier",
+        },
         "sma": {"period": "Simple moving average period"},
         "ema": {"period": "Exponential moving average period"},
         "atr": {"period": "Average true range period"},
-        "macd": {"fast_period": "MACD fast EMA period", "slow_period": "MACD slow EMA period", "signal_period": "MACD signal line period"},
+        "macd": {
+            "fast_period": "MACD fast EMA period",
+            "slow_period": "MACD slow EMA period",
+            "signal_period": "MACD signal line period",
+        },
         "donchian": {"period": "Donchian channel lookback period"},
         "volume": {"period": "Volume moving average period"},
         "signal": {"period": "Signal line period"},

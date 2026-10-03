@@ -61,7 +61,9 @@ class QueryBuilder:
         self._root = root
         self._filter = QueryFilter()
 
-    def filter_by_sharpe(self, min_val: float = None, max_val: float = None) -> QueryBuilder:
+    def filter_by_sharpe(
+        self, min_val: float = None, max_val: float = None
+    ) -> QueryBuilder:
         """Filter by Sharpe ratio range."""
         if min_val is not None:
             self._filter.sharpe_min = min_val
@@ -89,7 +91,9 @@ class QueryBuilder:
         self._filter.tags = tags
         return self
 
-    def filter_by_date(self, start: str | datetime = None, end: str | datetime = None) -> QueryBuilder:
+    def filter_by_date(
+        self, start: str | datetime = None, end: str | datetime = None
+    ) -> QueryBuilder:
         """Filter by creation date range."""
         if isinstance(start, str):
             start = datetime.fromisoformat(start)
@@ -179,9 +183,9 @@ class QueryBuilder:
                 if not memory_file.exists():
                     continue
                 try:
-                    decisions = yaml.safe_load(
-                        memory_file.read_text(encoding="utf-8")
-                    ) or []
+                    decisions = (
+                        yaml.safe_load(memory_file.read_text(encoding="utf-8")) or []
+                    )
                     if not isinstance(decisions, list):
                         decisions = [decisions]
                 except Exception:
@@ -227,8 +231,14 @@ class QueryBuilder:
         for dir_name in ["results", "campaigns"]:
             if dir_name not in self._index.get("directories", {}):
                 continue
-            for rel_path, info in self._index.get("directories", {}).get(dir_name, {}).items():
-                campaign_id = info.get("path", "").split("/")[-1] if "/" in info.get("path", "") else ""
+            for rel_path, info in (
+                self._index.get("directories", {}).get(dir_name, {}).items()
+            ):
+                campaign_id = (
+                    info.get("path", "").split("/")[-1]
+                    if "/" in info.get("path", "")
+                    else ""
+                )
                 tags = info.get("tags", [])
                 searchable = f"{campaign_id} {' '.join(tags)}"
                 camp_vector: dict[str, int] = {}
@@ -236,22 +246,28 @@ class QueryBuilder:
                 score = _text_cosine(query_vector, camp_vector)
                 if score > 0.0:
                     metrics = info.get("metrics", {})
-                    campaign_metrics = CampaignMetrics(
-                        sharpe_ratio=metrics.get("sharpe_ratio"),
-                        profit_factor=metrics.get("profit_factor"),
-                        win_rate=metrics.get("win_rate"),
-                        max_drawdown=metrics.get("max_drawdown"),
-                        total_trades=metrics.get("total_trades"),
-                        net_profit=metrics.get("net_profit"),
-                        total_return=metrics.get("total_return"),
-                    ) if metrics else None
+                    campaign_metrics = (
+                        CampaignMetrics(
+                            sharpe_ratio=metrics.get("sharpe_ratio"),
+                            profit_factor=metrics.get("profit_factor"),
+                            win_rate=metrics.get("win_rate"),
+                            max_drawdown=metrics.get("max_drawdown"),
+                            total_trades=metrics.get("total_trades"),
+                            net_profit=metrics.get("net_profit"),
+                            total_return=metrics.get("total_return"),
+                        )
+                        if metrics
+                        else None
+                    )
                     campaigns.append(
                         CampaignSummary(
                             campaign_id=campaign_id,
                             name=campaign_id,
                             metrics=campaign_metrics,
                             tags=tags,
-                            created=datetime.fromisoformat(info.get("created")) if info.get("created") else None,
+                            created=datetime.fromisoformat(info.get("created"))
+                            if info.get("created")
+                            else None,
                             path=info.get("path", ""),
                             market=info.get("market") or info.get("symbol"),
                             timeframe=info.get("timeframe"),
@@ -259,10 +275,16 @@ class QueryBuilder:
                         )
                     )
 
-        campaigns.sort(key=lambda c: _text_cosine(query_vector, {
-            f"{c.campaign_id}": 1,
-            **{tag: 1 for tag in c.tags},
-        }), reverse=True)
+        campaigns.sort(
+            key=lambda c: _text_cosine(
+                query_vector,
+                {
+                    f"{c.campaign_id}": 1,
+                    **{tag: 1 for tag in c.tags},
+                },
+            ),
+            reverse=True,
+        )
 
         paginated = campaigns[:top_k]
         return QueryResult(
@@ -378,14 +400,19 @@ class QueryBuilder:
                 SentenceTransformer,  # type: ignore[import-untyped]
             )
         except ImportError:
-            logger.warning("query_docs: sentence-transformers not installed; falling back to ngram cosine")
+            logger.warning(
+                "query_docs: sentence-transformers not installed; falling back to ngram cosine"
+            )
             return None
 
         try:
             model = SentenceTransformer("all-MiniLM-L6-v2")
             query_emb = model.encode([text], normalize_embeddings=True)[0]
         except Exception as exc:
-            logger.warning("query_docs: embedding model failed (%s); falling back to ngram cosine", exc)
+            logger.warning(
+                "query_docs: embedding model failed (%s); falling back to ngram cosine",
+                exc,
+            )
             return None
 
         scored = []
@@ -403,10 +430,12 @@ class QueryBuilder:
     def execute(self, root: Path = None) -> QueryResult:
         """Execute the query and return results."""
         import time
+
         start = time.time()
 
         # Lazy import to avoid circular import
         from quantlab.knowledge.store import KnowledgeStore
+
         store = KnowledgeStore(root or self._root)
         index = store.read_index()
 
@@ -416,9 +445,9 @@ class QueryBuilder:
 
         # Apply pagination
         total = len(sorted_campaigns)
-        paginated = sorted_campaigns[self._filter.offset:]
+        paginated = sorted_campaigns[self._filter.offset :]
         if self._filter.limit:
-            paginated = paginated[:self._filter.limit]
+            paginated = paginated[: self._filter.limit]
 
         return QueryResult(
             campaigns=paginated,
@@ -439,8 +468,14 @@ class QueryBuilder:
             if dir_name not in index.get("directories", {}):
                 continue
 
-            for rel_path, info in index.get("directories", {}).get(dir_name, {}).items():
-                campaign_id = info.get("path", "").split("/")[-1] if "/" in info.get("path", "") else ""
+            for rel_path, info in (
+                index.get("directories", {}).get(dir_name, {}).items()
+            ):
+                campaign_id = (
+                    info.get("path", "").split("/")[-1]
+                    if "/" in info.get("path", "")
+                    else ""
+                )
 
                 metrics = info.get("metrics", {})
                 if metrics:
@@ -456,17 +491,21 @@ class QueryBuilder:
                 else:
                     campaign_metrics = None
 
-                campaigns.append(CampaignSummary(
-                    campaign_id=campaign_id,
-                    name=campaign_id,
-                    metrics=campaign_metrics,
-                    tags=info.get("tags", []),
-                    created=datetime.fromisoformat(info.get("created")) if info.get("created") else None,
-                    path=info.get("path", ""),
-                    market=info.get("market") or info.get("symbol"),
-                    timeframe=info.get("timeframe"),
-                    status=info.get("status"),
-                ))
+                campaigns.append(
+                    CampaignSummary(
+                        campaign_id=campaign_id,
+                        name=campaign_id,
+                        metrics=campaign_metrics,
+                        tags=info.get("tags", []),
+                        created=datetime.fromisoformat(info.get("created"))
+                        if info.get("created")
+                        else None,
+                        path=info.get("path", ""),
+                        market=info.get("market") or info.get("symbol"),
+                        timeframe=info.get("timeframe"),
+                        status=info.get("status"),
+                    )
+                )
 
         # Agent-memory entries
         for rel_path, info in index.get("agent_memory", {}).items():
@@ -479,14 +518,16 @@ class QueryBuilder:
             if self._filter.campaign_id and campaign_id != self._filter.campaign_id:
                 continue
 
-            campaigns.append(CampaignSummary(
-                campaign_id=campaign_id,
-                name=f"{agent_name}:{campaign_id}",
-                metrics=None,
-                tags=[f"agent:{agent_name}"],
-                created=None,
-                path=info.get("memory_path", rel_path),
-            ))
+            campaigns.append(
+                CampaignSummary(
+                    campaign_id=campaign_id,
+                    name=f"{agent_name}:{campaign_id}",
+                    metrics=None,
+                    tags=[f"agent:{agent_name}"],
+                    created=None,
+                    path=info.get("memory_path", rel_path),
+                )
+            )
 
         return campaigns
 
@@ -496,7 +537,9 @@ class QueryBuilder:
 
         for campaign in campaigns:
             if not self._matches_filters(campaign):
-                filtered = [c for c in filtered if c.campaign_id != campaign.campaign_id]
+                filtered = [
+                    c for c in filtered if c.campaign_id != campaign.campaign_id
+                ]
 
         return filtered
 
@@ -509,15 +552,25 @@ class QueryBuilder:
             return False
 
         if m:
-            if f.sharpe_min is not None and (m.sharpe_ratio is None or m.sharpe_ratio < f.sharpe_min):
+            if f.sharpe_min is not None and (
+                m.sharpe_ratio is None or m.sharpe_ratio < f.sharpe_min
+            ):
                 return False
-            if f.sharpe_max is not None and (m.sharpe_ratio is None or m.sharpe_ratio > f.sharpe_max):
+            if f.sharpe_max is not None and (
+                m.sharpe_ratio is None or m.sharpe_ratio > f.sharpe_max
+            ):
                 return False
-            if f.profit_factor_min is not None and (m.profit_factor is None or m.profit_factor < f.profit_factor_min):
+            if f.profit_factor_min is not None and (
+                m.profit_factor is None or m.profit_factor < f.profit_factor_min
+            ):
                 return False
-            if f.win_rate_min is not None and (m.win_rate is None or m.win_rate < f.win_rate_min):
+            if f.win_rate_min is not None and (
+                m.win_rate is None or m.win_rate < f.win_rate_min
+            ):
                 return False
-            if f.max_drawdown_max is not None and (m.max_drawdown is None or m.max_drawdown > f.max_drawdown_max):
+            if f.max_drawdown_max is not None and (
+                m.max_drawdown is None or m.max_drawdown > f.max_drawdown_max
+            ):
                 return False
 
         # Tags (AND match)
@@ -548,13 +601,25 @@ class QueryBuilder:
 
         def sort_key(c):
             if f.sort_by == "sharpe":
-                return c.metrics.sharpe_ratio if c.metrics and c.metrics.sharpe_ratio else float('-inf')
+                return (
+                    c.metrics.sharpe_ratio
+                    if c.metrics and c.metrics.sharpe_ratio
+                    else float("-inf")
+                )
             elif f.sort_by == "pf":
-                return c.metrics.profit_factor if c.metrics and c.metrics.profit_factor else float('-inf')
+                return (
+                    c.metrics.profit_factor
+                    if c.metrics and c.metrics.profit_factor
+                    else float("-inf")
+                )
             elif f.sort_by == "win_rate":
-                return c.metrics.win_rate if c.metrics and c.metrics.win_rate else float('-inf')
+                return (
+                    c.metrics.win_rate
+                    if c.metrics and c.metrics.win_rate
+                    else float("-inf")
+                )
             elif f.sort_by == "created":
-                return c.created.timestamp() if c.created else float('-inf')
+                return c.created.timestamp() if c.created else float("-inf")
             return c.campaign_id
 
         return sorted(campaigns, key=sort_key, reverse=not f.sort_ascending)

@@ -80,13 +80,9 @@ def _check_schema(
     params: list[KbParameter] = []
     for path in files:
         try:
-            params.append(
-                KbParameter.from_yaml(path.read_text(encoding="utf-8"))
-            )
+            params.append(KbParameter.from_yaml(path.read_text(encoding="utf-8")))
         except Exception as exc:  # noqa: BLE001 - report any schema failure
-            errors.append(
-                f"Schema violation: {path.parent.name}/{path.stem}: {exc}"
-            )
+            errors.append(f"Schema violation: {path.parent.name}/{path.stem}: {exc}")
     return params, len(files)
 
 
@@ -113,9 +109,7 @@ def _check_evidence(
     ok = True
     for param in params:
         if not param.evidence_ref:
-            errors.append(
-                f"Missing evidence_ref: {param.tab}/{param.name}"
-            )
+            errors.append(f"Missing evidence_ref: {param.tab}/{param.name}")
             ok = False
             continue
         if param.status == "verified" and not _resolve_evidence(
@@ -129,9 +123,7 @@ def _check_evidence(
     return ok
 
 
-def _check_distribution(
-    counts: dict[str, int], errors: list[str]
-) -> bool:
+def _check_distribution(counts: dict[str, int], errors: list[str]) -> bool:
     """Frozen band: total==82; verified/needs_review within range; sum==total."""
     ok = True
     total, verified, needs_review, seeded = (
@@ -141,9 +133,7 @@ def _check_distribution(
         counts["seeded"],
     )
     if total != SEED_TOTAL:
-        errors.append(
-            f"Distribution: total={total}, expected {SEED_TOTAL}"
-        )
+        errors.append(f"Distribution: total={total}, expected {SEED_TOTAL}")
         ok = False
     if not (VERIFIED_MIN <= verified <= VERIFIED_MAX):
         errors.append(

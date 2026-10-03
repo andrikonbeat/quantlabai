@@ -74,9 +74,7 @@ class KbStore:
 
     def _param_path(self, tab: str, param: str, sqx_version: str) -> Path:
         return (
-            self._version_dir(sqx_version)
-            / tab
-            / f"{_safe_param_filename(param)}.yaml"
+            self._version_dir(sqx_version) / tab / f"{_safe_param_filename(param)}.yaml"
         )
 
     def _resolve_version(self, sqx_version: str | None) -> str:
@@ -93,9 +91,7 @@ class KbStore:
 
     # ── Reads (REQ-502) ───────────────────────────────────────────────────────
 
-    def get(
-        self, tab: str, param: str, sqx_version: str | None = None
-    ) -> KbParameter:
+    def get(self, tab: str, param: str, sqx_version: str | None = None) -> KbParameter:
         """Load a single parameter, enforcing version isolation.
 
         Raises:

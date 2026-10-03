@@ -172,9 +172,7 @@ class PrivacyScrubber:
                     return False
             return True
         if isinstance(data, (list, tuple)):
-            return all(
-                self.is_deny_list_clean(item, export=export) for item in data
-            )
+            return all(self.is_deny_list_clean(item, export=export) for item in data)
         return True
 
     # ── Hashing helper ─────────────────────────────────────────────────────

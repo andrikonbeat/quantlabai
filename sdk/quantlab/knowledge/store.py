@@ -211,7 +211,9 @@ class KnowledgeStore:
     """
 
     def __init__(
-        self, root: str | Path = "knowledge", circuit_breaker: CircuitBreaker | None = None
+        self,
+        root: str | Path = "knowledge",
+        circuit_breaker: CircuitBreaker | None = None,
     ) -> None:
         self.root = Path(root).resolve()
 
@@ -329,9 +331,7 @@ class KnowledgeStore:
 
     # ── Dataset Cache (G6) ──────────────────────────────────────────────────
 
-    async def cache_dataset(
-        self, symbol: str, timeframe: str, bars: list[Bar]
-    ) -> str:
+    async def cache_dataset(self, symbol: str, timeframe: str, bars: list[Bar]) -> str:
         """Cache normalized OHLC bars into ``datasets/{symbol}/{timeframe}.csv``.
 
         The G6 seed command and the Dukascopy research provider (G3) both
@@ -410,7 +410,9 @@ class KnowledgeStore:
             return []
 
         runs = []
-        for filepath in sorted(runs_dir.glob("*.yaml"), key=lambda p: p.stat().st_mtime, reverse=True):
+        for filepath in sorted(
+            runs_dir.glob("*.yaml"), key=lambda p: p.stat().st_mtime, reverse=True
+        ):
             try:
                 raw = filepath.read_text(encoding="utf-8")
                 data = yaml.safe_load(raw)
@@ -520,6 +522,7 @@ class KnowledgeStore:
         # Enhance with campaign metrics/tags/links via Indexer (if available)
         try:
             from quantlab.knowledge.indexer import Indexer
+
             indexer = Indexer(self.root)
             doc["campaigns"] = indexer.build_index()
         except Exception:
@@ -586,7 +589,10 @@ class KnowledgeStore:
             if dir_name not in index.get("directories", {}):
                 continue
             for rel_path, info in index["directories"][dir_name].items():
-                if info.get("path", "").endswith(campaign_id) or Path(info.get("path", "")).stem == campaign_id:
+                if (
+                    info.get("path", "").endswith(campaign_id)
+                    or Path(info.get("path", "")).stem == campaign_id
+                ):
                     return info.get("tags", [])
         return []
 
@@ -612,6 +618,7 @@ class KnowledgeStore:
     def query(self, filters: dict | None = None):
         """Create a query builder for campaigns."""
         from quantlab.knowledge.query import QueryBuilder
+
         index = self.read_index()
         return QueryBuilder(index, self.root)
 
@@ -838,9 +845,7 @@ class KnowledgeStore:
             parent = memory_file.parent
             if parent.exists():
                 for cp in parent.glob("checkpoints/*.yaml"):
-                    checkpoint_paths.append(
-                        str(cp.relative_to(self.root))
-                    )
+                    checkpoint_paths.append(str(cp.relative_to(self.root)))
 
             embedding_ref = None
             try:
@@ -957,7 +962,10 @@ class KnowledgeStore:
                             kind = "block"
                         elif idx + 3 < len(rel_parts) and rel_parts[idx + 3] == "apis":
                             kind = "api"
-                    elif idx + 2 < len(rel_parts) and rel_parts[idx + 2] == "cheat-sheets":
+                    elif (
+                        idx + 2 < len(rel_parts)
+                        and rel_parts[idx + 2] == "cheat-sheets"
+                    ):
                         kind = "cheat-sheet"
                     break
                 if part == "jforex-kb" and idx + 1 < len(rel_parts):
@@ -1149,9 +1157,7 @@ class KnowledgeStore:
                 results.append(
                     {"campaign_id": other_id, "similarity_score": similarity}
                 )
-        results.sort(
-            key=lambda r: float(r.get("similarity_score", 0.0)), reverse=True
-        )
+        results.sort(key=lambda r: float(r.get("similarity_score", 0.0)), reverse=True)
         return results[:top_k]
 
     def _text_corpus(self) -> dict[str, dict[str, int]]:
@@ -1167,9 +1173,9 @@ class KnowledgeStore:
             for memory_file in memory_root.glob("*/*/memory.yaml"):
                 campaign = memory_file.parent.name
                 try:
-                    records = yaml.safe_load(
-                        memory_file.read_text(encoding="utf-8")
-                    ) or []
+                    records = (
+                        yaml.safe_load(memory_file.read_text(encoding="utf-8")) or []
+                    )
                 except Exception:
                     continue
                 if not isinstance(records, list):
@@ -1190,9 +1196,7 @@ class KnowledgeStore:
                     try:
                         _add_text(
                             vector,
-                            summary_file.read_text(
-                                encoding="utf-8", errors="ignore"
-                            ),
+                            summary_file.read_text(encoding="utf-8", errors="ignore"),
                         )
                     except Exception:
                         continue
@@ -1232,8 +1236,6 @@ class KnowledgeStore:
         return current_index
 
     # ── Pipeline History ─────────────────────────────────────────────────────────
-
-
 
     def load_pipeline_runs(
         self,
@@ -1499,9 +1501,7 @@ class TimeSeriesStore:
 
     # ── Query ───────────────────────────────────────────────────────────────────
 
-    def query_metrics(
-        self, strategy_id: str, since: float, until: float
-    ) -> list[dict]:
+    def query_metrics(self, strategy_id: str, since: float, until: float) -> list[dict]:
         """Query metric rows for a strategy within a time range.
 
         Args:
@@ -1554,4 +1554,3 @@ class TimeSeriesStore:
                 campaign_id, guardian_name=guardian_name, source=source
             )
         ]
-

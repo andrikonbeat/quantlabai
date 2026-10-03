@@ -56,9 +56,7 @@ def register(srv: QuantLabMCPServer) -> None:
                 result_dict: dict[str, Any] = {
                     "strategy_id": strategy_id,
                     "candidates_generated": len(candidates),
-                    "candidates": [
-                        c.model_dump(mode="json") for c in candidates
-                    ],
+                    "candidates": [c.model_dump(mode="json") for c in candidates],
                 }
             else:
                 result_dict = {
@@ -141,11 +139,14 @@ def register(srv: QuantLabMCPServer) -> None:
             success = pool.promote(candidate_id)
 
             if success:
-                return json.dumps({
-                    "candidate_id": candidate_id,
-                    "promoted": True,
-                    "message": f"Candidate {candidate_id} promoted successfully.",
-                }, default=str)
+                return json.dumps(
+                    {
+                        "candidate_id": candidate_id,
+                        "promoted": True,
+                        "message": f"Candidate {candidate_id} promoted successfully.",
+                    },
+                    default=str,
+                )
             else:
                 error = MCPError(
                     code=ErrorCode.NOT_FOUND,

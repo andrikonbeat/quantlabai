@@ -10,6 +10,7 @@ from pathlib import Path
 @dataclass
 class CampaignMetrics:
     """Key metrics for a campaign."""
+
     sharpe_ratio: float | None = None
     profit_factor: float | None = None
     win_rate: float | None = None
@@ -22,6 +23,7 @@ class CampaignMetrics:
 @dataclass
 class CampaignSummary:
     """Summary of a campaign for query results."""
+
     campaign_id: str
     name: str
     metrics: CampaignMetrics | None = None
@@ -36,6 +38,7 @@ class CampaignSummary:
 @dataclass
 class QueryFilter:
     """Filters for campaign queries."""
+
     sharpe_min: float | None = None
     sharpe_max: float | None = None
     profit_factor_min: float | None = None
@@ -52,6 +55,7 @@ class QueryFilter:
     agent_name: str | None = field(default=None)
     campaign_id: str | None = field(default=None)
 
+
 @dataclass
 class QueryResult:
     """Result of a query."""
@@ -65,6 +69,7 @@ class QueryResult:
 @dataclass
 class TaggedCampaign:
     """Campaign with tags and metadata."""
+
     campaign_id: str
     tags: dict[str, str] = field(default_factory=dict)
     metadata: dict = field(default_factory=dict)
