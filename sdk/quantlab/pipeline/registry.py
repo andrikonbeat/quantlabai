@@ -12,7 +12,11 @@ from typing import Any
 
 from quantlab.pipeline.base import Pipeline
 from quantlab.pipeline.base import Stage as PipelineStage
-from quantlab.pipeline.config import PipelineConfig, PipelineSummary, StageConfig as StageConfig
+from quantlab.pipeline.config import (
+    PipelineConfig,
+    PipelineSummary,
+    StageConfig as StageConfig,
+)
 from quantlab.pipeline.stages.agent_stages import (
     BuilderStage,
     DeployStage as DeployStage,
@@ -89,21 +93,23 @@ class StageRegistry:
                     CostInjectionStage as SQXCostInjectionStage,
                 )
 
-            self._stage_map.update({
-                "validate": SQXValidateStage,
-                "translate": SQXTranslateStage,
-                "cost_injection": SQXCostInjectionStage,
-                "daemon_start": SQXDaemonStartStage,
-                "load_config": SQXLoadConfigStage,
-                "run_campaign": SQXRunCampaignStage,
-                "poll_campaign": SQXPollCampaignStage,
-                "campaign": SQXCampaignStage,
-                "export": SQXExportStage,
-                "read": SQXReadStage,
-                "compute_stats": SQXComputeStatsStage,
-                "knowledge_store": SQXKnowledgeStoreStage,
-                "report": SQXReportStage,
-            })
+            self._stage_map.update(
+                {
+                    "validate": SQXValidateStage,
+                    "translate": SQXTranslateStage,
+                    "cost_injection": SQXCostInjectionStage,
+                    "daemon_start": SQXDaemonStartStage,
+                    "load_config": SQXLoadConfigStage,
+                    "run_campaign": SQXRunCampaignStage,
+                    "poll_campaign": SQXPollCampaignStage,
+                    "campaign": SQXCampaignStage,
+                    "export": SQXExportStage,
+                    "read": SQXReadStage,
+                    "compute_stats": SQXComputeStatsStage,
+                    "knowledge_store": SQXKnowledgeStoreStage,
+                    "report": SQXReportStage,
+                }
+            )
         except ImportError:
             # Fall back to abstract base stages from pipeline.stages
             from quantlab.pipeline.stages import (
@@ -122,21 +128,23 @@ class StageRegistry:
                 ValidateStage,
             )
 
-            self._stage_map.update({
-                "validate": ValidateStage,
-                "translate": TranslateStage,
-                "cost_injection": CostInjectionStage,
-                "daemon_start": DaemonStartStage,
-                "load_config": LoadConfigStage,
-                "run_campaign": RunCampaignStage,
-                "poll_campaign": PollCampaignStage,
-                "campaign": CampaignStage,
-                "export": ExportStage,
-                "read": ReadStage,
-                "compute_stats": ComputeStatsStage,
-                "knowledge_store": KnowledgeStoreStage,
-                "report": ReportStage,
-            })
+            self._stage_map.update(
+                {
+                    "validate": ValidateStage,
+                    "translate": TranslateStage,
+                    "cost_injection": CostInjectionStage,
+                    "daemon_start": DaemonStartStage,
+                    "load_config": LoadConfigStage,
+                    "run_campaign": RunCampaignStage,
+                    "poll_campaign": PollCampaignStage,
+                    "campaign": CampaignStage,
+                    "export": ExportStage,
+                    "read": ReadStage,
+                    "compute_stats": ComputeStatsStage,
+                    "knowledge_store": KnowledgeStoreStage,
+                    "report": ReportStage,
+                }
+            )
             logger.debug("SQX phase4 stages not available — using abstract base stages")
 
     def _register_agent_stages(self) -> None:
@@ -213,6 +221,7 @@ class StageRegistry:
 
             def __init__(self, **kwargs: Any) -> None:
                 from quantlab.agents.hypothesis_builder import HypothesisBuilder
+
                 self._builder = HypothesisBuilder()
                 super().__init__(**kwargs)
 
@@ -252,6 +261,7 @@ class StageRegistry:
 
             def __init__(self, **kwargs: Any) -> None:
                 from quantlab.agents.llm_research_agent import LLMResearchAgent
+
                 self._agent = LLMResearchAgent()
                 super().__init__(**kwargs)
 
@@ -269,6 +279,7 @@ class StageRegistry:
                     llm_config = raw_llm_config
                 elif isinstance(raw_llm_config, dict):
                     from quantlab.dsl.models import LLMConfig
+
                     llm_config = LLMConfig(**raw_llm_config)
 
                 # Generate config with optional LLM (falls back to classic on failure)
@@ -283,8 +294,8 @@ class StageRegistry:
                 hypotheses_dict = [
                     h.model_dump(mode="json") for h in research_config.hypotheses
                 ]
-                iteration_config_dict = (
-                    research_config.iteration_config.model_dump(mode="json")
+                iteration_config_dict = research_config.iteration_config.model_dump(
+                    mode="json"
                 )
                 gate_policies_dict = [
                     g.model_dump(mode="json") for g in research_config.gate_policies
@@ -310,6 +321,7 @@ class StageRegistry:
 
             def __init__(self, **kwargs: Any) -> None:
                 from quantlab.agents.refutation import RefutationLayer
+
                 self._layer = RefutationLayer()
                 super().__init__(**kwargs)
 
@@ -333,61 +345,63 @@ class StageRegistry:
                 ctx.artifacts["falsation_results"] = result
                 return {"falsation_results": result}
 
-        self._stage_map.update({
-            # Agent stages — concrete implementations
-            "research_llm": LLMResearchAgentStage,
-            "research": ResearchAgentStage,
-            "hypothesis_builder": HypothesisBuilderAgentStage,
-            "refutation": RefutationAgentStage,
-            "builder": BuilderAgentStage,
-            "analysis": AnalysisAgentStage,
-            "statistics": StatisticsAgent,
-            "review": ReviewerAgent,
-            "monitor": MonitoringAgent,
-            # CustomProject builder (G2 dependency, REQ-G2): registered so
-            # build_pipeline can instantiate it once wired. This slice only
-            # registers the stage; the builder dispatch (legacy translator vs
-            # customproject/generator.py) lands in U7.
-            "custom_project": BuilderStage,
-            # Guardian evaluation
-            "guardian_evaluate": GuardianEvaluationAgentStage,
-            # Monte Carlo simulation
-            "monte_carlo": MonteCarloStage,
-            # Orchestrated flow stages (PR 3, REQ-17): concrete stages with no
-            # separate agent wrapper — registered following the research_llm
-            # precedent so build_from_config can instantiate them by name.
-            "config_review": ConfigReviewStage,
-            "retester": RetesterStage,
-            "optimizer": OptimizerStage,
-            "dispatch": DispatchStage,
-            # Post-optimize orchestrated stages (PR 6, REQ-01 phases 9-13):
-            # portfolio/compile/deploy/demo/archive. These concrete stages
-            # supersede the legacy PortfolioAgent/DeployAgentStage wrappers —
-            # the 14-phase flow routes through the phase engines directly.
-            "portfolio": PortfolioComposeStage,
-            "compile": CompileStage,
-            "deploy": DeployPackageStage,
-            # Ciclo 4 (REQ-05): inject IndicatorExporter into .jfx after compile.
-            "indicator_export": IndicatorExportStage,
-            "demo": DemoStage,
-            "archive": ArchiveStage,
-            # Live-ops monitoring & archive adapters (PR 3/4): execution_monitor
-            # provides monitor_result for the live-ops loop; archiver builds the
-            # maintenance/replacement runbook from guardian_state (REQ-33).
-            "execution_monitor": ExecutionMonitorStage,
-            "archiver": ArchiverStage,
-            # Canonical live-ops phase (REQ-01 phase 14): starts live monitoring
-            # from the archive state after the archive phase (REQ-6).
-            "live_ops": LiveOpsStage,
-            # Gate interceptor
-            "gate": GateInterceptorStage,
-            # Aliases for gate names
-            "gate_human_review_objectives": GateInterceptorStage,
-            "gate_human_approve_iteration": GateInterceptorStage,
-            "gate_human_approve_portfolio": GateInterceptorStage,
-            "gate_human_approve_deploy": GateInterceptorStage,
-            "gate_human_review_performance": GateInterceptorStage,
-        })
+        self._stage_map.update(
+            {
+                # Agent stages — concrete implementations
+                "research_llm": LLMResearchAgentStage,
+                "research": ResearchAgentStage,
+                "hypothesis_builder": HypothesisBuilderAgentStage,
+                "refutation": RefutationAgentStage,
+                "builder": BuilderAgentStage,
+                "analysis": AnalysisAgentStage,
+                "statistics": StatisticsAgent,
+                "review": ReviewerAgent,
+                "monitor": MonitoringAgent,
+                # CustomProject builder (G2 dependency, REQ-G2): registered so
+                # build_pipeline can instantiate it once wired. This slice only
+                # registers the stage; the builder dispatch (legacy translator vs
+                # customproject/generator.py) lands in U7.
+                "custom_project": BuilderStage,
+                # Guardian evaluation
+                "guardian_evaluate": GuardianEvaluationAgentStage,
+                # Monte Carlo simulation
+                "monte_carlo": MonteCarloStage,
+                # Orchestrated flow stages (PR 3, REQ-17): concrete stages with no
+                # separate agent wrapper — registered following the research_llm
+                # precedent so build_from_config can instantiate them by name.
+                "config_review": ConfigReviewStage,
+                "retester": RetesterStage,
+                "optimizer": OptimizerStage,
+                "dispatch": DispatchStage,
+                # Post-optimize orchestrated stages (PR 6, REQ-01 phases 9-13):
+                # portfolio/compile/deploy/demo/archive. These concrete stages
+                # supersede the legacy PortfolioAgent/DeployAgentStage wrappers —
+                # the 14-phase flow routes through the phase engines directly.
+                "portfolio": PortfolioComposeStage,
+                "compile": CompileStage,
+                "deploy": DeployPackageStage,
+                # Ciclo 4 (REQ-05): inject IndicatorExporter into .jfx after compile.
+                "indicator_export": IndicatorExportStage,
+                "demo": DemoStage,
+                "archive": ArchiveStage,
+                # Live-ops monitoring & archive adapters (PR 3/4): execution_monitor
+                # provides monitor_result for the live-ops loop; archiver builds the
+                # maintenance/replacement runbook from guardian_state (REQ-33).
+                "execution_monitor": ExecutionMonitorStage,
+                "archiver": ArchiverStage,
+                # Canonical live-ops phase (REQ-01 phase 14): starts live monitoring
+                # from the archive state after the archive phase (REQ-6).
+                "live_ops": LiveOpsStage,
+                # Gate interceptor
+                "gate": GateInterceptorStage,
+                # Aliases for gate names
+                "gate_human_review_objectives": GateInterceptorStage,
+                "gate_human_approve_iteration": GateInterceptorStage,
+                "gate_human_approve_portfolio": GateInterceptorStage,
+                "gate_human_approve_deploy": GateInterceptorStage,
+                "gate_human_review_performance": GateInterceptorStage,
+            }
+        )
 
     def register(self, name: str, stage_class: type[PipelineStage]) -> None:
         """Register a stage class under a given name.
@@ -458,17 +472,38 @@ class StageRegistry:
             List of matching stage names.
         """
         builtin_names = {
-            "validate", "translate", "cost_injection", "daemon_start", "load_config",
-            "run_campaign", "poll_campaign", "campaign", "export",
-            "read", "compute_stats", "knowledge_store", "report",
+            "validate",
+            "translate",
+            "cost_injection",
+            "daemon_start",
+            "load_config",
+            "run_campaign",
+            "poll_campaign",
+            "campaign",
+            "export",
+            "read",
+            "compute_stats",
+            "knowledge_store",
+            "report",
         }
         agent_names = {
-            "research", "research_llm", "builder", "analysis", "statistics", "review",
-            "portfolio", "deploy", "monitor", "custom_project",
+            "research",
+            "research_llm",
+            "builder",
+            "analysis",
+            "statistics",
+            "review",
+            "portfolio",
+            "deploy",
+            "monitor",
+            "custom_project",
         }
         gate_names = {
-            "gate", "gate_human_review_objectives", "gate_human_approve_iteration",
-            "gate_human_approve_portfolio", "gate_human_approve_deploy",
+            "gate",
+            "gate_human_review_objectives",
+            "gate_human_approve_iteration",
+            "gate_human_approve_portfolio",
+            "gate_human_approve_deploy",
             "gate_human_review_performance",
         }
 

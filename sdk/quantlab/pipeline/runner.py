@@ -23,7 +23,7 @@ from quantlab.pipeline.stages.gate_interceptor import (
 
 class PipelineRunner:
     """Executes a Pipeline sequentially with per-stage timing, retry, and error isolation.
-    
+
     Features:
         - Sequential stage execution with per-stage timing
         - Retry with configurable max retries, delay, and exponential backoff
@@ -33,7 +33,7 @@ class PipelineRunner:
         - Gate injection: registers ``GateInterceptorStage`` instances at configured positions
         - Fluent gate registration API
     """
-    
+
     def __init__(
         self,
         max_retries: int = 0,
@@ -45,27 +45,27 @@ class PipelineRunner:
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.progress = progress
-    
+
     # ─── Gate Registration ─────────────────────────────────────────────────────
-    
+
     def register_gate(self, after_stage: str, gate: GateInterceptorStage) -> None:
         """Register a gate interceptor to execute after a given stage.
-        
+
         Args:
             after_stage: Name of the stage after which this gate executes.
             gate: GateInterceptorStage instance.
         """
         self._gates[after_stage] = gate
-    
+
     def configure_gates(self, gates_config: list[dict[str, Any]]) -> None:
         """Configure gates from a list of gate config dicts.
-        
+
         Each config dict may contain:
             - after_stage (str): Stage name to gate after.
             - gate_id (str): Gate identifier.
             - timeout_hours (float): Timeout in hours.
             - fallback (str): Fallback policy.
-        
+
         Args:
             gates_config: List of gate configuration dictionaries.
         """
@@ -81,29 +81,29 @@ class PipelineRunner:
                 gate.fallback = FallbackPolicy.CONTINUE
             gate.requires = g.get("requires", [])
             gate.provides = [f"gate_decision_{gate.gate_id}"]
-            
+
             after = g.get("after_stage", "")
             if after:
                 self.register_gate(after, gate)
-    
+
     # ─── Contract Validation ────────────────────────────────────────────────────
-    
+
     def validate_contracts(
         self,
         pipeline: Pipeline,
         external_provides: set[str] | None = None,
     ) -> None:
         """Verify that every stage's ``requires`` are satisfied by prior stages' ``provides``.
-        
+
         Iterates through pipeline stages in order, accumulates the set of
         provided keys, and checks each stage's requires against it.
-        
+
         Args:
             pipeline: The pipeline to validate.
             external_provides: Optional set of keys that are provided externally
                 (e.g. "selected_strategies", "live_equity"), so contract validation
                 treats them as pre-satisfied.
-        
+
         Raises:
             ContractValidationError: If any stage requires a key not provided by
                 any earlier stage. Includes details of missing keys per stage.
@@ -111,43 +111,43 @@ class PipelineRunner:
         provided: set[str] = set(external_provides or ())
         missing_keys: dict[str, list[str]] = {}
         stage_names: list[str] = []
-        
+
         for stage in pipeline.stages:
             stage_requires = getattr(stage, "requires", [])
             stage_name = getattr(stage, "name", "unnamed")
-            
+
             stage_missing = [k for k in stage_requires if k not in provided]
             if stage_missing:
                 missing_keys[stage_name] = stage_missing
                 stage_names.append(stage_name)
-            
+
             stage_provides = getattr(stage, "provides", [])
             provided.update(stage_provides)
-        
+
         if missing_keys:
             raise ContractValidationError(
                 message=f"Pipeline '{pipeline.name}' has contract violations",
                 missing_keys=missing_keys,
                 stage_names=stage_names,
             )
-    
+
     # ─── Pipeline Building from Config ─────────────────────────────────────────
-    
+
     def set_registry(self, registry: StageRegistry) -> None:
         """Set a stage registry for building pipelines from config.
-        
+
         Args:
             registry: StageRegistry instance.
         """
         self._registry = registry
-    
+
     def _get_gate_lookup(self, config_gates: list[Any]) -> dict[str, Any]:
         """Build a lookup dict: after_stage -> gate config dict.
-        
+
         Supports both Pydantic models and plain dicts.
         """
         gate_lookup: dict[str, Any] = {}
-        for g in (config_gates or []):
+        for g in config_gates or []:
             if hasattr(g, "after_stage"):
                 # Pydantic model
                 after = g.after_stage or g.name or ""
@@ -158,7 +158,7 @@ class PipelineRunner:
                 if after:
                     gate_lookup[after] = g
         return gate_lookup
-    
+
     def _make_gate_stage(self, gate_config: Any) -> GateInterceptorStage:
         """Create a GateInterceptorStage from a gate config (dict or Pydantic)."""
         if hasattr(gate_config, "gate_id"):
@@ -173,7 +173,7 @@ class PipelineRunner:
             timeout = gate_config.get("timeout_hours", 24.0)
             fallback_str = gate_config.get("fallback", "CONTINUE")
             requires = gate_config.get("requires", [])
-        
+
         gate_stage = GateInterceptorStage()
         gate_stage.name = f"gate_{gate_id}" if gate_id else "gate"
         gate_stage.gate_id = gate_id or "UNKNOWN_GATE"
@@ -185,39 +185,41 @@ class PipelineRunner:
         gate_stage.requires = requires
         gate_stage.provides = [f"gate_decision_{gate_stage.gate_id}"]
         return gate_stage
-    
+
     def build_from_config(
         self,
         config: Any,
         pipeline_name: str | None = None,
     ) -> Pipeline:
         """Build a Pipeline from a config by instantiating stages.
-        
+
         Uses the configured StageRegistry to look up stage classes.
         Automatically injects gate stages at their configured positions.
-        
+
         Args:
             config: A MultiAgentPipelineConfig (or compatible object with
                    ``stages``, ``gates``, ``name`` fields).
             pipeline_name: Override for the pipeline name.
-        
+
         Returns:
             Configured Pipeline instance with all stages in order.
-        
+
         Raises:
             ValueError: If a stage name is not found in the registry.
         """
         if self._registry is None:
             self._registry = StageRegistry()
-        
-        name = pipeline_name or (getattr(config, "name", None) or "multi-agent-pipeline")
+
+        name = pipeline_name or (
+            getattr(config, "name", None) or "multi-agent-pipeline"
+        )
         pipeline = Pipeline(name=name)
-        
+
         config_stages = getattr(config, "stages", []) or []
         config_gates = getattr(config, "gates", []) or []
-        
+
         gate_lookup = self._get_gate_lookup(config_gates)
-        
+
         for stage_config in config_stages:
             # Support both Pydantic models and dicts
             if hasattr(stage_config, "name"):
@@ -226,37 +228,39 @@ class PipelineRunner:
                 stage_name = stage_config.get("name", "unknown")
             else:
                 stage_name = str(stage_config)
-            
+
             # If this is the builder stage and guardian is enabled, insert guardian_evaluate first
             if stage_name == "builder" and getattr(config, "guardian_enabled", False):
-                guardian_stage_class = self._registry.get_stage_class("guardian_evaluate")
+                guardian_stage_class = self._registry.get_stage_class(
+                    "guardian_evaluate"
+                )
                 if guardian_stage_class is not None:
                     guardian_stage = guardian_stage_class()
                     pipeline.stages.append(guardian_stage)
                 else:
                     logger.warning("Guardian evaluation stage not found in registry")
-            
+
             stage_class = self._registry.get_stage_class(stage_name)
-            
+
             if stage_class is None:
                 raise ValueError(
                     f"Unknown stage '{stage_name}'. "
                     f"Available: {', '.join(sorted(self._registry.list_stage_names()))}"
                 )
-            
+
             stage = stage_class()
             pipeline.stages.append(stage)
-            
+
             # Inject gate after this stage if configured
             gate_config_obj = gate_lookup.get(stage_name)
             if gate_config_obj is not None:
                 gate_stage = self._make_gate_stage(gate_config_obj)
                 pipeline.stages.append(gate_stage)
-        
+
         return pipeline
-    
+
     # ─── Pipeline Execution ────────────────────────────────────────────────────
-    
+
     async def run(
         self,
         pipeline: Pipeline,
@@ -264,19 +268,19 @@ class PipelineRunner:
         external_provides: set[str] | None = None,
     ) -> PipelineResult:
         """Run all stages in the pipeline sequentially with retry support.
-        
+
         Validates contracts before execution.  Stages that raise an exception
         are retried up to ``max_retries`` times with exponential backoff.
         If the stage still fails after all retries, the pipeline stops and
         remaining stages are marked SKIPPED.
-        
+
         Args:
             pipeline: The pipeline to execute.
             ctx: Shared pipeline context.
             external_provides: Optional set of keys provided externally (e.g.
                 "selected_strategies", "live_equity"). These are treated as
                 pre-satisfied during contract validation.
-        
+
         Returns:
             PipelineResult with per-stage results.
         """
@@ -284,10 +288,10 @@ class PipelineRunner:
 
         result = PipelineResult(pipeline_name=pipeline.name)
         pipeline_start = time.monotonic()
-        
+
         # Validate contracts before any execution
         self.validate_contracts(pipeline, external_provides=external_provides)
-        
+
         for i, stage in enumerate(pipeline.stages):
             # Check if previous stage failed
             if ctx.error is not None:
@@ -301,7 +305,7 @@ class PipelineRunner:
                 if _notify:
                     _notify(f"pipeline/{stage.name}", PhaseStatus.ERROR, str(ctx.error))
                 continue
-            
+
             # Execute stage (with retries)
             stage_start = time.monotonic()
             stage_result = StageResult(
@@ -309,13 +313,13 @@ class PipelineRunner:
                 status=StageStatus.RUNNING,
                 started_at=datetime.now(),
             )
-            
+
             if _notify:
                 _notify(f"pipeline/{stage.name}", PhaseStatus.STARTED)
-            
+
             last_error: Exception | None = None
             max_attempts = max(1, self.max_retries + 1)
-            
+
             for attempt in range(max_attempts):
                 if attempt > 0:
                     stage_result.status = StageStatus.RETRYING
@@ -327,22 +331,22 @@ class PipelineRunner:
                             f"retry {attempt}/{self.max_retries} (backoff {delay:.1f}s)",
                         )
                     await asyncio.sleep(delay)
-                
+
                 try:
                     output = await stage.execute(ctx)
                     stage_duration = time.monotonic() - stage_start
-                    
+
                     stage_result.status = StageStatus.COMPLETED
                     stage_result.duration = stage_duration
                     stage_result.output = output
                     stage_result.completed_at = datetime.now()
-                    
+
                     if _notify:
                         _notify(f"pipeline/{stage.name}", PhaseStatus.SUCCESS)
-                    
+
                     last_error = None
                     break  # success, exit retry loop
-                    
+
                 except GateTimeoutError:
                     stage_duration = time.monotonic() - stage_start
                     stage_result.status = StageStatus.FAILED
@@ -352,7 +356,7 @@ class PipelineRunner:
                     ctx.error = GateTimeoutError("Gate aborted pipeline")
                     last_error = ctx.error
                     break  # gate abort is immediate, no retry
-                    
+
                 except Exception as e:
                     last_error = e
                     if attempt < self.max_retries:
@@ -375,15 +379,15 @@ class PipelineRunner:
                                 PhaseStatus.ERROR,
                                 f"failed after {self.max_retries} retries: {e}",
                             )
-            
+
             result.stages.append(stage_result)
-        
+
         result.total_duration = time.monotonic() - pipeline_start
         if ctx.error:
             result.error = f"{type(ctx.error).__name__}: {ctx.error}"
-        
+
         return result
-    
+
     async def run_with_gates(
         self,
         pipeline: Pipeline,
@@ -391,15 +395,15 @@ class PipelineRunner:
         external_provides: set[str] | None = None,
     ) -> PipelineResult:
         """Run pipeline with gate interceptors injected at registered positions.
-        
+
         After each pipeline stage completes successfully, checks if a gate
         interceptor is registered for that stage and executes it.
-        
+
         Args:
             pipeline: The pipeline to execute.
             ctx: Pipeline context.
             external_provides: Optional set of keys provided externally.
-        
+
         Returns:
             PipelineResult with per-stage and per-gate results.
         """
@@ -407,10 +411,10 @@ class PipelineRunner:
 
         result = PipelineResult(pipeline_name=pipeline.name)
         pipeline_start = time.monotonic()
-        
+
         # Validate contracts before any execution
         self.validate_contracts(pipeline, external_provides=external_provides)
-        
+
         for i, stage in enumerate(pipeline.stages):
             # Check if previous stage failed
             if ctx.error is not None:
@@ -424,7 +428,7 @@ class PipelineRunner:
                 if _notify:
                     _notify(f"pipeline/{stage.name}", PhaseStatus.ERROR, str(ctx.error))
                 continue
-            
+
             # Execute pipeline stage (with retries)
             stage_start = time.monotonic()
             stage_result = StageResult(
@@ -432,13 +436,13 @@ class PipelineRunner:
                 status=StageStatus.RUNNING,
                 started_at=datetime.now(),
             )
-            
+
             if _notify:
                 _notify(f"pipeline/{stage.name}", PhaseStatus.STARTED)
-            
+
             last_error: Exception | None = None
             max_attempts = max(1, self.max_retries + 1)
-            
+
             for attempt in range(max_attempts):
                 if attempt > 0:
                     stage_result.status = StageStatus.RETRYING
@@ -450,7 +454,7 @@ class PipelineRunner:
                             f"retry {attempt}/{self.max_retries} (backoff {delay:.1f}s)",
                         )
                     await asyncio.sleep(delay)
-                
+
                 try:
                     output = await stage.execute(ctx)
                     stage_duration = time.monotonic() - stage_start
@@ -493,10 +497,10 @@ class PipelineRunner:
                                 PhaseStatus.ERROR,
                                 f"failed after {self.max_retries} retries: {e}",
                             )
-            
+
             # Append stage result BEFORE gate result
             result.stages.append(stage_result)
-            
+
             # If stage succeeded, check for gate after this stage
             if stage_result.status == StageStatus.COMPLETED:
                 gate = self._gates.get(stage.name)
@@ -531,13 +535,13 @@ class PipelineRunner:
                         ctx.error = e
                         result.stages.append(gate_result)
                         break
-                    
+
                     result.stages.append(gate_result)
                     if gate_result.status == StageStatus.FAILED:
                         break
-        
+
         result.total_duration = time.monotonic() - pipeline_start
         if ctx.error:
             result.error = f"{type(ctx.error).__name__}: {ctx.error}"
-        
+
         return result
