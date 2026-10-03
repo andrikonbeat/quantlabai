@@ -39,9 +39,7 @@ class TestJForexDeployStage:
 
         ctx = PipelineContext(
             config={},
-            artifacts={
-                "compiled_strategies": {"AlphaM15": jfx_a, "BetaH1": jfx_b}
-            },
+            artifacts={"compiled_strategies": {"AlphaM15": jfx_a, "BetaH1": jfx_b}},
         )
         stage = JForexDeployStage(bridge=FakeBridge())
 
@@ -102,7 +100,9 @@ class TestJForexDeployStage:
         ctx = PipelineContext(
             config={},
             artifacts={
-                "compiled_strategies": [JfxArtifact(path=jfx, source=jfx, class_name="DeltaH4")]
+                "compiled_strategies": [
+                    JfxArtifact(path=jfx, source=jfx, class_name="DeltaH4")
+                ]
             },
         )
         stage = JForexDeployStage(bridge=FakeBridge())
@@ -174,7 +174,9 @@ class TestJForexProgressFn:
         captured: dict[str, object] = {}
 
         class FakeMonitor:
-            async def monitor(self, campaign_id: str, phase: str, config: object) -> object:
+            async def monitor(
+                self, campaign_id: str, phase: str, config: object
+            ) -> object:
                 captured["phase"] = phase
                 return object()
 
@@ -216,7 +218,9 @@ class TestJForexPipelineE2E:
                 pass
 
         class FakeMonitor:
-            async def monitor(self, campaign_id: str, phase: str, config: object) -> object:
+            async def monitor(
+                self, campaign_id: str, phase: str, config: object
+            ) -> object:
                 monitor_calls.append(phase)
                 return object()
 
@@ -259,7 +263,9 @@ class TestJForexPipelineE2E:
                 raise RuntimeError("deploy down")
 
         class FakeMonitor:
-            async def monitor(self, campaign_id: str, phase: str, config: object) -> object:
+            async def monitor(
+                self, campaign_id: str, phase: str, config: object
+            ) -> object:
                 monitor_calls.append(phase)
                 return object()
 

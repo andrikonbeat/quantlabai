@@ -74,36 +74,44 @@ class TestRSSNewsProvider:
 
         def make_feed(entries_list):
             """Create a feedparser-like result with .entries attribute."""
-            return SimpleNamespace(entries=[
-                SimpleNamespace(
-                    title=e["title"],
-                    link=e["link"],
-                    description=e.get("description", ""),
-                    published_parsed=e["published_parsed"],
-                    source=SimpleNamespace(title=e.get("source", {}).get("title", "")),
-                )
-                for e in entries_list
-            ])
+            return SimpleNamespace(
+                entries=[
+                    SimpleNamespace(
+                        title=e["title"],
+                        link=e["link"],
+                        description=e.get("description", ""),
+                        published_parsed=e["published_parsed"],
+                        source=SimpleNamespace(
+                            title=e.get("source", {}).get("title", "")
+                        ),
+                    )
+                    for e in entries_list
+                ]
+            )
 
-        feed = make_feed([
-            {
-                "title": "AAPL Stock Rises on Strong Earnings",
-                "link": "https://example.com/aapl-earnings",
-                "description": "AAPL shares rose 5% after reporting strong Q2 earnings.",
-                "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
-                "source": {"title": "Yahoo Finance"},
-            },
-            {
-                "title": "Market Overview: Tech Stocks Rally",
-                "link": "https://example.com/tech-rally",
-                "description": "Technology stocks rallied across the board.",
-                "published_parsed": (2026, 7, 28, 9, 30, 0, 1, 209, 0),
-                "source": {"title": "Yahoo Finance"},
-            },
-        ])
+        feed = make_feed(
+            [
+                {
+                    "title": "AAPL Stock Rises on Strong Earnings",
+                    "link": "https://example.com/aapl-earnings",
+                    "description": "AAPL shares rose 5% after reporting strong Q2 earnings.",
+                    "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
+                    "source": {"title": "Yahoo Finance"},
+                },
+                {
+                    "title": "Market Overview: Tech Stocks Rally",
+                    "link": "https://example.com/tech-rally",
+                    "description": "Technology stocks rallied across the board.",
+                    "published_parsed": (2026, 7, 28, 9, 30, 0, 1, 209, 0),
+                    "source": {"title": "Yahoo Finance"},
+                },
+            ]
+        )
 
-        with patch("httpx.AsyncClient", return_value=mock_client), \
-             patch("quantlab.data.news.rss.feedparser", MagicMock()) as mock_fp:
+        with (
+            patch("httpx.AsyncClient", return_value=mock_client),
+            patch("quantlab.data.news.rss.feedparser", MagicMock()) as mock_fp,
+        ):
             mock_fp.parse.return_value = feed
             results = await provider.fetch_news("AAPL")
 
@@ -135,36 +143,44 @@ class TestRSSNewsProvider:
         provider = RSSNewsProvider(rss_urls=urls)
 
         def make_feed(entries_list):
-            return SimpleNamespace(entries=[
-                SimpleNamespace(
-                    title=e["title"],
-                    link=e["link"],
-                    description=e.get("description", ""),
-                    published_parsed=e["published_parsed"],
-                    source=SimpleNamespace(title=e.get("source", {}).get("title", "")),
-                )
-                for e in entries_list
-            ])
+            return SimpleNamespace(
+                entries=[
+                    SimpleNamespace(
+                        title=e["title"],
+                        link=e["link"],
+                        description=e.get("description", ""),
+                        published_parsed=e["published_parsed"],
+                        source=SimpleNamespace(
+                            title=e.get("source", {}).get("title", "")
+                        ),
+                    )
+                    for e in entries_list
+                ]
+            )
 
-        feed = make_feed([
-            {
-                "title": "AAPL Stock Rises",
-                "link": "https://example.com/aapl",
-                "description": "AAPL stock rises.",
-                "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
-                "source": {"title": "Yahoo Finance"},
-            },
-            {
-                "title": "AAPL Stock Rises (duplicate)",
-                "link": "https://example.com/aapl",
-                "description": "AAPL stock rises again.",
-                "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
-                "source": {"title": "Yahoo Finance"},
-            },
-        ])
+        feed = make_feed(
+            [
+                {
+                    "title": "AAPL Stock Rises",
+                    "link": "https://example.com/aapl",
+                    "description": "AAPL stock rises.",
+                    "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
+                    "source": {"title": "Yahoo Finance"},
+                },
+                {
+                    "title": "AAPL Stock Rises (duplicate)",
+                    "link": "https://example.com/aapl",
+                    "description": "AAPL stock rises again.",
+                    "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
+                    "source": {"title": "Yahoo Finance"},
+                },
+            ]
+        )
 
-        with patch("httpx.AsyncClient", return_value=mock_client), \
-             patch("quantlab.data.news.rss.feedparser", MagicMock()) as mock_fp:
+        with (
+            patch("httpx.AsyncClient", return_value=mock_client),
+            patch("quantlab.data.news.rss.feedparser", MagicMock()) as mock_fp,
+        ):
             mock_fp.parse.return_value = feed
             results = await provider.fetch_news("AAPL")
 
@@ -203,32 +219,40 @@ class TestRSSNewsProvider:
 
         # Use SimpleNamespace for feed entries (mimics feedparser's object interface)
         def make_feed(entries_list):
-            return SimpleNamespace(entries=[
-                SimpleNamespace(
-                    title=e["title"],
-                    link=e["link"],
-                    description=e.get("description", ""),
-                    published_parsed=e["published_parsed"],
-                    source=SimpleNamespace(title=e.get("source", {}).get("title", "")),
-                )
-                for e in entries_list
-            ])
+            return SimpleNamespace(
+                entries=[
+                    SimpleNamespace(
+                        title=e["title"],
+                        link=e["link"],
+                        description=e.get("description", ""),
+                        published_parsed=e["published_parsed"],
+                        source=SimpleNamespace(
+                            title=e.get("source", {}).get("title", "")
+                        ),
+                    )
+                    for e in entries_list
+                ]
+            )
 
-        good_feed = make_feed([
-            {
-                "title": "AAPL Good",
-                "link": "https://example.com/aapl-good",
-                "description": "AAPL is good.",
-                "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
-                "source": {"title": "Finance"},
-            },
-        ])
+        good_feed = make_feed(
+            [
+                {
+                    "title": "AAPL Good",
+                    "link": "https://example.com/aapl-good",
+                    "description": "AAPL is good.",
+                    "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
+                    "source": {"title": "Finance"},
+                },
+            ]
+        )
 
         urls = ["https://example.com/failing.rss", "https://example.com/good.rss"]
         provider = RSSNewsProvider(rss_urls=urls)
 
-        with patch("httpx.AsyncClient", return_value=mock_client), \
-             patch("quantlab.data.news.rss.feedparser", MagicMock()) as mock_fp:
+        with (
+            patch("httpx.AsyncClient", return_value=mock_client),
+            patch("quantlab.data.news.rss.feedparser", MagicMock()) as mock_fp,
+        ):
             mock_fp.parse.return_value = good_feed
             results = await provider.fetch_news("AAPL")
 
@@ -258,32 +282,40 @@ class TestRSSNewsProvider:
         mock_client.__aenter__.return_value.get = AsyncMock(side_effect=get_side_effect)
 
         def make_feed(entries_list):
-            return SimpleNamespace(entries=[
-                SimpleNamespace(
-                    title=e["title"],
-                    link=e["link"],
-                    description=e.get("description", ""),
-                    published_parsed=e["published_parsed"],
-                    source=SimpleNamespace(title=e.get("source", {}).get("title", "")),
-                )
-                for e in entries_list
-            ])
+            return SimpleNamespace(
+                entries=[
+                    SimpleNamespace(
+                        title=e["title"],
+                        link=e["link"],
+                        description=e.get("description", ""),
+                        published_parsed=e["published_parsed"],
+                        source=SimpleNamespace(
+                            title=e.get("source", {}).get("title", "")
+                        ),
+                    )
+                    for e in entries_list
+                ]
+            )
 
-        good_feed = make_feed([
-            {
-                "title": "Working Article",
-                "link": "https://example.com/working",
-                "description": "Working article.",
-                "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
-                "source": {"title": "Finance"},
-            },
-        ])
+        good_feed = make_feed(
+            [
+                {
+                    "title": "Working Article",
+                    "link": "https://example.com/working",
+                    "description": "Working article.",
+                    "published_parsed": (2026, 7, 28, 10, 0, 0, 1, 209, 0),
+                    "source": {"title": "Finance"},
+                },
+            ]
+        )
 
         urls = ["https://example.com/timeout.rss", "https://example.com/good.rss"]
         provider = RSSNewsProvider(rss_urls=urls)
 
-        with patch("httpx.AsyncClient", return_value=mock_client), \
-             patch("quantlab.data.news.rss.feedparser", MagicMock()) as mock_fp:
+        with (
+            patch("httpx.AsyncClient", return_value=mock_client),
+            patch("quantlab.data.news.rss.feedparser", MagicMock()) as mock_fp,
+        ):
             mock_fp.parse.return_value = good_feed
             results = await provider.fetch_news("AAPL")
 

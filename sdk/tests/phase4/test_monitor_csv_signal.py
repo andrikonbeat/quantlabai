@@ -70,12 +70,7 @@ class TestParseStrategyCountsCsv:
         assert parse_strategy_counts_csv(text) == {"strat_alpha": 1}
 
     def test_multiple_strategies(self) -> None:
-        text = (
-            CSV_HEADER
-            + CSV_ALPHA
-            + "strat_beta,1.8,0.9\n"
-            + "strat_gamma,1.2,1.5\n"
-        )
+        text = CSV_HEADER + CSV_ALPHA + "strat_beta,1.8,0.9\n" + "strat_gamma,1.2,1.5\n"
         assert parse_strategy_counts_csv(text) == {
             "strat_alpha": 1,
             "strat_beta": 1,
@@ -83,12 +78,7 @@ class TestParseStrategyCountsCsv:
         }
 
     def test_duplicate_names_accumulate(self) -> None:
-        text = (
-            CSV_HEADER
-            + CSV_ALPHA
-            + CSV_ALPHA
-            + "strat_beta,1.8,0.9\n"
-        )
+        text = CSV_HEADER + CSV_ALPHA + CSV_ALPHA + "strat_beta,1.8,0.9\n"
         assert parse_strategy_counts_csv(text) == {
             "strat_alpha": 2,
             "strat_beta": 1,

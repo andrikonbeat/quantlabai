@@ -88,7 +88,9 @@ class TestParseVerdict:
         verdict = parse_verdict(raw)
 
         assert isinstance(verdict, Verdict)
-        assert verdict.assessment == "Campaign generating but databank count not growing"
+        assert (
+            verdict.assessment == "Campaign generating but databank count not growing"
+        )
         assert verdict.severity == "warning"
         assert verdict.detected_issues == ["zero acceptance"]
         assert verdict.recommended_action == "continue"
@@ -132,7 +134,9 @@ class TestParseVerdict:
         WHEN parse_verdict is called
         THEN None is returned and a warning is logged (treated as continue).
         """
-        with caplog.at_level(logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"):
+        with caplog.at_level(
+            logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"
+        ):
             verdict = parse_verdict("not json at all {{{")
 
         assert verdict is None
@@ -143,7 +147,9 @@ class TestParseVerdict:
         WHEN parse_verdict is called
         THEN None is returned and a warning is logged (treated as continue).
         """
-        with caplog.at_level(logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"):
+        with caplog.at_level(
+            logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"
+        ):
             verdict = parse_verdict(json.dumps({"assessment": "only this"}))
 
         assert verdict is None
@@ -155,7 +161,9 @@ class TestParseVerdict:
         THEN None is returned and a warning is logged (treated as continue).
         """
         payload = verdict_payload(confidence=1.5)
-        with caplog.at_level(logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"):
+        with caplog.at_level(
+            logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"
+        ):
             verdict = parse_verdict(json.dumps(payload))
 
         assert verdict is None
@@ -296,12 +304,16 @@ class TestActionExecutor:
             base_url="http://127.0.0.1:5050",
             monitor=monitor,
         )
+
         async def failing_dispatch() -> bool:
             raise RuntimeError("connection refused")
+
         monkeypatch.setattr(executor, "_dispatch_http_stop", failing_dispatch)
         verdict = Verdict(**verdict_payload(action="stop"))
 
-        with caplog.at_level(logging.ERROR, logger="quantlab.sqx.llm_generation_monitor"):
+        with caplog.at_level(
+            logging.ERROR, logger="quantlab.sqx.llm_generation_monitor"
+        ):
             result = await executor.execute(verdict)
 
         assert result is False
@@ -346,9 +358,7 @@ class TestLLMGenerationMonitor:
             snapshot_provider=lambda: make_snapshot(),
             llm_config=LLMConfig(),
             llm_caller=AsyncMock(
-                return_value=json.dumps(
-                    verdict_payload(action="stop", confidence=0.65)
-                )
+                return_value=json.dumps(verdict_payload(action="stop", confidence=0.65))
             ),
             confirm_stop=confirm,
             confidence_threshold=0.7,
@@ -364,7 +374,9 @@ class TestLLMGenerationMonitor:
         dispatch.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_high_confidence_stop_dispatches_after_confirm(self, monkeypatch) -> None:
+    async def test_high_confidence_stop_dispatches_after_confirm(
+        self, monkeypatch
+    ) -> None:
         """GIVEN a stop verdict with confidence 0.9 >= threshold 0.7
         WHEN the monitor polls and the user confirms
         THEN the stop action is dispatched via the executor.
@@ -375,9 +387,7 @@ class TestLLMGenerationMonitor:
             snapshot_provider=lambda: make_snapshot(),
             llm_config=LLMConfig(),
             llm_caller=AsyncMock(
-                return_value=json.dumps(
-                    verdict_payload(action="stop", confidence=0.9)
-                )
+                return_value=json.dumps(verdict_payload(action="stop", confidence=0.9))
             ),
             confirm_stop=AsyncMock(return_value=True),
             confidence_threshold=0.7,
@@ -424,6 +434,7 @@ class TestLLMGenerationMonitor:
         THEN no exception propagates and no action is dispatched.
         """
         breaker = LLMCircuitBreaker(failure_threshold=1, recovery_timeout=30.0)
+
         # First poll: caller raises -> circuit records failure -> OPEN.
         async def failing_caller(prompt: str, cfg: LLMConfig) -> str:
             raise RuntimeError("LLM API down")
@@ -444,12 +455,16 @@ class TestLLMGenerationMonitor:
         monkeypatch.setattr(monitor._executor, "_dispatch_http_stop", dispatch)
 
         # Trip the circuit (also must not propagate).
-        with caplog.at_level(logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"):
+        with caplog.at_level(
+            logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"
+        ):
             await monitor._poll_once()
         assert breaker.state == "OPEN"
 
         # Second poll: CircuitOpenError must be swallowed as continue.
-        with caplog.at_level(logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"):
+        with caplog.at_level(
+            logging.WARNING, logger="quantlab.sqx.llm_generation_monitor"
+        ):
             await monitor._poll_once()
 
         dispatch.assert_not_awaited()
@@ -483,9 +498,7 @@ class TestParseDatabankCounts:
         WHEN parse_databank_counts is called
         THEN the count is still parsed (colon is optional).
         """
-        assert parse_databank_counts(
-            "Results, Records 3\nStrategies, Records 5\n"
-        ) == {
+        assert parse_databank_counts("Results, Records 3\nStrategies, Records 5\n") == {
             "Results": 3,
             "Strategies": 5,
         }
@@ -540,9 +553,7 @@ class TestParseDatabankCounts:
         WHEN parse_databank_counts is called
         THEN None is returned and a warning is logged (counts unknown).
         """
-        with caplog.at_level(
-            logging.WARNING, logger="quantlab.sqx.campaign_monitor"
-        ):
+        with caplog.at_level(logging.WARNING, logger="quantlab.sqx.campaign_monitor"):
             result = parse_databank_counts("no databanks here\n")
 
         assert result is None
@@ -642,9 +653,7 @@ class TestCurrentSnapshot:
             stall_polls_threshold=21,
             rejection_warn_gens=3,
         )
-        monitor = CampaignMonitor(
-            "c1", "http://127.0.0.1:5050", baseline
-        )
+        monitor = CampaignMonitor("c1", "http://127.0.0.1:5050", baseline)
 
         snap = monitor.current_snapshot()
 
@@ -702,9 +711,7 @@ class TestMockServerRejectionMode:
         MockSQXServer.reset()
         MockSQXHandler._mode = "normal"
 
-    async def _send(
-        self, client: httpx.AsyncClient, command: str
-    ) -> httpx.Response:
+    async def _send(self, client: httpx.AsyncClient, command: str) -> httpx.Response:
         return await client.get(f"{self.BASE_URL}/call?cmd={self._cmd(command)}")
 
     @pytest.mark.asyncio
@@ -719,12 +726,8 @@ class TestMockServerRejectionMode:
 
             counts: list[int] = []
             for _ in range(3):
-                resp = await self._send(
-                    client, "-project action=status name=rej-camp"
-                )
-                match = re.search(
-                    r"Strategies generated\s+(\d+)", resp.text
-                )
+                resp = await self._send(client, "-project action=status name=rej-camp")
+                match = re.search(r"Strategies generated\s+(\d+)", resp.text)
                 assert match is not None, f"no count in: {resp.text!r}"
                 counts.append(int(match.group(1)))
                 assert "Status: completed" not in resp.text
@@ -740,18 +743,14 @@ class TestMockServerRejectionMode:
             # Wait past the normal-mode completion duration (~2s) — in
             # rejection mode the campaign must still be running.
             await asyncio.sleep(2.5)
-            status = await self._send(
-                client, "-project action=status name=rej-camp"
-            )
+            status = await self._send(client, "-project action=status name=rej-camp")
             assert "Status: completed" not in status.text
             assert "Strategies generated" in status.text
 
             # Explicit stop terminates the campaign.
             stop = await self._send(client, "-project action=stop name=rej-camp")
             assert "stopped" in stop.text.lower()
-            after = await self._send(
-                client, "-project action=status name=rej-camp"
-            )
+            after = await self._send(client, "-project action=status name=rej-camp")
             assert "Strategies generated" in after.text
 
     @pytest.mark.asyncio
@@ -770,9 +769,7 @@ class TestMockServerRejectionMode:
             await self._send(client, "-project action=start name=normal-camp")
             # Normal simulation completes in ~2s.
             await asyncio.sleep(2.5)
-            status = await self._send(
-                client, "-project action=status name=normal-camp"
-            )
+            status = await self._send(client, "-project action=status name=normal-camp")
             assert "completed" in status.text.lower()
 
 

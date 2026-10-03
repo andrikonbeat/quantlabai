@@ -52,12 +52,16 @@ class TestWebSearchProvider:
         # Mock _search_ddgs to return dicts like real DDGS would
         async def fake_search_ddgs(query):
             return [
-                {"title": "AAPL Earnings Q2 2026 - Apple Reports Strong Results",
-                 "href": "https://example.com/aapl-earnings",
-                 "body": "Apple reported revenue of $124B for Q2 2026..."},
-                {"title": "Apple Stock Surges on Earnings Beat",
-                 "href": "https://example.com/aapl-surge",
-                 "body": "AAPL shares jumped 8% after hours..."},
+                {
+                    "title": "AAPL Earnings Q2 2026 - Apple Reports Strong Results",
+                    "href": "https://example.com/aapl-earnings",
+                    "body": "Apple reported revenue of $124B for Q2 2026...",
+                },
+                {
+                    "title": "Apple Stock Surges on Earnings Beat",
+                    "href": "https://example.com/aapl-surge",
+                    "body": "AAPL shares jumped 8% after hours...",
+                },
             ]
 
         # Direct assignment — no mock complexity
@@ -117,9 +121,11 @@ class TestWebSearchProvider:
             nonlocal call_count
             call_count += 1
             return [
-                {"title": "AAPL News",
-                 "href": "https://example.com/aapl",
-                 "body": "AAPL news body"},
+                {
+                    "title": "AAPL News",
+                    "href": "https://example.com/aapl",
+                    "body": "AAPL news body",
+                },
             ]
 
         original = provider._search_ddgs

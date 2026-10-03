@@ -25,6 +25,7 @@ from quantlab.sqx.project_builder import BuildConfig
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_config(**overrides) -> ResearchConfig:
     """Minimal ResearchConfig for loop tests."""
     iteration_config = IterationConfig(
@@ -60,7 +61,9 @@ def _patch_director_deps(director: ResearchDirector, review_decision: str = "APP
         ctx.artifacts["review_decision"] = review_decision
         ctx.artifacts["iteration_proposal"] = {
             "action": "MODIFY_AND_RETEST",
-            "parameter_changes": {"position_size": "0.5x"} if review_decision == "ITERATE" else {},
+            "parameter_changes": {"position_size": "0.5x"}
+            if review_decision == "ITERATE"
+            else {},
             "new_hypotheses": [],
             "rationale": "test",
             "failed_checks": ["sharpe"] if review_decision == "ITERATE" else [],
@@ -75,6 +78,7 @@ def _patch_director_deps(director: ResearchDirector, review_decision: str = "APP
 
 
 # ── Unit: apply_iteration_proposal ────────────────────────────────────────────
+
 
 class TestApplyIterationProposal:
     """Task 2.1: apply_iteration_proposal() mapping."""
@@ -200,6 +204,7 @@ class TestApplyIterationProposal:
 
 # ── Integration: execute_campaign branching ────────────────────────────────────
 
+
 class TestExecuteCampaignBranching:
     """Task 2.2+: execute_campaign() review_decision branching."""
 
@@ -274,6 +279,7 @@ class TestExecuteCampaignBranching:
         captured_ids: list[str] = []
 
         original_build_pipeline = director.build_pipeline
+
         def capture_build(cfg):
             # We can't easily capture context IDs here because build_pipeline
             # doesn't receive context. Instead we verify via the mock runner.
@@ -386,6 +392,7 @@ class TestExecuteCampaignBranching:
 
 # ── E2E: full loop with mock SQX ──────────────────────────────────────────────
 
+
 class TestReconfigurationLoopE2E:
     """Task 2.7: E2E full loop with mock SQX."""
 
@@ -420,9 +427,7 @@ class TestReconfigurationLoopE2E:
         director._get_runner = MagicMock(return_value=mock_runner)
         director.build_pipeline = MagicMock(return_value=MagicMock())
 
-        record = await director.execute_campaign(
-            config, campaign_id="e2e-base"
-        )
+        record = await director.execute_campaign(config, campaign_id="e2e-base")
 
         # First iteration: base ID; second iteration: versioned
         assert captured_ids[0] == "e2e-base"
