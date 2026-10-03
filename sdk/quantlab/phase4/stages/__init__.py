@@ -23,7 +23,10 @@ from quantlab.dsl.parser import parse_yaml
 from quantlab.knowledge.conformance import assert_conformance
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.pipeline.base import PipelineContext
-from quantlab.pipeline.models import StageResult as StageResult, StageStatus as StageStatus
+from quantlab.pipeline.models import (
+    StageResult as StageResult,
+    StageStatus as StageStatus,
+)
 from quantlab.pipeline.stages import (
     CampaignStage,
     ComputeStatsStage,
@@ -45,43 +48,43 @@ from quantlab.translate.cfx import CfxArchive
 
 class SQXValidateStage(ValidateStage):
     """Validate SQX license and binary availability."""
-    
+
     name = "validate"
     requires = []
     provides = ["validated_config"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         config = ctx.config
         dry_run = config.get("dry_run", False)
-        
+
         if dry_run:
             return {"validated": True, "dry_run": True}
-        
+
         from pathlib import Path
 
         from quantlab.tools.platform import get_sqcli_binary, resolve_sqcli_path
-        
+
         install_path = Path(config.get("sqx_install_path", "/opt/StrategyQuantX"))
         binary_name = get_sqcli_binary()
         binary_path = install_path / binary_name
-        
+
         binary = resolve_sqcli_path(binary_path)
         if binary is None:
             raise LicenseError(
                 "SQX not found",
                 license_path=str(install_path),
             )
-        
+
         return {"validated": True, "sqx_binary": str(binary)}
 
 
 class SQXTranslateStage(TranslateStage):
     """Translate ResearchConfig DSL to CFX archive."""
-    
+
     name = "translate"
     requires = ["validated_config"]
     provides = ["cfx_bytes", "cfx_path"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         config = ctx.config
         dry_run = config.get("dry_run", False)
@@ -99,9 +102,8 @@ class SQXTranslateStage(TranslateStage):
                 research_config = parse_yaml(research_config_path)
             except Exception as e:
                 from quantlab.tools.exceptions import TranslationError
-                raise TranslationError(
-                    f"Failed to parse research config: {e}"
-                ) from e
+
+                raise TranslationError(f"Failed to parse research config: {e}") from e
         else:
             research_config = ResearchConfig(
                 campaign=campaign_name,
@@ -123,11 +125,11 @@ class SQXTranslateStage(TranslateStage):
 
 class SQXDaemonStartStage(DaemonStartStage):
     """Start SQX -gui daemon and create HTTP client + dispatcher."""
-    
+
     name = "daemon_start"
     requires = []
     provides = ["daemon_url", "daemon_manager", "dispatcher", "http_client"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         # Deferred imports: Phase 4 modules not guaranteed present at import time
         from quantlab.phase4.command_dispatcher import CommandDispatcher
@@ -144,15 +146,15 @@ class SQXDaemonStartStage(DaemonStartStage):
             startup_timeout=60.0,
         )
         base_url = await daemon.start()
-        
+
         client = AsyncSQXClient(base_url)
         dispatcher = await CommandDispatcher.from_daemon(daemon)
-        
+
         # Store in context for later stages
         ctx.artifacts["daemon_manager"] = daemon
         ctx.artifacts["http_client"] = client
         ctx.artifacts["dispatcher"] = dispatcher
-        
+
         return {
             "daemon_url": base_url,
             "daemon_manager": daemon,
@@ -163,78 +165,80 @@ class SQXDaemonStartStage(DaemonStartStage):
 
 class SQXLoadConfigStage(LoadConfigStage):
     """Load CFX config into SQX."""
-    
+
     name = "load_config"
     requires = ["dispatcher", "cfx_bytes"]
     provides = []
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         cfx_bytes = ctx.artifacts.get("cfx_bytes")
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
-        
+
         if cfx_bytes is None:
             raise CampaignError("No CFX bytes available for load_config")
-        
+
         with tempfile.NamedTemporaryFile(suffix=".cfx", delete=False) as tmp:
             tmp.write(cfx_bytes)
             cfx_path = Path(tmp.name)
-        
+
         try:
             await dispatcher.load_config(cfx_path)
         finally:
             cfx_path.unlink(missing_ok=True)
-        
+
         return {}
 
 
 class SQXRunCampaignStage(RunCampaignStage):
     """Start the SQX project/campaign."""
-    
+
     name = "run_campaign"
     requires = ["dispatcher"]
     provides = ["campaign_name"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         config = ctx.config
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
-        
+
         campaign_name = config.get("campaign_name", "Campaign")
         await dispatcher.start_project(campaign_name)
-        
+
         return {"campaign_name": campaign_name}
 
 
 class SQXPollCampaignStage(PollCampaignStage):
     """Poll campaign status until completion or timeout."""
-    
+
     name = "poll_campaign"
     requires = ["dispatcher", "campaign_name"]
     provides = ["campaign_status"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         config = ctx.config
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
-        campaign_name = ctx.artifacts.get("campaign_name") or config.get("campaign_name", "Campaign")
-        
+        campaign_name = ctx.artifacts.get("campaign_name") or config.get(
+            "campaign_name", "Campaign"
+        )
+
         poll_interval = config.get("poll_interval", 30.0)
         poll_timeout = config.get("poll_timeout", 3600.0)
-        
+
         start = time.time()
         while time.time() - start < poll_timeout:
             status = await dispatcher.get_status(campaign_name)
-            
+
             if status.is_complete:
                 return {"campaign_name": campaign_name, "campaign_status": status}
-            
+
             if status.is_failed:
                 raise CampaignError(
                     f"Campaign failed: {status.error_message}",
                     phase="poll",
                     campaign_name=campaign_name,
                 )
-            
+
             await asyncio.sleep(poll_interval)
-        
+
         # Timeout
         await dispatcher.stop_project(campaign_name)
         raise CampaignError(
@@ -246,54 +250,54 @@ class SQXPollCampaignStage(PollCampaignStage):
 
 class SQXCampaignStage(CampaignStage):
     """Load CFX config, start campaign, and poll for completion."""
-    
+
     name = "campaign"
     requires = ["daemon_manager", "dispatcher", "cfx_bytes"]
     provides = ["campaign_name", "campaign_status"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         config = ctx.config
         cfx_bytes = ctx.artifacts.get("cfx_bytes")
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
         daemon: SQXDaemonManager = ctx.artifacts.get("daemon_manager")
-        
+
         if cfx_bytes is None:
             raise CampaignError("No CFX bytes available for campaign")
-        
+
         # Load CFX config
         with tempfile.NamedTemporaryFile(suffix=".cfx", delete=False) as tmp:
             tmp.write(cfx_bytes)
             cfx_path = Path(tmp.name)
-        
+
         try:
             await dispatcher.load_config(cfx_path)
         finally:
             cfx_path.unlink(missing_ok=True)
-        
+
         # Start campaign
         campaign_name = config.get("campaign_name", "Campaign")
         await dispatcher.start_project(campaign_name)
-        
+
         # Poll for completion
         poll_interval = config.get("poll_interval", 30.0)
         poll_timeout = config.get("poll_timeout", 3600.0)
-        
+
         start = time.time()
         while time.time() - start < poll_timeout:
             status = await dispatcher.get_status(campaign_name)
-            
+
             if status.is_complete:
                 return {"campaign_name": campaign_name, "campaign_status": status}
-            
+
             if status.is_failed:
                 raise CampaignError(
                     f"Campaign failed: {status.error_message}",
                     phase="poll",
                     campaign_name=campaign_name,
                 )
-            
+
             await asyncio.sleep(poll_interval)
-        
+
         # Timeout
         await dispatcher.stop_project(campaign_name)
         raise CampaignError(
@@ -305,53 +309,55 @@ class SQXCampaignStage(CampaignStage):
 
 class SQXExportStage(ExportStage):
     """Export campaign results in configured formats."""
-    
+
     name = "export"
     requires = ["campaign_name", "dispatcher"]
     provides = ["export_paths"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         config = ctx.config
-        campaign_name = ctx.artifacts.get("campaign_name") or config.get("campaign_name", "Campaign")
+        campaign_name = ctx.artifacts.get("campaign_name") or config.get(
+            "campaign_name", "Campaign"
+        )
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
-        
+
         export_formats = config.get("export_formats", ["csv"])
         export_databanks = config.get("export_databanks", True)
         output_dir = Path(config.get("output_dir", "_output")) / campaign_name
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         exports = {}
-        
+
         # Export results
         if "csv" in export_formats:
             path = await dispatcher.export_results(campaign_name, output_dir)
             exports["results_csv"] = Path(path)
-        
+
         # Export databanks
         if export_databanks:
             db_dir = output_dir / "databanks"
             db_paths = await dispatcher.export_databanks(campaign_name, db_dir)
             for p in db_paths:
                 exports[f"databank_{Path(p).name}"] = Path(p)
-        
+
         return {"export_paths": exports}
 
 
 class SQXReadStage(ReadStage):
     """Read exported CSV/XLSX files into structured data."""
-    
+
     name = "read"
     requires = ["export_paths"]
     provides = ["parsed_results"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         export_paths = ctx.artifacts.get("export_paths", {})
         reader = DatabankCSVReader()
-        
+
         trades = []
         equity = []
         summary = {}
-        
+
         for path in export_paths.values():
             if path.suffix == ".csv":
                 if "trades" in path.name.lower():
@@ -360,7 +366,7 @@ class SQXReadStage(ReadStage):
                     equity = reader.read_equity(path)
                 elif "summary" in path.name.lower():
                     summary = reader.read_summary(path)
-        
+
         return {
             "trades": trades,
             "equity": equity,
@@ -370,23 +376,23 @@ class SQXReadStage(ReadStage):
 
 class SQXComputeStatsStage(ComputeStatsStage):
     """Compute trading statistics from trades and equity."""
-    
+
     name = "compute_stats"
     requires = ["parsed_results"]
     provides = ["statistics"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         parsed = ctx.artifacts.get("parsed_results", {})
         trades = parsed.get("trades", [])
         equity = parsed.get("equity", [])
-        
+
         engine = StatisticsEngine()
         result = engine.compute_all(
             trades=trades,
             equity=equity,
             returns=[t.profit for t in trades] if trades else [],
         )
-        
+
         return {
             "profit_factor": result.profit_factor,
             "sharpe_ratio": result.sharpe_ratio,
@@ -400,26 +406,26 @@ class SQXComputeStatsStage(ComputeStatsStage):
 
 class SQXKnowledgeStoreStage(KnowledgeStoreStage):
     """Store campaign artifacts in Knowledge Lake."""
-    
+
     name = "knowledge_store"
     requires = ["parsed_results", "statistics", "cfx_bytes", "export_paths"]
     provides = ["artifact_paths"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         config = ctx.config
         knowledge_root = config.get("knowledge_root")
-        
+
         if not knowledge_root:
             return {"artifact_paths": {}}
-        
+
         store = KnowledgeStore(root=knowledge_root)
         store.initialize()
-        
+
         artifacts = {}
         campaign_name = config.get("campaign_name", "Campaign")
         campaign_id = re.sub(r"[^A-Za-z0-9._-]", "_", campaign_name) or "campaign"
         campaign_dir = Path(knowledge_root) / "structured" / campaign_id
-        
+
         # Store CFX (config_writer -> structured/*/**)
         cfx_bytes = ctx.artifacts.get("cfx_bytes")
         if cfx_bytes:
@@ -430,7 +436,7 @@ class SQXKnowledgeStoreStage(KnowledgeStoreStage):
             cfx_path.parent.mkdir(parents=True, exist_ok=True)
             cfx_path.write_bytes(cfx_bytes)
             artifacts["cfx"] = cfx_path
-        
+
         # Store results (config_writer -> structured/*/**; per-artifact subdir)
         export_paths = ctx.artifacts.get("export_paths", {})
         for name, path in export_paths.items():
@@ -441,7 +447,7 @@ class SQXKnowledgeStoreStage(KnowledgeStoreStage):
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(path.read_bytes())
             artifacts[name] = dest
-        
+
         # Store statistics (metrics_writer -> structured/*/metrics.yaml)
         stats = ctx.artifacts.get("statistics", {})
         stats_path = campaign_dir / "metrics.yaml"
@@ -451,33 +457,33 @@ class SQXKnowledgeStoreStage(KnowledgeStoreStage):
         stats_path.parent.mkdir(parents=True, exist_ok=True)
         stats_path.write_text(yaml.dump(stats))
         artifacts["statistics"] = stats_path
-        
+
         # Rebuild index
         store.rebuild_index()
-        
+
         return {"artifact_paths": artifacts}
 
 
 class SQXReportStage(ReportStage):
     """Generate campaign report delegating to ReportGenerator."""
-    
+
     name = "report"
     requires = ["parsed_results", "statistics"]
     provides = ["report_path", "report_html", "report_json", "report_charts"]
-    
+
     async def execute(self, ctx: PipelineContext) -> dict:
         # Delegate to Phase 5b ReportGenerator
         from pathlib import Path
 
         from quantlab.reporting.generator import ReportGenerator
         from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
-        
+
         campaign_name = ctx.config.get("campaign_name", "campaign")
         output_dir = Path(ctx.config.get("output_dir", "reports"))
         statistics = ctx.artifacts.get("statistics", {})
         trades = ctx.artifacts.get("trades", [])
         equity = ctx.artifacts.get("equity", [])
-        
+
         config = ReportConfig(
             campaign_id=campaign_name,
             output_dir=output_dir,
@@ -486,15 +492,15 @@ class SQXReportStage(ReportStage):
             theme=ReportTheme.DARK,
             title=f"Campaign: {campaign_name}",
         )
-        
+
         # Convert stats dict to StatsResult if needed
         if isinstance(statistics, dict):
             from quantlab.stats.models import StatsResult
-            statistics = StatsResult(**{
-                k: v for k, v in statistics.items()
-                if k in StatsResult.model_fields
-            })
-        
+
+            statistics = StatsResult(
+                **{k: v for k, v in statistics.items() if k in StatsResult.model_fields}
+            )
+
         generator = ReportGenerator(config)
         result = generator.generate(
             campaign_id=campaign_name,
@@ -502,7 +508,7 @@ class SQXReportStage(ReportStage):
             equity=equity,
             statistics=statistics,
         )
-        
+
         artifacts = {}
         if result.html_path:
             artifacts["report_path"] = str(result.html_path)
@@ -511,5 +517,5 @@ class SQXReportStage(ReportStage):
             artifacts["report_json"] = str(result.json_path)
         if result.charts_generated:
             artifacts["report_charts"] = result.charts_generated
-        
+
         return {"artifact_paths": artifacts}

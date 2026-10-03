@@ -17,43 +17,45 @@ from quantlab.phase4.templates import CfxTemplateBuilder
 
 # ── Known SQX metric column names (lowercased, no spaces/dashes/underscores) ──
 
-_KNOWN_METRICS: frozenset[str] = frozenset({
-    "sharpe",
-    "sharperatio",
-    "profitfactor",
-    "drawdown",
-    "maxdrawdown",
-    "netprofit",
-    "grossprofit",
-    "grossloss",
-    "totaltrades",
-    "winrate",
-    "recoveryfactor",
-    "return",
-    "totalreturn",
-    "avgtrade",
-    "stddev",
-    "kelly",
-    "kellyvalue",
-    "rsquared",
-    "rsquare",
-    "correlation",
-    "mae",
-    "mfe",
-    "duration",
-    "exposure",
-    "largestloss",
-    "largestwin",
-    "avgbars",
-    "numbars",
-    "expectancy",
-    "nperiods",
-    "numperiods",
-    "kratio",
-    "tradesperyear",
-    "marketexposure",
-    "exposuretime",
-})
+_KNOWN_METRICS: frozenset[str] = frozenset(
+    {
+        "sharpe",
+        "sharperatio",
+        "profitfactor",
+        "drawdown",
+        "maxdrawdown",
+        "netprofit",
+        "grossprofit",
+        "grossloss",
+        "totaltrades",
+        "winrate",
+        "recoveryfactor",
+        "return",
+        "totalreturn",
+        "avgtrade",
+        "stddev",
+        "kelly",
+        "kellyvalue",
+        "rsquared",
+        "rsquare",
+        "correlation",
+        "mae",
+        "mfe",
+        "duration",
+        "exposure",
+        "largestloss",
+        "largestwin",
+        "avgbars",
+        "numbars",
+        "expectancy",
+        "nperiods",
+        "numperiods",
+        "kratio",
+        "tradesperyear",
+        "marketexposure",
+        "exposuretime",
+    }
+)
 
 
 def _normalize_header(name: str) -> str:
@@ -340,10 +342,10 @@ class Optimizer:
             try:
                 cycle = WalkForwardCycle(
                     cycle=cycle_num,
-                    in_sample_start=row[fixed_map["insamplestart"]],   # type: ignore[arg-type]
-                    in_sample_end=row[fixed_map["insampleend"]],       # type: ignore[arg-type]
+                    in_sample_start=row[fixed_map["insamplestart"]],  # type: ignore[arg-type]
+                    in_sample_end=row[fixed_map["insampleend"]],  # type: ignore[arg-type]
                     out_sample_start=row[fixed_map["outsamplestart"]],  # type: ignore[arg-type]
-                    out_sample_end=row[fixed_map["outsampleend"]],      # type: ignore[arg-type]
+                    out_sample_end=row[fixed_map["outsampleend"]],  # type: ignore[arg-type]
                 )
             except IndexError as exc:
                 raise OptimizerRunError(
@@ -475,9 +477,7 @@ class Optimizer:
             summary_items = sorted(
                 (k, v) for k, v in result.summary.items() if k != "num_cycles"
             )
-            parts.append(
-                _summary_card("num_cycles", str(len(result.cycles)), "Cycles")
-            )
+            parts.append(_summary_card("num_cycles", str(len(result.cycles)), "Cycles"))
             for key, val in result.summary.items():
                 if key == "num_cycles":
                     continue

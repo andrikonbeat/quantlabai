@@ -89,6 +89,7 @@ class CfxTemplateBuilder:
         )
 
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             out_path = Path(tmp) / "portfolio.cfx"
             CfxWriter.write(archive, out_path)
@@ -155,14 +156,15 @@ class CfxTemplateBuilder:
             task.databanks_section = DatabanksConfig(raw_xml=db_xml)
 
         archive = CfxArchive(
-                config=CfxConfig(
-                    task=task,
-                    schema_version=PINNED_SQX_VERSION,
-                ),
-                task_files={"Optimizer-Task1.xml": task},
-            )
+            config=CfxConfig(
+                task=task,
+                schema_version=PINNED_SQX_VERSION,
+            ),
+            task_files={"Optimizer-Task1.xml": task},
+        )
 
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             out_path = Path(tmp) / "optimizer.cfx"
             CfxWriter.write(archive, out_path)
@@ -331,13 +333,13 @@ class CfxTemplateBuilder:
         )
 
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             out_path = Path(tmp) / "retester.cfx"
             CfxWriter.write(archive, out_path)
             return out_path.read_bytes()
 
-
-# ── Convenience dry-run (returns JSON without writing file) ──────────────────
+    # ── Convenience dry-run (returns JSON without writing file) ──────────────────
 
     @staticmethod
     def dry_run_portfolio_cfx(**kwargs) -> str:

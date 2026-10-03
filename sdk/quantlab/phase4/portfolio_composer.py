@@ -93,7 +93,9 @@ class PortfolioComposer:
                 raise StrategyNotFoundError(sid) from e
             except Exception as e:
                 # Don't rollback - unload_strategy not available via HTTP
-                raise PortfolioStrategyLoadError(f"Failed to load strategy {sid}: {e}") from e
+                raise PortfolioStrategyLoadError(
+                    f"Failed to load strategy {sid}: {e}"
+                ) from e
 
         self._loaded_strategy_ids = loaded
 
@@ -142,7 +144,9 @@ class PortfolioComposer:
             )
 
         if not raw_weights:
-            raise PortfolioOptimizationError("Empty weights dict in optimization result")
+            raise PortfolioOptimizationError(
+                "Empty weights dict in optimization result"
+            )
 
         # Validate each weight is numeric and in [0, 1]
         parsed: list[tuple[str, float]] = []
@@ -153,13 +157,9 @@ class PortfolioComposer:
                 )
             w = float(weight)
             if w < 0:
-                raise PortfolioOptimizationError(
-                    f"Weight for '{sid}' is negative: {w}"
-                )
+                raise PortfolioOptimizationError(f"Weight for '{sid}' is negative: {w}")
             if w > 1.0:
-                raise PortfolioOptimizationError(
-                    f"Weight for '{sid}' exceeds 1.0: {w}"
-                )
+                raise PortfolioOptimizationError(f"Weight for '{sid}' exceeds 1.0: {w}")
             parsed.append((sid, w))
 
         # Check if sum is approximately 1.0 (within 0.01 epsilon)

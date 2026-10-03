@@ -17,7 +17,10 @@ from pathlib import Path
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.daemon import SQXDaemonManager
-from quantlab.phase4.errors import PortfolioError as PortfolioError, PortfolioMasterError
+from quantlab.phase4.errors import (
+    PortfolioError as PortfolioError,
+    PortfolioMasterError,
+)
 from quantlab.phase4.templates import CfxTemplateBuilder
 
 # ── Result dataclasses ─────────────────────────────────────────────────────────
@@ -172,7 +175,9 @@ class PortfolioMaster:
         finally:
             cfx_path.unlink(missing_ok=True)
 
-    async def _wait_for_completion(self, campaign_name: str, timeout: float = 3600.0) -> None:
+    async def _wait_for_completion(
+        self, campaign_name: str, timeout: float = 3600.0
+    ) -> None:
         """Poll project status until complete or timeout."""
         start = time.time()
         while time.time() - start < timeout:
@@ -265,12 +270,14 @@ class PortfolioMaster:
                             f"Non-numeric fitness '{raw_f}' at row {row_num}"
                         )
 
-            strategies.append(SelectedStrategy(
-                strategy_id=sid,
-                weight=weight,
-                rank=rank,
-                fitness=fitness,
-            ))
+            strategies.append(
+                SelectedStrategy(
+                    strategy_id=sid,
+                    weight=weight,
+                    rank=rank,
+                    fitness=fitness,
+                )
+            )
 
         if not strategies:
             raise PortfolioMasterError("CSV contained no strategy rows")
@@ -352,12 +359,14 @@ class PortfolioMaster:
                         f"Non-numeric fitness '{raw_fitness}' for strategy '{sid}'"
                     )
 
-            strategies.append(SelectedStrategy(
-                strategy_id=sid,
-                weight=weight,
-                rank=rank,
-                fitness=fitness,
-            ))
+            strategies.append(
+                SelectedStrategy(
+                    strategy_id=sid,
+                    weight=weight,
+                    rank=rank,
+                    fitness=fitness,
+                )
+            )
 
         if not strategies:
             raise PortfolioMasterError(

@@ -169,7 +169,9 @@ class RetesterConfig:
         else:
             task = None
 
-        retester_data = getattr(task, "retester_data", None) if task is not None else None
+        retester_data = (
+            getattr(task, "retester_data", None) if task is not None else None
+        )
         raw_xml = retester_data.raw_xml if retester_data is not None else None
         if not raw_xml:
             raise ValueError("No RetesterData section found in CFX archive")
@@ -348,9 +350,7 @@ class Retester:
         try:
             raw = path.read_text(encoding="utf-8-sig")
         except OSError as exc:
-            raise RetesterRunError(
-                f"Cannot read CSV file: {csv_path}: {exc}"
-            ) from exc
+            raise RetesterRunError(f"Cannot read CSV file: {csv_path}: {exc}") from exc
 
         # Try key-value format first (most common for SQX retester exports)
         metrics = Retester._parse_kv_csv(raw)
@@ -360,9 +360,7 @@ class Retester:
             metrics = Retester._parse_multicolumn_csv(raw)
 
         if not metrics:
-            raise RetesterRunError(
-                f"No parseable metrics found in CSV: {csv_path}"
-            )
+            raise RetesterRunError(f"No parseable metrics found in CSV: {csv_path}")
 
         return Retester._build_result(metrics, path)
 
@@ -391,12 +389,11 @@ class Retester:
         # ── Sniff 1: explicit key-value header ────────────────────────
         KV_HEADER_KEYS = {"metric", "key", "name", "parameter", "statistic"}
         KV_HEADER_VALS = {"value", "result", "data"}
-        second_cell = non_empty[0].split(",")[1].strip().lower() if "," in non_empty[0] else ""
-
-        has_kv_header = (
-            first_lower in KV_HEADER_KEYS
-            or second_cell in KV_HEADER_VALS
+        second_cell = (
+            non_empty[0].split(",")[1].strip().lower() if "," in non_empty[0] else ""
         )
+
+        has_kv_header = first_lower in KV_HEADER_KEYS or second_cell in KV_HEADER_VALS
 
         # ── Sniff 2: headerless kv — first row is already a metric label
         is_headerless_kv = first_cell.upper().startswith(("MC_", "WF_", "CI_"))
@@ -504,7 +501,11 @@ class Retester:
                             metrics[metric_key] = val
 
             # If we found enough metrics, return
-            if "MC_Runs" in metrics or "MC_NetProfit" in metrics or "MC_Percentile" in metrics:
+            if (
+                "MC_Runs" in metrics
+                or "MC_NetProfit" in metrics
+                or "MC_Percentile" in metrics
+            ):
                 return metrics
 
         # Phase B: scan each row for a known-label prefix
@@ -533,7 +534,9 @@ class Retester:
                 metrics["WF_Cycles"] = row[1].strip()
             elif upper in ("WF_AVGSHARPE", "WF_AVG_SHARPE") and len(row) > 1:
                 metrics["WF_AvgSharpe"] = row[1].strip()
-            elif upper in ("WF_AVGPROFITFACTOR", "WF_AVG_PROFIT_FACTOR") and len(row) > 1:
+            elif (
+                upper in ("WF_AVGPROFITFACTOR", "WF_AVG_PROFIT_FACTOR") and len(row) > 1
+            ):
                 metrics["WF_AvgProfitFactor"] = row[1].strip()
             elif upper in ("WF_AVGDRAWDOWN", "WF_AVG_DRAWDOWN") and len(row) > 1:
                 metrics["WF_AvgDrawdown"] = row[1].strip()
@@ -592,6 +595,7 @@ class Retester:
         Missing metrics are silently defaulted to zero / sensible fallbacks
         so that partial data still produces a usable result.
         """
+
         # Helper to safely parse floats with a fallback
         def _f(key: str, default: float = 0.0) -> float:
             raw = metrics.get(key)
