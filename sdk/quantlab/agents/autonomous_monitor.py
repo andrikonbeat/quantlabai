@@ -370,16 +370,20 @@ class AutoActionExecutor:
         # Serialise details to JSON for TEXT column compatibility
         import json
 
-        self._store.append_alert({
-            "timestamp": now_iso,
-            "type": result.get("type", action.upper()),
-            "severity": alert.get("severity", "WARNING"),
-            "strategy_id": strategy_id,
-            "message": f"Auto-action '{action}' dispatched",
-            "details": json.dumps(result),
-        })
+        self._store.append_alert(
+            {
+                "timestamp": now_iso,
+                "type": result.get("type", action.upper()),
+                "severity": alert.get("severity", "WARNING"),
+                "strategy_id": strategy_id,
+                "message": f"Auto-action '{action}' dispatched",
+                "details": json.dumps(result),
+            }
+        )
 
-        logger.info("AutoActionExecutor: %s for %s — %s", action, strategy_id, result["status"])
+        logger.info(
+            "AutoActionExecutor: %s for %s — %s", action, strategy_id, result["status"]
+        )
         return result
 
 
@@ -756,9 +760,7 @@ class AutonomousMonitorDaemon:
         all_alerts = regime_alerts + perf_alerts
         for alert in all_alerts:
             alert.setdefault("strategy_id", self._config.strategy_id)
-            alert.setdefault(
-                "timestamp", datetime.now(UTC).isoformat()
-            )
+            alert.setdefault("timestamp", datetime.now(UTC).isoformat())
             alert.setdefault("message", alert.get("type", "alert"))
 
             # Serialise details to string for SQLite TEXT column
@@ -777,9 +779,7 @@ class AutonomousMonitorDaemon:
             len(all_alerts),
         )
 
-    def _persist_metrics(
-        self, now: float, rolling: dict[str, Any]
-    ) -> None:
+    def _persist_metrics(self, now: float, rolling: dict[str, Any]) -> None:
         """Persist latest metric values to time-series store."""
         for metric_name, data in rolling.items():
             values = data.get("values", [])
@@ -854,12 +854,14 @@ class AutonomousMonitorDaemon:
         if now - self._last_heartbeat < self._config.heartbeat_interval:
             return
 
-        self._store.append_heartbeat({
-            "timestamp": now,
-            "strategy_id": self._config.strategy_id,
-            "equity_count": len(self._equity_buffer),
-            "alert_count": 0,  # tracked externally in production
-        })
+        self._store.append_heartbeat(
+            {
+                "timestamp": now,
+                "strategy_id": self._config.strategy_id,
+                "equity_count": len(self._equity_buffer),
+                "alert_count": 0,  # tracked externally in production
+            }
+        )
         self._last_heartbeat = now
         self._missed_heartbeats = 0
         logger.debug("Heartbeat emitted for %s", self._config.strategy_id)
@@ -890,9 +892,7 @@ class AutonomousMonitorDaemon:
                 "type": "STREAM_LOST",
                 "severity": "CRITICAL",
                 "strategy_id": self._config.strategy_id,
-                "message": (
-                    f"Stream lost after {self._config.max_retries} retries"
-                ),
+                "message": (f"Stream lost after {self._config.max_retries} retries"),
                 "details": {"retries": self._stream_retries},
             }
             self._store.append_alert(alert)
@@ -952,11 +952,7 @@ class AutonomousMonitorDaemon:
                 elif name_lower == "console":
                     notifiers[name] = ConsoleNotifier()
                 else:
-                    logger.warning(
-                        "Unknown notifier type '%s' — skipping", name
-                    )
+                    logger.warning("Unknown notifier type '%s' — skipping", name)
             except Exception:  # noqa: BLE001
-                logger.warning(
-                    "Failed to build notifier '%s' — skipping", name
-                )
+                logger.warning("Failed to build notifier '%s' — skipping", name)
         return notifiers
