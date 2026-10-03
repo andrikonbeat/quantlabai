@@ -4,7 +4,6 @@ Tests Portfolio Master integration, correlation analysis, Kelly allocation,
 mean-variance optimization, portfolio CFX composition, walk-forward, and pipeline integration.
 """
 
-
 import pytest
 
 from quantlab.agents.portfolio_agent import PortfolioAgent
@@ -69,8 +68,7 @@ class TestCorrelationAnalysis:
 
         rng = np.random.RandomState(42)
         returns_dict = {
-            f"strat_{i}": [float(v) for v in rng.randn(100) * 0.01]
-            for i in range(5)
+            f"strat_{i}": [float(v) for v in rng.randn(100) * 0.01] for i in range(5)
         }
 
         result = agent.analyze_correlation(returns_dict)
@@ -108,7 +106,11 @@ class TestCorrelationAnalysis:
         for cluster in result["clusters"]:
             cluster_strategies.update(cluster["strategies"])
         # A, B, C should be in at least one cluster
-        assert "A" in cluster_strategies or "B" in cluster_strategies or "C" in cluster_strategies
+        assert (
+            "A" in cluster_strategies
+            or "B" in cluster_strategies
+            or "C" in cluster_strategies
+        )
         assert len(result["correlation_warnings"]) >= 1
 
     def test_no_clusters_with_low_correlation(self) -> None:
@@ -121,8 +123,7 @@ class TestCorrelationAnalysis:
 
         rng = np.random.RandomState(42)
         returns_dict = {
-            f"strat_{i}": [float(v) for v in rng.randn(100) * 0.01]
-            for i in range(3)
+            f"strat_{i}": [float(v) for v in rng.randn(100) * 0.01] for i in range(3)
         }
 
         result = agent.analyze_correlation(returns_dict)
@@ -146,10 +147,12 @@ class TestCorrelationAnalysis:
         THEN matrix is 2x2.
         """
         agent = PortfolioAgent()
-        result = agent.analyze_correlation({
-            "A": [0.01, 0.02, 0.03],
-            "B": [-0.01, 0.01, 0.02],
-        })
+        result = agent.analyze_correlation(
+            {
+                "A": [0.01, 0.02, 0.03],
+                "B": [-0.01, 0.01, 0.02],
+            }
+        )
         assert len(result["correlation_matrix"]) == 2
         assert len(result["correlation_matrix"][0]) == 2
         assert abs(result["correlation_matrix"][0][0] - 1.0) < 0.001
@@ -251,8 +254,7 @@ class TestMeanVariance:
 
         rng = np.random.RandomState(42)
         returns_dict = {
-            f"s{i}": [float(v) for v in rng.randn(100) * 0.01]
-            for i in range(3)
+            f"s{i}": [float(v) for v in rng.randn(100) * 0.01] for i in range(3)
         }
 
         result = agent.optimize_mean_variance(returns_dict)
@@ -271,8 +273,7 @@ class TestMeanVariance:
 
         rng = np.random.RandomState(42)
         returns_dict = {
-            f"s{i}": [float(v) for v in rng.randn(100) * 0.01]
-            for i in range(4)
+            f"s{i}": [float(v) for v in rng.randn(100) * 0.01] for i in range(4)
         }
 
         result = agent.optimize_mean_variance(returns_dict)

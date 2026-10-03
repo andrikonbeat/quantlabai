@@ -30,7 +30,9 @@ def _create_export_dir(trades: list[float], equity: list[float]) -> str:
         writer = csv.writer(f)
         writer.writerow(["profit", "entry_time", "exit_time", "direction", "lots"])
         for p in trades:
-            writer.writerow([p, "2024-01-01T00:00:00", "2024-01-02T00:00:00", "LONG", 1.0])
+            writer.writerow(
+                [p, "2024-01-01T00:00:00", "2024-01-02T00:00:00", "LONG", 1.0]
+            )
 
     equity_path = os.path.join(tmp_dir, "equity.csv")
     with open(equity_path, "w", newline="") as f:
@@ -39,6 +41,7 @@ def _create_export_dir(trades: list[float], equity: list[float]) -> str:
         for i, e in enumerate(equity):
             # Use ordinal date format to avoid hour/day overflow
             from datetime import datetime, timedelta
+
             ts = datetime(2024, 1, 1) + timedelta(hours=i)
             writer.writerow([e, ts.isoformat()])
 
@@ -108,6 +111,7 @@ class TestStatisticsReviewerChain:
 
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
     @pytest.mark.asyncio
@@ -152,6 +156,7 @@ class TestStatisticsReviewerChain:
 
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
 
@@ -227,6 +232,7 @@ class TestFullAgentChain:
 
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
     @pytest.mark.asyncio
@@ -274,4 +280,5 @@ class TestFullAgentChain:
 
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)

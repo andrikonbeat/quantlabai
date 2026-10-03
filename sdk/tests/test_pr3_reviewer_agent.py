@@ -133,7 +133,11 @@ class TestEvaluate:
 
         result = agent.evaluate(statistics)
         assert set(result["check_results"].keys()) == {
-            "sharpe", "max_drawdown", "profit_factor", "win_rate", "total_trades"
+            "sharpe",
+            "max_drawdown",
+            "profit_factor",
+            "win_rate",
+            "total_trades",
         }
 
 
@@ -255,7 +259,9 @@ class TestMonteCarloOverfitting:
             90: [3000.0] * 101,
         }
 
-        result = agent.check_mc_overfitting(live_equity=None, monte_carlo_bands=mc_bands)
+        result = agent.check_mc_overfitting(
+            live_equity=None, monte_carlo_bands=mc_bands
+        )
 
         assert result["mc_overfit_flag"] is True
         assert result["breach_trade"] == 50
@@ -287,6 +293,7 @@ class TestBenchmarkComparison:
         # Strategy: steady 1% returns; Benchmark: flat
         # Use non-constant returns so metrics are meaningful
         import numpy as np
+
         rng = np.random.RandomState(42)
         strategy_returns = [float(v) for v in rng.randn(100) * 0.005 + 0.01]
         benchmark_returns = [float(v) for v in rng.randn(100) * 0.008]
@@ -305,6 +312,7 @@ class TestBenchmarkComparison:
         agent = ReviewerAgent()
         # Use non-constant returns so metrics are meaningful
         import numpy as np
+
         rng = np.random.RandomState(42)
         strategy_returns = [float(v) for v in rng.randn(100) * 0.005]
         benchmark_returns = [float(v) for v in rng.randn(100) * 0.01 + 0.005]
@@ -478,7 +486,9 @@ class TestRunMethod:
         )
 
         result = await agent.run(ctx)
-        assert ctx.artifacts["benchmark_comparison"]["benchmark_verdict"] == "OUTPERFORMS"
+        assert (
+            ctx.artifacts["benchmark_comparison"]["benchmark_verdict"] == "OUTPERFORMS"
+        )
 
 
 class TestRunWithStrategyAnalysis:

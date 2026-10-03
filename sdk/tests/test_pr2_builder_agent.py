@@ -190,8 +190,16 @@ class TestGeneratePipelineConfig:
 
         # Check all 8 agent stages are present
         stage_names = [s["name"] for s in pipeline_config["pipeline"]["stages"]]
-        expected = ["research", "builder", "statistics", "analysis",
-                     "review", "portfolio", "deploy", "monitor"]
+        expected = [
+            "research",
+            "builder",
+            "statistics",
+            "analysis",
+            "review",
+            "portfolio",
+            "deploy",
+            "monitor",
+        ]
         assert stage_names == expected
 
     def test_generates_all_5_gates(self) -> None:
@@ -269,13 +277,22 @@ class TestKbConsult:
         )
 
         mock_result = DispatchResult(
-            campaign_id="test", sqcli_status="completed", export_paths=["exports/test.csv"]
+            campaign_id="test",
+            sqcli_status="completed",
+            export_paths=["exports/test.csv"],
         )
-        with patch.object(
-            BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock, return_value=mock_result
-        ), patch(
-            "quantlab.knowledge.kb.store.KbStore.consult", return_value=[{"name": "param"}]
-        ) as mock_consult:
+        with (
+            patch.object(
+                BuilderAgent,
+                "_dispatch_with_retry",
+                new_callable=AsyncMock,
+                return_value=mock_result,
+            ),
+            patch(
+                "quantlab.knowledge.kb.store.KbStore.consult",
+                return_value=[{"name": "param"}],
+            ) as mock_consult,
+        ):
             result = await agent.run(ctx)
 
         mock_consult.assert_called()
@@ -306,11 +323,11 @@ class TestKbConsult:
             artifacts={"research_config": config.model_dump(mode="json")},
         )
 
-        with patch(
-            "quantlab.knowledge.kb.store.KbStore.consult", return_value=[]
-        ), patch.object(
-            BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock
-        ), pytest.raises(ConfigurationError, match="Missing or unverified KB entries"):
+        with (
+            patch("quantlab.knowledge.kb.store.KbStore.consult", return_value=[]),
+            patch.object(BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock),
+            pytest.raises(ConfigurationError, match="Missing or unverified KB entries"),
+        ):
             await agent.run(ctx)
 
     @pytest.mark.asyncio
@@ -338,13 +355,21 @@ class TestKbConsult:
         )
 
         mock_result = DispatchResult(
-            campaign_id="test", sqcli_status="completed", export_paths=["exports/test.csv"]
+            campaign_id="test",
+            sqcli_status="completed",
+            export_paths=["exports/test.csv"],
         )
-        with patch.object(
-            BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock, return_value=mock_result
-        ), patch(
-            "quantlab.knowledge.kb.store.KbStore.consult", return_value=[]
-        ) as mock_consult:
+        with (
+            patch.object(
+                BuilderAgent,
+                "_dispatch_with_retry",
+                new_callable=AsyncMock,
+                return_value=mock_result,
+            ),
+            patch(
+                "quantlab.knowledge.kb.store.KbStore.consult", return_value=[]
+            ) as mock_consult,
+        ):
             result = await agent.run(ctx)
 
         mock_consult.assert_called()
@@ -386,13 +411,22 @@ class TestKbConsult:
         ]
 
         mock_result = DispatchResult(
-            campaign_id="test", sqcli_status="completed", export_paths=["exports/test.csv"]
+            campaign_id="test",
+            sqcli_status="completed",
+            export_paths=["exports/test.csv"],
         )
-        with patch.object(
-            BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock, return_value=mock_result
-        ), patch(
-            "quantlab.knowledge.kb.store.KbStore.consult", return_value=needs_review_entry
-        ) as mock_consult:
+        with (
+            patch.object(
+                BuilderAgent,
+                "_dispatch_with_retry",
+                new_callable=AsyncMock,
+                return_value=mock_result,
+            ),
+            patch(
+                "quantlab.knowledge.kb.store.KbStore.consult",
+                return_value=needs_review_entry,
+            ) as mock_consult,
+        ):
             result = await agent.run(ctx)
 
         mock_consult.assert_called()

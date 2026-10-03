@@ -88,7 +88,9 @@ class TestEndToEnd:
         ctx.artifacts["hypotheses"] = [
             h.model_dump(mode="json") for h in config.hypotheses
         ]
-        ctx.artifacts["iteration_config"] = config.iteration_config.model_dump(mode="json")
+        ctx.artifacts["iteration_config"] = config.iteration_config.model_dump(
+            mode="json"
+        )
         ctx.artifacts["gate_policies"] = [
             g.model_dump(mode="json") for g in config.gate_policies
         ]
@@ -335,7 +337,10 @@ risk:
 
         assert restored.campaign == config.campaign
         assert len(restored.hypotheses) == len(config.hypotheses)
-        assert restored.iteration_config.max_iterations == config.iteration_config.max_iterations
+        assert (
+            restored.iteration_config.max_iterations
+            == config.iteration_config.max_iterations
+        )
         assert len(restored.gate_policies) == len(config.gate_policies)
 
     def test_extended_config_from_file(self, tmp_path: Path) -> None:

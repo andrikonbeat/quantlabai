@@ -31,6 +31,7 @@ from quantlab.pipeline.stages.agent_stages import (
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _make_minimal_config() -> ResearchConfig:
     return ResearchConfig(
         campaign="TestPipeline",
@@ -53,6 +54,7 @@ def _make_minimal_config() -> ResearchConfig:
 # ══════════════════════════════════════════════════════════════════════════════
 # Task 3.1 (RED) — LLMResearchStage I/O contract
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestLLMResearchStageContract:
     """LLMResearchStage I/O contract per spec scenario."""
@@ -104,12 +106,14 @@ class TestLLMResearchStageContract:
         ctx = PipelineContext(config={})
         with pytest.raises(NotImplementedError):
             import asyncio
+
             asyncio.run(stage.execute(ctx))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Task 3.2 (RED) — StageRegistry lookup for "research_llm"
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestRegistryLookup:
     """StageRegistry returns LLMResearchStage for 'research_llm'."""
@@ -155,6 +159,7 @@ class TestRegistryLookup:
 # ══════════════════════════════════════════════════════════════════════════════
 # Task 3.3 (RED) — ResearchDirector routing
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TestResearchDirectorRouting:
     """ResearchDirector routes between classic and LLM research stages."""
@@ -224,6 +229,7 @@ class TestResearchDirectorRouting:
 # Task 3.6 (RED) — Full pipeline integration with LLM config
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestPipelineIntegration:
     """Full pipeline with LLMResearchStage — mocked providers."""
 
@@ -234,7 +240,9 @@ class TestPipelineIntegration:
         THEN it returns dict with the 5 required artifact keys.
         """
         from quantlab.pipeline.base import PipelineContext
-        from quantlab.pipeline.stages.agent_stages import LLMResearchStage as LLMResearchStage
+        from quantlab.pipeline.stages.agent_stages import (
+            LLMResearchStage as LLMResearchStage,
+        )
 
         # We need a concrete class — get it from the registry
         registry = StageRegistry()
@@ -345,7 +353,11 @@ class TestPipelineIntegration:
         ctx = PipelineContext(config={})
         ctx.artifacts["selected_strategies"] = []
         ctx.artifacts["live_equity"] = {}
-        for gate_id in ("HUMAN_APPROVE_PORTFOLIO", "HUMAN_APPROVE_DEPLOY", "HUMAN_REVIEW_PERFORMANCE"):
+        for gate_id in (
+            "HUMAN_APPROVE_PORTFOLIO",
+            "HUMAN_APPROVE_DEPLOY",
+            "HUMAN_REVIEW_PERFORMANCE",
+        ):
             ctx.artifacts[f"gate_decision_{gate_id}"] = {"status": "pending"}
 
         runner = PipelineRunner()
@@ -381,12 +393,15 @@ class TestPipelineIntegration:
 # Task 4.4 (E2E) — Mock campaign → strategies.csv → analysis → review → portfolio
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TestE2EAnalysisReviewerWiring:
     """End-to-end: mock campaign exports strategies.csv, analysis stage parses it,
     reviewer consumes strategy_analysis/wf_cycles, selected_strategies is non-empty."""
 
     @pytest.mark.asyncio
-    async def test_mock_campaign_roundtrip_analysis_to_reviewer(self, tmp_path: Path) -> None:
+    async def test_mock_campaign_roundtrip_analysis_to_reviewer(
+        self, tmp_path: Path
+    ) -> None:
         """GIVEN a mock SQX export with strategies.csv
         WHEN AnalysisAgent parses it and ReviewerAgent consumes the artifacts
         THEN selected_strategies is non-empty and reviewer uses real wf_cycles.
@@ -441,11 +456,16 @@ class TestE2EAnalysisReviewerWiring:
 
         # Reviewer consumed strategy_analysis
         assert "strategy_analysis" in review_result
-        assert review_result["strategy_analysis"] == analysis_result["strategy_analysis"]
+        assert (
+            review_result["strategy_analysis"] == analysis_result["strategy_analysis"]
+        )
 
         # WF degradation computed from real wf_cycles (at least one cycle present)
         wf = review_result["wf_degradation"]
         assert wf.get("error") != "Empty metric lists — cannot compute degradation"
 
         # selected_strategies survives through to the portfolio-ready context
-        assert ctx.artifacts.get("selected_strategies") == analysis_result["selected_strategies"]
+        assert (
+            ctx.artifacts.get("selected_strategies")
+            == analysis_result["selected_strategies"]
+        )

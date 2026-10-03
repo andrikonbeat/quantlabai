@@ -44,7 +44,9 @@ class TestBuildPipeline:
         # 11 agent stages + 5 gate interceptors = 16 total (compile stage added
         # between portfolio and deploy for the canonical 14-phase pipeline,
         # REQ-01/REQ-37).
-        assert len(stage_names) == 16, f"Expected 16 stages, got {len(stage_names)}: {stage_names}"
+        assert len(stage_names) == 16, (
+            f"Expected 16 stages, got {len(stage_names)}: {stage_names}"
+        )
 
     def test_pipeline_stage_order_correct(self) -> None:
         """GIVEN a ResearchConfig
@@ -95,7 +97,11 @@ class TestBuildPipeline:
         ctx = PipelineContext(config={})
         ctx.artifacts["selected_strategies"] = []
         ctx.artifacts["live_equity"] = {}
-        for gate_id in ("HUMAN_APPROVE_PORTFOLIO", "HUMAN_APPROVE_DEPLOY", "HUMAN_REVIEW_PERFORMANCE"):
+        for gate_id in (
+            "HUMAN_APPROVE_PORTFOLIO",
+            "HUMAN_APPROVE_DEPLOY",
+            "HUMAN_REVIEW_PERFORMANCE",
+        ):
             ctx.artifacts[f"gate_decision_{gate_id}"] = {"status": "pending"}
 
         # The validate_contracts will still fail on external inputs since
@@ -159,7 +165,11 @@ class TestExecuteCampaign:
         record = await director.execute_campaign(config, campaign_id="exec-test-1")
         assert record is not None
         assert record.campaign_id == "exec-test-1"
-        assert record.state in (CampaignState.COMPLETED, CampaignState.CONVERGED, CampaignState.FAILED)
+        assert record.state in (
+            CampaignState.COMPLETED,
+            CampaignState.CONVERGED,
+            CampaignState.FAILED,
+        )
 
     @pytest.mark.asyncio
     async def test_campaign_fails_without_hypotheses(self) -> None:
@@ -220,7 +230,11 @@ class TestExecuteCampaign:
         record = await director.execute_campaign(config, campaign_id="gate-test")
         # Accept FAILED since abstract stages aren't concretely wired yet
         # (concrete ResearchAgent/BuildAgent etc. wire-up happens in later PRs)
-        assert record.state in (CampaignState.COMPLETED, CampaignState.CONVERGED, CampaignState.FAILED)
+        assert record.state in (
+            CampaignState.COMPLETED,
+            CampaignState.CONVERGED,
+            CampaignState.FAILED,
+        )
 
 
 class TestRollbackCampaign:

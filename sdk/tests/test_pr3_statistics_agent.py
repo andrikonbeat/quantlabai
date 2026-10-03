@@ -22,12 +22,14 @@ from quantlab.stats.models import (
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_trade(profit: float) -> Trade:
     return Trade(profit=profit)
 
 
 def _make_equity(equity: float, timestamp: str = "2024-01-01T00:00:00") -> EquityPoint:
     from datetime import datetime
+
     return EquityPoint(equity=equity, timestamp=datetime.fromisoformat(timestamp))
 
 
@@ -41,7 +43,9 @@ def _create_export_dir(trades: list[float], equity: list[float]) -> str:
         writer = csv.writer(f)
         writer.writerow(["profit", "entry_time", "exit_time", "direction", "lots"])
         for i, p in enumerate(trades):
-            writer.writerow([p, "2024-01-01T00:00:00", "2024-01-02T00:00:00", "LONG", 1.0])
+            writer.writerow(
+                [p, "2024-01-01T00:00:00", "2024-01-02T00:00:00", "LONG", 1.0]
+            )
 
     # Write equity.csv
     equity_path = os.path.join(tmp_dir, "equity.csv")
@@ -49,7 +53,7 @@ def _create_export_dir(trades: list[float], equity: list[float]) -> str:
         writer = csv.writer(f)
         writer.writerow(["equity", "timestamp"])
         for i, e in enumerate(equity):
-            writer.writerow([e, f"2024-01-{i+1:02d}T00:00:00"])
+            writer.writerow([e, f"2024-01-{i + 1:02d}T00:00:00"])
 
     return tmp_dir
 
@@ -65,7 +69,18 @@ class TestStatisticsComputation:
         agent = StatisticsAgent()
         tmp_dir = _create_export_dir(
             trades=[100, -50, 200, -30, 150, -80, 300, -40, 120, -60],
-            equity=[10000, 10100, 10050, 10250, 10220, 10370, 10290, 10590, 10550, 10670],
+            equity=[
+                10000,
+                10100,
+                10050,
+                10250,
+                10220,
+                10370,
+                10290,
+                10590,
+                10550,
+                10670,
+            ],
         )
 
         try:
@@ -85,6 +100,7 @@ class TestStatisticsComputation:
             assert result.win_rate == 0.5  # 5 wins out of 10
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
     def test_missing_equity_raises(self) -> None:
@@ -100,9 +116,15 @@ class TestStatisticsComputation:
             trades_path = os.path.join(tmp_dir, "trades.csv")
             with open(trades_path, "w", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["profit", "entry_time", "exit_time", "direction", "lots"])
-                writer.writerow([100, "2024-01-01T00:00:00", "2024-01-02T00:00:00", "LONG", 1.0])
-                writer.writerow([-50, "2024-01-03T00:00:00", "2024-01-04T00:00:00", "SHORT", 1.0])
+                writer.writerow(
+                    ["profit", "entry_time", "exit_time", "direction", "lots"]
+                )
+                writer.writerow(
+                    [100, "2024-01-01T00:00:00", "2024-01-02T00:00:00", "LONG", 1.0]
+                )
+                writer.writerow(
+                    [-50, "2024-01-03T00:00:00", "2024-01-04T00:00:00", "SHORT", 1.0]
+                )
 
             export_paths = [trades_path]
             result = agent.compute_statistics(export_paths)
@@ -113,6 +135,7 @@ class TestStatisticsComputation:
             assert result.total_trades == 2
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
     def test_float64_precision(self) -> None:
@@ -139,6 +162,7 @@ class TestStatisticsComputation:
                 assert len(pf_str) > 5
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
     def test_compute_statistics_from_synthetic_data(self) -> None:
@@ -167,12 +191,14 @@ class TestStatisticsComputation:
                 assert abs(result.profit_factor - 3.0) < 0.01
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
 
 def _make_test_trade(profit: float) -> Trade:
     """Helper to create a Trade with required fields."""
     from datetime import datetime
+
     return Trade(
         profit=profit,
         entry_time=datetime(2024, 1, 1),
@@ -208,7 +234,9 @@ class TestMonteCarloBands:
         agent = StatisticsAgent()
         trades = [_make_test_trade(float(i % 2 * 100 - 50)) for i in range(200)]
 
-        bands = agent.monte_carlo_bands(trades, n_simulations=100, percentiles=[10, 50, 90])
+        bands = agent.monte_carlo_bands(
+            trades, n_simulations=100, percentiles=[10, 50, 90]
+        )
 
         assert 10 in bands
         assert 50 in bands
@@ -233,13 +261,17 @@ class TestMonteCarloBands:
         """
         agent = StatisticsAgent(mc_seed=42)
         # Each trade: E[profit] = 0.5 * 100 + 0.5 * (-50) = 25
-        trades = [_make_test_trade(100.0) for _ in range(100)] + [_make_test_trade(-50.0) for _ in range(100)]
+        trades = [_make_test_trade(100.0) for _ in range(100)] + [
+            _make_test_trade(-50.0) for _ in range(100)
+        ]
 
         bands = agent.monte_carlo_bands(trades, n_simulations=500, percentiles=[50])
 
         # Last value of median should be near 200 * 25 = 5000
         median_final = bands[50][-1]
-        assert abs(median_final - 5000) < 2000, f"Median {median_final} too far from expected 5000"
+        assert abs(median_final - 5000) < 2000, (
+            f"Median {median_final} too far from expected 5000"
+        )
 
 
 class TestAssessRobustness:
@@ -267,7 +299,8 @@ class TestAssessRobustness:
         statistics = {"sharpe_ratio": 2.5}
         # p10 curve goes negative at trade 50
         mc_bands = {
-            10: [0.0] * 50 + [-100.0] * 51  # initial + 100 trades, negative from index 50
+            10: [0.0] * 50
+            + [-100.0] * 51  # initial + 100 trades, negative from index 50
         }
 
         result = agent.assess_robustness(statistics, mc_bands)
@@ -418,10 +451,13 @@ class TestRunMethod:
             assert "monte_carlo_bands" in result
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
     @pytest.mark.asyncio
-    async def test_run_missing_export_paths_raises(self, caplog: pytest.LogCaptureFixture) -> None:
+    async def test_run_missing_export_paths_raises(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """GIVEN a PipelineContext without export_paths
         WHEN run() is called
         THEN empty statistics are returned, a warning is logged, and no exception is raised.
@@ -454,9 +490,13 @@ class TestRunMethod:
             trades_path = os.path.join(tmp_dir, "trades.csv")
             with open(trades_path, "w", newline="") as f:
                 writer = csv.writer(f)
-                writer.writerow(["profit", "entry_time", "exit_time", "direction", "lots"])
+                writer.writerow(
+                    ["profit", "entry_time", "exit_time", "direction", "lots"]
+                )
                 for p in [100, -50, 200, -30]:
-                    writer.writerow([p, "2024-01-01T00:00:00", "2024-01-02T00:00:00", "LONG", 1.0])
+                    writer.writerow(
+                        [p, "2024-01-01T00:00:00", "2024-01-02T00:00:00", "LONG", 1.0]
+                    )
 
             ctx = PipelineContext(
                 config={},
@@ -468,4 +508,5 @@ class TestRunMethod:
             assert result["statistics"].get("total_trades") == 4
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
