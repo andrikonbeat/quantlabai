@@ -17,14 +17,14 @@ class TestQualityGuardian:
         """Test that QualityGuardian can be initialized."""
         health_system = Mock()
         guardian = QualityGuardian(health_system)
-        
+
         assert guardian.health_system == health_system
 
     def test_quality_guardian_guardian_type(self):
         """Test that guardian_type returns correct type."""
         health_system = Mock()
         guardian = QualityGuardian(health_system)
-        
+
         assert guardian.guardian_type() == GuardianType.QUALITY
 
     def test_quality_guardian_check_with_valid_data(self):
@@ -37,23 +37,27 @@ class TestQualityGuardian:
             "Strategy_C": 0.91,
             "Strategy_D": 0.63,
         }
-        
+
         guardian = QualityGuardian(health_system)
         result = guardian.check()
-        
+
         # Verify result structure
-        assert hasattr(result, 'guardian_type')
-        assert hasattr(result, 'status')
-        assert hasattr(result, 'score')
-        assert hasattr(result, 'message')
-        assert hasattr(result, 'timestamp')
-        
+        assert hasattr(result, "guardian_type")
+        assert hasattr(result, "status")
+        assert hasattr(result, "score")
+        assert hasattr(result, "message")
+        assert hasattr(result, "timestamp")
+
         assert result.guardian_type == GuardianType.QUALITY
-        assert result.status in [GuardianStatus.GREEN, GuardianStatus.YELLOW, GuardianStatus.RED]
+        assert result.status in [
+            GuardianStatus.GREEN,
+            GuardianStatus.YELLOW,
+            GuardianStatus.RED,
+        ]
         assert 0.0 <= result.score <= 1.0
         assert isinstance(result.message, str)
         assert result.timestamp is not None
-        
+
         # Verify mock was called
         health_system.get_all_strategy_scores.assert_called_once()
 
@@ -61,11 +65,13 @@ class TestQualityGuardian:
         """Test check method handles exceptions gracefully."""
         # Setup mock to raise exception
         health_system = Mock()
-        health_system.get_all_strategy_scores.side_effect = Exception("Health system error")
-        
+        health_system.get_all_strategy_scores.side_effect = Exception(
+            "Health system error"
+        )
+
         guardian = QualityGuardian(health_system)
         result = guardian.check()
-        
+
         # Should return a RED status result with error message
         assert result.guardian_type == GuardianType.QUALITY
         assert result.status == GuardianStatus.RED

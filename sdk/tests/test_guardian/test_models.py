@@ -59,7 +59,7 @@ class TestGuardianModels:
             score=0.85,
             message="Market conditions normal",
         )
-        
+
         assert result.guardian_type == GuardianType.MARKET
         assert result.status == GuardianStatus.GREEN
         assert result.score == 0.85
@@ -76,7 +76,7 @@ class TestGuardianModels:
             message="Test",
         )
         assert result.score == 0.5
-        
+
         # Test bounds
         with pytest.raises(ValueError):
             GuardianResult(
@@ -85,7 +85,7 @@ class TestGuardianModels:
                 score=1.5,  # Too high
                 message="Test",
             )
-        
+
         with pytest.raises(ValueError):
             GuardianResult(
                 guardian_type=GuardianType.RISK,
@@ -102,18 +102,18 @@ class TestGuardianModels:
             score=0.8,
             message="Test",
         )
-        
+
         with pytest.raises(Exception):  # Should raise FrozenInstanceError or similar
             result.score = 0.9
 
     def test_meta_guardian_config_defaults(self):
         """Test MetaGuardianConfig default values."""
         config = MetaGuardianConfig()
-        
+
         # Check default weights sum to approximately 1.0
         total_weight = sum(config.weights.values())
         assert abs(total_weight - 1.0) < 0.0001
-        
+
         # Check specific weights
         assert config.weights[GuardianType.MARKET] == 0.15
         assert config.weights[GuardianType.RISK] == 0.30
@@ -121,7 +121,7 @@ class TestGuardianModels:
         assert config.weights[GuardianType.CAPITAL] == 0.15
         assert config.weights[GuardianType.QUALITY] == 0.10
         assert config.weights[GuardianType.EXECUTION] == 0.10
-        
+
         # Check default thresholds
         assert config.thresholds["defensive_drawdown"] == 0.10
         assert config.thresholds["quarantine_drawdown"] == 0.20
@@ -146,12 +146,12 @@ class TestGuardianModels:
             "degradation_checks": 5,
             "retirement_checks": 10,
         }
-        
+
         config = MetaGuardianConfig(
             weights=custom_weights,
             thresholds=custom_thresholds,
         )
-        
+
         assert config.weights == custom_weights
         assert config.thresholds == custom_thresholds
 

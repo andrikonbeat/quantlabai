@@ -29,7 +29,7 @@ class TestMetaGuardianOrchestrator:
         config = MetaGuardianConfig()
         guardians = []  # Empty list for now
         orchestrator = MetaGuardianOrchestrator(config, guardians)
-        
+
         assert orchestrator.config == config
         assert orchestrator.guardians == []
         assert orchestrator.state == PortfolioState.NORMAL
@@ -39,15 +39,15 @@ class TestMetaGuardianOrchestrator:
         config = MetaGuardianConfig()
         guardians = []
         orchestrator = MetaGuardianOrchestrator(config, guardians)
-        
+
         state = orchestrator.evaluate()
         assert state == PortfolioState.NORMAL
 
     def test_orchestrator_evaluate_with_mock_guardians(self):
         """Test evaluate with mock guardians."""
         config = MetaGuardianConfig()
-        
-# Create mock guardians that return good scores
+
+        # Create mock guardians that return good scores
         market_mock = Mock()
         market_mock.guardian_type.return_value = "market"
         market_mock.check.return_value = Mock(
@@ -55,9 +55,9 @@ class TestMetaGuardianOrchestrator:
             status="green",
             score=0.9,
             message="Good market",
-            timestamp=12345
+            timestamp=12345,
         )
-        
+
         risk_mock = Mock()
         risk_mock.guardian_type.return_value = "risk"
         risk_mock.check.return_value = Mock(
@@ -65,30 +65,35 @@ class TestMetaGuardianOrchestrator:
             status="green",
             score=0.85,
             message="Good risk",
-            timestamp=12345
+            timestamp=12345,
         )
-        
+
         guardians = [market_mock, risk_mock]
         orchestrator = MetaGuardianOrchestrator(config, guardians)
-        
+
         state = orchestrator.evaluate()
         # Should be NORMAL or VIGILANCE based on the scores
-        assert state in [PortfolioState.NORMAL, PortfolioState.VIGILANCE, PortfolioState.DEFENSIVE, 
-                        PortfolioState.QUARANTINE, PortfolioState.RECOVERY]
+        assert state in [
+            PortfolioState.NORMAL,
+            PortfolioState.VIGILANCE,
+            PortfolioState.DEFENSIVE,
+            PortfolioState.QUARANTINE,
+            PortfolioState.RECOVERY,
+        ]
 
     def test_orchestrator_properties(self):
         """Test that orchestrator has expected properties."""
         config = MetaGuardianConfig()
         guardians = []
         orchestrator = MetaGuardianOrchestrator(config, guardians)
-        
+
         # Test initial state
         assert orchestrator.get_current_state() == PortfolioState.NORMAL
-        
+
         # Test state history
         history = orchestrator.get_state_history()
         assert isinstance(history, list)
-        
+
         # Test strategy states
         strategies = orchestrator.get_strategy_states()
         assert isinstance(strategies, dict)

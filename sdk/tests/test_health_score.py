@@ -64,19 +64,34 @@ class TestHealthStateBoundaries:
         assert HealthScoreCalculator.map_score_to_state(45.0) == HealthState.DEGRADING
 
     def test_44_boundary_replacement(self) -> None:
-        assert HealthScoreCalculator.map_score_to_state(44.0) == HealthState.REPLACEMENT_RECOMMENDED
+        assert (
+            HealthScoreCalculator.map_score_to_state(44.0)
+            == HealthState.REPLACEMENT_RECOMMENDED
+        )
 
     def test_30_boundary_replacement(self) -> None:
-        assert HealthScoreCalculator.map_score_to_state(30.0) == HealthState.REPLACEMENT_RECOMMENDED
+        assert (
+            HealthScoreCalculator.map_score_to_state(30.0)
+            == HealthState.REPLACEMENT_RECOMMENDED
+        )
 
     def test_29_boundary_withdrawal(self) -> None:
-        assert HealthScoreCalculator.map_score_to_state(29.0) == HealthState.IMMEDIATE_WITHDRAWAL
+        assert (
+            HealthScoreCalculator.map_score_to_state(29.0)
+            == HealthState.IMMEDIATE_WITHDRAWAL
+        )
 
     def test_0_withdrawal(self) -> None:
-        assert HealthScoreCalculator.map_score_to_state(0.0) == HealthState.IMMEDIATE_WITHDRAWAL
+        assert (
+            HealthScoreCalculator.map_score_to_state(0.0)
+            == HealthState.IMMEDIATE_WITHDRAWAL
+        )
 
     def test_negative_clamps_to_withdrawal(self) -> None:
-        assert HealthScoreCalculator.map_score_to_state(-5.0) == HealthState.IMMEDIATE_WITHDRAWAL
+        assert (
+            HealthScoreCalculator.map_score_to_state(-5.0)
+            == HealthState.IMMEDIATE_WITHDRAWAL
+        )
 
 
 # ── HealthScore model validation ────────────────────────────────────────────
@@ -130,7 +145,15 @@ class TestHealthWeights:
 
     def test_default_weights_sum_to_one(self) -> None:
         w = HealthWeights()
-        total = w.profit_factor + w.sharpe_ratio + w.sortino_ratio + w.max_drawdown + w.recovery_factor + w.win_rate + w.expectancy_ratio
+        total = (
+            w.profit_factor
+            + w.sharpe_ratio
+            + w.sortino_ratio
+            + w.max_drawdown
+            + w.recovery_factor
+            + w.win_rate
+            + w.expectancy_ratio
+        )
         assert total == pytest.approx(1.0, abs=1e-6)
 
     def test_default_weights_match_spec(self) -> None:
@@ -508,14 +531,18 @@ class TestHealthRecord:
     """Verify HealthRecord model creation and defaults."""
 
     def test_create_record(self) -> None:
-        score = HealthScore(overall_score=82.0, state=HealthState.STABLE, metric_scores={"pf": 0.8})
+        score = HealthScore(
+            overall_score=82.0, state=HealthState.STABLE, metric_scores={"pf": 0.8}
+        )
         record = HealthRecord(strategy_id="strat-alpha", score=score)
         assert record.strategy_id == "strat-alpha"
         assert record.score.overall_score == 82.0
         assert record.metadata == {}
 
     def test_record_with_metadata(self) -> None:
-        score = HealthScore(overall_score=45.0, state=HealthState.DEGRADING, metric_scores={})
+        score = HealthScore(
+            overall_score=45.0, state=HealthState.DEGRADING, metric_scores={}
+        )
         record = HealthRecord(
             strategy_id="strat-beta",
             score=score,
