@@ -243,12 +243,16 @@ class NoveltyGenerator:
                 signal = context["signal"]
                 context.setdefault("market", "EURUSD")
                 context.setdefault("timeframe", "H1")
-                context.setdefault("risk_profile", signal.get("mg_state", "moderate").lower())
+                context.setdefault(
+                    "risk_profile", signal.get("mg_state", "moderate").lower()
+                )
             else:
                 # Also accept bare dict without market/timeframe — common in scheduled cycles
                 if "cycle" in context:
                     # Scheduled cycle — use defaults if no market/timeframe
-                    logger.info("Scheduled cycle context without market/timeframe — using defaults")
+                    logger.info(
+                        "Scheduled cycle context without market/timeframe — using defaults"
+                    )
                     return []
                 return []
 
@@ -273,12 +277,18 @@ class NoveltyGenerator:
 
         registry = StageRegistry()
         pipeline = Pipeline(name="novelty-backtest")
-        stage_names = ["daemon_start", "load_cfx", "run_backtest",
-                        "compute_stats", "export"]
+        stage_names = [
+            "daemon_start",
+            "load_cfx",
+            "run_backtest",
+            "compute_stats",
+            "export",
+        ]
         for name in stage_names:
             stage_class = registry.get_stage_class(name)
             if stage_class is None:
                 from quantlab.evolution.genetic import _NoopStage
+
                 stage = _NoopStage(name=name)
             else:
                 stage = stage_class()
@@ -304,7 +314,9 @@ class NoveltyGenerator:
             pipeline_result = await self._runner.run(pipeline, pipeline_ctx)
             fitness_score = self._score_from_result(pipeline_result, config)
         except Exception as exc:
-            logger.warning("Novelty backtest failed for candidate %s: %s", candidate_id, exc)
+            logger.warning(
+                "Novelty backtest failed for candidate %s: %s", candidate_id, exc
+            )
             pipeline_result = None
             fitness_score = 0.0
 
@@ -325,11 +337,16 @@ class NoveltyGenerator:
                 "objective": context.get("objective", "sharpe"),
                 "building_blocks": [b.name for b in config.building_blocks],
                 "block_count": len(config.building_blocks),
-                "pipeline_completed": pipeline_result is not None and pipeline_result.is_successful if pipeline_result else False,
+                "pipeline_completed": pipeline_result is not None
+                and pipeline_result.is_successful
+                if pipeline_result
+                else False,
             },
         )
 
-        logger.info("NoveltyGenerator: generated 1 candidate for %s/%s", market_str, tf_str)
+        logger.info(
+            "NoveltyGenerator: generated 1 candidate for %s/%s", market_str, tf_str
+        )
         return [candidate]
 
     async def _translate_to_cfx(self, config: ResearchConfig) -> str | None:
@@ -369,7 +386,9 @@ class NoveltyGenerator:
         for idx, block in enumerate(config.building_blocks, 1):
             params = block.indicator.params
             params_str = " ".join(f'{k}="{v}"' for k, v in params.items())
-            blocks_xml += f'  <Block index="{idx}" name="{block.indicator.name}" {params_str}/>\n'
+            blocks_xml += (
+                f'  <Block index="{idx}" name="{block.indicator.name}" {params_str}/>\n'
+            )
 
         cfx = f"""<?xml version="1.0" encoding="utf-8"?>
 <StrategyQuant Version="141.2219">
@@ -406,7 +425,10 @@ class NoveltyGenerator:
         """Derive a fitness score from pipeline backtest results."""
         if pipeline_result is None:
             return 0.0
-        if not hasattr(pipeline_result, "is_successful") or not pipeline_result.is_successful:
+        if (
+            not hasattr(pipeline_result, "is_successful")
+            or not pipeline_result.is_successful
+        ):
             return 0.0
 
         # Score based on completeness

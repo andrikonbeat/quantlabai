@@ -61,7 +61,9 @@ def sanitize_campaign_id(campaign_id: str) -> str:
         ValueError: If the id is empty or contains characters outside the
             allowed set (e.g. ``../`` traversal attempts).
     """
-    if not isinstance(campaign_id, str) or not CAMPAIGN_ID_PATTERN.fullmatch(campaign_id):
+    if not isinstance(campaign_id, str) or not CAMPAIGN_ID_PATTERN.fullmatch(
+        campaign_id
+    ):
         raise ValueError(
             f"Invalid campaign_id {campaign_id!r}: must match [A-Za-z0-9_-]+ "
             "(path traversal is not allowed)."
@@ -219,7 +221,9 @@ class QuestionToolGateCallback:
         if not gate_id:
             raise ValueError("gate_id is required in the gate context")
 
-        campaign_id = sanitize_campaign_id(self._campaign_id or ctx.get("campaign_id", ""))
+        campaign_id = sanitize_campaign_id(
+            self._campaign_id or ctx.get("campaign_id", "")
+        )
         write_pending(self._gate_event_dir, campaign_id, gate_id, ctx)
 
         target = decision_path(self._gate_event_dir, campaign_id, gate_id)

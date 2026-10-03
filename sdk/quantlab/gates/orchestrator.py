@@ -139,7 +139,9 @@ class HumanGateOrchestrator:
             await record_gate_decision(
                 self._engram_save_fn,
                 gate_id,
-                decision.model_dump() if hasattr(decision, "model_dump") else decision.__dict__,
+                decision.model_dump()
+                if hasattr(decision, "model_dump")
+                else decision.__dict__,
                 campaign_id,
                 ctx,
             )

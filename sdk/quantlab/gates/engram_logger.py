@@ -35,7 +35,9 @@ async def record_gate_decision(
         ctx: Pipeline context (may provide extra metadata).
     """
     if engram_save_fn is None:
-        logger.debug("Engram save function not configured — skipping audit for '%s'", gate_id)
+        logger.debug(
+            "Engram save function not configured — skipping audit for '%s'", gate_id
+        )
         return
 
     topic_key = f"agent/research-director/{campaign_id}"
@@ -73,6 +75,8 @@ async def record_gate_decision(
             topic_key=topic_key,
             content=content,
         )
-        logger.info("Engram audit recorded for gate '%s' (topic=%s)", gate_id, topic_key)
+        logger.info(
+            "Engram audit recorded for gate '%s' (topic=%s)", gate_id, topic_key
+        )
     except Exception as exc:  # noqa: BLE001
         logger.warning("Engram audit recording failed for gate '%s': %s", gate_id, exc)

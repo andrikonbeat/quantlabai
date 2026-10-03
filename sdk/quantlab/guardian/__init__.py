@@ -27,10 +27,8 @@ __all__ = [
     "MetaGuardianConfig",
     "PortfolioState",
     "StrategyState",
-    
     # Base classes
     "BaseGuardian",
-    
     # Guardian implementations
     "CapitalGuardian",
     "ExecutionGuardian",
@@ -38,7 +36,6 @@ __all__ = [
     "QualityGuardian",
     "RiskGuardian",
     "PortfolioGuardian",
-    
     # Orchestrator
     "MetaGuardianOrchestrator",
 ]

@@ -56,11 +56,14 @@ class WebhookNotifier(Notifier):
         try:
             import aiohttp
 
-            async with aiohttp.ClientSession() as session, session.post(
-                self.url,
-                json=payload,
-                headers=self.headers,
-                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            async with (
+                aiohttp.ClientSession() as session,
+                session.post(
+                    self.url,
+                    json=payload,
+                    headers=self.headers,
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                ),
             ):
                 logger.info("Webhook notification sent to %s", self.url)
         except ImportError:
@@ -138,10 +141,13 @@ class SlackNotifier(Notifier):
         try:
             import aiohttp
 
-            async with aiohttp.ClientSession() as session, session.post(
-                self.webhook_url,
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            async with (
+                aiohttp.ClientSession() as session,
+                session.post(
+                    self.webhook_url,
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                ),
             ):
                 logger.info("Slack notification posted to %s", self.webhook_url)
         except ImportError:
@@ -183,11 +189,14 @@ class MobilePushNotifier(Notifier):
                 return
             import aiohttp
 
-            async with aiohttp.ClientSession() as session, session.post(
-                self.endpoint,
-                json=payload,
-                headers=self.headers,
-                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            async with (
+                aiohttp.ClientSession() as session,
+                session.post(
+                    self.endpoint,
+                    json=payload,
+                    headers=self.headers,
+                    timeout=aiohttp.ClientTimeout(total=self.timeout),
+                ),
             ):
                 logger.info("Mobile push notification sent to %s", self.endpoint)
         except ImportError:

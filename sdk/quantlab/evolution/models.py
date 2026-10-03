@@ -13,6 +13,7 @@ from quantlab.evolution.config import EvolutionMode
 
 class CandidateStatus(str, Enum):
     """Status of an evolution candidate."""
+
     PENDING = "pending"
     VALIDATING = "validating"
     PASSED = "passed"
@@ -23,6 +24,7 @@ class CandidateStatus(str, Enum):
 
 class EvolutionSignal(BaseModel):
     """Signal from MetaGuardian triggering an evolution cycle."""
+
     model_config = ConfigDict(frozen=True)
 
     strategy_id: str
@@ -34,6 +36,7 @@ class EvolutionSignal(BaseModel):
 
 class EvolutionCandidate(BaseModel):
     """A candidate evolved strategy awaiting or past validation."""
+
     model_config = ConfigDict(frozen=True)
 
     candidate_id: str
@@ -52,6 +55,7 @@ class EvolutionCandidate(BaseModel):
 
 class EvolutionResult(BaseModel):
     """Result of a single evolution cycle."""
+
     model_config = ConfigDict(frozen=False)
 
     cycle_id: str

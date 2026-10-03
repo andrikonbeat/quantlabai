@@ -93,13 +93,16 @@ class CandidatePool:
             Candidates ready for promotion.
         """
         return [
-            c for c in self.load_all()
+            c
+            for c in self.load_all()
             if c.status == CandidateStatus.PASSED and c.fitness_score >= threshold
         ]
 
     def update_status(
-        self, candidate_id: str, status: CandidateStatus,
-        fitness_score: float | None = None
+        self,
+        candidate_id: str,
+        status: CandidateStatus,
+        fitness_score: float | None = None,
     ) -> bool:
         """Update a candidate's status.
 
@@ -115,10 +118,14 @@ class CandidatePool:
         if candidate is None:
             return False
 
-        updated = candidate.model_copy(update={
-            "status": status,
-            "fitness_score": fitness_score if fitness_score is not None else candidate.fitness_score,
-        })
+        updated = candidate.model_copy(
+            update={
+                "status": status,
+                "fitness_score": fitness_score
+                if fitness_score is not None
+                else candidate.fitness_score,
+            }
+        )
         self.add(updated)
         return True
 
@@ -134,10 +141,12 @@ class CandidatePool:
         candidate = self.get(candidate_id)
         if candidate is None:
             return False
-        updated = candidate.model_copy(update={
-            "status": CandidateStatus.PROMOTED,
-            "promoted_at": datetime.now(),
-        })
+        updated = candidate.model_copy(
+            update={
+                "status": CandidateStatus.PROMOTED,
+                "promoted_at": datetime.now(),
+            }
+        )
         self.add(updated)
         return True
 

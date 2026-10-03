@@ -19,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 # ── Fraction / Tolerances ───────────────────────────────────────────
 
-SIGMA_FRAC = 3.0        # gaussian stddev = range / SIGMA_FRAC
-BOUNDARY_FRAC = 0.2     # boundary reset clips at ±BOUNDARY_FRAC * range
-BLEND_ALPHA = 0.5       # blend crossover interpolation factor
-TOURNAMENT_SIZE = 3     # tournament selection participants
-MUTATION_RATE = 0.3     # probability a given param is mutated
+SIGMA_FRAC = 3.0  # gaussian stddev = range / SIGMA_FRAC
+BOUNDARY_FRAC = 0.2  # boundary reset clips at ±BOUNDARY_FRAC * range
+BLEND_ALPHA = 0.5  # blend crossover interpolation factor
+TOURNAMENT_SIZE = 3  # tournament selection participants
+MUTATION_RATE = 0.3  # probability a given param is mutated
 
 
 # ── Mutation Operators (pure functions, no side effects) ────────────
@@ -67,7 +67,9 @@ def blend_crossover(a: float, b: float, lo: float, hi: float) -> tuple[float, fl
     return max(lo, min(hi, c1)), max(lo, min(hi, c2))
 
 
-def single_point_crossover(parent_a: list[float], parent_b: list[float]) -> tuple[list[float], list[float]]:
+def single_point_crossover(
+    parent_a: list[float], parent_b: list[float]
+) -> tuple[list[float], list[float]]:
     """Single-point crossover on two parameter vectors of equal length."""
     if len(parent_a) != len(parent_b):
         raise ValueError("Parents must have equal length")
@@ -79,7 +81,9 @@ def single_point_crossover(parent_a: list[float], parent_b: list[float]) -> tupl
     return child_a, child_b
 
 
-def tournament_select(population: list[dict[str, Any]], fitness_key: str = "fitness") -> dict[str, Any]:
+def tournament_select(
+    population: list[dict[str, Any]], fitness_key: str = "fitness"
+) -> dict[str, Any]:
     """Tournament selection — pick the fittest from *k* random individuals."""
     candidates = random.choices(population, k=TOURNAMENT_SIZE)
     return max(candidates, key=lambda ind: ind.get(fitness_key, 0.0))
@@ -241,8 +245,13 @@ def _build_evolution_pipeline(stages: list[str] | None = None) -> Pipeline:
     registry = StageRegistry()
     pipeline = Pipeline(name="evolution-backtest")
 
-    stage_names = stages or ["daemon_start", "load_cfx", "run_backtest",
-                              "compute_stats", "export"]
+    stage_names = stages or [
+        "daemon_start",
+        "load_cfx",
+        "run_backtest",
+        "compute_stats",
+        "export",
+    ]
 
     for name in stage_names:
         stage_class = registry.get_stage_class(name)
@@ -315,12 +324,17 @@ class GeneticOptimizer:
             List of candidate strategies.
         """
         if not cfx_content or not cfx_content.strip():
-            logger.info("Empty or invalid CFX content for %s — returning no candidates", strategy_id)
+            logger.info(
+                "Empty or invalid CFX content for %s — returning no candidates",
+                strategy_id,
+            )
             return []
 
         # 1. Parse CFX → extract parameters
         if cfx_content_to_archive(cfx_content) is None:
-            logger.warning("Could not parse CFX for %s — returning no candidates", strategy_id)
+            logger.warning(
+                "Could not parse CFX for %s — returning no candidates", strategy_id
+            )
             return []
 
         params = extract_numeric_params(cfx_content)
@@ -350,14 +364,20 @@ class GeneticOptimizer:
             for j in range(len(vector)):
                 if random.random() < MUTATION_RATE:
                     if random.random() < 0.5:
-                        vector[j] = gaussian_perturbation(vector[j], param_los[j], param_his[j])
+                        vector[j] = gaussian_perturbation(
+                            vector[j], param_los[j], param_his[j]
+                        )
                     else:
-                        vector[j] = boundary_reset(vector[j], param_los[j], param_his[j])
-            individuals.append({
-                "vector": vector,
-                "fitness": 0.0,
-                "mutated": True,
-            })
+                        vector[j] = boundary_reset(
+                            vector[j], param_los[j], param_his[j]
+                        )
+            individuals.append(
+                {
+                    "vector": vector,
+                    "fitness": 0.0,
+                    "mutated": True,
+                }
+            )
 
         # 3. Crossover — blend first half with second half
         half = len(individuals) // 2
@@ -396,7 +416,9 @@ class GeneticOptimizer:
                 pipeline_result = await self._runner.run(pipeline, pipeline_ctx)
                 fitness_score = self._score_from_pipeline(pipeline_result)
             except Exception as exc:
-                logger.warning("Pipeline backtest failed for candidate %s: %s", candidate_id, exc)
+                logger.warning(
+                    "Pipeline backtest failed for candidate %s: %s", candidate_id, exc
+                )
                 fitness_score = 0.0
 
             ind["fitness"] = fitness_score
@@ -426,7 +448,8 @@ class GeneticOptimizer:
 
         logger.info(
             "GeneticOptimizer: generated %d candidates for %s",
-            len(candidates), strategy_id,
+            len(candidates),
+            strategy_id,
         )
         return candidates
 
@@ -444,6 +467,7 @@ class GeneticOptimizer:
                     if stats is not None:
                         try:
                             from quantlab.stats.models import StatsResult
+
                             if isinstance(stats, dict):
                                 stats_obj = StatsResult(**stats)
                             else:
@@ -452,7 +476,9 @@ class GeneticOptimizer:
                         except Exception:
                             pass
             # Fallback: score based on completion and number of stages passed
-            completed = sum(1 for s in pipeline_result.stages if s.status.value == "completed")
+            completed = sum(
+                1 for s in pipeline_result.stages if s.status.value == "completed"
+            )
             total = len(pipeline_result.stages) or 1
             return (completed / total) * 50.0  # max 50 for partial data
         return 0.0

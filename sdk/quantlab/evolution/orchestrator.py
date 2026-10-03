@@ -57,22 +57,26 @@ class EvolutionOrchestrator:
             runner: Optional PipelineRunner (shared across components).
         """
         self.config = config
-        self.pool = pool or CandidatePool(
-            pool_directory=config.pool_directory
-        )
+        self.pool = pool or CandidatePool(pool_directory=config.pool_directory)
         self.fitness = fitness or FitnessFunction()
         self._runner = runner or PipelineRunner()
 
         # Wire PipelineRunner into sub-components when they aren't
         # injected — ensures they all share the same runner.
         self._genetic = genetic or GeneticOptimizer(
-            config=config, fitness=self.fitness, runner=self._runner,
+            config=config,
+            fitness=self.fitness,
+            runner=self._runner,
         )
         self._novelty = novelty or NoveltyGenerator(
-            config=config, fitness=self.fitness, runner=self._runner,
+            config=config,
+            fitness=self.fitness,
+            runner=self._runner,
         )
         self._validator = validator or CandidateValidator(
-            config=config, fitness=self.fitness, pool=self.pool,
+            config=config,
+            fitness=self.fitness,
+            pool=self.pool,
             runner=self._runner,
         )
 
@@ -105,7 +109,8 @@ class EvolutionOrchestrator:
         interval = self.config.schedule.interval_hours * 3600
         logger.info(
             "EvolutionOrchestrator started (interval=%.1fh, mode=%s)",
-            self.config.schedule.interval_hours, self.config.mode
+            self.config.schedule.interval_hours,
+            self.config.mode,
         )
 
         self._task = asyncio.create_task(self._run_loop(interval))
@@ -147,13 +152,14 @@ class EvolutionOrchestrator:
             return []
 
         # Sort signals by priority (highest first)
-        sorted_signals = sorted(
-            signals, key=lambda s: s.priority, reverse=True
-        )
+        sorted_signals = sorted(signals, key=lambda s: s.priority, reverse=True)
 
         results: list[EvolutionResult] = []
         for signal in sorted_signals:
-            if self.active_cycle_count >= self.config.concurrency.max_concurrent_evolutions:
+            if (
+                self.active_cycle_count
+                >= self.config.concurrency.max_concurrent_evolutions
+            ):
                 logger.warning(
                     "Concurrency limit reached — deferring signal %s",
                     signal.strategy_id,
@@ -188,7 +194,10 @@ class EvolutionOrchestrator:
 
         logger.info(
             "Evolution cycle %s: strategy=%s, priority=%d, mode=%s",
-            cycle_id, signal.strategy_id, signal.priority, self.config.mode
+            cycle_id,
+            signal.strategy_id,
+            signal.priority,
+            self.config.mode,
         )
 
         self._active_cycles[cycle_id] = result
@@ -271,9 +280,7 @@ class EvolutionOrchestrator:
             signals = []
 
         # Clean expired candidates first
-        removed = self.pool.cleanup_expired(
-            ttl_days=self.config.candidate_ttl_days
-        )
+        removed = self.pool.cleanup_expired(ttl_days=self.config.candidate_ttl_days)
         if removed:
             logger.info("Cleaned %d expired candidates", removed)
 
@@ -286,9 +293,7 @@ class EvolutionOrchestrator:
         # Scheduled cycle — generate candidates
         self._cycle_count += 1
         cycle_id = f"cycle-{self._cycle_count:04d}-{int(time.time())}"
-        result = EvolutionResult(
-            cycle_id=cycle_id, mode=self.config.mode
-        )
+        result = EvolutionResult(cycle_id=cycle_id, mode=self.config.mode)
 
         logger.info("Scheduled evolution cycle %s starting", cycle_id)
         self._active_cycles[cycle_id] = result

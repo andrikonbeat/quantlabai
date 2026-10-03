@@ -29,10 +29,10 @@ class GateDecisionAction(str, Enum):
 class FallbackPolicy(str, Enum):
     """Fallback behaviour when a gate times out without a response."""
 
-    ABORT = "ABORT"          # Stop the pipeline
-    CONTINUE = "CONTINUE"    # Proceed as if approved
-    ESCALATE = "ESCALATE"    # Escalate to a human lead (external)
-    HOLD = "HOLD"            # Hold the pipeline (for deploy gate)
+    ABORT = "ABORT"  # Stop the pipeline
+    CONTINUE = "CONTINUE"  # Proceed as if approved
+    ESCALATE = "ESCALATE"  # Escalate to a human lead (external)
+    HOLD = "HOLD"  # Hold the pipeline (for deploy gate)
 
 
 class GateDecision(BaseModel):

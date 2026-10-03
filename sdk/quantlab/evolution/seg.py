@@ -35,9 +35,7 @@ class StrategyGenerator:
         validator: CandidateValidator | None = None,
     ) -> None:
         self.config = config or EvolutionConfig()
-        self.pool = pool or CandidatePool(
-            pool_directory=self.config.pool_directory
-        )
+        self.pool = pool or CandidatePool(pool_directory=self.config.pool_directory)
         self._genetic = genetic
         self._novelty = novelty
         self._validator = validator
