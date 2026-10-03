@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from quantlab.robustness.circuit_breaker import CircuitBreaker, CircuitOpenError
+from quantlab.robustness.circuit_breaker import (
+    CircuitBreaker,
+    CircuitOpenError as CircuitOpenError,
+)
 
 
 class LLMCircuitBreaker:

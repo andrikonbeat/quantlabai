@@ -63,7 +63,7 @@ class YahooProvider(MarketDataProvider):
 
     @staticmethod
     def _parse_yahoo_date(value: str) -> datetime:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Yahoo dates may be "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
@@ -108,7 +108,7 @@ class DukascopyProvider(MarketDataProvider):
 
     @staticmethod
     def _parse_timestamp(value: Any) -> datetime:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         if isinstance(value, datetime):
             if value.tzinfo is None:

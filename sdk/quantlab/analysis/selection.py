@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
-from quantlab.analysis.engine import AnalysisEngine, AnalysisThresholds
+from quantlab.analysis.engine import AnalysisEngine as AnalysisEngine, AnalysisThresholds
 from quantlab.analysis.models import SelectionResult, StrategyAnalysis
 
 

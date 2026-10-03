@@ -6,7 +6,6 @@ import asyncio
 import logging
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 from quantlab.evolution.config import EvolutionConfig, EvolutionMode
 from quantlab.evolution.fitness import FitnessFunction

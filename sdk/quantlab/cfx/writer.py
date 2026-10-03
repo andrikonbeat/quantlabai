@@ -7,7 +7,6 @@ the existing SQX convention.
 
 from __future__ import annotations
 
-import json
 import zipfile
 from io import BytesIO
 from pathlib import Path
@@ -34,7 +33,7 @@ from quantlab.cfx.models import (
     ResourceConfig,
     RetesterDataConfig,
     SettingsSection,
-    TaskMeta,
+    TaskMeta as TaskMeta,
     WalkForwardConfig,
 )
 

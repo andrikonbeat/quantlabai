@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
 
 from quantlab.costs.models import CostBreakdown
 from quantlab.costs.profiles import BrokerProfile

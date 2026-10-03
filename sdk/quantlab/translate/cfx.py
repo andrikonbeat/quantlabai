@@ -10,7 +10,7 @@ import re
 import zipfile
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from quantlab.cfx import BuildTask, CfxWriter
 from quantlab.cfx import CfxArchive as CfxArchiveModel

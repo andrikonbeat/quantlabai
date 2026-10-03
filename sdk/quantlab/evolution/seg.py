@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from quantlab.evolution.config import EvolutionConfig, EvolutionMode
 from quantlab.evolution.genetic import GeneticOptimizer
 from quantlab.evolution.models import (
     CandidateStatus,
     EvolutionCandidate,
-    EvolutionSignal,
+    EvolutionSignal as EvolutionSignal,
 )
 from quantlab.evolution.novelty import NoveltyGenerator
 from quantlab.evolution.pool import CandidatePool

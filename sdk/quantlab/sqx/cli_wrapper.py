@@ -47,7 +47,11 @@ from quantlab.sqx.campaign_monitor import (
 )
 from quantlab.sqx.llm_generation_monitor import LLMGenerationMonitor, Verdict
 from quantlab.sqx.mock_sqx_server import MockSQXServer
-from quantlab.sqx.project_builder import BuildConfig, create_project, remove_project
+from quantlab.sqx.project_builder import (
+    BuildConfig,
+    create_project,
+    remove_project as remove_project,
+)
 
 logger = logging.getLogger(__name__)
 

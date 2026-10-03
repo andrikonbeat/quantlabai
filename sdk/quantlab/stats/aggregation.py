@@ -7,8 +7,7 @@ rolling metrics, benchmark comparison, and Monte Carlo bootstrap bands.
 from __future__ import annotations
 
 import math
-from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd

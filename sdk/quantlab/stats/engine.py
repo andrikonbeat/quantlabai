@@ -18,7 +18,6 @@ Metrics
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 from quantlab.readers.models import EquityPoint, Trade
 from quantlab.stats.models import StatsResult

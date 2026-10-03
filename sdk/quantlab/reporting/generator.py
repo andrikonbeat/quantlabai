@@ -17,7 +17,7 @@ from quantlab.reporting.models import (
     ReportResult,
     ReportTheme,
 )
-from quantlab.stats.engine import StatisticsEngine
+from quantlab.stats.engine import StatisticsEngine as StatisticsEngine
 from quantlab.stats.models import StatsResult
 
 # Chart IDs for tracking
@@ -68,7 +68,7 @@ class ReportGenerator:
             loader = FileSystemLoader(self.config.template_path.parent)
         else:
             # Use embedded template
-            from quantlab.reporting.templates import DEFAULT_TEMPLATE
+            from quantlab.reporting.templates import DEFAULT_TEMPLATE as DEFAULT_TEMPLATE
             loader = None  # We'll render manually
 
         env = Environment(
@@ -296,7 +296,6 @@ class ReportGenerator:
 
         import matplotlib
         matplotlib.use("Agg")
-        import matplotlib.dates as mdates
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(8, 3.5))
@@ -429,7 +428,6 @@ class ReportGenerator:
         """Create Plotly chart JSON for embedding in HTML."""
 
         import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
 
         charts = {}
         template = self._get_plotly_template()

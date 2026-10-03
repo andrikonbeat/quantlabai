@@ -9,7 +9,7 @@ Extended for multi-agent pipeline with agent configs, gate configs, memory, and 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 

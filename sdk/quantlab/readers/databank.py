@@ -9,7 +9,6 @@ format-agnostic output.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 

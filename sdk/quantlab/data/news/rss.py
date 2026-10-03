@@ -12,7 +12,7 @@ from typing import Any
 
 import httpx
 
-from quantlab.data.news.base import NewsProvider, ProviderError
+from quantlab.data.news.base import NewsProvider, ProviderError as ProviderError
 from quantlab.data.news.models import NewsItem
 
 logger = logging.getLogger(__name__)

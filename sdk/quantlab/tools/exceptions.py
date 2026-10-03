@@ -10,7 +10,6 @@ Usage:
         log.error("SDK error: %s", e.detail)
 """
 
-from typing import Any
 
 
 class QuantLabError(Exception):

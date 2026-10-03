@@ -9,7 +9,6 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel
 
 from quantlab.cfx.errors import CfxParseError
 from quantlab.cfx.models import (

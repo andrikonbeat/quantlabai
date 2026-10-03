@@ -17,7 +17,7 @@ from quantlab.knowledge.ingest.adapters import (
     DocsJsonAdapter,
     SnippetsAdapter,
     TemplatesAdapter,
-    _sha256_of,
+    _sha256_of as _sha256_of,
 )
 from quantlab.knowledge.store import KnowledgeStore
 
@@ -131,4 +131,4 @@ class DocIndexer:
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-__all__ = ["DocIndexer", "IngestStats"]
+__all__ = ["DocIndexer", "IngestStats", "_sha256_of"]

@@ -8,7 +8,6 @@ Stall/config-error signals detected on the substrate's polling flow out as
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import Callable
 from pathlib import Path

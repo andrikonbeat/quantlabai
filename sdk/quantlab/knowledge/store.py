@@ -29,11 +29,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import warnings
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -44,7 +42,7 @@ from quantlab.robustness.knowledge_health import (
     HealthStatus,
     KnowledgeStoreHealthCheck,
 )
-from quantlab.tools.exceptions import ParseError
+from quantlab.tools.exceptions import ParseError as ParseError
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -405,7 +403,7 @@ class KnowledgeStore:
         """
         import yaml
 
-        from quantlab.pipeline.models import PipelineRun, StageStatus
+        from quantlab.pipeline.models import PipelineRun, StageStatus as StageStatus
 
         runs_dir = self._pipeline_runs_dir()
         if not runs_dir.exists():
@@ -1253,7 +1251,7 @@ class KnowledgeStore:
         Returns:
             List of PipelineRun objects (deserialized from YAML).
         """
-        from quantlab.pipeline.models import PipelineRun, StageStatus
+        from quantlab.pipeline.models import PipelineRun, StageStatus as StageStatus
 
         runs_dir = self.root / "pipeline-runs"
         if not runs_dir.exists():

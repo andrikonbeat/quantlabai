@@ -7,10 +7,9 @@ import csv
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from quantlab.knowledge.store import KnowledgeStore
-from quantlab.reporting.generator import ReportGenerator, generate_report
+from quantlab.reporting.generator import ReportGenerator as ReportGenerator, generate_report
 from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
 
 

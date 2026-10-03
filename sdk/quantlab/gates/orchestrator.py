@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Dict
+from typing import Any
 
 from quantlab.gates.engram_logger import record_gate_decision
 from quantlab.gates.models import (

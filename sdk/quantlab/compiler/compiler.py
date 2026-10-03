@@ -18,7 +18,6 @@ import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from quantlab.compiler.errors import CompileError, CompilerConfigError
 from quantlab.compiler.jfx import JfxArtifact, package_classes

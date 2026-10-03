@@ -11,7 +11,6 @@ from typing import Literal
 
 import pandas as pd
 from ta.trend import ADXIndicator
-from ta.volatility import AverageTrueRange
 
 from quantlab.data.market import Bar
 

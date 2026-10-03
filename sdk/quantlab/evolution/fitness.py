@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
 
 from quantlab.evolution.config import WeightProfile
 from quantlab.health.calculator import HealthScoreCalculator

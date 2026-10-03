@@ -7,7 +7,6 @@ attacks and enforces a supported schema version range.
 
 from __future__ import annotations
 
-import os
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree

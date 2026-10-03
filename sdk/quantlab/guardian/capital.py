@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import statistics
-from typing import Dict, List, Optional
 
 from .base import BaseGuardian
 from .models import GuardianResult, GuardianStatus, GuardianType

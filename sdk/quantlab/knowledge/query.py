@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from quantlab.knowledge.models import (
     CampaignMetrics,
@@ -429,7 +428,10 @@ class QueryBuilder:
 
     def _extract_campaigns(self, index: dict) -> list:
         """Extract campaign summaries from index."""
-        from quantlab.knowledge.models import AgentMemoryEntry, CampaignSummary
+        from quantlab.knowledge.models import (
+            AgentMemoryEntry as AgentMemoryEntry,
+            CampaignSummary,
+        )
 
         campaigns: list = []
 

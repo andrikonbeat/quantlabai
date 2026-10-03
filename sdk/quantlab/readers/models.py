@@ -7,7 +7,6 @@ individual trades, equity curve points, and summary statistics.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, Field
 

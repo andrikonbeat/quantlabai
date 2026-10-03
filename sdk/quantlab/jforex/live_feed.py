@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Awaitable, Callable, Iterable
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import List
 
 from quantlab.jforex.models import OrderEvent
 from quantlab.readers.models import EquityPoint

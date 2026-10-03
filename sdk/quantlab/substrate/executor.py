@@ -26,7 +26,7 @@ from typing import Any
 from quantlab.phase4.models import PhaseStatus
 from quantlab.sqx.campaign_monitor import WatcherEvent
 from quantlab.substrate.events import SubstrateEventDetector
-from quantlab.substrate.exporter import collect_exports, export_phase
+from quantlab.substrate.exporter import collect_exports as collect_exports, export_phase
 from quantlab.substrate.lifecycle import (
     WORK_STAGES,
     DaemonLifecycle,

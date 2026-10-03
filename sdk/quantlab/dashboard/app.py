@@ -4,17 +4,15 @@ from __future__ import annotations
 
 import json
 import os
-import signal
 import statistics as py_stats
-import sys
 import threading
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from flask import Flask, jsonify, render_template, request
 
-from quantlab.cli.runner import CliRunner, MockExecutor
+from quantlab.cli.runner import CliRunner, MockExecutor as MockExecutor
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.readers.models import EquityPoint, Trade
 from quantlab.reporting.generator import (

@@ -10,10 +10,8 @@ from __future__ import annotations
 import logging
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
 
 from quantlab.knowledge.ingest.adapters import (
     DocRecord,

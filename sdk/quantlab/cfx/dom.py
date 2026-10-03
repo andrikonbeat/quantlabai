@@ -23,7 +23,7 @@ from quantlab.cfx.models import (
     CfxArchive,
     DataRangeParts,
     SetDataRangePartsInstruction,
-    SettingsSection,
+    SettingsSection as SettingsSection,
 )
 from quantlab.cfx.patcher import CfxPatcher
 
@@ -297,17 +297,4 @@ def set_data_range_parts(
 
 # ── Public API ────────────────────────────────────────────────────────
 
-__all__ = [
-    "add_advanced_ranking_condition",
-    "add_ranking_condition",
-    "add_timeframe",
-    "disable_block",
-    "enable_block",
-    "enable_crosscheck",
-    "set_commission_settings",
-    "set_data_range_parts",
-    "set_date_range",
-    "set_genetic",
-    "set_market",
-    "set_spread_settings",
-]
+__all__ = ["add_advanced_ranking_condition", "add_ranking_condition", "add_timeframe", "disable_block", "enable_block", "enable_crosscheck", "set_commission_settings", "set_data_range_parts", "set_date_range", "set_genetic", "set_market", "set_spread_settings", "SettingsSection"]

@@ -30,7 +30,6 @@ import dataclasses
 import json
 import sys
 from pathlib import Path
-from typing import Any
 
 from quantlab.campaign.delegation import (
     AuthorityViolationError,
