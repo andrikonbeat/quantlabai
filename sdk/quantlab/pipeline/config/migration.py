@@ -18,11 +18,7 @@ CURRENT_VERSION = "2.0.0"
 
 def get_config_version(data: dict[str, Any]) -> str:
     """Extract version from config data, defaulting to 1.0.0."""
-    return (
-        data.get("version")
-        or data.get("pipeline", {}).get("version")
-        or "1.0.0"
-    )
+    return data.get("version") or data.get("pipeline", {}).get("version") or "1.0.0"
 
 
 def migrate_v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
@@ -76,13 +72,15 @@ def migrate_v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
     for s in stages:
         gate_after = s.get("gate_after", "") if isinstance(s, dict) else ""
         if gate_after:
-            migrated_gates.append({
-                "gate_id": gate_after,
-                "name": gate_after,
-                "timeout_hours": 24,
-                "fallback": "CONTINUE",
-                "after_stage": s.get("name", "") if isinstance(s, dict) else "",
-            })
+            migrated_gates.append(
+                {
+                    "gate_id": gate_after,
+                    "name": gate_after,
+                    "timeout_hours": 24,
+                    "fallback": "CONTINUE",
+                    "after_stage": s.get("name", "") if isinstance(s, dict) else "",
+                }
+            )
     if migrated_gates:
         migrated["gates"] = migrated_gates
 

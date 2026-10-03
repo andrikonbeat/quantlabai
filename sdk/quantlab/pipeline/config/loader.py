@@ -14,7 +14,10 @@ from typing import Any
 
 import yaml
 
-from quantlab.pipeline.config.models import MultiAgentPipelineConfig, StageConfig as StageConfig
+from quantlab.pipeline.config.models import (
+    MultiAgentPipelineConfig,
+    StageConfig as StageConfig,
+)
 
 # Environment variable prefix for overrides
 ENV_PREFIX = "QUANTLAB_PIPELINE_"
@@ -25,7 +28,7 @@ def _env_key_to_path(key: str) -> list[str]:
 
     QUANTLAB_PIPELINE_AGENTS_RESEARCH_MODEL -> ["agents", "research", "model"]
     """
-    suffix = key[len(ENV_PREFIX):]
+    suffix = key[len(ENV_PREFIX) :]
     parts = suffix.lower().split("_")
     return parts
 
@@ -129,7 +132,11 @@ def load_multi_agent_pipeline_config(
 
         if env_overrides:
             for key, value in env_overrides.items():
-                if key in data and isinstance(data[key], dict) and isinstance(value, dict):
+                if (
+                    key in data
+                    and isinstance(data[key], dict)
+                    and isinstance(value, dict)
+                ):
                     merge_configs(data[key], value)
                 else:
                     data[key] = value

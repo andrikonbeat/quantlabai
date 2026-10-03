@@ -36,9 +36,8 @@ class PipelineResult:
 
     @property
     def is_successful(self) -> bool:
-        return (
-            self.error is None
-            and all(s.status == StageStatus.COMPLETED for s in self.stages)
+        return self.error is None and all(
+            s.status == StageStatus.COMPLETED for s in self.stages
         )
 
 
@@ -62,7 +61,9 @@ class StageRun:
             "name": self.name,
             "status": self.status.value,
             "started_at": self.started_at.isoformat(),
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "duration": self.duration,
             "error": self.error,
             "output": self.output,
@@ -106,7 +107,9 @@ class PipelineRun:
             "pipeline_name": self.pipeline_name,
             "status": self.status.value,
             "started_at": self.started_at.isoformat(),
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "completed_at": self.completed_at.isoformat()
+            if self.completed_at
+            else None,
             "duration": self.duration,
             "error": self.error,
             "stages": [s.to_dict() for s in self.stages],
@@ -142,13 +145,20 @@ class PipelineRun:
         artifacts: dict[str, str] | None = None,
     ) -> "PipelineRun":
         """Create a PipelineRun from a PipelineResult."""
-        run = cls(pipeline_name=pipeline_name, config_snapshot=config_snapshot, artifacts=artifacts or {})
-        run.status = StageStatus.COMPLETED if result.is_successful else StageStatus.FAILED
-        run.started_at = (
-            min((s.started_at for s in result.stages if s.started_at), default=datetime.now())
+        run = cls(
+            pipeline_name=pipeline_name,
+            config_snapshot=config_snapshot,
+            artifacts=artifacts or {},
         )
-        run.completed_at = (
-            max((s.completed_at for s in result.stages if s.completed_at), default=None)
+        run.status = (
+            StageStatus.COMPLETED if result.is_successful else StageStatus.FAILED
+        )
+        run.started_at = min(
+            (s.started_at for s in result.stages if s.started_at),
+            default=datetime.now(),
+        )
+        run.completed_at = max(
+            (s.completed_at for s in result.stages if s.completed_at), default=None
         )
         run.duration = result.total_duration
         run.error = result.error

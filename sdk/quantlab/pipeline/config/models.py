@@ -43,16 +43,36 @@ class GateConfig(BaseModel):
     """Configuration for a human approval gate."""
 
     name: str = Field(..., description="Unique gate identifier")
-    type: str = Field(default="human_approval", description="Gate type (human_approval, auto)")
-    timeout_hours: float = Field(default=24.0, ge=0.1, description="Gate timeout in hours")
-    fallback: str = Field(default="CONTINUE", description="Action on timeout (ABORT, CONTINUE, ESCALATE)")
-    escalate_to: str = Field(default="", description="Contact or channel for escalation on timeout")
-    required_approvers: int = Field(default=1, ge=1, description="Number of approvers required")
-    notifications: list[str] = Field(default_factory=list, description="Notification channels")
-    after_stage: str = Field(default="", description="Stage name after which this gate executes")
-    gate_id: str = Field(default="", description="Gate identifier (e.g. HUMAN_REVIEW_OBJECTIVES)")
-    requires: list[str] = Field(default_factory=list, description="Artifact keys the gate reads")
-    config: dict[str, Any] = Field(default_factory=dict, description="Gate-specific config")
+    type: str = Field(
+        default="human_approval", description="Gate type (human_approval, auto)"
+    )
+    timeout_hours: float = Field(
+        default=24.0, ge=0.1, description="Gate timeout in hours"
+    )
+    fallback: str = Field(
+        default="CONTINUE", description="Action on timeout (ABORT, CONTINUE, ESCALATE)"
+    )
+    escalate_to: str = Field(
+        default="", description="Contact or channel for escalation on timeout"
+    )
+    required_approvers: int = Field(
+        default=1, ge=1, description="Number of approvers required"
+    )
+    notifications: list[str] = Field(
+        default_factory=list, description="Notification channels"
+    )
+    after_stage: str = Field(
+        default="", description="Stage name after which this gate executes"
+    )
+    gate_id: str = Field(
+        default="", description="Gate identifier (e.g. HUMAN_REVIEW_OBJECTIVES)"
+    )
+    requires: list[str] = Field(
+        default_factory=list, description="Artifact keys the gate reads"
+    )
+    config: dict[str, Any] = Field(
+        default_factory=dict, description="Gate-specific config"
+    )
 
     @model_validator(mode="after")
     def _sync_name_and_gate_id(self) -> GateConfig:
@@ -67,12 +87,22 @@ class MemoryConfig(BaseModel):
     """Agent memory configuration."""
 
     enabled: bool = Field(default=True, description="Whether agent memory is enabled")
-    topic_prefix: str = Field(default="quantlab/agent", description="Engram topic prefix")
-    ttl_hours: float = Field(default=168.0, description="Memory TTL in hours (default 1 week)")
-    max_entries: int = Field(default=1000, description="Maximum memory entries per agent")
+    topic_prefix: str = Field(
+        default="quantlab/agent", description="Engram topic prefix"
+    )
+    ttl_hours: float = Field(
+        default=168.0, description="Memory TTL in hours (default 1 week)"
+    )
+    max_entries: int = Field(
+        default=1000, description="Maximum memory entries per agent"
+    )
     retention_days: int = Field(default=365, description="Memory retention in days")
-    cross_agent_sharing: bool = Field(default=True, description="Allow cross-agent memory queries")
-    persistence: str = Field(default="both", description="Storage: engram, knowledge, or both")
+    cross_agent_sharing: bool = Field(
+        default=True, description="Allow cross-agent memory queries"
+    )
+    persistence: str = Field(
+        default="both", description="Storage: engram, knowledge, or both"
+    )
 
 
 class RiskConfig(BaseModel):
@@ -101,8 +131,12 @@ class AgentConfig(BaseModel):
     tools: list[str] = Field(default_factory=list, description="Available tools")
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     max_retries: int = Field(default=2, ge=0, description="Maximum retry attempts")
-    timeout_seconds: int = Field(default=3600, ge=1, description="Agent timeout in seconds")
-    config: dict[str, Any] = Field(default_factory=dict, description="Agent-specific config")
+    timeout_seconds: int = Field(
+        default=3600, ge=1, description="Agent timeout in seconds"
+    )
+    config: dict[str, Any] = Field(
+        default_factory=dict, description="Agent-specific config"
+    )
 
 
 class StageConfig(BaseModel):
@@ -112,13 +146,21 @@ class StageConfig(BaseModel):
     type: str = Field(..., description="Stage type identifier")
     agent: str = Field(default="", description="Agent name (for agent stages)")
     enabled: bool = Field(default=True)
-    requires: list[str] = Field(default_factory=list, description="Required artifact keys")
-    provides: list[str] = Field(default_factory=list, description="Provided artifact keys")
+    requires: list[str] = Field(
+        default_factory=list, description="Required artifact keys"
+    )
+    provides: list[str] = Field(
+        default_factory=list, description="Provided artifact keys"
+    )
     max_retries: int = Field(default=3, ge=0, le=10)
     retry_delay: float = Field(default=5.0, description="Base retry delay in seconds")
     timeout: float = Field(default=300.0, description="Stage timeout in seconds")
-    gate_after: str = Field(default="", description="Gate ID to trigger after this stage")
-    config: dict[str, Any] = Field(default_factory=dict, description="Stage-specific config")
+    gate_after: str = Field(
+        default="", description="Gate ID to trigger after this stage"
+    )
+    config: dict[str, Any] = Field(
+        default_factory=dict, description="Stage-specific config"
+    )
 
 
 class PipelineSection(BaseModel):
@@ -201,11 +243,13 @@ class MultiAgentPipelineConfig(BaseModel):
             ValidationError: If the YAML data fails schema validation.
         """
         from quantlab.pipeline.config.loader import load_multi_agent_pipeline_config
+
         return load_multi_agent_pipeline_config(str(path))
 
     def save(self, path: str | Path) -> None:
         """Save configuration to YAML file."""
         import yaml
+
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
@@ -240,6 +284,7 @@ class PipelineConfig(BaseModel):
     def from_yaml(cls, path: str | Path) -> PipelineConfig:
         """Load pipeline configuration from YAML file."""
         import yaml
+
         path = Path(path)
         with path.open("r", encoding="utf-8") as f:
             data = yaml.safe_load(f) or {}
@@ -250,6 +295,7 @@ class PipelineConfig(BaseModel):
     def to_yaml(self, path: str | Path) -> None:
         """Save pipeline configuration to YAML file."""
         import yaml
+
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:

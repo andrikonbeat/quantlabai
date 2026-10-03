@@ -78,7 +78,10 @@ class LicenseManager:
                 status=self._parse_status(override),
                 detail=f"override (SQX_LICENSE): {override}",
             )
-            logger.info("License check short-circuited by SQX_LICENSE override: %s", info.status.value)
+            logger.info(
+                "License check short-circuited by SQX_LICENSE override: %s",
+                info.status.value,
+            )
             return info
 
         result = self._executor.execute(["-license", "action=info"])

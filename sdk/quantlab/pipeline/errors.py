@@ -11,12 +11,12 @@ class PipelineError(Exception):
 
 class ContractValidationError(PipelineError):
     """Raised when pipeline stage contracts don't match.
-    
+
     Attributes:
         missing_keys: Dictionary mapping stage name to list of missing required keys.
         stage_names: List of stage names involved in the validation failure.
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -26,12 +26,12 @@ class ContractValidationError(PipelineError):
         super().__init__(message)
         self.missing_keys = missing_keys or {}
         self.stage_names = stage_names or []
-    
+
     def __str__(self) -> str:
         base = super().__str__()
         if self.missing_keys:
             details = ", ".join(
-                f"{stage}: {', '.join(keys)}" 
+                f"{stage}: {', '.join(keys)}"
                 for stage, keys in self.missing_keys.items()
             )
             return f"{base} — Missing: {details}"
@@ -40,7 +40,7 @@ class ContractValidationError(PipelineError):
 
 class StageExecutionError(PipelineError):
     """Raised when a stage fails during execution."""
-    
+
     def __init__(
         self,
         message: str,
@@ -54,7 +54,7 @@ class StageExecutionError(PipelineError):
 
 class GateTimeoutError(PipelineError):
     """Raised when a gate approval times out."""
-    
+
     def __init__(
         self,
         message: str,
@@ -68,7 +68,7 @@ class GateTimeoutError(PipelineError):
 
 class ConfigurationError(PipelineError):
     """Raised when pipeline configuration is invalid."""
-    
+
     def __init__(
         self,
         message: str,
