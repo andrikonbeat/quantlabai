@@ -36,7 +36,7 @@ class CandidateValidator:
         config: EvolutionConfig,
         fitness: FitnessFunction,
         pool: CandidatePool,
-        runner: Optional[PipelineRunner] = None,
+        runner: PipelineRunner | None = None,
     ) -> None:
         """Initialize the validator.
 
@@ -65,8 +65,8 @@ class CandidateValidator:
         Returns:
             Updated candidate with validation results.
         """
-        validation_results: Dict[str, Any] = {}
-        errors: List[str] = []
+        validation_results: dict[str, Any] = {}
+        errors: list[str] = []
         overall_status = CandidateStatus.FAILED
 
         # Mark as validating
@@ -146,8 +146,8 @@ class CandidateValidator:
         self,
         candidate: EvolutionCandidate,
         tier_name: str,
-        stages: List[str],
-    ) -> Dict[str, Any]:
+        stages: list[str],
+    ) -> dict[str, Any]:
         """Run a single validation tier via PipelineRunner.
 
         Args:
@@ -247,8 +247,8 @@ class CandidateValidator:
         self,
         candidate: EvolutionCandidate,
         status: CandidateStatus,
-        validation_results: Dict[str, Any],
-        errors: List[str],
+        validation_results: dict[str, Any],
+        errors: list[str],
     ) -> EvolutionCandidate:
         """Build the final candidate with updated status and error info."""
         validation_results["status"] = status.value
@@ -260,8 +260,7 @@ class CandidateValidator:
             tier_data = validation_results.get(tier, {})
             if isinstance(tier_data, dict):
                 tier_fitness = tier_data.get("fitness", 0.0)
-                if tier_fitness > final_fitness:
-                    final_fitness = tier_fitness
+                final_fitness = max(final_fitness, tier_fitness)
 
         # Update the pool
         try:
@@ -284,8 +283,8 @@ class CandidateValidator:
         )
 
     async def validate_batch(
-        self, candidates: List[EvolutionCandidate],
-    ) -> List[EvolutionCandidate]:
+        self, candidates: list[EvolutionCandidate],
+    ) -> list[EvolutionCandidate]:
         """Validate multiple candidates sequentially.
 
         Args:
@@ -294,7 +293,7 @@ class CandidateValidator:
         Returns:
             List of validated candidates.
         """
-        results: List[EvolutionCandidate] = []
+        results: list[EvolutionCandidate] = []
         for candidate in candidates:
             result = await self.validate(candidate)
             results.append(result)

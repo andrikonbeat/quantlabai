@@ -10,7 +10,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from quantlab.pipeline.base import Pipeline, Stage as PipelineStage
+from quantlab.pipeline.base import Pipeline
+from quantlab.pipeline.base import Stage as PipelineStage
 from quantlab.pipeline.config import PipelineConfig, PipelineSummary, StageConfig
 from quantlab.pipeline.stages.agent_stages import (
     BuilderStage,
@@ -21,10 +22,10 @@ from quantlab.pipeline.stages.agent_stages import (
     ReviewStage,
     StatisticsStage,
 )
-from quantlab.pipeline.stages.gate_interceptor import GateInterceptorStage
-from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
 from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
 from quantlab.pipeline.stages.dispatch_stage import DispatchStage
+from quantlab.pipeline.stages.gate_interceptor import GateInterceptorStage
+from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
 from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
 from quantlab.pipeline.stages.retester_stage import RetesterStage
 
@@ -65,7 +66,9 @@ class StageRegistry:
     def _register_builtin_stages(self) -> None:
         """Register the 11 SQX builtin stages from phase4, or fall back to abstract."""
         try:
+            # Also import SQXCampaignStage — the combined stage
             from quantlab.phase4.stages import (
+                SQXCampaignStage,  # type: ignore[no-redef]
                 SQXComputeStatsStage,
                 SQXDaemonStartStage,
                 SQXExportStage,
@@ -78,13 +81,13 @@ class StageRegistry:
                 SQXTranslateStage,
                 SQXValidateStage,
             )
-            # Also import SQXCampaignStage — the combined stage
-            from quantlab.phase4.stages import SQXCampaignStage  # type: ignore[no-redef]
 
             try:
                 from quantlab.phase4.stages import SQXCostInjectionStage
             except ImportError:
-                from quantlab.pipeline._stages import CostInjectionStage as SQXCostInjectionStage
+                from quantlab.pipeline._stages import (
+                    CostInjectionStage as SQXCostInjectionStage,
+                )
 
             self._stage_map.update({
                 "validate": SQXValidateStage,
@@ -104,19 +107,19 @@ class StageRegistry:
         except ImportError:
             # Fall back to abstract base stages from pipeline.stages
             from quantlab.pipeline.stages import (
-                ValidateStage,
-                TranslateStage,
+                CampaignStage,
+                ComputeStatsStage,
                 CostInjectionStage,
                 DaemonStartStage,
-                LoadConfigStage,
-                RunCampaignStage,
-                PollCampaignStage,
-                CampaignStage,
                 ExportStage,
-                ReadStage,
-                ComputeStatsStage,
                 KnowledgeStoreStage,
+                LoadConfigStage,
+                PollCampaignStage,
+                ReadStage,
                 ReportStage,
+                RunCampaignStage,
+                TranslateStage,
+                ValidateStage,
             )
 
             self._stage_map.update({
@@ -139,31 +142,38 @@ class StageRegistry:
     def _register_agent_stages(self) -> None:
         """Register the 7 multi-agent stage classes plus gate interceptor."""
         # Concrete agent implementations from quantlab.agents
-        from quantlab.agents.research_agent import ResearchAgent
-        from quantlab.agents.builder_agent import BuilderAgent
-        from quantlab.agents.statistics_agent import StatisticsAgent
         from quantlab.agents.analysis_agent import AnalysisAgent
-        from quantlab.agents.reviewer_agent import ReviewerAgent
+        from quantlab.agents.builder_agent import BuilderAgent
         from quantlab.agents.monitoring_agent import MonitoringAgent
+        from quantlab.agents.research_agent import ResearchAgent
+        from quantlab.agents.reviewer_agent import ReviewerAgent
+        from quantlab.agents.statistics_agent import StatisticsAgent
 
         # Stage wrappers for agents that don't inherit from Stage ABC
         from quantlab.pipeline.stages.agent_stages import (
-            LLMResearchStage, AnalysisStage, ResearchStage, BuilderStage, StatisticsStage,
-            ReviewStage, PortfolioStage, DeployStage, MonitorStage,
-            HypothesisBuilderStage, RefutationStage, GuardianEvaluationStage,
+            AnalysisStage,
             GuardianEvaluationAgentStage,
+            GuardianEvaluationStage,
+            HypothesisBuilderStage,
+            LLMResearchStage,
+            RefutationStage,
         )
+        from quantlab.pipeline.stages.archive_stage import ArchiveStage
+
         # Post-optimize orchestrated stages (PR 6): concrete REQ-01 phase
         # implementations. Aliased so they don't shadow the abstract anchors
         # imported above (the anchors still drive the legacy wrapper classes).
         from quantlab.pipeline.stages.archiver_stage import ArchiverStage
-        from quantlab.pipeline.stages.archive_stage import ArchiveStage
         from quantlab.pipeline.stages.compile_stage import CompileStage
-        from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
-        from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage
         from quantlab.pipeline.stages.demo_stage import DemoStage
-        from quantlab.pipeline.stages.deploy_stage import DeployStage as DeployPackageStage
+        from quantlab.pipeline.stages.deploy_stage import (
+            DeployStage as DeployPackageStage,
+        )
+        from quantlab.pipeline.stages.execution_monitor_stage import (
+            ExecutionMonitorStage,
+        )
         from quantlab.pipeline.stages.indicator_export_stage import IndicatorExportStage
+        from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage
         from quantlab.pipeline.stages.portfolio_stage import (
             PortfolioStage as PortfolioComposeStage,
         )

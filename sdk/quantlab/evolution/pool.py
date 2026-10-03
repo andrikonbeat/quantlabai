@@ -40,7 +40,7 @@ class CandidatePool:
         with open(path, "w") as f:
             json.dump(candidate.model_dump(), f, default=str, indent=2)
 
-    def get(self, candidate_id: str) -> Optional[EvolutionCandidate]:
+    def get(self, candidate_id: str) -> EvolutionCandidate | None:
         """Retrieve a candidate by ID.
 
         Args:
@@ -56,13 +56,13 @@ class CandidatePool:
             data = json.load(f)
         return EvolutionCandidate(**data)
 
-    def load_all(self) -> List[EvolutionCandidate]:
+    def load_all(self) -> list[EvolutionCandidate]:
         """Load all candidates from the pool.
 
         Returns:
             List of all candidates.
         """
-        candidates: List[EvolutionCandidate] = []
+        candidates: list[EvolutionCandidate] = []
         for path in self._pool_dir.glob("*.json"):
             try:
                 with open(path) as f:
@@ -72,7 +72,7 @@ class CandidatePool:
                 continue
         return candidates
 
-    def get_by_status(self, status: CandidateStatus) -> List[EvolutionCandidate]:
+    def get_by_status(self, status: CandidateStatus) -> list[EvolutionCandidate]:
         """Get all candidates with a specific status.
 
         Args:
@@ -85,7 +85,7 @@ class CandidatePool:
 
     def get_ready_for_promotion(
         self, threshold: float = 0.7
-    ) -> List[EvolutionCandidate]:
+    ) -> list[EvolutionCandidate]:
         """Get candidates that passed validation and meet the threshold.
 
         Args:
@@ -101,7 +101,7 @@ class CandidatePool:
 
     def update_status(
         self, candidate_id: str, status: CandidateStatus,
-        fitness_score: Optional[float] = None
+        fitness_score: float | None = None
     ) -> bool:
         """Update a candidate's status.
 

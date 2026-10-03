@@ -16,7 +16,7 @@ class FitnessFunction:
     that can be swapped per evolution cycle.
     """
 
-    def __init__(self, weight_profile: Optional[WeightProfile] = None) -> None:
+    def __init__(self, weight_profile: WeightProfile | None = None) -> None:
         """Initialize with an optional weight profile.
 
         Args:

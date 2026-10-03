@@ -7,7 +7,11 @@ from typing import Any, Dict, List, Optional
 
 from quantlab.evolution.config import EvolutionConfig, EvolutionMode
 from quantlab.evolution.genetic import GeneticOptimizer
-from quantlab.evolution.models import CandidateStatus, EvolutionCandidate, EvolutionSignal
+from quantlab.evolution.models import (
+    CandidateStatus,
+    EvolutionCandidate,
+    EvolutionSignal,
+)
 from quantlab.evolution.novelty import NoveltyGenerator
 from quantlab.evolution.pool import CandidatePool
 from quantlab.evolution.validator import CandidateValidator
@@ -24,11 +28,11 @@ class StrategyGenerator:
 
     def __init__(
         self,
-        config: Optional[EvolutionConfig] = None,
-        pool: Optional[CandidatePool] = None,
-        genetic: Optional[GeneticOptimizer] = None,
-        novelty: Optional[NoveltyGenerator] = None,
-        validator: Optional[CandidateValidator] = None,
+        config: EvolutionConfig | None = None,
+        pool: CandidatePool | None = None,
+        genetic: GeneticOptimizer | None = None,
+        novelty: NoveltyGenerator | None = None,
+        validator: CandidateValidator | None = None,
     ) -> None:
         self.config = config or EvolutionConfig()
         self.pool = pool or CandidatePool(
@@ -38,7 +42,7 @@ class StrategyGenerator:
         self._novelty = novelty
         self._validator = validator
 
-    async def generate(self, intent: Dict[str, Any]) -> List[EvolutionCandidate]:
+    async def generate(self, intent: dict[str, Any]) -> list[EvolutionCandidate]:
         """Generate strategies from user intent.
 
         Args:
@@ -53,7 +57,7 @@ class StrategyGenerator:
         except ValueError:
             mode = EvolutionMode.FULL
         count = intent.get("count", 5)
-        candidates: List[EvolutionCandidate] = []
+        candidates: list[EvolutionCandidate] = []
 
         if mode in (EvolutionMode.FULL, EvolutionMode.GENERATIVE_ONLY):
             if self._novelty is not None:
@@ -81,7 +85,7 @@ class StrategyGenerator:
 
         return candidates
 
-    async def evolve(self, strategy_id: str) -> List[EvolutionCandidate]:
+    async def evolve(self, strategy_id: str) -> list[EvolutionCandidate]:
         """Evolve an existing strategy from the pool.
 
         Args:
@@ -105,8 +109,8 @@ class StrategyGenerator:
         return await self.generate(intent)
 
     def list_strategies(
-        self, status: Optional[CandidateStatus] = None
-    ) -> List[EvolutionCandidate]:
+        self, status: CandidateStatus | None = None
+    ) -> list[EvolutionCandidate]:
         """List strategies from the pool.
 
         Args:

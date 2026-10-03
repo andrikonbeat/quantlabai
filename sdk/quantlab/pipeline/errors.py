@@ -7,7 +7,6 @@ from typing import Any
 
 class PipelineError(Exception):
     """Base exception for pipeline errors."""
-    pass
 
 
 class ContractValidationError(PipelineError):

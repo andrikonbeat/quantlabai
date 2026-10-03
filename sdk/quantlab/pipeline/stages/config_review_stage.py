@@ -18,8 +18,9 @@ claimed), mirroring the delegation gap contract.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from quantlab.agents.config_reviewer import ConfigReviewer
 from quantlab.knowledge.kb.models import KbParameter
@@ -112,7 +113,7 @@ def _fallback_row(field: str) -> str:
 
 
 def build_review_teaching_table(
-    build_config: "BuildConfig | None",
+    build_config: BuildConfig | None,
     consult: Callable[[str], list[dict[str, object]]],
 ) -> str:
     """Render the reviewer-owned REQ-205 teaching table (G7).
@@ -189,7 +190,7 @@ class ConfigReviewStage(Stage):
     def __init__(
         self,
         reviewer: ConfigReviewer | None = None,
-        costs: "CostsConfig | None" = None,
+        costs: CostsConfig | None = None,
     ) -> None:
         self._reviewer = reviewer or ConfigReviewer()
         self._costs = costs
@@ -225,7 +226,7 @@ class ConfigReviewStage(Stage):
         }
 
     def _persist_teaching_table(
-        self, ctx: PipelineContext, build_config: "BuildConfig | None"
+        self, ctx: PipelineContext, build_config: BuildConfig | None
     ) -> str:
         """Persist the teaching table and return its relative lake path.
 

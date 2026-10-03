@@ -29,7 +29,7 @@ class PipelineConfig:
     version: str = "1.0"
 
     @classmethod
-    def from_yaml(cls, path: Path | str) -> "PipelineConfig":
+    def from_yaml(cls, path: Path | str) -> PipelineConfig:
         """Load pipeline configuration from a YAML file."""
         path = Path(path)
         with path.open("r", encoding="utf-8") as f:

@@ -42,32 +42,32 @@ from quantlab.pipeline.stages.agent_stages import (
     StatisticsStage,
 )
 
+# Concrete post-optimize stages (PR 6, REQ-01 phases 9-13): these shadow the
+# abstract anchors of the same name — both subclass the abstract contract.
+from quantlab.pipeline.stages.archive_stage import ArchiveStage
+from quantlab.pipeline.stages.compile_stage import CompileStage
+
+# Re-export orchestrated flow stages (PR 3): config review, dispatch, retest, optimize
+from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
+from quantlab.pipeline.stages.demo_stage import DemoStage
+from quantlab.pipeline.stages.deploy_stage import DeployStage
+from quantlab.pipeline.stages.dispatch_stage import DispatchStage
+
 # Re-export gate interceptor
 from quantlab.pipeline.stages.gate_interceptor import (
+    HUMAN_GATE_IDS,
     FallbackPolicy,
     GateAction,
     GateCallback,
     GateContext,
     GateDecision,
     GateInterceptorStage,
-    HUMAN_GATE_IDS,
 )
-from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
-
-# Re-export orchestrated flow stages (PR 3): config review, dispatch, retest, optimize
-from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
-from quantlab.pipeline.stages.dispatch_stage import DispatchStage
-from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
-from quantlab.pipeline.stages.retester_stage import RetesterStage
-
-# Concrete post-optimize stages (PR 6, REQ-01 phases 9-13): these shadow the
-# abstract anchors of the same name — both subclass the abstract contract.
-from quantlab.pipeline.stages.archive_stage import ArchiveStage
-from quantlab.pipeline.stages.compile_stage import CompileStage
-from quantlab.pipeline.stages.demo_stage import DemoStage
-from quantlab.pipeline.stages.deploy_stage import DeployStage
 from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage
+from quantlab.pipeline.stages.monte_carlo_stage import MonteCarloStage
+from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
 from quantlab.pipeline.stages.portfolio_stage import PortfolioStage
+from quantlab.pipeline.stages.retester_stage import RetesterStage
 
 __all__ = [
     # Original SQX stages

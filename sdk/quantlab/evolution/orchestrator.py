@@ -39,12 +39,12 @@ class EvolutionOrchestrator:
     def __init__(
         self,
         config: EvolutionConfig,
-        pool: Optional[CandidatePool] = None,
-        fitness: Optional[FitnessFunction] = None,
-        genetic: Optional[GeneticOptimizer] = None,
-        novelty: Optional[NoveltyGenerator] = None,
-        validator: Optional[CandidateValidator] = None,
-        runner: Optional[PipelineRunner] = None,
+        pool: CandidatePool | None = None,
+        fitness: FitnessFunction | None = None,
+        genetic: GeneticOptimizer | None = None,
+        novelty: NoveltyGenerator | None = None,
+        validator: CandidateValidator | None = None,
+        runner: PipelineRunner | None = None,
     ) -> None:
         """Initialize the orchestrator.
 
@@ -77,11 +77,11 @@ class EvolutionOrchestrator:
             runner=self._runner,
         )
 
-        self._active_cycles: Dict[str, EvolutionResult] = {}
+        self._active_cycles: dict[str, EvolutionResult] = {}
         self._cycle_count: int = 0
         self._last_cycle_time: float = 0.0
         self._running: bool = False
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: asyncio.Task[None] | None = None
 
     @property
     def enabled(self) -> bool:
@@ -133,8 +133,8 @@ class EvolutionOrchestrator:
             await asyncio.sleep(min(60, interval))  # Check every minute
 
     async def process_signals(
-        self, signals: List[EvolutionSignal]
-    ) -> List[EvolutionResult]:
+        self, signals: list[EvolutionSignal]
+    ) -> list[EvolutionResult]:
         """Process incoming MetaGuardian signals.
 
         Args:
@@ -152,7 +152,7 @@ class EvolutionOrchestrator:
             signals, key=lambda s: s.priority, reverse=True
         )
 
-        results: List[EvolutionResult] = []
+        results: list[EvolutionResult] = []
         for signal in sorted_signals:
             if self.active_cycle_count >= self.config.concurrency.max_concurrent_evolutions:
                 logger.warning(
@@ -195,7 +195,7 @@ class EvolutionOrchestrator:
         self._active_cycles[cycle_id] = result
 
         try:
-            candidates: List[EvolutionCandidate] = []
+            candidates: list[EvolutionCandidate] = []
 
             # Load existing CFX from pool if available
             cfx_content = self._load_strategy_cfx(signal.strategy_id)
@@ -258,7 +258,7 @@ class EvolutionOrchestrator:
         return ""
 
     async def _run_cycle(
-        self, signals: Optional[List[EvolutionSignal]] = None
+        self, signals: list[EvolutionSignal] | None = None
     ) -> EvolutionResult:
         """Run a full evolution cycle.
 

@@ -10,7 +10,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from quantlab.agents.deployment_agent import JCloudDeployClient, SimulatedJCloudDeployClient
+from quantlab.agents.deployment_agent import (
+    JCloudDeployClient,
+    SimulatedJCloudDeployClient,
+)
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.agent_stages import DeployStage as _DeployStage
 

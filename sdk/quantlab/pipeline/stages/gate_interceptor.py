@@ -11,10 +11,11 @@ from __future__ import annotations
 import asyncio
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
-from typing import Any, Awaitable, Callable, Protocol
+from typing import Any, Protocol
 
 from quantlab.pipeline.base import PipelineContext, Stage
 
@@ -44,7 +45,7 @@ class GateDecision:
     """Decision produced by a gate interceptor after callback resolution."""
     gate_id: str
     action: GateAction = GateAction.APPROVED
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     reason: str = ""
     decided_by: str = "system"  # "human", "system" (timeout/fallback), "escalation"
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -57,7 +58,7 @@ class GateContext:
     pipeline_name: str
     stage_name: str
     context_artifacts: dict[str, Any]
-    triggered_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    triggered_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     timeout_hours: float = 24.0
     fallback: FallbackPolicy = FallbackPolicy.ESCALATE
 
@@ -125,7 +126,7 @@ class GateInterceptorStage(Stage, ABC):
                     timeout=self.timeout_hours * 3600,
                 )
                 return decision
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning(
                     "Gate '%s' timed out after %.1f h — applying fallback '%s'",
                     self.gate_id, self.timeout_hours, self.fallback.value,

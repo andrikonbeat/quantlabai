@@ -12,9 +12,6 @@ from __future__ import annotations
 from abc import ABC
 from typing import Any
 
-from quantlab.pipeline.base import PipelineContext, Stage
-from quantlab.pipeline.errors import GuardianProviderError, PortfolioStateBlockedError
-
 from quantlab.guardian import (
     CapitalGuardian,
     ExecutionGuardian,
@@ -26,6 +23,8 @@ from quantlab.guardian import (
 from quantlab.guardian.correction_bus import CorrectionBus, CorrectionEvent
 from quantlab.guardian.models import MetaGuardianConfig, PortfolioState
 from quantlab.guardian.orchestrator import MetaGuardianOrchestrator
+from quantlab.pipeline.base import PipelineContext, Stage
+from quantlab.pipeline.errors import GuardianProviderError, PortfolioStateBlockedError
 
 
 class ResearchStage(Stage, ABC):

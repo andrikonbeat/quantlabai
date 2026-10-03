@@ -10,7 +10,8 @@ stage deterministic in tests (no SQX HTTP dependency on the stage path).
 from __future__ import annotations
 
 import inspect
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.agent_stages import PortfolioStage as _PortfolioStage

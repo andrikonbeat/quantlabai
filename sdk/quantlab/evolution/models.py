@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from quantlab.evolution.config import EvolutionMode
 
@@ -39,15 +39,15 @@ class EvolutionCandidate(BaseModel):
     candidate_id: str
     strategy_id: str
     mode: EvolutionMode
-    cfx_content: Optional[str] = None
-    dsl_content: Optional[str] = None
-    parent_candidate_id: Optional[str] = None
+    cfx_content: str | None = None
+    dsl_content: str | None = None
+    parent_candidate_id: str | None = None
     status: CandidateStatus = CandidateStatus.PENDING
     fitness_score: float = 0.0
-    validation_results: Dict[str, Any] = Field(default_factory=dict)
+    validation_results: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=datetime.now)
-    promoted_at: Optional[datetime] = None
-    error: Optional[str] = None
+    promoted_at: datetime | None = None
+    error: str | None = None
 
 
 class EvolutionResult(BaseModel):
@@ -61,5 +61,5 @@ class EvolutionResult(BaseModel):
     candidates_promoted: int = 0
     signal_count: int = 0
     started_at: datetime = Field(default_factory=datetime.now)
-    completed_at: Optional[datetime] = None
-    errors: List[str] = Field(default_factory=list)
+    completed_at: datetime | None = None
+    errors: list[str] = Field(default_factory=list)

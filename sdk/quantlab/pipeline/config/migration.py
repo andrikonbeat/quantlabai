@@ -12,7 +12,6 @@ from typing import Any
 
 import yaml
 
-
 # Current config version
 CURRENT_VERSION = "2.0.0"
 

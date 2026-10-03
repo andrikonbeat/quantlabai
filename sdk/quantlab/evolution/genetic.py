@@ -55,7 +55,7 @@ def boundary_reset(value: float, lo: float, hi: float) -> float:
         return hi - random.random() * margin
 
 
-def blend_crossover(a: float, b: float, lo: float, hi: float) -> Tuple[float, float]:
+def blend_crossover(a: float, b: float, lo: float, hi: float) -> tuple[float, float]:
     """BLX-α crossover — two offspring from two parents.
 
     Each child is sampled from (min - α·d, max + α·d) where
@@ -69,7 +69,7 @@ def blend_crossover(a: float, b: float, lo: float, hi: float) -> Tuple[float, fl
     return max(lo, min(hi, c1)), max(lo, min(hi, c2))
 
 
-def single_point_crossover(parent_a: List[float], parent_b: List[float]) -> Tuple[List[float], List[float]]:
+def single_point_crossover(parent_a: list[float], parent_b: list[float]) -> tuple[list[float], list[float]]:
     """Single-point crossover on two parameter vectors of equal length."""
     if len(parent_a) != len(parent_b):
         raise ValueError("Parents must have equal length")
@@ -81,7 +81,7 @@ def single_point_crossover(parent_a: List[float], parent_b: List[float]) -> Tupl
     return child_a, child_b
 
 
-def tournament_select(population: List[Dict[str, Any]], fitness_key: str = "fitness") -> Dict[str, Any]:
+def tournament_select(population: list[dict[str, Any]], fitness_key: str = "fitness") -> dict[str, Any]:
     """Tournament selection — pick the fittest from *k* random individuals."""
     candidates = random.choices(population, k=TOURNAMENT_SIZE)
     return max(candidates, key=lambda ind: ind.get(fitness_key, 0.0))
@@ -90,7 +90,7 @@ def tournament_select(population: List[Dict[str, Any]], fitness_key: str = "fitn
 # ── CFX Parameter Extraction ─────────────────────────────────────────
 
 
-def extract_numeric_params(cfx_content: str) -> Dict[str, Tuple[float, float, float]]:
+def extract_numeric_params(cfx_content: str) -> dict[str, tuple[float, float, float]]:
     """Extract numeric parameters and their ranges from CFX XML content.
 
     Uses ElementTree to parse the CFX XML, extracts numeric values
@@ -100,9 +100,9 @@ def extract_numeric_params(cfx_content: str) -> Dict[str, Tuple[float, float, fl
     When the CFX includes explicit ``OptimizationParameters`` the
     min/max/step from those definitions take precedence.
     """
-    params: Dict[str, Tuple[float, float, float]] = {}
+    params: dict[str, tuple[float, float, float]] = {}
 
-    def _try_float(v: str) -> Optional[float]:
+    def _try_float(v: str) -> float | None:
         try:
             return float(v)
         except (ValueError, TypeError):
@@ -161,7 +161,7 @@ def _normalise_tag(tag: str) -> str:
     return tag
 
 
-def apply_params_to_cfx(cfx_content: str, param_values: Dict[str, float]) -> str:
+def apply_params_to_cfx(cfx_content: str, param_values: dict[str, float]) -> str:
     """Write mutated parameter values into a CFX XML string.
 
     Parses the XML, applies the changes, and returns the modified XML.
@@ -199,7 +199,7 @@ def _apply_param_value(
     root: ElementTree.Element,
     section_name: str,
     setting_tag: str,
-    attr_name: Optional[str],
+    attr_name: str | None,
     formatted: str,
 ) -> None:
     """Apply a single parameter value into the XML tree."""
@@ -214,7 +214,7 @@ def _apply_param_value(
                     return
 
 
-def cfx_content_to_archive(cfx_content: str) -> Optional[bool]:
+def cfx_content_to_archive(cfx_content: str) -> bool | None:
     """Validate that CFX content is parseable XML.
 
     Returns True if valid, None on parse failure.  (Named for backward
@@ -231,7 +231,7 @@ def cfx_content_to_archive(cfx_content: str) -> Optional[bool]:
 # ── Evolution Pipeline Builders ─────────────────────────────────────
 
 
-def _build_evolution_pipeline(stages: Optional[List[str]] = None) -> Pipeline:
+def _build_evolution_pipeline(stages: list[str] | None = None) -> Pipeline:
     """Build a lightweight pipeline for evolution backtests.
 
     Default stages: daemon_start → load_cfx → run_backtest → compute_stats → export.
@@ -263,10 +263,10 @@ class _NoopStage(Stage):
 
     def __init__(self, name: str = "noop") -> None:
         self.name = name
-        self.requires: List[str] = []
-        self.provides: List[str] = []
+        self.requires: list[str] = []
+        self.provides: list[str] = []
 
-    async def execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         logger.debug("No-op stage '%s' executed", self.name)
         return {"status": "noop", "stage": self.name}
 
@@ -287,7 +287,7 @@ class GeneticOptimizer:
         self,
         config: EvolutionConfig,
         fitness: FitnessFunction,
-        runner: Optional[PipelineRunner] = None,
+        runner: PipelineRunner | None = None,
     ) -> None:
         """Initialize the genetic optimizer.
 
@@ -304,8 +304,8 @@ class GeneticOptimizer:
         self,
         strategy_id: str,
         cfx_content: str,
-        parent_candidate_id: Optional[str] = None,
-    ) -> List[EvolutionCandidate]:
+        parent_candidate_id: str | None = None,
+    ) -> list[EvolutionCandidate]:
         """Run a genetic optimization cycle on a strategy's CFX.
 
         Args:
@@ -344,7 +344,7 @@ class GeneticOptimizer:
         )
         population_size = max(population_size, 2)  # min 2 for crossover
 
-        individuals: List[Dict[str, Any]] = []
+        individuals: list[dict[str, Any]] = []
         for i in range(population_size):
             # Copy defaults and mutate
             vector = list(param_defaults)
@@ -375,7 +375,7 @@ class GeneticOptimizer:
             individuals[j]["crossover"] = True
 
         # 4. For each individual, create CFX and run backtest
-        candidates: List[EvolutionCandidate] = []
+        candidates: list[EvolutionCandidate] = []
         pipeline = _build_evolution_pipeline()
 
         for idx, ind in enumerate(individuals):
@@ -460,7 +460,7 @@ class GeneticOptimizer:
         return 0.0
 
     @staticmethod
-    def _describe_operators(ind: Dict[str, Any]) -> List[str]:
+    def _describe_operators(ind: dict[str, Any]) -> list[str]:
         ops = []
         if ind.get("mutated"):
             ops.append("gaussian_perturbation")
@@ -470,14 +470,14 @@ class GeneticOptimizer:
         return ops or ["none"]
 
     @staticmethod
-    def _summarize_pipeline(result: PipelineResult) -> Dict[str, Any]:
+    def _summarize_pipeline(result: PipelineResult) -> dict[str, Any]:
         return {
             "stages": len(result.stages),
             "successful": result.is_successful,
             "error": result.error,
         }
 
-    async def _mutate_cfx(self, cfx_content: str) -> List[str]:
+    async def _mutate_cfx(self, cfx_content: str) -> list[str]:
         """Generate mutated CFX variants (legacy compatibility wrapper).
 
         Args:
@@ -493,7 +493,7 @@ class GeneticOptimizer:
         if not params:
             return [cfx_content]
 
-        variants: List[str] = []
+        variants: list[str] = []
         for _ in range(min(3, len(params) * 2)):
             param_values = {}
             for key, (default, lo, hi) in params.items():

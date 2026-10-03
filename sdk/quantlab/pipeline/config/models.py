@@ -55,7 +55,7 @@ class GateConfig(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict, description="Gate-specific config")
 
     @model_validator(mode="after")
-    def _sync_name_and_gate_id(self) -> "GateConfig":
+    def _sync_name_and_gate_id(self) -> GateConfig:
         if not self.gate_id and self.name:
             self.gate_id = self.name
         if not self.name and self.gate_id:
@@ -187,7 +187,7 @@ class MultiAgentPipelineConfig(BaseModel):
         return v
 
     @classmethod
-    def load(cls, path: str | Path) -> "MultiAgentPipelineConfig":
+    def load(cls, path: str | Path) -> MultiAgentPipelineConfig:
         """Load configuration from a YAML file.
 
         Args:
@@ -237,7 +237,7 @@ class PipelineConfig(BaseModel):
     global_config: dict[str, Any] = Field(default_factory=dict)
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "PipelineConfig":
+    def from_yaml(cls, path: str | Path) -> PipelineConfig:
         """Load pipeline configuration from YAML file."""
         import yaml
         path = Path(path)

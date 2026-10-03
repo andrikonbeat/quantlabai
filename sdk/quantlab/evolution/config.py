@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Dict, List
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EvolutionMode(str, Enum):
@@ -46,7 +46,7 @@ class WeightProfile(BaseModel):
     expectancy: float = Field(default=0.10, ge=0.0, le=1.0)
     trades_quality: float = Field(default=0.05, ge=0.0, le=1.0)
 
-    def as_dict(self) -> Dict[str, float]:
+    def as_dict(self) -> dict[str, float]:
         return {
             "sharpe": self.sharpe,
             "profit_factor": self.profit_factor,
@@ -67,7 +67,7 @@ class EvolutionConfig(BaseModel):
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
     concurrency: ConcurrencyConfig = Field(default_factory=ConcurrencyConfig)
     weight_profile: WeightProfile = Field(default_factory=WeightProfile)
-    mg_signal_priorities: Dict[str, int] = Field(
+    mg_signal_priorities: dict[str, int] = Field(
         default_factory=lambda: {
             "RETIRED": 100,
             "REPLACEMENT_PENDING": 80,

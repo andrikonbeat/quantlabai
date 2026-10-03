@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 # ── Seed Building Block Library ──────────────────────────────────────
 
-SEED_BLOCKS: List[Dict[str, Any]] = [
+SEED_BLOCKS: list[dict[str, Any]] = [
     # Moving Averages
     {"indicator": "MA", "params": {"period": 20, "type": "SIMPLE"}},
     {"indicator": "MA", "params": {"period": 50, "type": "SIMPLE"}},
@@ -60,21 +60,21 @@ RISK_PROFILES = ["conservative", "moderate", "aggressive"]
 OBJECTIVES = ["sharpe", "profit", "sortino"]
 
 # Risk → block count range
-RISK_BLOCK_RANGES: Dict[str, tuple[int, int]] = {
+RISK_BLOCK_RANGES: dict[str, tuple[int, int]] = {
     "conservative": (2, 3),
     "moderate": (2, 4),
     "aggressive": (3, 4),
 }
 
 # Risk → direction preference
-RISK_DIRECTIONS: Dict[str, List[StrategyDirection]] = {
+RISK_DIRECTIONS: dict[str, list[StrategyDirection]] = {
     "conservative": [StrategyDirection.BOTH],
     "moderate": [StrategyDirection.BOTH, StrategyDirection.LONG],
     "aggressive": [StrategyDirection.LONG, StrategyDirection.SHORT],
 }
 
 
-def _market_enum_from_str(market: str) -> Optional[Market]:
+def _market_enum_from_str(market: str) -> Market | None:
     """Convert a market string to a Market enum member (case-insensitive)."""
     upper = market.upper()
     for member in Market:
@@ -83,7 +83,7 @@ def _market_enum_from_str(market: str) -> Optional[Market]:
     return None
 
 
-def _timeframe_enum_from_str(tf: str) -> Optional[Timeframe]:
+def _timeframe_enum_from_str(tf: str) -> Timeframe | None:
     """Convert a timeframe string to a Timeframe enum member."""
     upper = tf.upper()
     for member in Timeframe:
@@ -92,7 +92,7 @@ def _timeframe_enum_from_str(tf: str) -> Optional[Timeframe]:
     return None
 
 
-def _select_building_blocks(context: Dict[str, Any]) -> List[BuildingBlock]:
+def _select_building_blocks(context: dict[str, Any]) -> list[BuildingBlock]:
     """Select a random subset of building blocks based on risk profile.
 
     Args:
@@ -110,7 +110,7 @@ def _select_building_blocks(context: Dict[str, Any]) -> List[BuildingBlock]:
     count = min(count, len(SEED_BLOCKS))
 
     selected = random.sample(SEED_BLOCKS, count)
-    blocks: List[BuildingBlock] = []
+    blocks: list[BuildingBlock] = []
     for s in selected:
         block = BuildingBlock(
             name=f"{s['indicator']}_{s['params'].get('period', '')}_{uuid.uuid4().hex[:4]}",
@@ -121,7 +121,7 @@ def _select_building_blocks(context: Dict[str, Any]) -> List[BuildingBlock]:
     return blocks
 
 
-def _build_research_config(context: Dict[str, Any]) -> Optional[ResearchConfig]:
+def _build_research_config(context: dict[str, Any]) -> ResearchConfig | None:
     """Build a ResearchConfig from DSL context parameters.
 
     Args:
@@ -210,7 +210,7 @@ class NoveltyGenerator:
         self,
         config: EvolutionConfig,
         fitness: FitnessFunction,
-        runner: Optional[PipelineRunner] = None,
+        runner: PipelineRunner | None = None,
     ) -> None:
         """Initialize the novelty generator.
 
@@ -225,9 +225,9 @@ class NoveltyGenerator:
 
     async def generate(
         self,
-        context: Dict[str, Any],
-        parent_candidate_id: Optional[str] = None,
-    ) -> List[EvolutionCandidate]:
+        context: dict[str, Any],
+        parent_candidate_id: str | None = None,
+    ) -> list[EvolutionCandidate]:
         """Generate novel strategy candidates from context.
 
         Args:
@@ -333,7 +333,7 @@ class NoveltyGenerator:
         logger.info("NoveltyGenerator: generated 1 candidate for %s/%s", market_str, tf_str)
         return [candidate]
 
-    async def _translate_to_cfx(self, config: ResearchConfig) -> Optional[str]:
+    async def _translate_to_cfx(self, config: ResearchConfig) -> str | None:
         """Translate a ResearchConfig to a CFX XML string.
 
         Uses the existing ``generate_cfx_archive`` + ``CfxWriter``
