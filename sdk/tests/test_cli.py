@@ -111,15 +111,17 @@ class TestRealExecutor:
         WHEN the wrapper attempts to resolve sqcli
         THEN a clear error is raised indicating sqcli is not installed.
         """
-        with patch(
-            "quantlab.cli.runner.resolve_sqcli_path", return_value=None
-        ), pytest.raises(SQXNotFoundError, match="not found"):
+        with (
+            patch("quantlab.cli.runner.resolve_sqcli_path", return_value=None),
+            pytest.raises(SQXNotFoundError, match="not found"),
+        ):
             RealExecutor()
 
     def test_custom_path_not_found_raises(self) -> None:
-        with patch(
-            "quantlab.cli.runner.resolve_sqcli_path", return_value=None
-        ), pytest.raises(SQXNotFoundError):
+        with (
+            patch("quantlab.cli.runner.resolve_sqcli_path", return_value=None),
+            pytest.raises(SQXNotFoundError),
+        ):
             RealExecutor(sqcli_path="/bad/path/sqcli")
 
     def test_binary_resolved_on_init(self) -> None:
@@ -244,6 +246,7 @@ class TestDaemonStartTimeout:
 
         called = []
         from quantlab.cli import runner as _runner
+
         original = _runner.resolve_sqcli_timeout
 
         def _spy(timeout=None):
@@ -268,10 +271,13 @@ class TestDaemonStartTimeout:
             cli_wrapper.asyncio, "create_subprocess_exec", _fake_create_subprocess_exec
         )
 
-        with patch(
-            "quantlab.sqx.cli_wrapper.httpx.AsyncClient.get",
-            side_effect=ConnectionError,
-        ), patch("quantlab.sqx.cli_wrapper.asyncio.sleep"):
+        with (
+            patch(
+                "quantlab.sqx.cli_wrapper.httpx.AsyncClient.get",
+                side_effect=ConnectionError,
+            ),
+            patch("quantlab.sqx.cli_wrapper.asyncio.sleep"),
+        ):
             handle = cli_wrapper._SQXDaemonHandle(str(tmp_path))
             ready = await handle.start(f"http://127.0.0.1:{cli_wrapper._SQX_PORT}")
 
@@ -354,7 +360,5 @@ class TestCrossPlatform:
         assert result.platform in ("linux", "windows", "darwin")
 
     def test_windows_binary_naming(self) -> None:
-        with patch(
-            "quantlab.cli.runner.get_sqcli_binary", return_value="sqcli.exe"
-        ):
+        with patch("quantlab.cli.runner.get_sqcli_binary", return_value="sqcli.exe"):
             assert platform.system() or True  # just confirming patch works

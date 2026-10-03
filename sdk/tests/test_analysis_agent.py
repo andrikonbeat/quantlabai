@@ -14,7 +14,9 @@ class TestAnalysisAgentRun:
     """Task 3.2 + 3.8: AnalysisAgent.run() integration."""
 
     @pytest.mark.asyncio
-    async def test_missing_strategies_csv_returns_empty_artifacts(self, tmp_path: Path) -> None:
+    async def test_missing_strategies_csv_returns_empty_artifacts(
+        self, tmp_path: Path
+    ) -> None:
         """GIVEN export_paths without strategies.csv
         WHEN run() is called
         THEN warning is logged and all analysis artifacts are empty.
@@ -34,7 +36,9 @@ class TestAnalysisAgentRun:
         assert ctx.artifacts["wf_cycles"] == []
 
     @pytest.mark.asyncio
-    async def test_corrupt_strategies_csv_returns_empty_artifacts(self, tmp_path: Path) -> None:
+    async def test_corrupt_strategies_csv_returns_empty_artifacts(
+        self, tmp_path: Path
+    ) -> None:
         """GIVEN export_paths with a corrupt strategies.csv
         WHEN run() is called
         THEN warning is logged and all analysis artifacts are empty.
@@ -65,21 +69,31 @@ class TestAnalysisAgentRun:
         csv_path = tmp_path / "strategies.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Name", "Profit Factor", "Sharpe Ratio", "Win Rate",
-                "Trades", "Max DD", "WF IS Sharpe", "WF OOS Sharpe",
-            ])
+            writer.writerow(
+                [
+                    "Name",
+                    "Profit Factor",
+                    "Sharpe Ratio",
+                    "Win Rate",
+                    "Trades",
+                    "Max DD",
+                    "WF IS Sharpe",
+                    "WF OOS Sharpe",
+                ]
+            )
             for i in range(5):
-                writer.writerow([
-                    f"Strat{i}",
-                    1.5,
-                    1.2,
-                    0.55,
-                    100,
-                    0.10,
-                    1.1,
-                    1.0,
-                ])
+                writer.writerow(
+                    [
+                        f"Strat{i}",
+                        1.5,
+                        1.2,
+                        0.55,
+                        100,
+                        0.10,
+                        1.1,
+                        1.0,
+                    ]
+                )
 
         agent = AnalysisAgent()
         ctx = PipelineContext(
@@ -104,10 +118,16 @@ class TestAnalysisAgentRun:
         csv_path = tmp_path / "strategies.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Name", "Profit Factor", "Sharpe Ratio", "Win Rate",
-                "Trades", "Max DD",
-            ])
+            writer.writerow(
+                [
+                    "Name",
+                    "Profit Factor",
+                    "Sharpe Ratio",
+                    "Win Rate",
+                    "Trades",
+                    "Max DD",
+                ]
+            )
             writer.writerow(["BadStrat", 5.0, 2.5, 0.9, 5, 0.05])
             writer.writerow(["GoodStrat", 1.5, 1.0, 0.55, 100, 0.10])
 
@@ -132,10 +152,16 @@ class TestAnalysisAgentRun:
         csv_path = tmp_path / "strategies.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Name", "Profit Factor", "Sharpe Ratio", "Win Rate",
-                "Trades", "Max DD",
-            ])
+            writer.writerow(
+                [
+                    "Name",
+                    "Profit Factor",
+                    "Sharpe Ratio",
+                    "Win Rate",
+                    "Trades",
+                    "Max DD",
+                ]
+            )
             writer.writerow(["BadStrat", 5.0, 2.5, 0.9, 5, 0.05])
 
         agent = AnalysisAgent()
@@ -161,10 +187,16 @@ class TestAnalysisAgentRun:
         csv_path = tmp_path / "strategies.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Name", "Profit Factor", "Sharpe Ratio", "Win Rate",
-                "Trades", "Max DD",
-            ])
+            writer.writerow(
+                [
+                    "Name",
+                    "Profit Factor",
+                    "Sharpe Ratio",
+                    "Win Rate",
+                    "Trades",
+                    "Max DD",
+                ]
+            )
             writer.writerow(["EdgeStrat", 2.5, 1.5, 0.55, 30, 0.10])
 
         agent = AnalysisAgent()

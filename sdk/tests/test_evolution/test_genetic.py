@@ -277,10 +277,15 @@ class TestGeneticOptimizer:
         optimizer._runner.run = AsyncMock()
         # Simulate a successful pipeline result
         from quantlab.pipeline.models import PipelineResult, StageResult, StageStatus
+
         mock_result = PipelineResult(pipeline_name="test")
         mock_result.stages = [
-            StageResult(stage_name="daemon_start", status=StageStatus.COMPLETED, duration=0.1),
-            StageResult(stage_name="export", status=StageStatus.COMPLETED, duration=0.1),
+            StageResult(
+                stage_name="daemon_start", status=StageStatus.COMPLETED, duration=0.1
+            ),
+            StageResult(
+                stage_name="export", status=StageStatus.COMPLETED, duration=0.1
+            ),
         ]
         mock_result.total_duration = 0.2
         optimizer._runner.run = AsyncMock(return_value=mock_result)
@@ -324,10 +329,15 @@ class TestGeneticOptimizer:
 
         optimizer._runner = AsyncMock()
         from quantlab.pipeline.models import PipelineResult, StageResult, StageStatus
+
         mock_result = PipelineResult(pipeline_name="test")
         mock_result.stages = [
-            StageResult(stage_name="daemon_start", status=StageStatus.COMPLETED, duration=0.1),
-            StageResult(stage_name="export", status=StageStatus.COMPLETED, duration=0.1),
+            StageResult(
+                stage_name="daemon_start", status=StageStatus.COMPLETED, duration=0.1
+            ),
+            StageResult(
+                stage_name="export", status=StageStatus.COMPLETED, duration=0.1
+            ),
         ]
         optimizer._runner.run = AsyncMock(return_value=mock_result)
 

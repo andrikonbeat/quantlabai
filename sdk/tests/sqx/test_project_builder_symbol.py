@@ -18,7 +18,9 @@ from quantlab.data.symbol_registry import resolve_symbol
 from quantlab.sqx.project_builder import create_project
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-HISTORY_DIR = REPO_ROOT / "assets" / "SQX_144_2953_linux_20260601" / "user" / "data" / "History"
+HISTORY_DIR = (
+    REPO_ROOT / "assets" / "SQX_144_2953_linux_20260601" / "user" / "data" / "History"
+)
 
 CHART_RE = re.compile(r'<Chart symbol="[^"]*" timeframe="[^"]*" spread="\d+"')
 
@@ -50,7 +52,9 @@ class TestCanonicalChartSymbol:
         ("symbol", "timeframe"),
         [("EURUSD", "H1"), ("EURUSD", "M1"), ("GBPUSD", "H1"), ("USDJPY", "H1")],
     )
-    def test_chart_symbol_is_registry_m1_root(self, tmp_path, symbol, timeframe) -> None:
+    def test_chart_symbol_is_registry_m1_root(
+        self, tmp_path, symbol, timeframe
+    ) -> None:
         cfx = _build_cfx(tmp_path, symbol, timeframe)
         chart_lines = _chart_symbols(cfx)
         assert chart_lines, "no <Chart symbol=...> element found in build task"

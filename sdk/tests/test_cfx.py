@@ -11,7 +11,9 @@ from quantlab.translate.cfx import CfxArchive, CfxResult
 class TestCfxArchiveFactory:
     """Tests for ``CfxArchiveFactory.from_model()`` — file I/O layer."""
 
-    def _minimal_config(self, campaign: str, market: str, timeframe: str) -> ResearchConfig:
+    def _minimal_config(
+        self, campaign: str, market: str, timeframe: str
+    ) -> ResearchConfig:
         """Create a minimal valid config with required strategy."""
         return ResearchConfig(
             campaign=campaign,
@@ -63,9 +65,7 @@ class TestCfxArchiveFactory:
         config = self._minimal_config("DryDirCheck", "EURUSD", "H1")
         output_dir = tmp_path / "output"
 
-        result = CfxArchive.from_model(
-            config, dry_run=True, output_dir=str(output_dir)
-        )
+        result = CfxArchive.from_model(config, dry_run=True, output_dir=str(output_dir))
 
         # File should NOT be in output/
         assert not (output_dir / "DryDirCheck.cfx.json").exists()
@@ -124,7 +124,9 @@ class TestCfxArchiveFactoryEdgeCases:
         # Ensure _output doesn't exist
         assert not (tmp_path / "_output").exists()
 
-        result = CfxArchive.from_model(config, dry_run=True, output_dir=str(tmp_path / "custom"))
+        result = CfxArchive.from_model(
+            config, dry_run=True, output_dir=str(tmp_path / "custom")
+        )
 
         assert (tmp_path / "_output").exists()
         assert result.path is not None

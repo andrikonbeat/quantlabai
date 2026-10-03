@@ -94,13 +94,17 @@ class TestValidationPipelineIntegration:
         # Mock both generators — use plain AsyncMock (no spec_set, which
         # breaks the async contract on Python 3.14)
         orch._genetic = AsyncMock()
-        orch._genetic.optimize = AsyncMock(return_value=[
-            make_candidate("gen-001", "strat_1", EvolutionMode.GENETIC_ONLY),
-        ])
+        orch._genetic.optimize = AsyncMock(
+            return_value=[
+                make_candidate("gen-001", "strat_1", EvolutionMode.GENETIC_ONLY),
+            ]
+        )
         orch._novelty = AsyncMock()
-        orch._novelty.generate = AsyncMock(return_value=[
-            make_candidate("novel-001", "strat_1", EvolutionMode.GENERATIVE_ONLY),
-        ])
+        orch._novelty.generate = AsyncMock(
+            return_value=[
+                make_candidate("novel-001", "strat_1", EvolutionMode.GENERATIVE_ONLY),
+            ]
+        )
 
         results = await orch.process_signals([make_signal("strat_1", priority=60)])
 
@@ -128,9 +132,11 @@ class TestValidationPipelineIntegration:
         orch = EvolutionOrchestrator(config=config, pool=pool)
 
         orch._genetic = AsyncMock()
-        orch._genetic.optimize = AsyncMock(return_value=[
-            make_candidate("gen-only-001", "strat_2", EvolutionMode.GENETIC_ONLY),
-        ])
+        orch._genetic.optimize = AsyncMock(
+            return_value=[
+                make_candidate("gen-only-001", "strat_2", EvolutionMode.GENETIC_ONLY),
+            ]
+        )
         orch._novelty = AsyncMock()
         orch._novelty.generate = AsyncMock()
 
@@ -156,9 +162,13 @@ class TestValidationPipelineIntegration:
         orch._genetic = AsyncMock()
         orch._genetic.optimize = AsyncMock()
         orch._novelty = AsyncMock()
-        orch._novelty.generate = AsyncMock(return_value=[
-            make_candidate("novel-only-001", "strat_3", EvolutionMode.GENERATIVE_ONLY),
-        ])
+        orch._novelty.generate = AsyncMock(
+            return_value=[
+                make_candidate(
+                    "novel-only-001", "strat_3", EvolutionMode.GENERATIVE_ONLY
+                ),
+            ]
+        )
 
         results = await orch.process_signals([make_signal("strat_3")])
 
@@ -186,10 +196,12 @@ class TestValidationPipelineIntegration:
 
         # Pre-fill _active_cycles to simulate already-running operations
         orch._active_cycles["existing-1"] = EvolutionResult(
-            cycle_id="existing-1", mode=EvolutionMode.GENETIC_ONLY,
+            cycle_id="existing-1",
+            mode=EvolutionMode.GENETIC_ONLY,
         )
         orch._active_cycles["existing-2"] = EvolutionResult(
-            cycle_id="existing-2", mode=EvolutionMode.GENETIC_ONLY,
+            cycle_id="existing-2",
+            mode=EvolutionMode.GENETIC_ONLY,
         )
 
         # With 2 already active and max=2, no new signals should be processed
@@ -269,13 +281,19 @@ class TestValidationPipelineIntegration:
         orch = EvolutionOrchestrator(config=config, pool=pool)
 
         orch._genetic = AsyncMock()
-        orch._genetic.optimize = AsyncMock(return_value=[
-            make_candidate("sched-gen-001", "default", EvolutionMode.GENETIC_ONLY),
-        ])
+        orch._genetic.optimize = AsyncMock(
+            return_value=[
+                make_candidate("sched-gen-001", "default", EvolutionMode.GENETIC_ONLY),
+            ]
+        )
         orch._novelty = AsyncMock()
-        orch._novelty.generate = AsyncMock(return_value=[
-            make_candidate("sched-novel-001", "default", EvolutionMode.GENERATIVE_ONLY),
-        ])
+        orch._novelty.generate = AsyncMock(
+            return_value=[
+                make_candidate(
+                    "sched-novel-001", "default", EvolutionMode.GENERATIVE_ONLY
+                ),
+            ]
+        )
 
         result = await orch._run_cycle()
 
@@ -307,9 +325,13 @@ class TestNoveltyGeneratorIntegration:
         orch = EvolutionOrchestrator(config=config, pool=pool)
 
         orch._novelty = AsyncMock()
-        orch._novelty.generate = AsyncMock(return_value=[
-            make_candidate("int-novel-001", "strat_sig", EvolutionMode.GENERATIVE_ONLY),
-        ])
+        orch._novelty.generate = AsyncMock(
+            return_value=[
+                make_candidate(
+                    "int-novel-001", "strat_sig", EvolutionMode.GENERATIVE_ONLY
+                ),
+            ]
+        )
 
         results = await orch.process_signals([make_signal("strat_sig", priority=60)])
 
@@ -340,13 +362,21 @@ class TestNoveltyGeneratorIntegration:
         orch = EvolutionOrchestrator(config=config, pool=pool)
 
         orch._genetic = AsyncMock()
-        orch._genetic.optimize = AsyncMock(return_value=[
-            make_candidate("full-gen-001", "strat_full", EvolutionMode.GENETIC_ONLY),
-        ])
+        orch._genetic.optimize = AsyncMock(
+            return_value=[
+                make_candidate(
+                    "full-gen-001", "strat_full", EvolutionMode.GENETIC_ONLY
+                ),
+            ]
+        )
         orch._novelty = AsyncMock()
-        orch._novelty.generate = AsyncMock(return_value=[
-            make_candidate("full-novel-001", "strat_full", EvolutionMode.GENERATIVE_ONLY),
-        ])
+        orch._novelty.generate = AsyncMock(
+            return_value=[
+                make_candidate(
+                    "full-novel-001", "strat_full", EvolutionMode.GENERATIVE_ONLY
+                ),
+            ]
+        )
 
         results = await orch.process_signals([make_signal("strat_full")])
 

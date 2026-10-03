@@ -12,7 +12,11 @@ and verify the fail-closed behavior (unknown ⇒ UNLICENSED, never crashes).
 from unittest.mock import MagicMock
 
 from quantlab.cli.runner import CliResult
-from quantlab.pipeline.license import LicenseInfo as LicenseInfo, LicenseManager, LicenseStatus
+from quantlab.pipeline.license import (
+    LicenseInfo as LicenseInfo,
+    LicenseManager,
+    LicenseStatus,
+)
 
 # Trimmed but faithful excerpt of `sqcli -license action=info` real output
 # (first lines + the decisive license-status line).
@@ -94,7 +98,9 @@ class TestLicenseManagerCheck:
         assert info.status == LicenseStatus.LICENSED
         assert info.expiry_date == "14.08.2026"
 
-    def test_check_garbage_output_reports_unlicensed_fail_closed(self, monkeypatch) -> None:
+    def test_check_garbage_output_reports_unlicensed_fail_closed(
+        self, monkeypatch
+    ) -> None:
         monkeypatch.delenv("SQX_LICENSE", raising=False)
         manager = self._manager_with_stdout(REAL_GARBAGE_OUTPUT)
         info = manager.check()

@@ -57,8 +57,14 @@ class TestConformantPaths:
             ("embedding_writer", "embeddings/campaign-7.npy"),
             ("training_exporter", "datasets/train.jsonl"),
             ("kb_seeder", "structured/sqx-kb/144.2953/parameters/Ranking/entry.yaml"),
-            ("educational_generator", "structured/sqx-kb/144.2953/educational/educational-table.md"),
-            ("version_events", "structured/sqx-version/144.2953→144.2954/checklist.yaml"),
+            (
+                "educational_generator",
+                "structured/sqx-kb/144.2953/educational/educational-table.md",
+            ),
+            (
+                "version_events",
+                "structured/sqx-version/144.2953→144.2954/checklist.yaml",
+            ),
         ]
         for writer, rel_path in cases:
             assert is_conformant(writer, rel_path), (

@@ -42,7 +42,9 @@ class TestEvolutionConfig:
 
     def test_custom_concurrency(self):
         config = EvolutionConfig(
-            concurrency=ConcurrencyConfig(max_concurrent_evolutions=3, max_pool_size=100)
+            concurrency=ConcurrencyConfig(
+                max_concurrent_evolutions=3, max_pool_size=100
+            )
         )
         assert config.concurrency.max_concurrent_evolutions == 3
         assert config.concurrency.max_pool_size == 100

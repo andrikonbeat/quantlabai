@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 
-from quantlab.analysis.engine import AnalysisEngine, AnalysisThresholds as AnalysisThresholds
-from quantlab.analysis.models import SelectionResult as SelectionResult, StrategyAnalysis
+from quantlab.analysis.engine import (
+    AnalysisEngine,
+    AnalysisThresholds as AnalysisThresholds,
+)
+from quantlab.analysis.models import (
+    SelectionResult as SelectionResult,
+    StrategyAnalysis,
+)
 from quantlab.analysis.selection import SelectionEngine
 from quantlab.readers.models import StrategySummary
 
@@ -132,9 +138,30 @@ class TestSelectionEngine:
         THEN selected is ordered by score descending.
         """
         analyses = [
-            self._build_analysis("Low", profit_factor=1.0, sharpe_ratio=0.5, win_rate=0.4, max_drawdown=30.0, total_trades=100),
-            self._build_analysis("High", profit_factor=3.0, sharpe_ratio=2.5, win_rate=0.75, max_drawdown=3.0, total_trades=600),
-            self._build_analysis("Mid", profit_factor=2.0, sharpe_ratio=1.5, win_rate=0.55, max_drawdown=12.0, total_trades=300),
+            self._build_analysis(
+                "Low",
+                profit_factor=1.0,
+                sharpe_ratio=0.5,
+                win_rate=0.4,
+                max_drawdown=30.0,
+                total_trades=100,
+            ),
+            self._build_analysis(
+                "High",
+                profit_factor=3.0,
+                sharpe_ratio=2.5,
+                win_rate=0.75,
+                max_drawdown=3.0,
+                total_trades=600,
+            ),
+            self._build_analysis(
+                "Mid",
+                profit_factor=2.0,
+                sharpe_ratio=1.5,
+                win_rate=0.55,
+                max_drawdown=12.0,
+                total_trades=300,
+            ),
         ]
         result = self.selector.select(analyses)
 

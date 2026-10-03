@@ -108,9 +108,7 @@ class TestComposePriorContext:
 
     def test_prior_decisions_risks_lessons_injected(self, tmp_path: Path) -> None:
         write_memory(tmp_path, "research-director", "campaign-1", prior_decisions())
-        out = compose_prior_context(
-            "campaign-2", "config", root=tmp_path
-        )
+        out = compose_prior_context("campaign-2", "config", root=tmp_path)
         assert "## Prior Context" in out
         assert "campaign-1" in out
         assert "Config validated with ATR stop loss" in out
@@ -146,12 +144,14 @@ class TestComposePriorContext:
                 tmp_path,
                 "research-director",
                 f"campaign-{i}",
-                [{
-                    "status": "success",
-                    "executive_summary": f"summary campaign-{i}",
-                    "risks": [f"risk-{i}"],
-                    "timestamp": f"2026-03-{day}T00:00:00+00:00",
-                }],
+                [
+                    {
+                        "status": "success",
+                        "executive_summary": f"summary campaign-{i}",
+                        "risks": [f"risk-{i}"],
+                        "timestamp": f"2026-03-{day}T00:00:00+00:00",
+                    }
+                ],
             )
         out = compose_prior_context("campaign-9", "config", root=tmp_path, limit=1)
         # Newest (campaign-3) shown, older ones dropped by the limit.
@@ -164,12 +164,14 @@ class TestComposePriorContext:
             tmp_path,
             "builder-agent",
             "campaign-1",
-            [{
-                "status": "success",
-                "executive_summary": "builder summary",
-                "risks": ["builder risk"],
-                "timestamp": "2026-01-01T00:00:00+00:00",
-            }],
+            [
+                {
+                    "status": "success",
+                    "executive_summary": "builder summary",
+                    "risks": ["builder risk"],
+                    "timestamp": "2026-01-01T00:00:00+00:00",
+                }
+            ],
         )
         out = compose_prior_context(
             "campaign-2", "config", root=tmp_path, agent="research-director"
@@ -226,15 +228,19 @@ class TestResearchDirectorContextWiring:
             tmp_path,
             "builder-agent",
             "campaign-1",
-            [{
-                "status": "success",
-                "executive_summary": "builder only summary",
-                "risks": ["builder risk"],
-                "timestamp": "2026-01-01T00:00:00+00:00",
-            }],
+            [
+                {
+                    "status": "success",
+                    "executive_summary": "builder only summary",
+                    "risks": ["builder risk"],
+                    "timestamp": "2026-01-01T00:00:00+00:00",
+                }
+            ],
         )
         director = ResearchDirector(knowledge_root=tmp_path)
-        out = director.compose_prior_context("campaign-2", "config", agent="research-director")
+        out = director.compose_prior_context(
+            "campaign-2", "config", agent="research-director"
+        )
         assert "Config validated with ATR stop loss" in out
         assert "builder only summary" not in out
 
@@ -428,7 +434,9 @@ class TestSelfCorrection:
 class TestKnowledgeRootReconcile:
     """WU6: canonical knowledge_root=knowledge with backwards-compat fallback."""
 
-    def test_director_default_root_reads_knowledge_agent_memory(self, tmp_path, monkeypatch) -> None:
+    def test_director_default_root_reads_knowledge_agent_memory(
+        self, tmp_path, monkeypatch
+    ) -> None:
         monkeypatch.chdir(tmp_path)
         write_memory(
             tmp_path / "knowledge",

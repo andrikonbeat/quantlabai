@@ -28,6 +28,7 @@ async def test_ttl_expiry(tmp_path: Path):
     cache = SqliteCache(db_path=str(tmp_path / "cache.db"))
     await cache.set("key1", {"data": "x"}, ttl=0.1)  # 100ms TTL
     import asyncio
+
     await asyncio.sleep(0.15)  # Sleep past expiry
     result = await cache.get("key1")
     assert result is None

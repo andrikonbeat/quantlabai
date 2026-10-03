@@ -44,7 +44,9 @@ def _dsl_config(*block_names: str) -> ResearchConfig:
         market="EURUSD",
         timeframe="H1",
         building_blocks=[
-            BuildingBlock(name=n, indicator=IndicatorConfig(name="RSI", params={"period": 14}))
+            BuildingBlock(
+                name=n, indicator=IndicatorConfig(name="RSI", params={"period": 14})
+            )
             for n in block_names
         ],
     )
@@ -111,7 +113,9 @@ class TestApplyBuildConfigBlocks:
         assert result == _TEMPLATE_WITH_BLOCKS
 
     def test_non_block_build_config_fields_still_apply(self) -> None:
-        template = '<PopulationSize>100</PopulationSize>\n<Blocks type="simple">\n</Blocks>'
+        template = (
+            '<PopulationSize>100</PopulationSize>\n<Blocks type="simple">\n</Blocks>'
+        )
         bc = BuildConfig(population=250)
         result = _apply_build_config(template, bc)
         assert "<PopulationSize>250</PopulationSize>" in result
@@ -144,6 +148,4 @@ class TestValidateExportedBlocks:
     )
     def test_fixture_fallback_remains_available(self) -> None:
         """REQ-04: the fixture fallback path SHALL remain for untrusted CFX."""
-        assert FIXTURE_CFX.exists(), (
-            f"fixture fallback missing at {FIXTURE_CFX}"
-        )
+        assert FIXTURE_CFX.exists(), f"fixture fallback missing at {FIXTURE_CFX}"

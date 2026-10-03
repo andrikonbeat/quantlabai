@@ -47,9 +47,7 @@ strategies:
             parse_yaml_string("")
 
     def test_minimal_config(self) -> None:
-        config = parse_yaml_string(
-            "campaign: Mini\nmarket: BTCUSD\ntimeframe: D1\n"
-        )
+        config = parse_yaml_string("campaign: Mini\nmarket: BTCUSD\ntimeframe: D1\n")
         assert config.campaign == "Mini"
         assert config.market.value == "BTCUSD"
 
