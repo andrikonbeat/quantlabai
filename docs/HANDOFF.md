@@ -116,9 +116,11 @@ python3 ai/opencode/sync_skills.py --check
 ```
 
 Two tests assert parity between the repo and your live `~/.config/opencode/`
-tree, resolved via `Path.home()`. On a fresh machine that tree does not exist,
-so **run the sync before the suite or those two tests fail on a missing
-directory rather than on real drift.** CI does this explicitly.
+tree, resolved via `Path.home()`. On a fresh machine that tree does not exist
+yet, and those tests still **pass** — verified on a clean clone with no live
+config tree present. Running the sync first is still recommended, because it is
+what makes those assertions meaningful rather than vacuous, and CI runs it
+explicitly before the suite.
 
 ## 4. Verify the install
 
@@ -126,9 +128,13 @@ directory rather than on real drift.** CI does this explicitly.
 SQX_FORCE_MOCK=1 python3 -m pytest -q
 ```
 
-Expected: **4151 tests collected, all passing** (~5 minutes on a modern
-machine). `SQX_FORCE_MOCK=1` is mandatory — without it the suite tries to bind
-the real SQX daemon on port 5050.
+Expected on a clean clone with no StrategyQuant data present:
+**4134 passed, 19 skipped, 0 failed** (~6 minutes). On a machine that has the
+local SQX data bundle, one further test runs and you see 4135 passed / 18
+skipped. Both are green; the difference is machine-local data, not code.
+
+`SQX_FORCE_MOCK=1` is mandatory — without it the suite tries to bind the real
+SQX daemon on port 5050 and hangs or fails.
 
 Then confirm the optional build units, if you need them:
 
@@ -217,8 +223,9 @@ docker compose build                # API + SQX + Postgres + Redis
 Verified on this machine against the commit recorded in
 [STATE.md](STATE.md):
 
-- **Full Python suite green** — 4151 collected, 0 failures, with
-  `SQX_FORCE_MOCK=1`.
+- **Full Python suite green** — 4135 passed / 18 skipped on a machine with the
+  SQX data bundle, 4134 passed / 19 skipped on a clean clone, 0 failures either
+  way, with `SQX_FORCE_MOCK=1`.
 - **Go installer green** — `go build ./...` clean, `go test ./... -short` all
   packages passing.
 - **Lint and types** — `ruff`, `mypy --strict`, and `pytest-asyncio` are all

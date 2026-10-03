@@ -52,6 +52,10 @@ A point-in-time observation, recorded once. It is **not** the live status.
 `SQX_FORCE_MOCK=1` is required: without it the tests try to bind the real
 StrategyQuant X daemon on port 5050.
 
+A clean clone with no StrategyQuant data present yields **4134 passed / 19
+skipped** instead — the extra skip is a test that needs the machine-local SQX
+data bundle. Both are green; the difference is local data, not code.
+
 > The previous snapshot (2026-09-30, `486da48`) recorded 4111 passed / 9 skipped.
 > Both the suite and the skip count moved between them; read the numbers above as
 > one observation, not a trend.
