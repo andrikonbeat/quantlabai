@@ -30,6 +30,7 @@ from quantlab.phase4.templates import CfxTemplateBuilder
 from quantlab.phase4.errors import (
     SQXDaemonStartError,
     SQXBindingError,
+    JForexConnectionError,
     JForexStrategyNotFoundError,
     SQXSessionLockError,
     OptimizerRunError,
