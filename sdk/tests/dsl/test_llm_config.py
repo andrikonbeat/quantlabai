@@ -133,7 +133,10 @@ class TestHypothesisConfigExtension:
             name="test-hyp",
             description="LLM-generated hypothesis",
             llm_rationale="The RSI indicates oversold conditions with bullish divergence",
-            source_urls=["https://finance.yahoo.com/quote/AAPL", "https://news.google.com/AAPL"],
+            source_urls=[
+                "https://finance.yahoo.com/quote/AAPL",
+                "https://news.google.com/AAPL",
+            ],
             data_sources=["yahoo_finance", "google_news"],
         )
         assert config.llm_rationale == (

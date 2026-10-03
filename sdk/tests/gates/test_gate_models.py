@@ -66,7 +66,9 @@ class TestGateDecisionSemantics:
         WHEN checking is_approved
         THEN it is not approved — fail-closed semantics hold.
         """
-        decision = GateDecision(gate_id=HUMAN_APPROVE_CONFIG, action=GateDecisionAction.HOLD)
+        decision = GateDecision(
+            gate_id=HUMAN_APPROVE_CONFIG, action=GateDecisionAction.HOLD
+        )
         assert not decision.is_approved()
 
     def test_approve_is_approved(self) -> None:
@@ -74,5 +76,7 @@ class TestGateDecisionSemantics:
         WHEN checking is_approved
         THEN it allows the pipeline to continue.
         """
-        decision = GateDecision(gate_id=HUMAN_APPROVE_CONFIG, action=GateDecisionAction.APPROVE)
+        decision = GateDecision(
+            gate_id=HUMAN_APPROVE_CONFIG, action=GateDecisionAction.APPROVE
+        )
         assert decision.is_approved()

@@ -61,8 +61,20 @@ class TestNewsItem:
         from quantlab.data.news.models import NewsItem
 
         d = datetime(2026, 7, 28)
-        a = NewsItem(title="A", url="https://example.com/a", source="S", published_date=d, summary="Sum A")
-        b = NewsItem(title="A (dupe)", url="https://example.com/a", source="S", published_date=d, summary="Sum A")
+        a = NewsItem(
+            title="A",
+            url="https://example.com/a",
+            source="S",
+            published_date=d,
+            summary="Sum A",
+        )
+        b = NewsItem(
+            title="A (dupe)",
+            url="https://example.com/a",
+            source="S",
+            published_date=d,
+            summary="Sum A",
+        )
         # Same URL should be considered duplicate for dedup
         assert a.url == b.url
         urls = {item.url for item in [a, b]}
@@ -109,6 +121,7 @@ class TestProviderError:
     def test_provider_error_importable(self):
         """ProviderError should be importable from news package."""
         from quantlab.data.news.base import ProviderError as NewsProviderError
+
         assert issubclass(NewsProviderError, Exception)
 
     def test_provider_error_with_code(self):

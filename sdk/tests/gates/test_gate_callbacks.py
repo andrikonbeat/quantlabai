@@ -143,7 +143,9 @@ class TestDecisionFileProtocol:
             await callback(_ctx())
 
     @pytest.mark.asyncio
-    async def test_campaign_id_from_context_when_not_constructed(self, tmp_path) -> None:
+    async def test_campaign_id_from_context_when_not_constructed(
+        self, tmp_path
+    ) -> None:
         """GIVEN a callback without a fixed campaign_id
         WHEN it fires with campaign_id in the context
         THEN the pending file lands under the context campaign id.
@@ -229,7 +231,11 @@ class TestFailClosed:
         WHEN fail_closed_callback fires
         THEN the action is never APPROVE.
         """
-        for gate_id in ("HUMAN_APPROVE_CONFIG", "HUMAN_REVIEW_OBJECTIVES", "HUMAN_APPROVE_DEPLOY"):
+        for gate_id in (
+            "HUMAN_APPROVE_CONFIG",
+            "HUMAN_REVIEW_OBJECTIVES",
+            "HUMAN_APPROVE_DEPLOY",
+        ):
             decision = await fail_closed_callback(_ctx(gate_id=gate_id))
             assert decision.action != GateDecisionAction.APPROVE
             assert decision.gate_id == gate_id

@@ -149,9 +149,7 @@ class TestIndicatorExportInjection:
     def test_inject_missing_jfx_fails_closed(self, tmp_path: Path):
         """Injecting into a nonexistent .jfx raises FileNotFoundError."""
         with pytest.raises(FileNotFoundError):
-            inject_indicator_exporter(
-                tmp_path / "missing.jfx", "BullEyes_M15"
-            )
+            inject_indicator_exporter(tmp_path / "missing.jfx", "BullEyes_M15")
 
 
 class TestIndicatorExportStage:
@@ -188,7 +186,11 @@ class TestIndicatorExportStage:
         jfx = _make_jfx(tmp_path, name="GammaM30")
         ctx = PipelineContext(
             config={},
-            artifacts={"compiled_strategies": [JfxArtifact(path=jfx, source=jfx, class_name="GammaM30")]},
+            artifacts={
+                "compiled_strategies": [
+                    JfxArtifact(path=jfx, source=jfx, class_name="GammaM30")
+                ]
+            },
         )
         stage = IndicatorExportStage(export_dir=tmp_path / "exports")
 

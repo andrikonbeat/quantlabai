@@ -54,9 +54,7 @@ def fake_sqcli(monkeypatch):
             return "ok\n"
 
     fake = Recording()
-    monkeypatch.setattr(
-        "quantlab.data.data_manager._run_sqcli_command", fake
-    )
+    monkeypatch.setattr("quantlab.data.data_manager._run_sqcli_command", fake)
     return fake
 
 
@@ -64,9 +62,7 @@ def write_history(state_dir, sqx_name: str, rows: list[dict]) -> None:
     """Write a JForex history JSON file into the state directory."""
     history = state_dir / "history"
     history.mkdir(parents=True, exist_ok=True)
-    (history / f"{sqx_name}.json").write_text(
-        json.dumps(rows), encoding="utf-8"
-    )
+    (history / f"{sqx_name}.json").write_text(json.dumps(rows), encoding="utf-8")
 
 
 # ── T3.1: DatasourceRegistry + DataManager routing ──────────────────────────
@@ -98,15 +94,21 @@ class TestDataManagerRouting:
         beta = FakeHandler("beta", suffix="bet")
         reg.register(alpha)
         reg.register(beta)
-        return DataManager(
-            datasources=reg,
-            registry=SymbolRegistry(db_path=":memory:"),
-        ), alpha, beta
+        return (
+            DataManager(
+                datasources=reg,
+                registry=SymbolRegistry(db_path=":memory:"),
+            ),
+            alpha,
+            beta,
+        )
 
     @pytest.mark.asyncio
     async def test_ensure_symbol_routes_to_registered_handler(self, dm) -> None:
         manager, alpha, beta = dm
-        result = await manager.ensure_symbol("EURUSD", datasource="alpha", datatype="M1")
+        result = await manager.ensure_symbol(
+            "EURUSD", datasource="alpha", datatype="M1"
+        )
 
         assert result["status"] == "ok"
         assert result["sqx_name"] == "EURUSD_M1_alf"
@@ -136,7 +138,9 @@ class TestDataManagerRouting:
     async def test_cache_hit_avoids_repeating_handler_call(self, dm) -> None:
         manager, alpha, _ = dm
         await manager.ensure_symbol("EURUSD", datasource="alpha", datatype="M1")
-        second = await manager.ensure_symbol("EURUSD", datasource="alpha", datatype="M1")
+        second = await manager.ensure_symbol(
+            "EURUSD", datasource="alpha", datatype="M1"
+        )
 
         assert second["cached"] is True
         assert len(alpha.ensures) == 1
@@ -194,13 +198,20 @@ class TestJForexProvider:
     def test_fetch_history_parses_valid_rows(self, tmp_path) -> None:
         from quantlab.jforex.provider import JForexProvider
 
-        write_history(tmp_path, "EURUSD_M1_jforex", [
-            {
-                "timestamp": "2026-01-02T03:04:05Z",
-                "open": 1.10, "high": 1.20, "low": 1.00,
-                "close": 1.15, "volume": 1000.0,
-            },
-        ])
+        write_history(
+            tmp_path,
+            "EURUSD_M1_jforex",
+            [
+                {
+                    "timestamp": "2026-01-02T03:04:05Z",
+                    "open": 1.10,
+                    "high": 1.20,
+                    "low": 1.00,
+                    "close": 1.15,
+                    "volume": 1000.0,
+                },
+            ],
+        )
         bars = JForexProvider(state_dir=tmp_path).fetch_history("EURUSD", "M1")
 
         assert len(bars) == 1
@@ -211,13 +222,29 @@ class TestJForexProvider:
     def test_fetch_history_skips_malformed_rows(self, tmp_path) -> None:
         from quantlab.jforex.provider import JForexProvider
 
-        write_history(tmp_path, "EURUSD_M1_jforex", [
-            {"timestamp": "2026-01-02T03:04:05Z", "open": "bad", "high": 1.2,
-             "low": 1.0, "close": 1.15, "volume": 1000.0},
-            {"open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "volume": 1000.0},
-            {"timestamp": "2026-01-02T03:05:00Z", "open": 1.11, "high": 1.21,
-             "low": 1.01, "close": 1.16, "volume": 1100.0},
-        ])
+        write_history(
+            tmp_path,
+            "EURUSD_M1_jforex",
+            [
+                {
+                    "timestamp": "2026-01-02T03:04:05Z",
+                    "open": "bad",
+                    "high": 1.2,
+                    "low": 1.0,
+                    "close": 1.15,
+                    "volume": 1000.0,
+                },
+                {"open": 1.1, "high": 1.2, "low": 1.0, "close": 1.15, "volume": 1000.0},
+                {
+                    "timestamp": "2026-01-02T03:05:00Z",
+                    "open": 1.11,
+                    "high": 1.21,
+                    "low": 1.01,
+                    "close": 1.16,
+                    "volume": 1100.0,
+                },
+            ],
+        )
         bars = JForexProvider(state_dir=tmp_path).fetch_history("EURUSD", "M1")
 
         assert len(bars) == 1
@@ -254,10 +281,20 @@ class TestDatasourceSwitching:
     async def test_jforex_ensure_routes_to_provider_no_sqcli(
         self, dm, tmp_path
     ) -> None:
-        write_history(tmp_path, "EURUSD_M1_jforex", [
-            {"timestamp": "2026-01-02T03:04:05Z", "open": 1.1, "high": 1.2,
-             "low": 1.0, "close": 1.15, "volume": 1000.0},
-        ])
+        write_history(
+            tmp_path,
+            "EURUSD_M1_jforex",
+            [
+                {
+                    "timestamp": "2026-01-02T03:04:05Z",
+                    "open": 1.1,
+                    "high": 1.2,
+                    "low": 1.0,
+                    "close": 1.15,
+                    "volume": 1000.0,
+                },
+            ],
+        )
         result = await dm.ensure_symbol("EURUSD", datasource="jforex", datatype="M1")
 
         assert result["status"] == "ok"
@@ -267,10 +304,20 @@ class TestDatasourceSwitching:
 
     @pytest.mark.asyncio
     async def test_jforex_update_routes_to_provider(self, dm, tmp_path) -> None:
-        write_history(tmp_path, "EURUSD_H1_jforex", [
-            {"timestamp": "2026-01-02T03:04:05Z", "open": 1.1, "high": 1.2,
-             "low": 1.0, "close": 1.15, "volume": 1000.0},
-        ])
+        write_history(
+            tmp_path,
+            "EURUSD_H1_jforex",
+            [
+                {
+                    "timestamp": "2026-01-02T03:04:05Z",
+                    "open": 1.1,
+                    "high": 1.2,
+                    "low": 1.0,
+                    "close": 1.15,
+                    "volume": 1000.0,
+                },
+            ],
+        )
         result = await dm.update_data("EURUSD", datasource="jforex", datatype="H1")
 
         assert result["status"] == "ok"
@@ -291,19 +338,35 @@ class TestDatasourceSwitching:
         self, dm, tmp_path, fake_sqcli
     ) -> None:
         """REQ-04 scenario 2: jforex and dukascopy coexist on one manager."""
-        write_history(tmp_path, "EURUSD_M1_jforex", [
-            {"timestamp": "2026-01-02T03:04:05Z", "open": 1.1, "high": 1.2,
-             "low": 1.0, "close": 1.15, "volume": 1000.0},
-        ])
+        write_history(
+            tmp_path,
+            "EURUSD_M1_jforex",
+            [
+                {
+                    "timestamp": "2026-01-02T03:04:05Z",
+                    "open": 1.1,
+                    "high": 1.2,
+                    "low": 1.0,
+                    "close": 1.15,
+                    "volume": 1000.0,
+                },
+            ],
+        )
         jf = await dm.ensure_symbol("EURUSD", datasource="jforex", datatype="M1")
         dk = await dm.ensure_symbol("EURUSD", datasource="dukascopy", datatype="M1")
 
         assert jf["sqx_name"] == "EURUSD_M1_jforex"
         assert dk["sqx_name"] == "EURUSD_M1_dukas"
-        assert fake_sqcli.commands == [[
-            "/nonexistent/sqcli", "-symbol", "action=add",
-            "name=EURUSD_M1_dukas", "datasource=dukascopy", "datatype=M1",
-        ]]
+        assert fake_sqcli.commands == [
+            [
+                "/nonexistent/sqcli",
+                "-symbol",
+                "action=add",
+                "name=EURUSD_M1_dukas",
+                "datasource=dukascopy",
+                "datatype=M1",
+            ]
+        ]
 
         rows = await dm.list_symbols()
         assert {r["sqx_name"] for r in rows} == {"EURUSD_M1_jforex", "EURUSD_M1_dukas"}
@@ -316,7 +379,9 @@ class TestDatasourceSwitching:
         assert len(fake_sqcli.commands) == 1
 
     @pytest.mark.asyncio
-    async def test_dukascopy_still_rejects_deferred_sources(self, dm, fake_sqcli) -> None:
+    async def test_dukascopy_still_rejects_deferred_sources(
+        self, dm, fake_sqcli
+    ) -> None:
         from quantlab.data import NotSupportedError
 
         with pytest.raises(NotSupportedError, match="crypto"):

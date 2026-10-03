@@ -44,7 +44,9 @@ class TestNaming:
         """
         from quantlab.data.symbol_registry import resolve_symbol
 
-        assert resolve_symbol("EURUSD_CONT", "M1", "dukascopy") == "EURUSD_CONT_M1_dukas"
+        assert (
+            resolve_symbol("EURUSD_CONT", "M1", "dukascopy") == "EURUSD_CONT_M1_dukas"
+        )
 
     def test_resolve_symbol_rejects_deferred_datasource(self) -> None:
         """GIVEN a deferred datasource (crypto, D5)

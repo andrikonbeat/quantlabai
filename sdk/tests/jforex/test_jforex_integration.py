@@ -23,23 +23,27 @@ class TestJForexIntegration:
         state_dir = tmp_path / "jforex_state"
         state_dir.mkdir()
         (state_dir / "equity.json").write_text(
-            json.dumps([
-                {"timestamp": "2026-08-12T10:00:00Z", "equity": 10000.0},
-                {"timestamp": "2026-08-12T10:01:00Z", "equity": 10500.0},
-                {"timestamp": "2026-08-12T10:02:00Z", "equity": 10300.0},
-            ])
+            json.dumps(
+                [
+                    {"timestamp": "2026-08-12T10:00:00Z", "equity": 10000.0},
+                    {"timestamp": "2026-08-12T10:01:00Z", "equity": 10500.0},
+                    {"timestamp": "2026-08-12T10:02:00Z", "equity": 10300.0},
+                ]
+            )
         )
         (state_dir / "orders.json").write_text(
-            json.dumps([
-                {
-                    "order_id": "ORD-1",
-                    "timestamp": "2026-08-12T10:00:30Z",
-                    "side": "BUY",
-                    "lots": 0.1,
-                    "price": 1.1234,
-                    "status": "FILLED",
-                }
-            ])
+            json.dumps(
+                [
+                    {
+                        "order_id": "ORD-1",
+                        "timestamp": "2026-08-12T10:00:30Z",
+                        "side": "BUY",
+                        "lots": 0.1,
+                        "price": 1.1234,
+                        "status": "FILLED",
+                    }
+                ]
+            )
         )
 
         feed = JForexLiveFeed(state_dir=state_dir)
@@ -98,16 +102,20 @@ class TestJForexIntegration:
         assert feed.read_equity() == []
         assert feed.read_orders() == []
 
-    def test_feed_produces_equity_points_compatible_with_max_drawdown(self, tmp_path: Path):
+    def test_feed_produces_equity_points_compatible_with_max_drawdown(
+        self, tmp_path: Path
+    ):
         """Test that feed output works with max_drawdown helper."""
         state_dir = tmp_path / "jforex_state"
         state_dir.mkdir()
         (state_dir / "equity.json").write_text(
-            json.dumps([
-                {"timestamp": "2026-08-12T10:00:00Z", "equity": 10000.0},
-                {"timestamp": "2026-08-12T10:01:00Z", "equity": 9000.0},
-                {"timestamp": "2026-08-12T10:02:00Z", "equity": 9500.0},
-            ])
+            json.dumps(
+                [
+                    {"timestamp": "2026-08-12T10:00:00Z", "equity": 10000.0},
+                    {"timestamp": "2026-08-12T10:01:00Z", "equity": 9000.0},
+                    {"timestamp": "2026-08-12T10:02:00Z", "equity": 9500.0},
+                ]
+            )
         )
 
         feed = JForexLiveFeed(state_dir=state_dir)
