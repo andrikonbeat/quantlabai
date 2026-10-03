@@ -4,13 +4,18 @@ Every document in `docs/`, grouped by directory. Start with the
 [PRD](#project-level) for what the product is, then follow the guide for
 what you are trying to do.
 
-New here? Read [Running Multi-Agent Campaigns](guides/running-campaigns.md) —
-it is the shortest path from a campaign idea to a running 14-phase flow.
+New here? Read [HANDOFF.md](HANDOFF.md) — it is the complete procedure for
+installing, configuring, and verifying this project on a new machine.
+
+Building a campaign? Read
+[Running Multi-Agent Campaigns](guides/running-campaigns.md) — it is the
+shortest path from a campaign idea to a running 14-phase flow.
 
 ## Project-level
 
 | Doc | What it contains |
 |-----|------------------|
+| [HANDOFF.md](HANDOFF.md) | **Start here on a new machine.** Requirements, install, configuration, verification, known problems, and the Git/GitHub facts needed to work on this repo elsewhere. |
 | [PRD.md](PRD.md) | Product requirements: the research engine as a trading-domain port of the Gentle-AI architecture, who it serves, and scope. Status: Draft v0.1.0. |
 | [CHANGELOG.md](CHANGELOG.md) | Reverse-chronological record of notable changes, including the repository reorganization for GitHub readiness. |
 | [STATE.md](STATE.md) | Point-in-time project status snapshot. Points at `git log` and CI for live state rather than restating counts. |
