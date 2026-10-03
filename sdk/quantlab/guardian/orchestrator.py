@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Guardian class -> attributes that MUST hold a concrete provider instance.
 # The attribute names are the ones the guardian stores on ``self`` at
 # construction time, not the constructor keyword.
-REQUIRED_GUARDIAN_PROVIDERS: Dict[type, Tuple[str, ...]] = {
+REQUIRED_GUARDIAN_PROVIDERS: dict[type, tuple[str, ...]] = {
     RiskGuardian: ("portfolio_data",),
     PortfolioGuardian: ("returns_data",),
     CapitalGuardian: ("performance_data",),
@@ -40,7 +40,7 @@ REQUIRED_GUARDIAN_PROVIDERS: Dict[type, Tuple[str, ...]] = {
 }
 
 
-def validate_guardian_providers(guardians: List[BaseGuardian]) -> None:
+def validate_guardian_providers(guardians: list[BaseGuardian]) -> None:
     """Assert every known guardian received a concrete provider.
 
     Args:
@@ -70,9 +70,9 @@ def validate_guardian_providers(guardians: List[BaseGuardian]) -> None:
 class MetaGuardianOrchestrator:
     """Coordinates all guardians and manages the state machine."""
 
-    def __init__(self, config: MetaGuardianConfig, guardians: List[BaseGuardian],
-                 action_hooks: List[Callable[[PortfolioState, PortfolioState], None]] | None = None,
-                 feedback_store: "GuardianFeedbackStore | None" = None,
+    def __init__(self, config: MetaGuardianConfig, guardians: list[BaseGuardian],
+                 action_hooks: list[Callable[[PortfolioState, PortfolioState], None]] | None = None,
+                 feedback_store: GuardianFeedbackStore | None = None,
                  campaign_id: str | None = None,
                  correlation_id: str | None = None):
         """Initialize the orchestrator.
@@ -105,8 +105,8 @@ class MetaGuardianOrchestrator:
         self.campaign_id = campaign_id
         self.correlation_id = correlation_id
         self.state = PortfolioState.NORMAL
-        self.state_history: List[Tuple[PortfolioState, float]] = []
-        self.strategy_states: Dict[str, StrategyState] = {}
+        self.state_history: list[tuple[PortfolioState, float]] = []
+        self.strategy_states: dict[str, StrategyState] = {}
         self.last_evaluation_time: float = 0.0
 
     def evaluate(self) -> PortfolioState:
@@ -150,7 +150,7 @@ class MetaGuardianOrchestrator:
         
         return self.state
 
-    def _persist_metrics(self, results: List[GuardianResult]) -> None:
+    def _persist_metrics(self, results: list[GuardianResult]) -> None:
         """Write one ``GuardianMetricRecord`` per guardian result.
 
         Opt-in: no store or no campaign id means no writes. Persistence is
@@ -181,7 +181,7 @@ class MetaGuardianOrchestrator:
                     "Failed to persist guardian metric for campaign %s", self.campaign_id
                 )
 
-    def _collect_guardian_results(self) -> List[GuardianResult]:
+    def _collect_guardian_results(self) -> list[GuardianResult]:
         """Collect results from all guardians.
         
         Returns:
@@ -202,7 +202,7 @@ class MetaGuardianOrchestrator:
                 ))
         return results
 
-    def _aggregate_results(self, results: List[GuardianResult]) -> float:
+    def _aggregate_results(self, results: list[GuardianResult]) -> float:
         """Aggregate guardian results into a single score.
         
         Args:
@@ -313,7 +313,7 @@ class MetaGuardianOrchestrator:
             except Exception:
                 logger.exception("Action hook failed on transition %s -> %s", old_state, new_state)
 
-    def _update_strategy_states(self, results: List[GuardianResult]) -> None:
+    def _update_strategy_states(self, results: list[GuardianResult]) -> None:
         """Update individual strategy states based on guardian results.
         
         Args:
@@ -327,7 +327,6 @@ class MetaGuardianOrchestrator:
         # 2. Apply strategy-specific state machine logic
         # 3. Update self.strategy_states accordingly
         # For now, we'll leave this as a placeholder
-        pass
 
     # Public methods for inspection
     def get_current_state(self) -> PortfolioState:
@@ -338,7 +337,7 @@ class MetaGuardianOrchestrator:
         """
         return self.state
     
-    def get_state_history(self) -> List[tuple]:
+    def get_state_history(self) -> list[tuple]:
         """Get history of state changes.
         
         Returns:

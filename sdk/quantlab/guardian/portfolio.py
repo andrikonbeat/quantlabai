@@ -8,7 +8,7 @@ from typing import Dict, List
 import numpy as np
 
 from .base import BaseGuardian
-from .models import GuardianResult, GuardianType, GuardianStatus
+from .models import GuardianResult, GuardianStatus, GuardianType
 
 
 class PortfolioGuardian(BaseGuardian):
@@ -41,7 +41,7 @@ class PortfolioGuardian(BaseGuardian):
                 guardian_type=GuardianType.PORTFOLIO,
                 status=GuardianStatus.RED,
                 score=0.0,
-                message=f"Failed to retrieve returns data: {str(e)}",
+                message=f"Failed to retrieve returns data: {e!s}",
             )
 
         if not returns_dict:
@@ -69,7 +69,7 @@ class PortfolioGuardian(BaseGuardian):
                 guardian_type=GuardianType.PORTFOLIO,
                 status=GuardianStatus.RED,
                 score=0.0,
-                message=f"Correlation calculation failed: {str(e)}",
+                message=f"Correlation calculation failed: {e!s}",
             )
 
         # Score components
@@ -107,14 +107,14 @@ class PortfolioGuardian(BaseGuardian):
             message=message,
         )
 
-    def _get_returns_data(self) -> Dict[str, List[float]]:
+    def _get_returns_data(self) -> dict[str, list[float]]:
         """Get returns data from the data provider.
         
         Returns:
             Dict mapping strategy names to lists of returns
         """
 # Try to get actual data from the provider
-        if hasattr(self.returns_data, 'get_strategy_returns') and callable(getattr(self.returns_data, 'get_strategy_returns')):
+        if hasattr(self.returns_data, 'get_strategy_returns') and callable(self.returns_data.get_strategy_returns):
             result = self.returns_data.get_strategy_returns()
             if isinstance(result, dict):
                 # Validate the data structure
@@ -132,7 +132,7 @@ class PortfolioGuardian(BaseGuardian):
             "Strategy_D": [0.005, -0.008, 0.003, 0.009, -0.004, 0.006, -0.002, 0.004],
         }
 
-    def _calculate_correlation_matrix(self, returns_dict: Dict[str, List[float]]) -> np.ndarray:
+    def _calculate_correlation_matrix(self, returns_dict: dict[str, list[float]]) -> np.ndarray:
         """Calculate correlation matrix from returns data.
         
         Args:
@@ -193,7 +193,7 @@ class PortfolioGuardian(BaseGuardian):
         # 0 correlation = 1.0 score, 1.0 correlation = 0.0 score
         return max(0.0, min(1.0, 1.0 - avg_correlation))
 
-    def _score_diversification(self, returns_dict: Dict[str, List[float]]) -> float:
+    def _score_diversification(self, returns_dict: dict[str, list[float]]) -> float:
         """Score based on effective number of strategies.
         
         Args:
@@ -213,7 +213,7 @@ class PortfolioGuardian(BaseGuardian):
             # Linear scaling from 1 to 5 strategies
             return 0.3 + (n_strategies - 1) * 0.7 / 4
 
-    def _score_concentration(self, returns_dict: Dict[str, List[float]]) -> float:
+    def _score_concentration(self, returns_dict: dict[str, list[float]]) -> float:
         """Score based on return volatility concentration (proxy for capital concentration).
         
         Args:
@@ -259,7 +259,7 @@ class PortfolioGuardian(BaseGuardian):
             # Linear from 1 to 5 strategies
             return 0.3 + (n_strategies - 1) * 0.7 / 4
 
-    def _score_from_weights(self, weights: List[float]) -> float:
+    def _score_from_weights(self, weights: list[float]) -> float:
         """Convert weights to a concentration score using Herfindahl index.
         
         Args:

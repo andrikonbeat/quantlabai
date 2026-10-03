@@ -15,8 +15,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Final
+from typing import Any, Final
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field

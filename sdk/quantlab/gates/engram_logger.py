@@ -8,7 +8,7 @@ cross-campaign.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ async def record_gate_decision(
 
     topic_key = f"agent/research-director/{campaign_id}"
 
-    timestamp = decision.get("timestamp") or datetime.now(timezone.utc).isoformat()
+    timestamp = decision.get("timestamp") or datetime.now(UTC).isoformat()
     context_summary = {}
     if hasattr(ctx, "artifacts"):
         context_summary = {

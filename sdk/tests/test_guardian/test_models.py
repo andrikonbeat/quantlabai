@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from quantlab.guardian.base import BaseGuardian
 from quantlab.guardian.models import (
     GuardianResult,
     GuardianStatus,
@@ -12,7 +13,6 @@ from quantlab.guardian.models import (
     PortfolioState,
     StrategyState,
 )
-from quantlab.guardian.base import BaseGuardian
 
 
 class TestGuardianModels:

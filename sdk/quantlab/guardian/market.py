@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .base import BaseGuardian
-from .models import GuardianResult, GuardianType, GuardianStatus
+from .models import GuardianResult, GuardianStatus, GuardianType
 
 
 class MarketGuardian(BaseGuardian):

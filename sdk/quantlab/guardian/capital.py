@@ -6,7 +6,7 @@ import statistics
 from typing import Dict, List, Optional
 
 from .base import BaseGuardian
-from .models import GuardianResult, GuardianType, GuardianStatus
+from .models import GuardianResult, GuardianStatus, GuardianType
 
 
 class CapitalGuardian(BaseGuardian):
@@ -47,7 +47,7 @@ class CapitalGuardian(BaseGuardian):
                 guardian_type=GuardianType.CAPITAL,
                 status=GuardianStatus.RED,
                 score=0.0,
-                message=f"Failed to retrieve performance data: {str(e)}",
+                message=f"Failed to retrieve performance data: {e!s}",
             )
 
         if not performance_data:
@@ -66,7 +66,7 @@ class CapitalGuardian(BaseGuardian):
                 guardian_type=GuardianType.CAPITAL,
                 status=GuardianStatus.RED,
                 score=0.0,
-                message=f"Allocation calculation failed: {str(e)}",
+                message=f"Allocation calculation failed: {e!s}",
             )
 
         # Score based on allocation efficiency and diversification
@@ -78,7 +78,7 @@ class CapitalGuardian(BaseGuardian):
                 guardian_type=GuardianType.CAPITAL,
                 status=GuardianStatus.RED,
                 score=0.0,
-                message=f"Scoring failed: {str(e)}",
+                message=f"Scoring failed: {e!s}",
             )
 
         # Weighted average
@@ -112,14 +112,14 @@ class CapitalGuardian(BaseGuardian):
             message=message,
         )
 
-    def _get_strategy_performance(self) -> Dict[str, Dict[str, float]]:
+    def _get_strategy_performance(self) -> dict[str, dict[str, float]]:
         """Get strategy performance metrics from data provider.
         
         Returns:
             Dict mapping strategy names to performance metrics
         """
         # Try to get actual data
-        if hasattr(self.performance_data, 'get_strategy_performance') and callable(getattr(self.performance_data, 'get_strategy_performance')):
+        if hasattr(self.performance_data, 'get_strategy_performance') and callable(self.performance_data.get_strategy_performance):
             result = self.performance_data.get_strategy_performance()
             if isinstance(result, dict):
                 return result
@@ -162,8 +162,8 @@ class CapitalGuardian(BaseGuardian):
 
     def _calculate_allocation_scores(
         self, 
-        performance_data: Dict[str, Dict[str, float]]
-    ) -> Dict[str, float]:
+        performance_data: dict[str, dict[str, float]]
+    ) -> dict[str, float]:
         """Calculate allocation scores for each strategy.
         
         Args:
@@ -193,7 +193,7 @@ class CapitalGuardian(BaseGuardian):
         
         return scores
 
-    def _score_allocation_efficiency(self, allocation_scores: Dict[str, float]) -> float:
+    def _score_allocation_efficiency(self, allocation_scores: dict[str, float]) -> float:
         """Score based on how well capital is allocated to better strategies.
         
         Args:
@@ -235,7 +235,7 @@ class CapitalGuardian(BaseGuardian):
         # Convert from [-1,1] to [0,1] range
         return max(0.0, min(1.0, (similarity + 1) / 2))
 
-    def _score_allocation_diversification(self, allocation_scores: Dict[str, float]) -> float:
+    def _score_allocation_diversification(self, allocation_scores: dict[str, float]) -> float:
         """Score based on allocation diversification (using entropy).
         
         Args:

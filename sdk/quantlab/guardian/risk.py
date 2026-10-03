@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from .base import BaseGuardian
-from .models import GuardianResult, GuardianType, GuardianStatus
+from .models import GuardianResult, GuardianStatus, GuardianType
 
 
 class RiskGuardian(BaseGuardian):
@@ -36,7 +36,7 @@ class RiskGuardian(BaseGuardian):
                 guardian_type=GuardianType.RISK,
                 status=GuardianStatus.RED,
                 score=0.0,
-                message=f"Failed to retrieve risk metrics: {str(e)}",
+                message=f"Failed to retrieve risk metrics: {e!s}",
             )
 
         # Score individual components

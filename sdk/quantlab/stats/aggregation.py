@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 import pandas as pd
 
-from quantlab.readers.models import EquityPoint, Trade
 from quantlab.phase4.optimizer import WalkForwardCycle
+from quantlab.readers.models import EquityPoint, Trade
 from quantlab.stats.engine import StatisticsEngine
 from quantlab.stats.models import (
     AggregateStats,
@@ -53,7 +53,7 @@ class StatisticsAggregator:
 
     @staticmethod
     def aggregate_campaigns(
-        campaign_results: list["CampaignResult"],
+        campaign_results: list[CampaignResult],
     ) -> dict[str, AggregateStats]:
         """Aggregate metrics across multiple campaign results.
 
@@ -84,7 +84,6 @@ class StatisticsAggregator:
             "total_trades": [],
         }
 
-        from quantlab.stats.engine import StatisticsEngine
 
         engine = StatisticsEngine()
 
@@ -348,12 +347,10 @@ class StatisticsAggregator:
             peak = x.iloc[0]
             max_dd = 0.0
             for val in x:
-                if val > peak:
-                    peak = val
+                peak = max(peak, val)
                 if peak > 0:
                     dd = (peak - val) / peak * 100
-                    if dd > max_dd:
-                        max_dd = dd
+                    max_dd = max(max_dd, dd)
             return max_dd
 
         rolling_dd = eq_series.rolling(window=window).apply(max_dd_func, raw=False)
@@ -455,12 +452,10 @@ class StatisticsAggregator:
                     peak = x.iloc[0]
                     max_dd = 0.0
                     for val in x:
-                        if val > peak:
-                            peak = val
+                        peak = max(peak, val)
                         if peak > 0:
                             dd = (peak - val) / peak * 100
-                            if dd > max_dd:
-                                max_dd = dd
+                            max_dd = max(max_dd, dd)
                     return max_dd
 
                 rolling = eq_series.rolling(window=window).apply(max_dd_func, raw=False)
@@ -581,7 +576,7 @@ class StatisticsAggregator:
     def monte_carlo_bands(
         trades: list[Trade],
         n_simulations: int = 1000,
-        percentiles: Optional[list[int]] = None,
+        percentiles: list[int] | None = None,
         seed: int = 42,
     ) -> dict[int, float]:
         """Bootstrap resampling of trade PnL to estimate profit distribution.

@@ -171,11 +171,9 @@ class StatisticsEngine:
         max_dd = 0.0
 
         for point in equity:
-            if point.equity > peak:
-                peak = point.equity
+            peak = max(peak, point.equity)
             dd = (peak - point.equity) / peak * 100 if peak > 0 else 0.0
-            if dd > max_dd:
-                max_dd = dd
+            max_dd = max(max_dd, dd)
 
         return max_dd
 
@@ -256,11 +254,11 @@ class StatisticsEngine:
 
     def compute_all(
         self,
-        trades: Optional[list[Trade]] = None,
-        equity: Optional[list[EquityPoint]] = None,
-        returns: Optional[list[float]] = None,
-        cagr: Optional[float] = None,
-        net_profit: Optional[float] = None,
+        trades: list[Trade] | None = None,
+        equity: list[EquityPoint] | None = None,
+        returns: list[float] | None = None,
+        cagr: float | None = None,
+        net_profit: float | None = None,
         annual_factor: int = 252,
         risk_free_rate: float = 0.0,
     ) -> StatsResult:

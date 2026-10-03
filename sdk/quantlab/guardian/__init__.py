@@ -15,9 +15,9 @@ from .models import (
     StrategyState,
 )
 from .orchestrator import MetaGuardianOrchestrator
+from .portfolio import PortfolioGuardian
 from .quality import QualityGuardian
 from .risk import RiskGuardian
-from .portfolio import PortfolioGuardian
 
 __all__ = [
     # Models

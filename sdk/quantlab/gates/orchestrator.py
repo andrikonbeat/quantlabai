@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Awaitable, Callable, Dict
+from collections.abc import Awaitable, Callable
+from typing import Any, Dict
 
 from quantlab.gates.engram_logger import record_gate_decision
 from quantlab.gates.models import (
@@ -46,9 +47,9 @@ class HumanGateOrchestrator:
 
     def __init__(self, engram_save_fn: Any = None) -> None:
         self._engram_save_fn = engram_save_fn
-        self._callbacks: Dict[str, GateCallback] = {}
-        self._notifiers: Dict[str, Notifier] = {}
-        self._policies: Dict[str, GatePolicyConfig] = dict(DEFAULT_GATE_POLICIES)
+        self._callbacks: dict[str, GateCallback] = {}
+        self._notifiers: dict[str, Notifier] = {}
+        self._policies: dict[str, GatePolicyConfig] = dict(DEFAULT_GATE_POLICIES)
         self._default_notifier = ConsoleNotifier()
 
     # ── Registration ────────────────────────────────────────────────────────────
@@ -117,8 +118,8 @@ class HumanGateOrchestrator:
                 )
             else:
                 # No callback registered — treat as immediate timeout
-                raise asyncio.TimeoutError("No callback registered for gate")
-        except asyncio.TimeoutError:
+                raise TimeoutError("No callback registered for gate")
+        except TimeoutError:
             logger.warning(
                 "Gate '%s' timed out after %.1f h — applying fallback '%s'",
                 gate_id,

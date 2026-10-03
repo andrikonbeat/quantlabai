@@ -17,7 +17,6 @@ class BaseGuardian(ABC):
         Returns:
             GuardianResult: The result of the health check.
         """
-        pass
 
     @abstractmethod
     def guardian_type(self) -> GuardianType:
@@ -26,4 +25,3 @@ class BaseGuardian(ABC):
         Returns:
             GuardianType: The type of guardian this instance represents.
         """
-        pass

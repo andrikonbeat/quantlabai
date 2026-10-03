@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from quantlab.guardian.quality import QualityGuardian
 from quantlab.guardian.models import GuardianStatus, GuardianType
+from quantlab.guardian.quality import QualityGuardian
 
 
 class TestQualityGuardian:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+
 # Test that we can import the module
 def test_guardian_import():
     """Test that the guardian module can be imported."""
@@ -16,16 +17,16 @@ def test_guardian_submodule_imports():
         BaseGuardian,
         CapitalGuardian,
         ExecutionGuardian,
-        MarketGuardian,
-        QualityGuardian,
-        RiskGuardian,
-        MetaGuardianOrchestrator,
         GuardianResult,
         GuardianStatus,
         GuardianType,
-        PortfolioState,
-        StrategyState,
+        MarketGuardian,
         MetaGuardianConfig,
+        MetaGuardianOrchestrator,
+        PortfolioState,
+        QualityGuardian,
+        RiskGuardian,
+        StrategyState,
     )
     
     # Verify they're the right types
@@ -59,7 +60,7 @@ def test_guardian_can_create_instances():
     assert result.message == "test"
 
     # Test creating a MetaGuardianOrchestrator (with empty list for now)
-    from quantlab.guardian import MetaGuardianOrchestrator, MetaGuardianConfig
+    from quantlab.guardian import MetaGuardianConfig, MetaGuardianOrchestrator
     config = MetaGuardianConfig()
     orchestrator = MetaGuardianOrchestrator(config, [])
     assert isinstance(orchestrator, MetaGuardianOrchestrator)

@@ -32,7 +32,7 @@ class Notifier(ABC):
 class ConsoleNotifier(Notifier):
     """Logs notifications to the application log stream."""
 
-    async def send(self, message: str, **kwargs: Any) -> None:  # noqa: ARG002
+    async def send(self, message: str, **kwargs: Any) -> None:
         logger.info("[GATE NOTIFICATION] %s", message)
 
 
@@ -56,14 +56,13 @@ class WebhookNotifier(Notifier):
         try:
             import aiohttp
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.url,
-                    json=payload,
-                    headers=self.headers,
-                    timeout=aiohttp.ClientTimeout(total=self.timeout),
-                ):
-                    logger.info("Webhook notification sent to %s", self.url)
+            async with aiohttp.ClientSession() as session, session.post(
+                self.url,
+                json=payload,
+                headers=self.headers,
+                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            ):
+                logger.info("Webhook notification sent to %s", self.url)
         except ImportError:
             logger.info("[WEBHOOK NOTIFICATION] url=%s payload=%s", self.url, payload)
         except Exception as exc:  # noqa: BLE001
@@ -95,11 +94,12 @@ class EmailNotifier(Notifier):
         message: str,
         *,
         subject: str = "Gate Notification",
-        **kwargs: Any,  # noqa: ARG002
+        **kwargs: Any,
     ) -> None:
         try:
-            import aiosmtplib
             from email.message import EmailMessage
+
+            import aiosmtplib
 
             msg = EmailMessage()
             msg["From"] = self.from_addr
@@ -138,13 +138,12 @@ class SlackNotifier(Notifier):
         try:
             import aiohttp
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.webhook_url,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=self.timeout),
-                ):
-                    logger.info("Slack notification posted to %s", self.webhook_url)
+            async with aiohttp.ClientSession() as session, session.post(
+                self.webhook_url,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            ):
+                logger.info("Slack notification posted to %s", self.webhook_url)
         except ImportError:
             logger.info("[SLACK NOTIFICATION] %s", payload)
         except Exception as exc:  # noqa: BLE001
@@ -184,14 +183,13 @@ class MobilePushNotifier(Notifier):
                 return
             import aiohttp
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.endpoint,
-                    json=payload,
-                    headers=self.headers,
-                    timeout=aiohttp.ClientTimeout(total=self.timeout),
-                ):
-                    logger.info("Mobile push notification sent to %s", self.endpoint)
+            async with aiohttp.ClientSession() as session, session.post(
+                self.endpoint,
+                json=payload,
+                headers=self.headers,
+                timeout=aiohttp.ClientTimeout(total=self.timeout),
+            ):
+                logger.info("Mobile push notification sent to %s", self.endpoint)
         except ImportError:
             logger.info(
                 "[MOBILE PUSH NOTIFICATION] endpoint=%s payload=%s",

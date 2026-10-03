@@ -6,7 +6,7 @@ and GateInterceptorStage for recording gate outcomes.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -49,7 +49,7 @@ class GateDecision(BaseModel):
 
     gate_id: str = Field(..., description="Gate identifier")
     action: GateDecisionAction = Field(default=GateDecisionAction.APPROVE)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     reason: str = Field(default="")
     decided_by: str = Field(default="system")  # human, system, escalation
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -90,7 +90,7 @@ class GateContext(BaseModel):
     pipeline_name: str = Field(default="unknown")
     stage_name: str = Field(default="")
     context_artifacts: dict[str, Any] = Field(default_factory=dict)
-    triggered_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    triggered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     timeout_hours: float = Field(default=24.0, ge=0.1)
     fallback: FallbackPolicy = Field(default=FallbackPolicy.ESCALATE)
     escalate_to: str = Field(default="")

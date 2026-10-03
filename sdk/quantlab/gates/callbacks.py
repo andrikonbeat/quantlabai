@@ -31,8 +31,9 @@ import json
 import logging
 import re
 import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -231,7 +232,7 @@ class QuestionToolGateCallback:
                 return decision_file_to_gate_decision(decision_file, gate_id)
 
             if deadline is not None and time.monotonic() >= deadline:
-                raise asyncio.TimeoutError(
+                raise TimeoutError(
                     f"No decision file for gate {gate_id} (campaign {campaign_id}) "
                     f"within {self._timeout}s — fail closed."
                 )

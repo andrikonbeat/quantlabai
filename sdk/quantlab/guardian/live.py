@@ -11,9 +11,8 @@ REQ-40 scenario 2).
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from quantlab.guardian.feedback import FeedbackRecord, FeedbackSignals, record
 from quantlab.guardian.models import PortfolioState

@@ -14,17 +14,16 @@ no gate/flow fields, REQ-643), and flow integrity after a run (REQ-37).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 
+import quantlab.pipeline.stages as stages_pkg
 from quantlab.campaign.flow import PHASES, STAGE_FOR_PHASE, assert_flow
 from quantlab.guardian.agent import execute_guardian_directive
 from quantlab.guardian.feedback import FeedbackRecord, GuardianDirective
 from quantlab.guardian.models import PortfolioState
 from quantlab.readers.models import EquityPoint
-
-import quantlab.pipeline.stages as stages_pkg
 
 
 class _ConcreteProvider:
@@ -110,7 +109,7 @@ class _AlertRecord:
 def _point(equity: float) -> EquityPoint:
     """A single live-demo equity point (REQ-34 live feed shape)."""
     return EquityPoint(
-        timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=timezone.utc),
+        timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC),
         equity=equity,
     )
 
@@ -295,7 +294,7 @@ class TestFlowIntegrityAfterRun:
         WHEN it is imported
         THEN it exposes no gate machinery — a directive cannot approve or
         gate the flow by construction (REQ-643)."""
-        import quantlab.guardian.agent as agent
+        from quantlab.guardian import agent
 
         assert not hasattr(agent, "HumanGateOrchestrator")
         assert not hasattr(agent, "GateDecision")

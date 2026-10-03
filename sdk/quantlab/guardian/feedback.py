@@ -13,10 +13,10 @@ because it never touches ``quantlab.gates``. Persistence is the caller's job
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Literal, Sequence
+from datetime import UTC, datetime, timezone
+from typing import Any, Literal
 from uuid import uuid4
 
 from quantlab.readers.models import EquityPoint
@@ -55,7 +55,7 @@ class FeedbackRecord:
 
     campaign_id: str
     signals: FeedbackSignals
-    recorded_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    recorded_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     record_id: str = field(default_factory=lambda: uuid4().hex)
     source: str = "metaguardian"
 
@@ -103,7 +103,7 @@ def record(
     return FeedbackRecord(
         campaign_id=campaign_id,
         signals=signals,
-        recorded_at=recorded_at or datetime.now(timezone.utc),
+        recorded_at=recorded_at or datetime.now(UTC),
         source=source,
     )
 

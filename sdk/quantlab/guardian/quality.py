@@ -6,7 +6,7 @@ import statistics
 from typing import Dict, Optional
 
 from .base import BaseGuardian
-from .models import GuardianResult, GuardianType, GuardianStatus
+from .models import GuardianResult, GuardianStatus, GuardianType
 
 
 class QualityGuardian(BaseGuardian):
@@ -39,7 +39,7 @@ class QualityGuardian(BaseGuardian):
                 guardian_type=GuardianType.QUALITY,
                 status=GuardianStatus.RED,
                 score=0.0,
-                message=f"Failed to retrieve health scores: {str(e)}",
+                message=f"Failed to retrieve health scores: {e!s}",
             )
 
         if not health_scores:
@@ -107,7 +107,7 @@ class QualityGuardian(BaseGuardian):
             message=message,
         )
 
-    def _get_health_scores(self) -> Dict[str, float]:
+    def _get_health_scores(self) -> dict[str, float]:
         """Get health scores from the health score system.
         
         Returns:

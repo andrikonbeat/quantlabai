@@ -7,7 +7,7 @@ import statistics
 from typing import Dict, List, Optional
 
 from .base import BaseGuardian
-from .models import GuardianResult, GuardianType, GuardianStatus
+from .models import GuardianResult, GuardianStatus, GuardianType
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class ExecutionGuardian(BaseGuardian):
                 guardian_type=GuardianType.EXECUTION,
                 status=GuardianStatus.RED,
                 score=0.0,
-                message=f"Broker connection check failed: {str(e)}",
+                message=f"Broker connection check failed: {e!s}",
             )
 
         if not connected:
@@ -169,7 +169,7 @@ class ExecutionGuardian(BaseGuardian):
         
         # Fallback: try a simple attribute
         if hasattr(self.broker, 'connected'):
-            conn_attr = getattr(self.broker, 'connected')
+            conn_attr = self.broker.connected
             if isinstance(conn_attr, bool):
                 return conn_attr
             elif isinstance(conn_attr, str):
@@ -209,7 +209,7 @@ class ExecutionGuardian(BaseGuardian):
         
         # Fallback to attribute
         if latency_ms is None and hasattr(self.broker, 'latency'):
-            latency_attr = getattr(self.broker, 'latency')
+            latency_attr = self.broker.latency
             if isinstance(latency_attr, (int, float)) and latency_attr >= 0:
                 latency_ms = float(latency_attr)
         
@@ -241,7 +241,7 @@ class ExecutionGuardian(BaseGuardian):
                     # Slippage in bps: 0-3 bps excellent, 10+ bps concerning
                     return max(0.0, min(1.0, 1.0 - (slippage_data / 15.0)))
             elif hasattr(self.cost_collector, 'slippage'):
-                slippage_attr = getattr(self.cost_collector, 'slippage')
+                slippage_attr = self.cost_collector.slippage
                 if isinstance(slippage_attr, (int, float)) and slippage_attr >= 0:
                     return max(0.0, min(1.0, 1.0 - (slippage_attr / 15.0)))
         except Exception:

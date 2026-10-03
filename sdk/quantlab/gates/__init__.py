@@ -7,14 +7,13 @@ and Engram audit logging.
 
 from quantlab.gates.models import (
     DEFAULT_GATE_POLICIES,
+    HUMAN_GATE_IDS,
     FallbackPolicy,
     GateContext,
     GateDecision,
     GateDecisionAction,
     GatePolicyConfig,
-    HUMAN_GATE_IDS,
 )
-from quantlab.gates.orchestrator import HumanGateOrchestrator
 from quantlab.gates.notifiers import (
     ConsoleNotifier,
     EmailNotifier,
@@ -22,18 +21,19 @@ from quantlab.gates.notifiers import (
     SlackNotifier,
     WebhookNotifier,
 )
+from quantlab.gates.orchestrator import HumanGateOrchestrator
 
 __all__ = [
     "DEFAULT_GATE_POLICIES",
+    "HUMAN_GATE_IDS",
+    "ConsoleNotifier",
+    "EmailNotifier",
     "FallbackPolicy",
     "GateContext",
     "GateDecision",
     "GateDecisionAction",
     "GatePolicyConfig",
-    "HUMAN_GATE_IDS",
     "HumanGateOrchestrator",
-    "ConsoleNotifier",
-    "EmailNotifier",
     "Notifier",
     "SlackNotifier",
     "WebhookNotifier",

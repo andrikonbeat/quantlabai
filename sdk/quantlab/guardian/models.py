@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from enum import Enum
-from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
+from enum import Enum
 from typing import Dict
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GuardianType(str, Enum):
@@ -58,7 +59,7 @@ class MetaGuardianConfig(BaseModel):
     """Configuration for the MetaGuardian orchestrator."""
     model_config = ConfigDict(frozen=True)
 
-    weights: Dict[GuardianType, float] = Field(
+    weights: dict[GuardianType, float] = Field(
         default_factory=lambda: {
             GuardianType.MARKET: 0.15,
             GuardianType.RISK: 0.30,
@@ -69,7 +70,7 @@ class MetaGuardianConfig(BaseModel):
         }
     )
 
-    thresholds: Dict[str, float] = Field(
+    thresholds: dict[str, float] = Field(
         default_factory=lambda: {
             "defensive_drawdown": 0.10,
             "quarantine_drawdown": 0.20,
