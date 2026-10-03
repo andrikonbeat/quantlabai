@@ -171,9 +171,7 @@ class TestBuildingBlockValidator:
         return BuildingBlock(
             name=name,
             indicator=IndicatorConfig(name="RSI", params={"period": 14}),
-            entry=EntryRule(
-                description="RSI oversold", conditions=["rsi(14) < 30"]
-            ),
+            entry=EntryRule(description="RSI oversold", conditions=["rsi(14) < 30"]),
         )
 
     def test_valid_blocks_pass(self, validator: BuildingBlockValidator) -> None:
@@ -189,9 +187,7 @@ class TestBuildingBlockValidator:
         blocks = [
             BuildingBlock(
                 name="bad",
-                indicator=IndicatorConfig(
-                    name="UNKNOWN_INDICATOR", params={}
-                ),
+                indicator=IndicatorConfig(name="UNKNOWN_INDICATOR", params={}),
             )
         ]
         with pytest.raises(ValueError, match="Unknown indicator"):
@@ -263,9 +259,7 @@ class TestBuildingBlockValidator:
         with pytest.raises(ValueError, match="Duplicate"):
             validator.validate(blocks, [])
 
-    def test_empty_block_list_passes(
-        self, validator: BuildingBlockValidator
-    ) -> None:
+    def test_empty_block_list_passes(self, validator: BuildingBlockValidator) -> None:
         """An empty block list with empty strategies passes."""
         validator.validate([], [])  # should not raise
 
@@ -316,9 +310,7 @@ class TestHypothesisBuilder:
     ) -> None:
         """build() with rule mode dispatches to RuleMode and returns valid blocks."""
         builder = HypothesisBuilder(mode="rule")
-        hyp = HypothesisConfig(
-            name="test", description="mean-reversion EURUSD"
-        )
+        hyp = HypothesisConfig(name="test", description="mean-reversion EURUSD")
         blocks, strategies = await builder.build([hyp])
         assert len(blocks) >= 1
         assert len(strategies) >= 1
@@ -504,29 +496,31 @@ class TestLLMModeParse:
     def test_parse_valid_response(self) -> None:
         """Valid JSON response produces BuildingBlock and Strategy instances."""
         llm_mode = LLMMode(LLMConfig(provider="openai"))
-        response = json.dumps({
-            "building_blocks": [
-                {
-                    "name": "RSI_14",
-                    "indicator": {"name": "RSI", "params": {"period": 14}},
-                    "entry": {
-                        "description": "RSI oversold",
-                        "conditions": ["rsi(14) < 30"],
+        response = json.dumps(
+            {
+                "building_blocks": [
+                    {
+                        "name": "RSI_14",
+                        "indicator": {"name": "RSI", "params": {"period": 14}},
+                        "entry": {
+                            "description": "RSI oversold",
+                            "conditions": ["rsi(14) < 30"],
+                        },
+                        "exit": {
+                            "description": "RSI overbought",
+                            "conditions": ["rsi(14) > 70"],
+                        },
                     },
-                    "exit": {
-                        "description": "RSI overbought",
-                        "conditions": ["rsi(14) > 70"],
+                ],
+                "strategies": [
+                    {
+                        "name": "MomentumStrategy",
+                        "direction": "LONG",
+                        "building_blocks": ["RSI_14"],
                     },
-                },
-            ],
-            "strategies": [
-                {
-                    "name": "MomentumStrategy",
-                    "direction": "LONG",
-                    "building_blocks": ["RSI_14"],
-                },
-            ],
-        })
+                ],
+            }
+        )
         blocks, strategies = llm_mode._parse_response(response)
 
         assert len(blocks) == 1
@@ -545,30 +539,32 @@ class TestLLMModeParse:
     ) -> None:
         """Multiple building blocks and strategies are parsed correctly."""
         llm_mode = LLMMode(LLMConfig(provider="openai"))
-        response = json.dumps({
-            "building_blocks": [
-                {
-                    "name": "RSI_14",
-                    "indicator": {"name": "RSI", "params": {"period": 14}},
-                },
-                {
-                    "name": "EMA_200",
-                    "indicator": {"name": "EMA", "params": {"period": 200}},
-                },
-            ],
-            "strategies": [
-                {
-                    "name": "LongStrategy",
-                    "direction": "LONG",
-                    "building_blocks": ["RSI_14", "EMA_200"],
-                },
-                {
-                    "name": "ShortStrategy",
-                    "direction": "SHORT",
-                    "building_blocks": ["RSI_14"],
-                },
-            ],
-        })
+        response = json.dumps(
+            {
+                "building_blocks": [
+                    {
+                        "name": "RSI_14",
+                        "indicator": {"name": "RSI", "params": {"period": 14}},
+                    },
+                    {
+                        "name": "EMA_200",
+                        "indicator": {"name": "EMA", "params": {"period": 200}},
+                    },
+                ],
+                "strategies": [
+                    {
+                        "name": "LongStrategy",
+                        "direction": "LONG",
+                        "building_blocks": ["RSI_14", "EMA_200"],
+                    },
+                    {
+                        "name": "ShortStrategy",
+                        "direction": "SHORT",
+                        "building_blocks": ["RSI_14"],
+                    },
+                ],
+            }
+        )
         blocks, strategies = llm_mode._parse_response(response)
 
         assert len(blocks) == 2
@@ -611,24 +607,26 @@ class TestLLMModeParse:
     ) -> None:
         """Building blocks without entry/exit rules parse correctly (optional)."""
         llm_mode = LLMMode(LLMConfig(provider="openai"))
-        response = json.dumps({
-            "building_blocks": [
-                {
-                    "name": "BB_20",
-                    "indicator": {
-                        "name": "BB",
-                        "params": {"period": 20, "deviation": 2.0},
+        response = json.dumps(
+            {
+                "building_blocks": [
+                    {
+                        "name": "BB_20",
+                        "indicator": {
+                            "name": "BB",
+                            "params": {"period": 20, "deviation": 2.0},
+                        },
                     },
-                },
-            ],
-            "strategies": [
-                {
-                    "name": "S1",
-                    "direction": "BOTH",
-                    "building_blocks": ["BB_20"],
-                },
-            ],
-        })
+                ],
+                "strategies": [
+                    {
+                        "name": "S1",
+                        "direction": "BOTH",
+                        "building_blocks": ["BB_20"],
+                    },
+                ],
+            }
+        )
         blocks, strategies = llm_mode._parse_response(response)
 
         assert len(blocks) == 1
@@ -652,20 +650,21 @@ class TestHypothesisBuilderLLMFallback:
             llm_config=LLMConfig(provider="openai"),
         )
         with patch.object(builder, "_llm_mode") as mock_llm:
-            mock_llm.build = AsyncMock(
-                side_effect=Exception("LLM API error")
-            )
+            mock_llm.build = AsyncMock(side_effect=Exception("LLM API error"))
 
-            hyp = HypothesisConfig(
-                name="test", description="mean-reversion EURUSD"
-            )
+            hyp = HypothesisConfig(name="test", description="mean-reversion EURUSD")
             blocks, strategies = await builder.build([hyp])
 
             # Should return valid rule-mode output
             assert len(blocks) >= 1
             assert blocks[0].indicator.name in {
-                "RSI", "BB", "EMA", "MACD", "ATR",
-                "Donchian", "Volume",
+                "RSI",
+                "BB",
+                "EMA",
+                "MACD",
+                "ATR",
+                "Donchian",
+                "Volume",
             }
 
     @pytest.mark.asyncio
@@ -679,14 +678,10 @@ class TestHypothesisBuilderLLMFallback:
         )
         with patch.object(builder, "_llm_mode") as mock_llm:
             mock_llm.build = AsyncMock(
-                side_effect=ImportError(
-                    "openai SDK is not installed"
-                ),
+                side_effect=ImportError("openai SDK is not installed"),
             )
 
-            hyp = HypothesisConfig(
-                name="test", description="breakout with volume"
-            )
+            hyp = HypothesisConfig(name="test", description="breakout with volume")
             blocks, strategies = await builder.build([hyp])
 
             assert len(blocks) >= 1
@@ -705,15 +700,9 @@ class TestHypothesisBuilderLLMFallback:
             llm_config=LLMConfig(provider="openai"),
         )
         with patch.object(builder, "_llm_mode") as mock_llm:
-            mock_llm.build = AsyncMock(
-                side_effect=Exception("API error")
-            )
-            with patch(
-                "quantlab.agents.hypothesis_builder.logger"
-            ) as mock_logger:
-                hyp = HypothesisConfig(
-                    name="test", description="momentum"
-                )
+            mock_llm.build = AsyncMock(side_effect=Exception("API error"))
+            with patch("quantlab.agents.hypothesis_builder.logger") as mock_logger:
+                hyp = HypothesisConfig(name="test", description="momentum")
                 await builder.build([hyp])
 
                 mock_logger.warning.assert_called_once()
@@ -730,15 +719,11 @@ class TestHypothesisBuilderLLMFallback:
         expected_blocks = [
             BuildingBlock(
                 name="RSI_14",
-                indicator=IndicatorConfig(
-                    name="RSI", params={"period": 14}
-                ),
+                indicator=IndicatorConfig(name="RSI", params={"period": 14}),
             ),
         ]
         expected_strategies = [
-            Strategy(
-                name="S1", building_blocks=["RSI_14"]
-            ),
+            Strategy(name="S1", building_blocks=["RSI_14"]),
         ]
 
         with patch.object(builder, "_llm_mode") as mock_llm:
@@ -746,9 +731,7 @@ class TestHypothesisBuilderLLMFallback:
                 return_value=(expected_blocks, expected_strategies),
             )
 
-            hyp = HypothesisConfig(
-                name="test", description="momentum"
-            )
+            hyp = HypothesisConfig(name="test", description="momentum")
             blocks, strategies = await builder.build([hyp])
 
             assert blocks == expected_blocks
@@ -760,9 +743,7 @@ class TestHypothesisBuilderLLMFallback:
     ) -> None:
         """mode='llm' but no LLMConfig → uses rule mode."""
         builder = HypothesisBuilder(mode="llm")
-        hyp = HypothesisConfig(
-            name="test", description="mean-reversion EURUSD"
-        )
+        hyp = HypothesisConfig(name="test", description="mean-reversion EURUSD")
         blocks, strategies = await builder.build([hyp])
         assert len(blocks) >= 1
         # Should have RSI (from rule mode fallback)
@@ -798,9 +779,7 @@ class TestHypothesisBuilderLLMModeScenario:
         expected_blocks = [
             BuildingBlock(
                 name="RSI_14",
-                indicator=IndicatorConfig(
-                    name="RSI", params={"period": 14}
-                ),
+                indicator=IndicatorConfig(name="RSI", params={"period": 14}),
                 entry={
                     "description": "RSI oversold",
                     "conditions": ["rsi(14) < 30"],
@@ -832,16 +811,12 @@ class TestHypothesisBuilderLLMModeScenario:
     ) -> None:
         """Per-call mode='llm' overrides construction-time mode='rule'."""
         builder = HypothesisBuilder(mode="rule")
-        hyp = HypothesisConfig(
-            name="test", description="custom indicator"
-        )
+        hyp = HypothesisConfig(name="test", description="custom indicator")
 
         expected_blocks = [
             BuildingBlock(
                 name="ATR_14",
-                indicator=IndicatorConfig(
-                    name="ATR", params={"period": 14}
-                ),
+                indicator=IndicatorConfig(name="ATR", params={"period": 14}),
             ),
         ]
         expected_strategies = [
@@ -855,9 +830,7 @@ class TestHypothesisBuilderLLMModeScenario:
             mock_llm.build = AsyncMock(
                 return_value=(expected_blocks, expected_strategies),
             )
-            blocks, strategies = await builder.build(
-                [hyp], mode="llm"
-            )
+            blocks, strategies = await builder.build([hyp], mode="llm")
 
             assert blocks == expected_blocks
             assert strategies == expected_strategies
@@ -871,9 +844,7 @@ class TestHypothesisBuilderLLMModeScenario:
             mode="llm",
             llm_config=LLMConfig(provider="openai"),
         )
-        hyp = HypothesisConfig(
-            name="test", description="mean-reversion"
-        )
+        hyp = HypothesisConfig(name="test", description="mean-reversion")
         # Should use rule even though construction mode is llm
         blocks, strategies = await builder.build([hyp], mode="rule")
 
@@ -889,25 +860,21 @@ class TestHypothesisBuilderLLMModeScenario:
             mode="llm",
             llm_config=LLMConfig(provider="openai"),
         )
-        h1 = HypothesisConfig(
-            name="h1", description="mean-reversion"
-        )
-        h2 = HypothesisConfig(
-            name="h2", description="momentum"
-        )
+        h1 = HypothesisConfig(name="h1", description="mean-reversion")
+        h2 = HypothesisConfig(name="h2", description="momentum")
 
         with patch.object(builder, "_llm_mode") as mock_llm:
             mock_llm.build = AsyncMock(
                 return_value=(
-                    [BuildingBlock(
-                        name="RSI_14",
-                        indicator=IndicatorConfig(
-                            name="RSI", params={"period": 14}
-                        ),
-                    )],
-                    [Strategy(
-                        name="S1", building_blocks=["RSI_14"]
-                    )],
+                    [
+                        BuildingBlock(
+                            name="RSI_14",
+                            indicator=IndicatorConfig(
+                                name="RSI", params={"period": 14}
+                            ),
+                        )
+                    ],
+                    [Strategy(name="S1", building_blocks=["RSI_14"])],
                 ),
             )
             blocks, strategies = await builder.build([h1, h2])
@@ -928,23 +895,19 @@ class TestHypothesisBuilderLLMModeScenario:
         with patch.object(builder, "_llm_mode") as mock_llm:
             mock_llm.build = AsyncMock(
                 return_value=(
-                    [BuildingBlock(
-                        name="RSI_14",
-                        indicator=IndicatorConfig(
-                            name="RSI", params={"period": 14}
-                        ),
-                    )],
-                    [Strategy(
-                        name="S1", building_blocks=["RSI_14"]
-                    )],
+                    [
+                        BuildingBlock(
+                            name="RSI_14",
+                            indicator=IndicatorConfig(
+                                name="RSI", params={"period": 14}
+                            ),
+                        )
+                    ],
+                    [Strategy(name="S1", building_blocks=["RSI_14"])],
                 ),
             )
-            with patch.object(
-                builder, "_validator"
-            ) as mock_validator:
-                hyp = HypothesisConfig(
-                    name="test", description="momentum"
-                )
+            with patch.object(builder, "_validator") as mock_validator:
+                hyp = HypothesisConfig(name="test", description="momentum")
                 await builder.build([hyp])
 
                 mock_validator.validate.assert_called_once()
@@ -982,15 +945,15 @@ class TestHypothesisBuilderLLMModeScenario:
         with patch.object(builder, "_llm_mode") as mock_llm:
             mock_llm.build = AsyncMock(
                 return_value=(
-                    [BuildingBlock(
-                        name="RSI_14",
-                        indicator=IndicatorConfig(
-                            name="RSI", params={"period": 14}
-                        ),
-                    )],
-                    [Strategy(
-                        name="S1", building_blocks=["RSI_14"]
-                    )],
+                    [
+                        BuildingBlock(
+                            name="RSI_14",
+                            indicator=IndicatorConfig(
+                                name="RSI", params={"period": 14}
+                            ),
+                        )
+                    ],
+                    [Strategy(name="S1", building_blocks=["RSI_14"])],
                 ),
             )
             blocks, strategies = await builder.build(
@@ -1017,9 +980,7 @@ class TestHypothesisBuilderLLMModeScenario:
         blocks = [
             BuildingBlock(
                 name="RSI_14",
-                indicator=IndicatorConfig(
-                    name="RSI", params={"period": 14}
-                ),
+                indicator=IndicatorConfig(name="RSI", params={"period": 14}),
             ),
             BuildingBlock(
                 name="BB_20",
@@ -1040,9 +1001,7 @@ class TestHypothesisBuilderLLMModeScenario:
             mock_llm.build = AsyncMock(
                 return_value=(blocks, strategies),
             )
-            result_blocks, result_strategies = await builder.build(
-                [hyp]
-            )
+            result_blocks, result_strategies = await builder.build([hyp])
 
             assert len(result_blocks) == 2
             assert len(result_strategies) == 1
@@ -1084,20 +1043,22 @@ class TestLLMModePromptEdgeCases:
     ) -> None:
         """Strategy without direction defaults to BOTH."""
         llm_mode = LLMMode(LLMConfig(provider="openai"))
-        response = json.dumps({
-            "building_blocks": [
-                {
-                    "name": "RSI_14",
-                    "indicator": {"name": "RSI", "params": {"period": 14}},
-                },
-            ],
-            "strategies": [
-                {
-                    "name": "DefaultStrategy",
-                    "building_blocks": ["RSI_14"],
-                },
-            ],
-        })
+        response = json.dumps(
+            {
+                "building_blocks": [
+                    {
+                        "name": "RSI_14",
+                        "indicator": {"name": "RSI", "params": {"period": 14}},
+                    },
+                ],
+                "strategies": [
+                    {
+                        "name": "DefaultStrategy",
+                        "building_blocks": ["RSI_14"],
+                    },
+                ],
+            }
+        )
         _, strategies = llm_mode._parse_response(response)
         assert strategies[0].direction == StrategyDirection.BOTH
 
@@ -1106,21 +1067,23 @@ class TestLLMModePromptEdgeCases:
     ) -> None:
         """Lowercase direction is normalised to uppercase enum."""
         llm_mode = LLMMode(LLMConfig(provider="openai"))
-        response = json.dumps({
-            "building_blocks": [
-                {
-                    "name": "RSI_14",
-                    "indicator": {"name": "RSI", "params": {"period": 14}},
-                },
-            ],
-            "strategies": [
-                {
-                    "name": "LongStrategy",
-                    "direction": "long",
-                    "building_blocks": ["RSI_14"],
-                },
-            ],
-        })
+        response = json.dumps(
+            {
+                "building_blocks": [
+                    {
+                        "name": "RSI_14",
+                        "indicator": {"name": "RSI", "params": {"period": 14}},
+                    },
+                ],
+                "strategies": [
+                    {
+                        "name": "LongStrategy",
+                        "direction": "long",
+                        "building_blocks": ["RSI_14"],
+                    },
+                ],
+            }
+        )
         _, strategies = llm_mode._parse_response(response)
         assert strategies[0].direction == StrategyDirection.LONG
 
@@ -1129,28 +1092,30 @@ class TestLLMModePromptEdgeCases:
     ) -> None:
         """Block with entry but no exit parses correctly."""
         llm_mode = LLMMode(LLMConfig(provider="openai"))
-        response = json.dumps({
-            "building_blocks": [
-                {
-                    "name": "EntryOnly",
-                    "indicator": {
-                        "name": "Donchian",
-                        "params": {"period": 20},
+        response = json.dumps(
+            {
+                "building_blocks": [
+                    {
+                        "name": "EntryOnly",
+                        "indicator": {
+                            "name": "Donchian",
+                            "params": {"period": 20},
+                        },
+                        "entry": {
+                            "description": "Breakout entry",
+                            "conditions": ["high > donchian_high(20)"],
+                        },
                     },
-                    "entry": {
-                        "description": "Breakout entry",
-                        "conditions": ["high > donchian_high(20)"],
+                ],
+                "strategies": [
+                    {
+                        "name": "S1",
+                        "direction": "LONG",
+                        "building_blocks": ["EntryOnly"],
                     },
-                },
-            ],
-            "strategies": [
-                {
-                    "name": "S1",
-                    "direction": "LONG",
-                    "building_blocks": ["EntryOnly"],
-                },
-            ],
-        })
+                ],
+            }
+        )
         blocks, _ = llm_mode._parse_response(response)
         assert blocks[0].entry is not None
         assert blocks[0].entry.conditions == [
