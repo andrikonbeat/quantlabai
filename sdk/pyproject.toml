@@ -88,6 +88,16 @@ dev = [
     # suite is runnable. Note: this means CI no longer exercises the
     # no-backend degradation branch.
     "plotly>=5.18",
+    # Type stubs for two runtime deps that ship none. Without these, mypy
+    # --strict reports 26 "Library stubs not installed for yaml" + 7 for
+    # pandas, and the only ways to silence those are a blanket
+    # ignore_missing_imports (which would stop checking *every* other
+    # import too) or pinning the packages to Any. Real stubs are ~1.5 MB
+    # total and give genuine checking: PyYAML's API is small (18 .pyi
+    # files), pandas is large (184) because DataFrame genuinely is.
+    # Measured effect on the baseline: 736 -> 696 errors, no new ones.
+    "types-PyYAML>=6.0",
+    "pandas-stubs>=3.0",
 ]
 reporting = [
     "plotly>=5.18",
@@ -109,3 +119,42 @@ include = ["quantlab*"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+
+# mypy is invoked as `mypy quantlab --strict` from ./sdk by the lint job.
+# `strict = true` here restates that in config so the result does not depend
+# on which flags the caller remembered to pass.
+[tool.mypy]
+strict = true
+
+# Modules with no available stubs and no mypy plugin. Listed one by one on
+# purpose: a bare `ignore_missing_imports = true` under [tool.mypy] would
+# disable resolution checking for *every* import in the package, which is
+# strictly worse than the problem it solves. Each entry is a real dependency
+# that genuinely ships no type information.
+#
+# `quantlab.license.manager` is the odd one out: first-party, but optional.
+# builder_agent.py imports it inside a try/except ImportError and falls back to
+# probing $SQX_LICENSE_PATH / ~/.sqx/license.key, so the module is expected to
+# be absent at runtime. Without this override mypy reports it as a missing
+# module even though the ImportError is the intended control flow.
+#
+# Two distinct mypy messages land here and both need the override:
+#   "Cannot find implementation or library stub"      -> not installed at all
+#   "installed, but missing library stubs or py.typed" -> installed, untyped
+# The second group (plotly, yfinance, pandas_datareader, ta, feedparser) is easy
+# to miss when grepping only for the first wording.
+[[tool.mypy.overrides]]
+module = [
+    "aiohttp.*",
+    "aiosmtplib.*",
+    "feedparser",
+    "matplotlib.*",
+    "pandas_datareader",
+    "plotly.*",
+    "portalocker.*",
+    "sentence_transformers.*",
+    "ta.*",
+    "yfinance",
+    "quantlab.license.manager",
+]
+ignore_missing_imports = true

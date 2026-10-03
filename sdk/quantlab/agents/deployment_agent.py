@@ -295,7 +295,7 @@ class DeploymentAgent(DeployStage):
         Performs a structural sanity check if the editor is unavailable.
         """
         try:
-            from quantlab.cfx.editor import validate_cfx  # type: ignore[import]
+            from quantlab.cfx.editor import validate_cfx
 
             result = validate_cfx(portfolio_cfx)
             if isinstance(result, dict):
@@ -340,7 +340,7 @@ class DeploymentAgent(DeployStage):
         manifest — the placeholder ``PK\\x05\\x06`` stub is gone.
         """
         try:
-            from jforex_deploy import package as jforex_package  # type: ignore[import]
+            from jforex_deploy import package as jforex_package
 
             jar_path = output_dir / "portfolio.jar"
             jforex_package(
@@ -411,7 +411,7 @@ class DeploymentAgent(DeployStage):
         """Generate a JCloud deployment manifest."""
         try:
             from jforex_deploy import (
-                jcloud_config as jcloud_gen,  # type: ignore[import]
+                jcloud_config as jcloud_gen,
             )
 
             config = jcloud_gen(
@@ -453,7 +453,7 @@ class DeploymentAgent(DeployStage):
     ) -> DeploymentResult:
         """Upload artifacts to JCloud and start instances."""
         try:
-            from jforex_deploy import deploy as jforex_deploy  # type: ignore[import]
+            from jforex_deploy import deploy as jforex_deploy
 
             response = jforex_deploy(
                 jar_path=str(jforex_package),
