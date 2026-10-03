@@ -16,7 +16,10 @@ import logging
 from typing import Any
 
 from quantlab.agents.llm_research_agent import LLMResearchAgent
-from quantlab.agents.parameter_validator import ParameterValidator, ValidationResult
+from quantlab.agents.parameter_validator import (
+    ParameterValidator,
+    ValidationResult as ValidationResult,
+)
 from quantlab.dsl.models import (
     BuildingBlock,
     EntryRule,
@@ -224,4 +227,4 @@ class LLMMode:
             return blocks
 
 
-__all__ = ["LLMMode"]
+__all__ = ["LLMMode", "ValidationResult"]

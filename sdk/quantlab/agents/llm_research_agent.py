@@ -593,7 +593,10 @@ class LLMResearchAgent:
 
         if provider == "openai":
             try:
-                import openai
+                # Availability probe: the name is bound but never used. The redundant
+                # alias marks it intentional so `ruff --fix` cannot delete the check
+                # and silently remove the friendly "install openai" error below.
+                import openai as openai
             except ImportError:
                 raise ImportError(
                     "openai SDK is not installed. Install with: pip install openai"

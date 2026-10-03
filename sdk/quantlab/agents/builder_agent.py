@@ -12,7 +12,6 @@ import asyncio
 import json
 import logging
 import os
-import time
 import urllib.parse
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Re-exported for BuilderAgent callers (parameter-justification-matrix REQ-1):
 # raised when a manual override lacks its rationale, blocking the run.
-from quantlab.agents.parameter_matrix import ParameterMatrixError
+from quantlab.agents.parameter_matrix import ParameterMatrixError as ParameterMatrixError
 
 
 def _try_int(value: str, default: int) -> int:
@@ -186,7 +185,7 @@ class BuilderAgent:
             ConfigurationError: When ``strict_kb`` is True and any tab
                 has no KB entries.
         """
-        from quantlab.knowledge.kb.models import KB_TABS
+        from quantlab.knowledge.kb.models import KB_TABS as KB_TABS
         from quantlab.knowledge.kb.store import KbStore
         from quantlab.pipeline.errors import ConfigurationError
 
@@ -583,7 +582,7 @@ class BuilderAgent:
         log: dict[str, Any] = {"phase": "license", "status": "started"}
 
         try:
-            from quantlab.tools.exceptions import LicenseError
+            from quantlab.tools.exceptions import LicenseError as LicenseError
 
             # Try license_manager if available
             try:

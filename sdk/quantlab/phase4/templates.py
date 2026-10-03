@@ -6,10 +6,9 @@ Generates CFX XML via cfx-editor models and CfxWriter.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from quantlab.cfx import BuildTask, CfxArchive, CfxWriter
-from quantlab.cfx.dom import set_commission_settings, set_spread_settings
+from quantlab.cfx.dom import set_spread_settings as set_spread_settings
 from quantlab.cfx.models import (
     AdvancedRankingCondition,
     AutomaticPortfolioBuilderConfig,

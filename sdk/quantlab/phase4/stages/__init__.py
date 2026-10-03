@@ -23,7 +23,7 @@ from quantlab.dsl.parser import parse_yaml
 from quantlab.knowledge.conformance import assert_conformance
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.pipeline.base import PipelineContext
-from quantlab.pipeline.models import StageResult, StageStatus
+from quantlab.pipeline.models import StageResult as StageResult, StageStatus as StageStatus
 from quantlab.pipeline.stages import (
     CampaignStage,
     ComputeStatsStage,

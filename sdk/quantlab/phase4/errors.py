@@ -5,7 +5,6 @@ All Phase 4 exceptions inherit from Phase4Error for easy catching.
 
 from __future__ import annotations
 
-from typing import Optional
 
 
 class Phase4Error(Exception):

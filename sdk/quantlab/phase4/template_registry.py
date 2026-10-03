@@ -8,7 +8,6 @@ so lookup is O(1) and case-insensitive per the spec.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Type
 
 
 class DuplicateTemplateError(Exception):

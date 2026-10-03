@@ -14,11 +14,10 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.daemon import SQXDaemonManager
-from quantlab.phase4.errors import PortfolioError, PortfolioMasterError
+from quantlab.phase4.errors import PortfolioError as PortfolioError, PortfolioMasterError
 from quantlab.phase4.templates import CfxTemplateBuilder
 
 # ── Result dataclasses ─────────────────────────────────────────────────────────

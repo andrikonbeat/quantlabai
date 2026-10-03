@@ -7,11 +7,10 @@ Reduces CLI boilerplate by ~60% vs manual start/stop.
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 from collections.abc import Callable
 from pathlib import Path
-from typing import AsyncContextManager, Optional
+from typing import AsyncContextManager
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.daemon import SQXDaemonManager

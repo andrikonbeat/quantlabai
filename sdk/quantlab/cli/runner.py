@@ -17,7 +17,7 @@ from typing import Protocol, runtime_checkable
 from pydantic import BaseModel, Field
 
 from quantlab.tools.exceptions import SQXNotFoundError, TimeoutError
-from quantlab.tools.platform import get_sqcli_binary, resolve_sqcli_path
+from quantlab.tools.platform import get_sqcli_binary as get_sqcli_binary, resolve_sqcli_path
 
 logger = logging.getLogger(__name__)
 

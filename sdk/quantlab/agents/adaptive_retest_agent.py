@@ -7,18 +7,16 @@ to switch between ``AutomaticRetest`` and full ``Retest`` configurations via
 
 from __future__ import annotations
 
-import hashlib
 import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 from quantlab.cfx.models import (
     BuildTask,
-    CfxArchive,
+    CfxArchive as CfxArchive,
     CrossChecksConfig,
-    DatabanksConfig,
+    DatabanksConfig as DatabanksConfig,
     RankingsConfig,
     RetesterDataConfig,
 )

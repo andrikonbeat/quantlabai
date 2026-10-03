@@ -6,11 +6,9 @@ import argparse
 import csv
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-from quantlab.knowledge.models import CampaignSummary
+from quantlab.knowledge.models import CampaignSummary as CampaignSummary
 from quantlab.knowledge.query import QueryBuilder
 from quantlab.knowledge.store import KnowledgeStore
 

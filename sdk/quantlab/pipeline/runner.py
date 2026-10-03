@@ -11,7 +11,6 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 from quantlab.pipeline.base import Pipeline, PipelineContext
-from quantlab.pipeline.base import Stage as PipelineStage
 from quantlab.pipeline.errors import ContractValidationError, GateTimeoutError
 from quantlab.pipeline.models import PipelineResult, StageResult, StageStatus
 from quantlab.pipeline.progress import PhaseStatus, ProgressCallback

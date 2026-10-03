@@ -8,11 +8,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -224,7 +222,6 @@ async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) 
     """Run a multi-agent research campaign via ResearchDirector."""
     try:
         import sys as _sys
-        from pathlib import Path as _Path
 
         # Load research config
         from quantlab.dsl.models import ResearchConfig
@@ -426,7 +423,9 @@ def add_pipeline_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 async def cmd_pipeline_validate(args: argparse.Namespace) -> int:
     """Validate pipeline configuration file."""
-    from quantlab.pipeline.config.loader import MultiAgentPipelineConfigLoader
+    from quantlab.pipeline.config.loader import (
+        MultiAgentPipelineConfigLoader as MultiAgentPipelineConfigLoader,
+    )
     from quantlab.pipeline.config.models import MultiAgentPipelineConfig
     
     try:

@@ -6,10 +6,8 @@ import asyncio
 import hashlib
 import time
 import urllib.parse
-from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -18,7 +16,7 @@ from quantlab.phase4.errors import (
     JForexServerError,
     JForexStrategyNotFoundError,
     SQXBindingError,
-    SQXSessionLockError,
+    SQXSessionLockError as SQXSessionLockError,
 )
 
 DEFAULT_PORT = 5050

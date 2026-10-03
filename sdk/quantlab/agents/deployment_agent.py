@@ -10,7 +10,6 @@ from __future__ import annotations
 import abc
 import json
 import logging
-import os
 import zipfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field

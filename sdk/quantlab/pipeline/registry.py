@@ -12,15 +12,15 @@ from typing import Any
 
 from quantlab.pipeline.base import Pipeline
 from quantlab.pipeline.base import Stage as PipelineStage
-from quantlab.pipeline.config import PipelineConfig, PipelineSummary, StageConfig
+from quantlab.pipeline.config import PipelineConfig, PipelineSummary, StageConfig as StageConfig
 from quantlab.pipeline.stages.agent_stages import (
     BuilderStage,
-    DeployStage,
-    MonitorStage,
-    PortfolioStage,
+    DeployStage as DeployStage,
+    MonitorStage as MonitorStage,
+    PortfolioStage as PortfolioStage,
     ResearchStage,
-    ReviewStage,
-    StatisticsStage,
+    ReviewStage as ReviewStage,
+    StatisticsStage as StatisticsStage,
 )
 from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
 from quantlab.pipeline.stages.dispatch_stage import DispatchStage
@@ -153,7 +153,7 @@ class StageRegistry:
         from quantlab.pipeline.stages.agent_stages import (
             AnalysisStage,
             GuardianEvaluationAgentStage,
-            GuardianEvaluationStage,
+            GuardianEvaluationStage as GuardianEvaluationStage,
             HypothesisBuilderStage,
             LLMResearchStage,
             RefutationStage,

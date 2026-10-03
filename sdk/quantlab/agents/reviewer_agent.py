@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Optional
+from typing import Any
 
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.agent_stages import ReviewStage
 from quantlab.stats.aggregation import StatisticsAggregator
-from quantlab.stats.models import BenchmarkComparison
+from quantlab.stats.models import BenchmarkComparison as BenchmarkComparison
 
 logger = logging.getLogger(__name__)
 

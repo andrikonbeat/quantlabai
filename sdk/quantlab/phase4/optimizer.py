@@ -10,10 +10,9 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
-from quantlab.phase4.errors import OptimizerError, OptimizerRunError
+from quantlab.phase4.errors import OptimizerError as OptimizerError, OptimizerRunError
 from quantlab.phase4.templates import CfxTemplateBuilder
 
 # ── Known SQX metric column names (lowercased, no spaces/dashes/underscores) ──

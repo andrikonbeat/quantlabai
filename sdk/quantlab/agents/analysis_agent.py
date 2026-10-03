@@ -13,7 +13,7 @@ Mirrors ``StatisticsAgent`` patterns.
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from quantlab.analysis.engine import AnalysisEngine, AnalysisThresholds
 from quantlab.analysis.frame import Frame

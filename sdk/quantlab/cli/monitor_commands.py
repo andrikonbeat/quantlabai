@@ -11,7 +11,6 @@ Follows the ``add_*_subparser`` pattern from ``agent_commands.py``.
 from __future__ import annotations
 
 import argparse
-import asyncio
 import json
 import sys
 from typing import Any

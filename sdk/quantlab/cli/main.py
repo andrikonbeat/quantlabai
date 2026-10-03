@@ -22,7 +22,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
 
 from quantlab.cli.agent_commands import add_agent_subparser
 from quantlab.cli.campaign_commands import (
@@ -49,7 +48,7 @@ from quantlab.phase4.errors import (
     DatabankPathError,
     JForexConnectionError,
     JForexStrategyNotFoundError,
-    OptimizerRunError,
+    OptimizerRunError as OptimizerRunError,
     RetesterDatabankError,
     RetesterRunError,
     SQXBindingError,
@@ -59,10 +58,10 @@ from quantlab.phase4.errors import (
 from quantlab.phase4.http_client import AsyncSQXClient
 from quantlab.phase4.jforex_deploy import JForexDeployer
 from quantlab.phase4.optimizer import Optimizer, OptimizerConfig
-from quantlab.phase4.portfolio_master import PortfolioMaster
+from quantlab.phase4.portfolio_master import PortfolioMaster as PortfolioMaster
 from quantlab.phase4.retester import Retester, RetesterConfig
 from quantlab.phase4.templates import CfxTemplateBuilder
-from quantlab.translate.cfx import CfxArchiveFactory, CfxResult
+from quantlab.translate.cfx import CfxResult as CfxResult
 
 # NOTE: dashboard_commands / dashboard.app are imported lazily inside
 # build_parser() and cmd_api(): the dashboard package ships in Slice 2 and is

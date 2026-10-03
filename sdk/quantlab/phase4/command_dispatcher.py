@@ -6,13 +6,12 @@ HTTP ``/call?cmd=<command>`` API.  All campaign methods are async.
 
 from __future__ import annotations
 
-import asyncio
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from quantlab.phase4.errors import (
-    JForexConnectionError,
+    JForexConnectionError as JForexConnectionError,
     SQXSessionLockError,
 )
 from quantlab.phase4.http_client import (

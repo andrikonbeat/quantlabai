@@ -11,12 +11,16 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from quantlab.dsl.models import HypothesisConfig, IterationConfig, ResearchConfig
+from quantlab.dsl.models import (
+    HypothesisConfig,
+    IterationConfig as IterationConfig,
+    ResearchConfig,
+)
 from quantlab.sqx.project_builder import BuildConfig
 
 logger = logging.getLogger(__name__)

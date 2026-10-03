@@ -11,13 +11,13 @@ import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.errors import (
-    DatabankPathError,
+    DatabankPathError as DatabankPathError,
     RetesterDatabankError,
-    RetesterError,
+    RetesterError as RetesterError,
     RetesterRunError,
 )
 from quantlab.phase4.templates import CfxTemplateBuilder

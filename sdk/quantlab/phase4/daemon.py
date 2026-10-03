@@ -14,11 +14,9 @@ from __future__ import annotations
 
 import asyncio
 import os
-import signal
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
 
 import httpx
 

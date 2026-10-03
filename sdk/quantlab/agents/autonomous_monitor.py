@@ -18,7 +18,7 @@ import os
 import time
 from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import yaml
@@ -490,7 +490,7 @@ class AutonomousMonitorDaemon:
 
         # Health check for store
         from quantlab.robustness.knowledge_health import (
-            HealthStatus,
+            HealthStatus as HealthStatus,
             KnowledgeStoreHealthCheck,
         )
 

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Optional
+from typing import Any
 
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.agent_stages import PortfolioStage
