@@ -17,6 +17,6 @@ __all__ = [
     "HealthStatus",
     "KnowledgeStoreHealthCheck",
     "LLMCircuitBreaker",
-    "RetryPolicy",
     "ResilientNotifier",
+    "RetryPolicy",
 ]

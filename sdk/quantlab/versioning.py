@@ -15,7 +15,7 @@ auto-migration, and blocking are out of scope.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -183,7 +183,7 @@ class DriftWorkflow:
         checklist: dict[str, object] = {
             "from": from_version,
             "to": to_version,
-            "detected_at": datetime.now(timezone.utc).isoformat(),
+            "detected_at": datetime.now(UTC).isoformat(),
             "affected_files": self.impact_scan(from_version),
             "kb_invalidated": 0,
             "status": "drift",

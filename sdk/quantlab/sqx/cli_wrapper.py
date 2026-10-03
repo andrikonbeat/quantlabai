@@ -28,8 +28,9 @@ import sys
 import tempfile
 import time
 import urllib.parse
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -39,7 +40,11 @@ if TYPE_CHECKING:  # pragma: no cover - type-check only
 from quantlab.dsl.models import LLMConfig
 from quantlab.gates.notifiers import ConsoleNotifier, WebhookNotifier
 from quantlab.sqx.blocks_bridge import validate_exported_blocks
-from quantlab.sqx.campaign_monitor import CampaignMonitor, WatcherEvent, compute_baseline
+from quantlab.sqx.campaign_monitor import (
+    CampaignMonitor,
+    WatcherEvent,
+    compute_baseline,
+)
 from quantlab.sqx.llm_generation_monitor import LLMGenerationMonitor, Verdict
 from quantlab.sqx.mock_sqx_server import MockSQXServer
 from quantlab.sqx.project_builder import BuildConfig, create_project, remove_project
@@ -544,7 +549,7 @@ async def _dispatch_real(
         try:
             collected = await asyncio.wait_for(monitor_task, timeout=5.0)
             watcher_events = [e.to_dict() for e in collected]
-        except (asyncio.TimeoutError, asyncio.CancelledError):
+        except (TimeoutError, asyncio.CancelledError):
             watcher_events = [e.to_dict() for e in monitor._events]
         if llm_monitor_task is not None:
             await _stop_llm_monitor_task(llm_monitor_task)
@@ -696,7 +701,7 @@ class _SQXDaemonHandle:
             self._proc.terminate()
             try:
                 await asyncio.wait_for(self._proc.wait(), timeout=10.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 self._proc.kill()
                 await self._proc.wait()
 
@@ -827,7 +832,7 @@ async def _dispatch_mock(
         try:
             collected = await asyncio.wait_for(monitor_task, timeout=5.0)
             watcher_events = [e.to_dict() for e in collected]
-        except (asyncio.TimeoutError, asyncio.CancelledError):
+        except (TimeoutError, asyncio.CancelledError):
             watcher_events = [e.to_dict() for e in monitor._events]
         if llm_monitor_task is not None:
             await _stop_llm_monitor_task(llm_monitor_task)

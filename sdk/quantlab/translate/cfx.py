@@ -12,15 +12,15 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from quantlab.cfx import CfxArchive as CfxArchiveModel, CfxWriter, BuildTask
+from quantlab.cfx import BuildTask, CfxWriter
+from quantlab.cfx import CfxArchive as CfxArchiveModel
 from quantlab.dsl.models import ResearchConfig
 from quantlab.translate.translator import (
     generate_cfx_archive,
-    generate_portfolio_cfx_archive,
     generate_optimizer_cfx_archive,
+    generate_portfolio_cfx_archive,
     generate_retester_cfx_archive,
 )
-
 
 #: Default output subdirectory used by both normal and dry-run modes.
 DEFAULT_OUTPUT_DIR = "_output"

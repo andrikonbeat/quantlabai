@@ -17,20 +17,21 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from quantlab.phase4.models import PhaseStatus
 from quantlab.sqx.campaign_monitor import WatcherEvent
 from quantlab.substrate.events import SubstrateEventDetector
 from quantlab.substrate.exporter import collect_exports, export_phase
 from quantlab.substrate.lifecycle import (
+    WORK_STAGES,
     DaemonLifecycle,
     LifecycleState,
     SubstrateCheckpoint,
-    WORK_STAGES,
     next_stage_after,
 )
 from quantlab.substrate.poller import poll_until_done
@@ -415,7 +416,7 @@ class Executor:
             try:
                 collected = await asyncio.wait_for(detector_task, timeout=5.0)
                 events = [e.to_dict() for e in collected]
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (TimeoutError, asyncio.CancelledError):
                 events = [e.to_dict() for e in detector.events]
         return completed, events
 

@@ -76,8 +76,7 @@ class ResilientNotifier:
         """Write the current queue to the JSONL persistence file."""
         try:
             with open(self._queue_file, "w", encoding="utf-8") as f:
-                for entry in self._queue:
-                    f.write(json.dumps(entry) + "\n")
+                f.writelines(json.dumps(entry) + "\n" for entry in self._queue)
         except OSError:
             logger.warning("Failed to persist queue to %s", self._queue_file)
 

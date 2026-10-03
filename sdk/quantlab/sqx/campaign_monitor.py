@@ -21,10 +21,11 @@ import math
 import re
 import time
 import urllib.parse
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 import httpx
 
@@ -1081,7 +1082,7 @@ class CampaignMonitor:
     ) -> WatcherEvent:
         """Create a WatcherEvent with the current timestamp."""
         return WatcherEvent(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             campaign_id=self._campaign_id,
             event_type=event_type,  # type: ignore[arg-type]
             severity=severity,  # type: ignore[arg-type]

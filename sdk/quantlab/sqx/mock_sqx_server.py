@@ -7,7 +7,7 @@ import json
 import logging
 import random
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
@@ -165,7 +165,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
             if action == "action=stop":
                 with MockSQXHandler._lock:
                     MockSQXHandler._campaigns[name] = {"status": "stopped", "progress": 0}
-                return self._send_text(f"Project execution stopped.\n")
+                return self._send_text("Project execution stopped.\n")
 
         if parts[0] == "-databank":
             action = parts[1] if len(parts) > 1 else ""
@@ -179,7 +179,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                         "List of available databanks\n--------------------------------------------------\nResults, Records: 0\nInitial population, Records: 0\nLast generation, Records: 0\n"
                     )
                 return self._send_text(
-                    f"List of available databanks\n--------------------------------------------------\nResults, Records: 3\nInitial population, Records: 0\nLast generation, Records: 0\n"
+                    "List of available databanks\n--------------------------------------------------\nResults, Records: 3\nInitial population, Records: 0\nLast generation, Records: 0\n"
                 )
             if action == "action=export":
                 self._generate_mock_exports(project)
@@ -208,7 +208,6 @@ class MockSQXHandler(BaseHTTPRequestHandler):
 
     def _generate_mock_exports(self, project: str) -> Any:
         """Generate mock export files for a completed project."""
-        import csv
 
         base = MockSQXHandler._export_dir / project
         base.mkdir(parents=True, exist_ok=True)
@@ -346,7 +345,7 @@ class MockSQXServer:
     so every per-request handler instance observes it.
     """
 
-    _instance: "MockSQXServer | None" = None
+    _instance: MockSQXServer | None = None
 
     def __init__(
         self,
@@ -367,7 +366,7 @@ class MockSQXServer:
         host: str = _MOCK_HOST,
         port: int = _MOCK_PORT,
         mode: str = "normal",
-    ) -> "MockSQXServer":
+    ) -> MockSQXServer:
         if cls._instance is None:
             cls._instance = cls(host=host, port=port, mode=mode)
         else:

@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from quantlab.costs.profiles import BrokerProfile
 from quantlab.cfx.models import CrossChecksConfig
+from quantlab.costs.profiles import BrokerProfile
 from quantlab.data.symbol_registry import resolve_symbol
 
 logger = logging.getLogger(__name__)
@@ -1227,9 +1227,7 @@ def _format_build_config_value(value: Any, format_type: str) -> str:
         return str(value)
     elif format_type == "float":
         return f"{value:.2f}"
-    elif format_type == "string":
-        return str(value)
-    elif format_type == "dict":
+    elif format_type == "string" or format_type == "dict":
         return str(value)
     else:
         return str(value)

@@ -23,8 +23,9 @@ import logging
 import os
 import re
 import urllib.parse
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Literal
+from typing import Any, Literal
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError
