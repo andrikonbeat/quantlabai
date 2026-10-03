@@ -6,115 +6,134 @@ QuantLab AI is a Python SDK that bridges quantitative research with the Strategy
 
 ## Architecture
 
+The SDK is a library, not a service. It reads a YAML research definition,
+compiles it into a StrategyQuant X project, optionally runs that project, and
+folds the measured result back into the Knowledge Lake so the next run starts
+from what was learned. Every stage has a `dry_run` path, so the whole loop is
+runnable — and testable — without StrategyQuant X installed.
+
+```mermaid
+flowchart TD
+    KY["knowledge/index.yaml<br/>learned state from prior runs"]
+    KY -->|run definition| RY["research.yaml"]
+
+    subgraph COMPILE["Compile — pure Python, no SQX needed"]
+        RY --> P["dsl/parser"]
+        P --> RC["ResearchConfig"]
+        RC --> T["translate/"]
+        T --> Q1{"dry_run?"}
+        Q1 -->|yes| XML["XML string returned"]
+        Q1 -->|no| CFX["CFX archive (.cfx)"]
+    end
+
+    subgraph EXECUTE["Execute — needs SQX only when dry_run is false"]
+        CFX --> CLI["cli/runner"]
+        CLI --> SQ["sqcli"]
+        SQ --> Q2{"dry_run?"}
+        Q2 -->|yes| ME["MockExecutor<br/>canned result"]
+        Q2 -->|no| BT["StrategyQuant X<br/>backtest run"]
+    end
+
+    subgraph ANALYZE["Analyze — pure Python"]
+        ME --> DB["Databank CSV / XLSX"]
+        BT --> DB
+        DB --> RD["readers/"]
+        RD --> TR["Trades, Equity, Summary"]
+        TR --> ST["stats/"]
+        ST --> MT["Metrics: PF, Sharpe, MaxDD,<br/>MAR, Expectancy"]
+        MT --> KL["knowledge/ store"]
+    end
+
+    KL -->|convergence feedback| KY
+
+    classDef pure fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef sqx fill:#fff3e0,stroke:#ef6c00,color:#e65100
+    classDef store fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+
+    class P,RC,T,Q1,XML,RD,TR,ST,MT pure
+    class CLI,SQ,Q2,ME,BT,CFX sqx
+    class KY,KL,DB store
 ```
-  ┌───────────────────────────────────────────────────────┐
-  │ knowledge/index.yaml  —  convergence feedback,        │
-  │ written by [knowledge/ store] at the end of a run     │
-  └───────────────────────────┬───────────────────────────┘
-                              │
-                              ▼
-                        research.yaml
-                              │
-                              ▼
-                        [dsl/parser]
-                              │
-                              ▼
-                       ResearchConfig
-                              │
-                              ▼
-                        [translate/]
-                              │
-                              ▼
-                 ┌────────────┴────────────┐
-           dry_run? yes               dry_run? no
-                 │                         │
-                 ▼                         ▼
-         return XML string           [cfx writer]
-                              │
-                              ▼
-                          .cfx file
-                              │
-                              ▼
-    [cli/ runner] ──→ sqcli.exe
-                              │
-                 ┌────────────┴────────────┐
-           dry_run? yes               dry_run? no
-                 │                         │
-                 ▼                         ▼
-           MockExecutor              backtest runs
-          (canned result)                  │
-                 │                         │
-                 └────────────┴────────────┘
-                              ▼
-                      Databank CSV/XLSX
-                              │
-                              ▼
-                         [readers/]
-                              │
-                              ▼
-                 Trade[], Equity[], Summary
-                              │
-                              ▼
-                          [stats/]
-                              │
-                              ▼
-          Metrics (PF, Sharpe, DD, MAR, Expectancy)
-                              │
-                              ▼
-                     [knowledge/ store]
-                              │
-                              ▼
-           knowledge/index.yaml   ↺  (loop closes)
-```
+
+**Reading it:** green stages never touch SQX. Orange stages do. The
+`dry_run?` diamonds are the same switch in both halves — set it and the loop
+closes entirely in Python, which is why the test suite never needs a StrategyQuant
+install.
+
+Three independent build units live in this repository:
+
+| Unit | Stack | Purpose |
+|------|-------|---------|
+| `sdk/` | Python 3.11+ | The research SDK described above, plus the 14-phase campaign engine |
+| `installer/` | Go 1.23 | Terminal installer/wizard for setting up a machine |
+| `app_movil/` | Kotlin + Jetpack Compose | Android companion app for monitoring campaigns |
 
 ## Installation
 
+> **Moving to a new machine?** Follow **[docs/HANDOFF.md](docs/HANDOFF.md)** —
+> it is the complete, ordered procedure for cloning, installing, configuring,
+> and verifying this project from scratch.
+
 ### Prerequisites
 
-- Python 3.11+ (Python 3.14 requires `pip >= 26` — upgrade with `python -m pip install -U pip` if resolution fails)
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
+- **Python 3.11+** (CI pins 3.11; the project is developed and verified on 3.14)
+- **pip 26+** on Python 3.14 — `python -m pip install -U pip` if resolution fails
+- **Git**
+- Optional: StrategyQuant X (only for real backtests — see below)
+- Optional: Go 1.23+ (only to build `installer/`), Android SDK + JDK (only for `app_movil/`)
 
 ### Setup
 
+The Python package lives in `sdk/`, but the **virtualenv belongs at the repository
+root**, because `pytest.ini` and `conftest.py` — which define the canonical test
+suite — are root-level. Install in editable mode from the root:
+
 ```bash
-# Clone the repository
-git clone https://github.com/andrikonbeat/quantlabai
-cd quantlab-ai
+git clone git@github.com:andrikonbeat/quantlabai.git
+cd quantlabai
 
-# Install with uv (recommended)
-cd sdk
-uv sync
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+python -m pip install -U pip
 
-# Or with pip
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
+pip install -e "sdk[dev]"          # 'dev' adds pytest, ruff, mypy, pytest-asyncio
 ```
+
+Verify the install before anything else:
+
+```bash
+SQX_FORCE_MOCK=1 python3 -m pytest -q
+```
+
+`SQX_FORCE_MOCK=1` is **mandatory**. Without it the suite tries to bind the real
+StrategyQuant X daemon on port 5050 and hangs or fails.
+
+> There is no committed Python lockfile, so `pip install -e "sdk[dev]"`
+> resolves the declared ranges in `sdk/pyproject.toml`. If a test fails with
+> `ModuleNotFoundError` for a declared dependency, your environment predates a
+> dependency addition — re-run the install command above.
 
 ### StrategyQuant X (required for real backtests)
 
 The SDK runs fully in dry-run/mock mode without SQX, but real dispatch,
 backtests, retests, and optimization need a StrategyQuant X distribution.
 QuantLab discovers it through `SQX_INSTALL_PATH` (falling back to
-`--sqx-path` / `SQX_PATH`). Documented local install:
+`--sqx-path` / `SQX_PATH`). Point it at your own install:
 
 ```bash
-export SQX_INSTALL_PATH="$HOME/Proyectos/SQX_144_2953_linux_20260601"
+export SQX_INSTALL_PATH="/path/to/your/SQX_install_root"
 export SQX_PORT=5050
 ```
 
 `sqcli` lives at `$SQX_INSTALL_PATH/sqcli`; the bundled JDK is at
-`$SQX_INSTALL_PATH/j64`. Set these in `.env` (see `.env.example`) or your
-shell profile. Without a valid install, keep `SQX_FORCE_MOCK=1` for tests
-and dry runs — the real SQX daemon binds port 5050 and can block the suite.
+`$SQX_INSTALL_PATH/j64`. Set these in `.env` (copy `.env.example` and edit) or
+your shell profile. Without a valid install, keep `SQX_FORCE_MOCK=1` for tests
+and dry runs.
 
-> **Repo layout note**: the install lives outside the repo (HGN-02 — it is a
-> local tool dependency, never tracked). `assets/SQX_144_2953_linux_20260601`
-> is a **symlink** to the real install at `~/Proyectos/SQX_144_2953_linux_20260601`
-> so legacy `assets/SQX_*` paths keep resolving. The symlink is git-ignored
-> (`.gitignore` uses `assets/SQX_*` without a trailing slash — git does not
-> match symlinks with directory patterns).
+> **Repo layout note (HGN-02):** the StrategyQuant distribution is a
+> machine-local tool dependency and is **never committed**. `.gitignore` excludes
+> `assets/SQX_*`. Anything under `assets/` in your working copy is local-only and
+> will not survive a fresh clone — do not treat it as project content.
 
 ## Quick Start
 
@@ -358,12 +377,32 @@ project).
 
 ### Testing
 
+Run from the **repository root** — `pytest.ini` collects both `tests/` and
+`sdk/tests/`:
+
+```bash
+SQX_FORCE_MOCK=1 python3 -m pytest -q              # full suite (~5 min)
+SQX_FORCE_MOCK=1 python3 -m pytest -q tests/campaign/   # one area
+SQX_FORCE_MOCK=1 python3 -m pytest -q -k test_name      # filter by name
+```
+
+### Linting and type checks
+
+Same environment, from `sdk/` (this is what CI runs):
+
 ```bash
 cd sdk
-uv run pytest              # Run all tests
-uv run pytest -v           # Verbose output
-uv run pytest tests/       # Specific test directory
-uv run pytest -k test_     # Filter by name
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy quantlab --strict
+```
+
+### Go installer
+
+```bash
+cd installer
+go build ./...
+go test ./... -short
 ```
 
 ### Dry-Run Walkthrough (No SQX Required)
