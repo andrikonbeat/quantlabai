@@ -100,10 +100,12 @@ class FredProvider(AbstractDataProvider):
         observations: list[dict[str, Any]] = []
         for date, row in df.iterrows():
             value = row.iloc[0]
-            observations.append({
-                "date": str(date.date()),
-                "value": float(value) if pd.notna(value) else None,
-            })
+            observations.append(
+                {
+                    "date": str(date.date()),
+                    "value": float(value) if pd.notna(value) else None,
+                }
+            )
 
         return {
             "series_id": series_id,

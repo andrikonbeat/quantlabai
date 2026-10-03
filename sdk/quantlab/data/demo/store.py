@@ -70,9 +70,7 @@ class DemoWindowStore:
                 fails schema validation.
         """
         path = Path(
-            self.PERSIST_PATH_TEMPLATE.format(
-                root=self.root, campaign_id=campaign_id
-            )
+            self.PERSIST_PATH_TEMPLATE.format(root=self.root, campaign_id=campaign_id)
         )
         if not path.exists():
             raise StateCorruptionError(

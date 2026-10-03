@@ -99,14 +99,16 @@ class YahooFinanceProvider(AbstractDataProvider):
 
         prices = []
         for date, row in hist.iterrows():
-            prices.append({
-                "date": str(date.date()),
-                "open": float(row["Open"]),
-                "high": float(row["High"]),
-                "low": float(row["Low"]),
-                "close": float(row["Close"]),
-                "volume": int(row["Volume"]),
-            })
+            prices.append(
+                {
+                    "date": str(date.date()),
+                    "open": float(row["Open"]),
+                    "high": float(row["High"]),
+                    "low": float(row["Low"]),
+                    "close": float(row["Close"]),
+                    "volume": int(row["Volume"]),
+                }
+            )
 
         fundamentals = {
             "market_cap": info.get("marketCap"),

@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class EvolutionMode(str, Enum):
     """Operational mode for the evolution engine."""
+
     DISABLED = "disabled"
     GENETIC_ONLY = "genetic_only"
     GENERATIVE_ONLY = "generative_only"
@@ -17,15 +18,19 @@ class EvolutionMode(str, Enum):
 
 class ScheduleConfig(BaseModel):
     """Scheduled trigger configuration."""
+
     model_config = ConfigDict(frozen=True)
 
     enabled: bool = True
-    interval_hours: float = Field(default=168, ge=1.0, description="Hours between scheduled cycles")
+    interval_hours: float = Field(
+        default=168, ge=1.0, description="Hours between scheduled cycles"
+    )
     max_candidates_per_cycle: int = Field(default=3, ge=1, le=20)
 
 
 class ConcurrencyConfig(BaseModel):
     """Concurrency and resource limits."""
+
     model_config = ConfigDict(frozen=True)
 
     max_concurrent_evolutions: int = Field(default=1, ge=1, le=10)
@@ -35,6 +40,7 @@ class ConcurrencyConfig(BaseModel):
 
 class WeightProfile(BaseModel):
     """Fitness function weight profile."""
+
     model_config = ConfigDict(frozen=True)
 
     sharpe: float = Field(default=0.25, ge=0.0, le=1.0)
@@ -59,9 +65,12 @@ class WeightProfile(BaseModel):
 
 class EvolutionConfig(BaseModel):
     """Top-level configuration for the Strategic Evolution Engine."""
+
     model_config = ConfigDict(frozen=True)
 
-    enabled: bool = Field(default=False, description="Master toggle — disabled by default")
+    enabled: bool = Field(
+        default=False, description="Master toggle — disabled by default"
+    )
     mode: EvolutionMode = Field(default=EvolutionMode.FULL)
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
     concurrency: ConcurrencyConfig = Field(default_factory=ConcurrencyConfig)

@@ -20,17 +20,40 @@ KNOWN_BROKERS: set[str] = {"dukascopy", "ib", "oanda"}
 #: Known market identifiers for semantic validation.
 KNOWN_MARKETS: set[str] = {
     # FX
-    "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD",
-    "USDCHF", "NZDUSD", "EURGBP", "EURJPY", "GBPJPY",
+    "EURUSD",
+    "GBPUSD",
+    "USDJPY",
+    "AUDUSD",
+    "USDCAD",
+    "USDCHF",
+    "NZDUSD",
+    "EURGBP",
+    "EURJPY",
+    "GBPJPY",
     # Indices
-    "SP500", "NASDAQ", "DOWJONES", "DAX", "FTSE100",
+    "SP500",
+    "NASDAQ",
+    "DOWJONES",
+    "DAX",
+    "FTSE100",
     # Commodities / Crypto
-    "XAUUSD", "XAGUSD", "BTCUSD", "ETHUSD",
+    "XAUUSD",
+    "XAGUSD",
+    "BTCUSD",
+    "ETHUSD",
 }
 
 #: Known timeframe identifiers.
 KNOWN_TIMEFRAMES: set[str] = {
-    "M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1", "MN",
+    "M1",
+    "M5",
+    "M15",
+    "M30",
+    "H1",
+    "H4",
+    "D1",
+    "W1",
+    "MN",
 }
 
 

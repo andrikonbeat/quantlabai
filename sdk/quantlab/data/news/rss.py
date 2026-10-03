@@ -86,26 +86,46 @@ class RSSNewsProvider(NewsProvider):
                 try:
                     response = await client.get(url, follow_redirects=True)
                     response.raise_for_status()
-                except (httpx.HTTPStatusError, httpx.TimeoutException, httpx.RequestError) as exc:
+                except (
+                    httpx.HTTPStatusError,
+                    httpx.TimeoutException,
+                    httpx.RequestError,
+                ) as exc:
                     logger.warning("RSS fetch failed for %s: %s", url, exc)
                     continue
 
                 feed = feedparser.parse(response.text)
                 for entry in feed.entries:
                     # feedparser entries support both attribute and dict access
-                    article_url = entry.link if hasattr(entry, "link") else entry.get("link", "")
+                    article_url = (
+                        entry.link if hasattr(entry, "link") else entry.get("link", "")
+                    )
                     if article_url in seen_urls:
                         continue
                     seen_urls.add(article_url)
 
-                    title = entry.title if hasattr(entry, "title") else entry.get("title", "")
+                    title = (
+                        entry.title
+                        if hasattr(entry, "title")
+                        else entry.get("title", "")
+                    )
                     summary = (
-                        (entry.description if hasattr(entry, "description") else entry.get("description"))
-                        or (entry.summary if hasattr(entry, "summary") else entry.get("summary", ""))
+                        entry.description
+                        if hasattr(entry, "description")
+                        else entry.get("description")
+                    ) or (
+                        entry.summary
+                        if hasattr(entry, "summary")
+                        else entry.get("summary", "")
                     )
                     published = (
-                        (entry.published_parsed if hasattr(entry, "published_parsed") else entry.get("published_parsed"))
-                        or (entry.updated_parsed if hasattr(entry, "updated_parsed") else entry.get("updated_parsed"))
+                        entry.published_parsed
+                        if hasattr(entry, "published_parsed")
+                        else entry.get("published_parsed")
+                    ) or (
+                        entry.updated_parsed
+                        if hasattr(entry, "updated_parsed")
+                        else entry.get("updated_parsed")
                     )
                     pub_date: datetime | None = None
                     if published:
@@ -113,8 +133,16 @@ class RSSNewsProvider(NewsProvider):
                             pub_date = datetime(*published[:6])
                         except (TypeError, ValueError):
                             pub_date = datetime.now()
-                    src = entry.source if hasattr(entry, "source") else entry.get("source", {})
-                    source = (src.title if hasattr(src, "title") else src.get("title", url)) if src else url
+                    src = (
+                        entry.source
+                        if hasattr(entry, "source")
+                        else entry.get("source", {})
+                    )
+                    source = (
+                        (src.title if hasattr(src, "title") else src.get("title", url))
+                        if src
+                        else url
+                    )
 
                     results.append(
                         NewsItem(

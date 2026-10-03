@@ -46,7 +46,9 @@ _U_SYMBOL_RE = re.compile(
 )
 
 
-def resolve_symbol(symbol: str, timeframe: str = "M1", datasource: str = "dukascopy") -> str:
+def resolve_symbol(
+    symbol: str, timeframe: str = "M1", datasource: str = "dukascopy"
+) -> str:
     """Build the SQX symbol name (``EURUSD_M1_dukas``).
 
     Validates the datasource (D5 — only Dukascopy) and the symbol name
@@ -99,9 +101,7 @@ def u_symbol(sqx_name: str) -> dict[str, str]:
     suffix = m.group("suffix")
     datasource = _SUFFIX_DATASOURCE.get(suffix)
     if datasource is None:
-        raise ValueError(
-            f"unknown datasource suffix '_dukas' in {sqx_name!r}"
-        )
+        raise ValueError(f"unknown datasource suffix '_dukas' in {sqx_name!r}")
     return {
         "symbol": m.group("symbol"),
         "timeframe": m.group("timeframe"),
@@ -277,9 +277,7 @@ class SymbolRegistry:
         conn = await self._init_db()
 
         def _list() -> list[dict[str, Any]]:
-            cur = conn.execute(
-                "SELECT * FROM symbols ORDER BY updated_at DESC"
-            )
+            cur = conn.execute("SELECT * FROM symbols ORDER BY updated_at DESC")
             return [self._row_to_dict(r) for r in cur.fetchall()]
 
         return await asyncio.to_thread(_list)

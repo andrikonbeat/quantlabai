@@ -80,21 +80,27 @@ class IndicatorConfig(BaseModel):
     """
 
     name: str = Field(..., description="Indicator name (e.g. RSI, EMA, BB)")
-    params: dict[str, Any] = Field(default_factory=dict, description="Indicator parameters")
+    params: dict[str, Any] = Field(
+        default_factory=dict, description="Indicator parameters"
+    )
 
 
 class EntryRule(BaseModel):
     """Condition that triggers a trade entry."""
 
     description: str = Field(..., description="Human-readable rule description")
-    conditions: list[str] = Field(default_factory=list, description="Condition expressions")
+    conditions: list[str] = Field(
+        default_factory=list, description="Condition expressions"
+    )
 
 
 class ExitRule(BaseModel):
     """Condition that triggers a trade exit."""
 
     description: str = Field(..., description="Human-readable rule description")
-    conditions: list[str] = Field(default_factory=list, description="Condition expressions")
+    conditions: list[str] = Field(
+        default_factory=list, description="Condition expressions"
+    )
 
 
 class BuildingBlock(BaseModel):
@@ -133,18 +139,26 @@ class ColumnValueFilter(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     column: str = Field(..., description="SQX column name (e.g. NetProfit)")
-    column_type: str = Field(default="0", alias="columnType", description="SQX column type id")
+    column_type: str = Field(
+        default="0", alias="columnType", description="SQX column type id"
+    )
     format: str = Field(..., description="SQX display format (e.g. Decimal2PL)")
-    result_type: str = Field(default="main", alias="resultType", description="Result grouping")
+    result_type: str = Field(
+        default="main", alias="resultType", description="Result grouping"
+    )
     direction: str = Field(default="0", description="Sort direction id")
-    sample_type: str = Field(default="127", alias="sampleType", description="Sample type id")
+    sample_type: str = Field(
+        default="127", alias="sampleType", description="Sample type id"
+    )
     pl_type: str = Field(default="10", alias="plType", description="P/L type id")
     confidence_level: str = Field(
         default="50", alias="confidenceLevel", description="Confidence level id"
     )
     market: str = Field(default="1", description="Market scope id")
     subresult: str = Field(default="30", description="Sub-result id")
-    pct_ratio: str = Field(default="0", alias="pctRatio", description="Percentage ratio id")
+    pct_ratio: str = Field(
+        default="0", alias="pctRatio", description="Percentage ratio id"
+    )
     class_name: str | None = Field(
         default=None,
         alias="class",
@@ -165,10 +179,16 @@ class AdvancedRankingFilter(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     use: bool = Field(default=True, description="Whether the condition is active")
-    result_type: str = Field(default="main", alias="resultType", description="Result grouping")
-    sample_type: str = Field(default="127", alias="sampleType", description="Sample type id")
+    result_type: str = Field(
+        default="main", alias="resultType", description="Result grouping"
+    )
+    sample_type: str = Field(
+        default="127", alias="sampleType", description="Sample type id"
+    )
     direction: str = Field(default="0", description="Sort direction id")
-    pct_ratio: str = Field(default="0", alias="pctRatio", description="Percentage ratio id")
+    pct_ratio: str = Field(
+        default="0", alias="pctRatio", description="Percentage ratio id"
+    )
     confidence_level: str = Field(
         default="50", alias="confidenceLevel", description="Confidence level id"
     )
@@ -211,8 +231,12 @@ class DataRangePartsDSL(BaseModel):
     isv_9: str | None = Field(default=None, description="IS validation range 9")
     isv_10: str | None = Field(default=None, description="IS validation range 10")
     oos_1: str | None = Field(default=None, description="Out-of-sample range 1")
-    isv_every: str | None = Field(default=None, description="Aggregate IS validation range")
-    oos_every: str | None = Field(default=None, description="Aggregate out-of-sample range")
+    isv_every: str | None = Field(
+        default=None, description="Aggregate IS validation range"
+    )
+    oos_every: str | None = Field(
+        default=None, description="Aggregate out-of-sample range"
+    )
     validation_ratio: float | None = Field(
         default=None, description="Validation split ratio; never a training ratio"
     )
@@ -283,7 +307,9 @@ class LLMConfig(BaseModel):
         description="LLM provider name",
     )
     model: str = Field(default="gpt-4", description="Model identifier")
-    api_key_env: str = Field(default="OPENAI_API_KEY", description="Env var for the API key")
+    api_key_env: str = Field(
+        default="OPENAI_API_KEY", description="Env var for the API key"
+    )
     base_url: str | None = Field(
         default=None,
         description="Custom API base URL. For provider='opencode' this defaults "
@@ -293,9 +319,7 @@ class LLMConfig(BaseModel):
     temperature: float = Field(
         default=0.7, ge=0.0, le=2.0, description="Sampling temperature 0.0–2.0"
     )
-    max_tokens: int = Field(
-        default=2048, ge=1, description="Maximum output tokens"
-    )
+    max_tokens: int = Field(default=2048, ge=1, description="Maximum output tokens")
     web_sources: list[str] = Field(
         default_factory=list,
         description="Enabled web/news sources for context enrichment",
@@ -312,7 +336,9 @@ class LLMConfig(BaseModel):
                 f"Valid providers: {', '.join(sorted(self.VALID_PROVIDERS))}"
             )
         # Auto-derive api_key_env from provider if not explicitly overridden
-        derived = self._PROVIDER_ENV_MAP.get(self.provider, f"{self.provider.upper()}_API_KEY")
+        derived = self._PROVIDER_ENV_MAP.get(
+            self.provider, f"{self.provider.upper()}_API_KEY"
+        )
         # If api_key_env is the default string, derive it; otherwise respect explicit value
         if self.api_key_env == "OPENAI_API_KEY" and self.provider != "openai":
             self.api_key_env = derived
@@ -336,9 +362,15 @@ class HypothesisConfig(BaseModel):
 
     name: str = Field(..., description="Hypothesis identifier")
     description: str = Field(..., description="What this hypothesis tests")
-    parameters: dict[str, Any] = Field(default_factory=dict, description="Hypothesis parameters")
-    expected_outcome: str = Field(default="", description="Expected result if hypothesis holds")
-    confidence: float = Field(default=0.5, ge=0.0, le=1.0, description="Prior confidence 0-1")
+    parameters: dict[str, Any] = Field(
+        default_factory=dict, description="Hypothesis parameters"
+    )
+    expected_outcome: str = Field(
+        default="", description="Expected result if hypothesis holds"
+    )
+    confidence: float = Field(
+        default=0.5, ge=0.0, le=1.0, description="Prior confidence 0-1"
+    )
     validation_warnings: list[str] = Field(
         default_factory=list,
         description="Non-blocking economic-sense warnings from parameter validation",
@@ -359,54 +391,99 @@ class HypothesisConfig(BaseModel):
 class IterationConfig(BaseModel):
     """Configuration for iterative research loops."""
 
-    max_iterations: int = Field(default=5, ge=1, le=50, description="Maximum iteration cycles")
-    convergence_threshold: float = Field(default=0.01, gt=0.0, description="Improvement threshold to stop")
-    early_stop_patience: int = Field(default=2, ge=0, description="Iterations without improvement before stop")
-    auto_iterate: bool = Field(default=True, description="Automatically iterate on ITERATE decision")
+    max_iterations: int = Field(
+        default=5, ge=1, le=50, description="Maximum iteration cycles"
+    )
+    convergence_threshold: float = Field(
+        default=0.01, gt=0.0, description="Improvement threshold to stop"
+    )
+    early_stop_patience: int = Field(
+        default=2, ge=0, description="Iterations without improvement before stop"
+    )
+    auto_iterate: bool = Field(
+        default=True, description="Automatically iterate on ITERATE decision"
+    )
 
 
 class GatePolicyConfig(BaseModel):
     """Policy for a specific gate in the pipeline."""
 
-    gate_id: str = Field(..., description="Gate identifier (e.g., HUMAN_REVIEW_OBJECTIVES)")
+    gate_id: str = Field(
+        ..., description="Gate identifier (e.g., HUMAN_REVIEW_OBJECTIVES)"
+    )
     required: bool = Field(default=True, description="Whether gate must pass")
-    auto_approve_on_timeout: bool = Field(default=False, description="Auto-approve if timeout")
-    escalation_path: list[str] = Field(default_factory=list, description="Escalation contacts")
+    auto_approve_on_timeout: bool = Field(
+        default=False, description="Auto-approve if timeout"
+    )
+    escalation_path: list[str] = Field(
+        default_factory=list, description="Escalation contacts"
+    )
 
 
 class AgentRefConfig(BaseModel):
     """Reference to an agent with optional config override."""
 
-    name: str = Field(..., description="Agent name (research, builder, statistics, review, portfolio, deploy, monitor)")
-    config_overrides: dict[str, Any] = Field(default_factory=dict, description="Override agent default config")
+    name: str = Field(
+        ...,
+        description="Agent name (research, builder, statistics, review, portfolio, deploy, monitor)",
+    )
+    config_overrides: dict[str, Any] = Field(
+        default_factory=dict, description="Override agent default config"
+    )
 
 
 class MemoryConfig(BaseModel):
     """Engram agent memory configuration."""
 
     enabled: bool = Field(default=True, description="Enable agent memory persistence")
-    topic_prefix: str = Field(default="quantlab/agent", description="Engram topic prefix")
-    retention_days: int = Field(default=365, gt=0, description="Memory retention period")
-    cross_agent_sharing: bool = Field(default=True, description="Allow cross-agent memory access")
+    topic_prefix: str = Field(
+        default="quantlab/agent", description="Engram topic prefix"
+    )
+    retention_days: int = Field(
+        default=365, gt=0, description="Memory retention period"
+    )
+    cross_agent_sharing: bool = Field(
+        default=True, description="Allow cross-agent memory access"
+    )
 
 
 class RiskConfig(BaseModel):
     """Portfolio risk limits configuration."""
 
-    max_portfolio_drawdown: float = Field(default=0.20, gt=0.0, le=1.0, description="Max portfolio drawdown")
-    max_strategy_correlation: float = Field(default=0.7, ge=0.0, le=1.0, description="Max pairwise strategy correlation")
-    max_single_strategy_weight: float = Field(default=0.4, gt=0.0, le=1.0, description="Max weight per strategy")
-    kelly_fraction_cap: float = Field(default=0.25, gt=0.0, le=1.0, description="Kelly fraction cap")
-    var_confidence: float = Field(default=0.95, gt=0.0, lt=1.0, description="VaR confidence level")
+    max_portfolio_drawdown: float = Field(
+        default=0.20, gt=0.0, le=1.0, description="Max portfolio drawdown"
+    )
+    max_strategy_correlation: float = Field(
+        default=0.7, ge=0.0, le=1.0, description="Max pairwise strategy correlation"
+    )
+    max_single_strategy_weight: float = Field(
+        default=0.4, gt=0.0, le=1.0, description="Max weight per strategy"
+    )
+    kelly_fraction_cap: float = Field(
+        default=0.25, gt=0.0, le=1.0, description="Kelly fraction cap"
+    )
+    var_confidence: float = Field(
+        default=0.95, gt=0.0, lt=1.0, description="VaR confidence level"
+    )
 
 
 class AnalysisConfig(BaseModel):
     """Thresholds and weights for the analysis stage."""
 
-    min_trades: int = Field(default=50, ge=0, description="Minimum trades to avoid extreme-metric flag")
-    extreme_pf: float = Field(default=3.0, gt=0.0, description="Profit factor above this is extreme with low trades")
-    extreme_sharpe: float = Field(default=2.0, gt=0.0, description="Sharpe above this is extreme with low trades")
-    oos_is_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum OOS/IS Sharpe ratio")
+    min_trades: int = Field(
+        default=50, ge=0, description="Minimum trades to avoid extreme-metric flag"
+    )
+    extreme_pf: float = Field(
+        default=3.0,
+        gt=0.0,
+        description="Profit factor above this is extreme with low trades",
+    )
+    extreme_sharpe: float = Field(
+        default=2.0, gt=0.0, description="Sharpe above this is extreme with low trades"
+    )
+    oos_is_threshold: float = Field(
+        default=0.7, ge=0.0, le=1.0, description="Minimum OOS/IS Sharpe ratio"
+    )
     score_weights: dict[str, float] = Field(
         default_factory=lambda: {
             "pf_weight": 0.25,
@@ -439,7 +516,9 @@ class RetestBlock(BaseModel):
     walkforward_cycles: int = Field(default=5, description="Walk-forward cycles")
     min_trades: int = Field(default=30, description="Minimum trades to accept")
     confidence_level: float = Field(default=0.95, description="Confidence level")
-    broker_profile: Any | None = Field(default=None, description="Broker profile override")
+    broker_profile: Any | None = Field(
+        default=None, description="Broker profile override"
+    )
     cost_config: Any | None = Field(default=None, description="Cost config override")
     max_iterations: int | None = Field(
         default=None,
@@ -461,7 +540,9 @@ class OptimizeBlock(BaseModel):
     generations: int = Field(default=50, description="Generation count")
     crossover: float = Field(default=0.8, description="Crossover probability")
     mutation: float = Field(default=0.1, description="Mutation probability")
-    databanks: list[str] | None = Field(default=None, description="Databanks to optimize on")
+    databanks: list[str] | None = Field(
+        default=None, description="Databanks to optimize on"
+    )
 
 
 # ── Root config ────────────────────────────────────────────────────────────────
@@ -504,13 +585,25 @@ class ResearchConfig(BaseModel):
     )
 
     # Multi-agent extensions
-    hypotheses: list[HypothesisConfig] = Field(default_factory=list, description="Research hypotheses to test")
-    iteration_config: IterationConfig = Field(default_factory=IterationConfig, description="Iteration control")
-    gate_policies: list[GatePolicyConfig] = Field(default_factory=list, description="Per-gate policies")
-    agents: list[AgentRefConfig] = Field(default_factory=list, description="Agent references with config overrides")
-    memory: MemoryConfig = Field(default_factory=MemoryConfig, description="Agent memory configuration")
-    risk: RiskConfig = Field(default_factory=RiskConfig, description="Portfolio risk limits")
-    
+    hypotheses: list[HypothesisConfig] = Field(
+        default_factory=list, description="Research hypotheses to test"
+    )
+    iteration_config: IterationConfig = Field(
+        default_factory=IterationConfig, description="Iteration control"
+    )
+    gate_policies: list[GatePolicyConfig] = Field(
+        default_factory=list, description="Per-gate policies"
+    )
+    agents: list[AgentRefConfig] = Field(
+        default_factory=list, description="Agent references with config overrides"
+    )
+    memory: MemoryConfig = Field(
+        default_factory=MemoryConfig, description="Agent memory configuration"
+    )
+    risk: RiskConfig = Field(
+        default_factory=RiskConfig, description="Portfolio risk limits"
+    )
+
     # LLM configuration (optional)
     llm_config: LLMConfig | None = Field(
         default=None,
@@ -530,7 +623,9 @@ class ResearchConfig(BaseModel):
     )
 
     # MetaGuardian integration
-    guardian_state: dict | None = Field(default=None, description="Current MetaGuardian state for DSL translation")
+    guardian_state: dict | None = Field(
+        default=None, description="Current MetaGuardian state for DSL translation"
+    )
 
     # Retest / optimize blocks (REQ-19) — optional; absent means no block.
     retest: RetestBlock | None = Field(
@@ -575,8 +670,14 @@ class ResearchConfig(BaseModel):
     def _validate_agent_names(self) -> ResearchConfig:
         """Validate agent names against known agents."""
         known_agents = {
-            "research", "builder", "statistics", "review",
-            "portfolio", "deploy", "monitor", "research_director",
+            "research",
+            "builder",
+            "statistics",
+            "review",
+            "portfolio",
+            "deploy",
+            "monitor",
+            "research_director",
             "analysis",
         }
         for agent in self.agents:

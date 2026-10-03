@@ -58,7 +58,9 @@ def _find_sqcli(sqx_install_path: str) -> str | None:
     return None
 
 
-async def _run_sqcli_command(sqcli_path: str, args: list[str], timeout: float = 60.0) -> str:
+async def _run_sqcli_command(
+    sqcli_path: str, args: list[str], timeout: float = 60.0
+) -> str:
     """Run a single sqcli command and return its stdout.
 
     Args:
@@ -80,9 +82,7 @@ async def _run_sqcli_command(sqcli_path: str, args: list[str], timeout: float = 
             stderr=asyncio.subprocess.PIPE,
         )
     except (OSError, subprocess.SubprocessError) as exc:
-        raise DataManagerError(
-            f"failed to launch sqcli {sqcli_path!r}: {exc}"
-        ) from exc
+        raise DataManagerError(f"failed to launch sqcli {sqcli_path!r}: {exc}") from exc
 
     try:
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
@@ -297,9 +297,7 @@ class DataManager:
             }
 
         await handler.ensure(symbol, datatype, sqx_name)
-        await self._registry.record(
-            sqx_name, symbol, datatype, datasource, status="ok"
-        )
+        await self._registry.record(sqx_name, symbol, datatype, datasource, status="ok")
         logger.info("DataManager: ensured symbol '%s' via '%s'", sqx_name, datasource)
         return {
             "status": "ok",
@@ -336,9 +334,7 @@ class DataManager:
 
         sqx_name = handler.sqx_name(symbol, datatype)
         await handler.update(symbol, datatype, sqx_name)
-        await self._registry.record(
-            sqx_name, symbol, datatype, datasource, status="ok"
-        )
+        await self._registry.record(sqx_name, symbol, datatype, datasource, status="ok")
         return {
             "status": "ok",
             "action": "update",

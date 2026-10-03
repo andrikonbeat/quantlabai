@@ -82,8 +82,15 @@ class WebSearchProvider(NewsProvider):
         # Cache as serialisable dicts
         await self.cache.set(
             cache_key,
-            [{"title": r.title, "url": r.url, "snippet": r.snippet, "source": r.source}
-             for r in results],
+            [
+                {
+                    "title": r.title,
+                    "url": r.url,
+                    "snippet": r.snippet,
+                    "source": r.source,
+                }
+                for r in results
+            ],
             ttl=self.default_ttl,
         )
         return results
