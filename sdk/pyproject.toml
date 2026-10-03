@@ -50,12 +50,27 @@ dev = [
     # `ruff check .`, `ruff format --check .` and `mypy quantlab --strict`
     # from ./sdk. Without these the job died at exit 127 (command not found)
     # and, because `test` declares `needs: lint`, the whole test job was
-    # skipped. Declared here so the gate can actually report a verdict;
-    # the violations it now surfaces are tracked as a separate work unit.
-    # Not pinned on purpose: pinning is part of that work unit, because an
-    # unpinned linter can turn the gate red on an unrelated commit.
-    "ruff>=0.6",
-    "mypy>=1.10",
+    # skipped. Declared here so the gate can actually report a verdict.
+    #
+    # Pinned EXACTLY (==), not with ~=. These tools define the debt baseline,
+    # so a floating constraint made the number move with no code change at
+    # all: going ruff 0.16.9 -> 0.16.10 added 92 violations on an untouched
+    # tree. There is also no [tool.ruff] section anywhere, so the enabled
+    # rule set is simply whatever these versions ship as defaults — which is
+    # precisely why the version must stop floating.
+    #
+    # Measured baseline for these exact versions (sdk/, 283 source files):
+    #   ruff check .              1871 violations (1115 auto-fixable)
+    #   ruff format --check .     271 files would be reformatted
+    #   mypy quantlab --strict    745 errors in 134 files
+    # The `lint` job carries `continue-on-error: true` while this is paid
+    # down, so none of it blocks delivery yet.
+    #
+    # Dependabot (weekly, /sdk) opens deliberate bump PRs for both, so exact
+    # pinning costs no security patches: an upgrade becomes a reviewed
+    # decision instead of a surprise on an unrelated commit.
+    "ruff==0.16.10",
+    "mypy==2.4.0",
     # The canonical suite (AGENTS.md: testpaths = tests + sdk/tests) collects
     # tests/dashboard/ and sdk/tests/dashboard/, which import quantlab.dashboard,
     # which imports flask at module level. flask lived only in the optional
