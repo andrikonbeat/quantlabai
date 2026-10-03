@@ -76,9 +76,7 @@ class PhaseConfig:
     # Invoked on stall detection (WARNING/CRITICAL event) AFTER the stall
     # checkpoint is written, so LLM-assisted diagnostics always run against a
     # persisted state (execution-monitor spec: checkpoint before diagnostics).
-    on_stall: Callable[
-        [Phase, list[dict[str, Any]]], Awaitable[None]
-    ] | None = None
+    on_stall: Callable[[Phase, list[dict[str, Any]]], Awaitable[None]] | None = None
 
 
 @dataclass
@@ -184,9 +182,7 @@ def resolve_sqcli_path(
     if env_path:
         candidates.append(Path(env_path))
     install = Path(sqx_install_path)
-    candidates.extend(
-        [install / "sqcli", install / "sqcli.exe", install / "sqcli.sh"]
-    )
+    candidates.extend([install / "sqcli", install / "sqcli.exe", install / "sqcli.sh"])
     for candidate in candidates:
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate.resolve())
@@ -255,7 +251,8 @@ class Executor:
             if last_stage == LifecycleState.EXPORTED:
                 logger.info(
                     "Phase %s already exported for '%s' — resume is a no-op",
-                    phase_name(phase), config.campaign_id,
+                    phase_name(phase),
+                    config.campaign_id,
                 )
                 return PhaseResult(
                     phase=phase,
@@ -361,7 +358,9 @@ class Executor:
                 pass
             logger.warning(
                 "Substrate phase %s failed for '%s': %s",
-                phase_name(phase), config.campaign_id, exc,
+                phase_name(phase),
+                config.campaign_id,
+                exc,
             )
             return PhaseResult(
                 phase=phase,
@@ -422,16 +421,12 @@ class Executor:
 
     @staticmethod
     def _halt_events(events: list[dict[str, Any]]) -> bool:
-        return any(
-            e.get("severity") in ("WARNING", "CRITICAL") for e in events
-        )
+        return any(e.get("severity") in ("WARNING", "CRITICAL") for e in events)
 
     # ── Chained multi-task runs (REQ-27) ─────────────────────────────────
 
     @staticmethod
-    async def execute_chain(
-        spec: ChainSpec, config: PhaseConfig
-    ) -> list[PhaseResult]:
+    async def execute_chain(spec: ChainSpec, config: PhaseConfig) -> list[PhaseResult]:
         """Run retest/optimize (etc.) chained in ONE project load (REQ-27).
 
         The multi-task Custom Project is loaded once and started once; SQX
@@ -466,8 +461,7 @@ class Executor:
             project = config.project or config.campaign_id
             await _send(
                 client,
-                f"-project action=loadconfig "
-                f"name={config.campaign_id} file={project}",
+                f"-project action=loadconfig name={config.campaign_id} file={project}",
             )
             lifecycle.transition(LifecycleState.LOADED)
             await _send(
@@ -483,7 +477,9 @@ class Executor:
                     if not resolved:
                         logger.warning(
                             "Gate denied between '%s' and '%s' — '%s' blocked",
-                            previous.name, task.name, task.name,
+                            previous.name,
+                            task.name,
+                            task.name,
                         )
                         results.append(
                             PhaseResult(
@@ -544,16 +540,18 @@ class Executor:
                 results.append(
                     PhaseResult(
                         phase=task.phase,
-                        status=PhaseStatus.COMPLETED if completed
+                        status=PhaseStatus.COMPLETED
+                        if completed
                         else PhaseStatus.FAILED,
                         export_paths=exports,
                         watcher_events=events,
-                        checkpoint=LifecycleState.EXPORTED
-                        if completed else None,
-                        error=None if completed
+                        checkpoint=LifecycleState.EXPORTED if completed else None,
+                        error=None
+                        if completed
                         else f"phase timed out after {config.timeout:.0f}s",
                         detail=f"{task.name} ({phase_name(task.phase)}) completed"
-                        if completed else f"{task.name} failed",
+                        if completed
+                        else f"{task.name} failed",
                     )
                 )
 

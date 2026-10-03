@@ -118,7 +118,9 @@ def _to_cfx_column_value(filter_: ColumnValueFilter) -> ColumnValue:
     )
 
 
-def _to_cfx_ranking_condition(ranking_filter: AdvancedRankingFilter) -> AdvancedRankingCondition:
+def _to_cfx_ranking_condition(
+    ranking_filter: AdvancedRankingFilter,
+) -> AdvancedRankingCondition:
     """Map one DSL advanced ranking filter to its CFX ``<Condition>`` model."""
     return AdvancedRankingCondition(
         use=ranking_filter.use,
@@ -241,7 +243,9 @@ def generate_cfx_archive(config: ResearchConfig) -> CfxArchive:
 
     # Add acceptance criteria
     for criterion in config.criteria:
-        add_ranking_condition(archive, criterion.metric, criterion.operator, criterion.value)
+        add_ranking_condition(
+            archive, criterion.metric, criterion.operator, criterion.value
+        )
 
     # Add nested advanced ranking conditions. These land in the complex
     # Rankings section while the criteria above land in the flat one; the
@@ -261,7 +265,11 @@ def generate_cfx_archive(config: ResearchConfig) -> CfxArchive:
     # Set the typed IS / validation / OOS sub-ranges of <Data>
     if config.data_range_parts is not None:
         patcher.apply(
-            [SetDataRangePartsInstruction(parts=_to_cfx_data_range_parts(config.data_range_parts))]
+            [
+                SetDataRangePartsInstruction(
+                    parts=_to_cfx_data_range_parts(config.data_range_parts)
+                )
+            ]
         )
 
     return archive
@@ -343,7 +351,9 @@ def generate_portfolio_cfx_archive(
         A ``CfxArchive`` ready to be written via ``CfxWriter``.
     """
     if not strategies:
-        raise TranslationError("At least one strategy is required for portfolio generation")
+        raise TranslationError(
+            "At least one strategy is required for portfolio generation"
+        )
     if generations <= 0:
         raise TranslationError("generations must be positive")
     if population <= 0:
@@ -569,4 +579,20 @@ def generate_retester_cfx_archive(
 
 # ── Public API ────────────────────────────────────────────────────────
 
-__all__ = ["SUPPORTED_TIMEFRAMES", "generate_cfx_archive", "generate_cfx_xml", "generate_optimizer_cfx_archive", "generate_portfolio_cfx_archive", "generate_retester_cfx_archive", "AcceptanceCriterion", "BuildingBlock", "CfxWriter", "Market", "Strategy", "Timeframe", "enable_crosscheck", "set_date_range", "set_genetic"]
+__all__ = [
+    "SUPPORTED_TIMEFRAMES",
+    "generate_cfx_archive",
+    "generate_cfx_xml",
+    "generate_optimizer_cfx_archive",
+    "generate_portfolio_cfx_archive",
+    "generate_retester_cfx_archive",
+    "AcceptanceCriterion",
+    "BuildingBlock",
+    "CfxWriter",
+    "Market",
+    "Strategy",
+    "Timeframe",
+    "enable_crosscheck",
+    "set_date_range",
+    "set_genetic",
+]

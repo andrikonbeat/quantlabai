@@ -97,7 +97,9 @@ class CfxArchiveFactory:
             A ``CfxResult`` containing the content and the output path.
         """
         # Resolve output directory
-        out_dir = Path(output_dir) if output_dir is not None else Path(DEFAULT_OUTPUT_DIR)
+        out_dir = (
+            Path(output_dir) if output_dir is not None else Path(DEFAULT_OUTPUT_DIR)
+        )
 
         # Generate CFX archive using new cfx-editor models
         archive: CfxArchiveModel = generate_cfx_archive(config)
@@ -160,7 +162,9 @@ class CfxArchiveFactory:
         Returns:
             A ``CfxResult`` with content and output path.
         """
-        out_dir = Path(output_dir) if output_dir is not None else Path(DEFAULT_OUTPUT_DIR)
+        out_dir = (
+            Path(output_dir) if output_dir is not None else Path(DEFAULT_OUTPUT_DIR)
+        )
 
         archive = generate_portfolio_cfx_archive(
             strategies,
@@ -172,7 +176,9 @@ class CfxArchiveFactory:
             rebalance=rebalance,
         )
 
-        safe_name = f"portfolio-{_sanitize_filename(strategies[0]) if strategies else 'master'}"
+        safe_name = (
+            f"portfolio-{_sanitize_filename(strategies[0]) if strategies else 'master'}"
+        )
 
         if dry_run:
             dst_dir = _dry_run_output_dir(out_dir)
@@ -226,7 +232,9 @@ class CfxArchiveFactory:
         Returns:
             A ``CfxResult`` with content and output path.
         """
-        out_dir = Path(output_dir) if output_dir is not None else Path(DEFAULT_OUTPUT_DIR)
+        out_dir = (
+            Path(output_dir) if output_dir is not None else Path(DEFAULT_OUTPUT_DIR)
+        )
 
         archive = generate_optimizer_cfx_archive(
             strategy_id,
@@ -289,7 +297,9 @@ class CfxArchiveFactory:
         Returns:
             A ``CfxResult`` with content and output path.
         """
-        out_dir = Path(output_dir) if output_dir is not None else Path(DEFAULT_OUTPUT_DIR)
+        out_dir = (
+            Path(output_dir) if output_dir is not None else Path(DEFAULT_OUTPUT_DIR)
+        )
 
         archive = generate_retester_cfx_archive(
             strategy_id,

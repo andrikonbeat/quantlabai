@@ -83,7 +83,6 @@ class StatisticsAggregator:
             "total_trades": [],
         }
 
-
         engine = StatisticsEngine()
 
         for result in campaign_results:
@@ -98,7 +97,9 @@ class StatisticsAggregator:
                 if trades and isinstance(trades[0], dict):
                     trades = [Trade(**t) if isinstance(t, dict) else t for t in trades]
                 if equity and isinstance(equity[0], dict):
-                    equity = [EquityPoint(**e) if isinstance(e, dict) else e for e in equity]
+                    equity = [
+                        EquityPoint(**e) if isinstance(e, dict) else e for e in equity
+                    ]
 
                 # Compute returns from equity
                 returns = []
@@ -106,7 +107,9 @@ class StatisticsAggregator:
                     eq_vals = [e.equity for e in equity]
                     for i in range(1, len(eq_vals)):
                         if eq_vals[i - 1] != 0:
-                            returns.append((eq_vals[i] - eq_vals[i - 1]) / eq_vals[i - 1])
+                            returns.append(
+                                (eq_vals[i] - eq_vals[i - 1]) / eq_vals[i - 1]
+                            )
 
                 try:
                     computed = engine.compute_all(
@@ -115,8 +118,14 @@ class StatisticsAggregator:
                         returns=returns if returns else None,
                     )
                     # Merge computed stats into stats dict
-                    computed_dict = computed.model_dump() if hasattr(computed, "model_dump") else computed.__dict__
-                    stats.update({k: v for k, v in computed_dict.items() if v is not None})
+                    computed_dict = (
+                        computed.model_dump()
+                        if hasattr(computed, "model_dump")
+                        else computed.__dict__
+                    )
+                    stats.update(
+                        {k: v for k, v in computed_dict.items() if v is not None}
+                    )
 
                     # Also compute win_rate and total_trades from trades directly
                     if trades:
@@ -131,7 +140,12 @@ class StatisticsAggregator:
             metric_map = {
                 "sharpe": ["sharpe_ratio", "sharpe", "SharpeRatio"],
                 "profit_factor": ["profit_factor", "ProfitFactor", "profitfactor"],
-                "max_drawdown": ["max_drawdown", "maxdrawdown", "MaxDrawdown", "drawdown"],
+                "max_drawdown": [
+                    "max_drawdown",
+                    "maxdrawdown",
+                    "MaxDrawdown",
+                    "drawdown",
+                ],
                 "win_rate": ["win_rate", "winrate", "WinRate"],
                 "expectancy": ["expectancy", "Expectancy"],
                 "total_trades": ["total_trades", "totaltrades", "TotalTrades"],
@@ -152,7 +166,9 @@ class StatisticsAggregator:
         aggregates: dict[str, AggregateStats] = {}
         for metric, values in metric_values.items():
             if values:
-                aggregates[metric] = StatisticsAggregator._compute_aggregate_stats(values)
+                aggregates[metric] = StatisticsAggregator._compute_aggregate_stats(
+                    values
+                )
             else:
                 # Empty aggregate with NaN values
                 aggregates[metric] = AggregateStats(
@@ -190,6 +206,7 @@ class StatisticsAggregator:
         # Normalize metric names (lowercase, spaces/dashes to underscores, PascalCase to snake_case)
         def normalize(name: str) -> str:
             import re
+
             # Insert underscore before uppercase letters (except first)
             s1 = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", name)
             # Insert underscore between lowercase and uppercase
@@ -218,7 +235,9 @@ class StatisticsAggregator:
         aggregates: dict[str, AggregateStats] = {}
         for metric, values in metric_values.items():
             if values:
-                aggregates[metric] = StatisticsAggregator._compute_aggregate_stats(values)
+                aggregates[metric] = StatisticsAggregator._compute_aggregate_stats(
+                    values
+                )
             else:
                 aggregates[metric] = AggregateStats(
                     mean=math.nan,
@@ -416,6 +435,7 @@ class StatisticsAggregator:
 
         for metric in metrics:
             if metric == "sharpe":
+
                 def sharpe_func(x: pd.Series) -> float:
                     if len(x) < 2:
                         return float("nan")
@@ -423,12 +443,15 @@ class StatisticsAggregator:
                     std_r = x.std(ddof=1)
                     if std_r == 0:
                         return float("inf") if (mean_r - risk_free_rate) > 0 else 0.0
-                    return ((mean_r - risk_free_rate) / std_r) * math.sqrt(annual_factor)
+                    return ((mean_r - risk_free_rate) / std_r) * math.sqrt(
+                        annual_factor
+                    )
 
                 rolling = returns.rolling(window=window).apply(sharpe_func, raw=False)
                 values = pad_values([float("nan")] + rolling.tolist())
 
             elif metric == "sortino":
+
                 def sortino_func(x: pd.Series) -> float:
                     if len(x) < 2:
                         return float("nan")
@@ -439,12 +462,15 @@ class StatisticsAggregator:
                     downside_std = downside.std(ddof=1)
                     if downside_std == 0:
                         return float("inf")
-                    return ((mean_r - risk_free_rate) / downside_std) * math.sqrt(annual_factor)
+                    return ((mean_r - risk_free_rate) / downside_std) * math.sqrt(
+                        annual_factor
+                    )
 
                 rolling = returns.rolling(window=window).apply(sortino_func, raw=False)
                 values = pad_values([float("nan")] + rolling.tolist())
 
             elif metric == "drawdown":
+
                 def max_dd_func(x: pd.Series) -> float:
                     if len(x) < 2:
                         return float("nan")
@@ -465,7 +491,11 @@ class StatisticsAggregator:
                 def cumret_func(x: pd.Series) -> float:
                     if len(x) < 2:
                         return float("nan")
-                    return (x.iloc[-1] / x.iloc[0] - 1) * 100 if x.iloc[0] != 0 else float("nan")
+                    return (
+                        (x.iloc[-1] / x.iloc[0] - 1) * 100
+                        if x.iloc[0] != 0
+                        else float("nan")
+                    )
 
                 rolling = eq_series.rolling(window=window).apply(cumret_func, raw=False)
                 values = pad_values(rolling.tolist())
@@ -519,12 +549,14 @@ class StatisticsAggregator:
                 f"benchmark={len(benchmark_returns)}"
             )
         if not strategy_returns:
-            raise ValueError("Empty return series — cannot compute benchmark comparison.")
+            raise ValueError(
+                "Empty return series — cannot compute benchmark comparison."
+            )
 
         strat = pd.Series(strategy_returns)
         bench = pd.Series(benchmark_returns)
 
-# Beta = Cov(strategy, benchmark) / Var(benchmark)
+        # Beta = Cov(strategy, benchmark) / Var(benchmark)
         cov = strat.cov(bench)
         bench_var = bench.var(ddof=1)
 
@@ -556,7 +588,9 @@ class StatisticsAggregator:
         if tracking_error == 0:
             info_ratio = float("inf") if active_returns.mean() > 0 else 0.0
         else:
-            info_ratio = (active_returns.mean() / active_returns.std(ddof=1)) * math.sqrt(252)
+            info_ratio = (
+                active_returns.mean() / active_returns.std(ddof=1)
+            ) * math.sqrt(252)
 
         # Correlation
         correlation = strat.corr(bench)

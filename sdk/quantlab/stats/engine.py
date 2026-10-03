@@ -55,7 +55,9 @@ class StatisticsEngine:
             InsufficientDataError: If the trade list is empty.
         """
         if not trades:
-            raise InsufficientDataError("Empty trade list — cannot compute profit factor.")
+            raise InsufficientDataError(
+                "Empty trade list — cannot compute profit factor."
+            )
 
         gross_profit = sum(t.profit for t in trades if t.profit > 0)
         gross_loss = sum(t.profit for t in trades if t.profit < 0)
@@ -68,7 +70,9 @@ class StatisticsEngine:
     # ── Sharpe Ratio ───────────────────────────────────────────────────────────
 
     @staticmethod
-    def sharpe_ratio(returns: list[float], annual_factor: int = 252, risk_free_rate: float = 0.0) -> float:
+    def sharpe_ratio(
+        returns: list[float], annual_factor: int = 252, risk_free_rate: float = 0.0
+    ) -> float:
         """Compute the annualised Sharpe ratio.
 
         ``sharpe = (mean(returns) - risk_free_rate) / std(returns) * sqrt(annual_factor)``
@@ -103,7 +107,9 @@ class StatisticsEngine:
     # ── Sortino Ratio ──────────────────────────────────────────────────────────
 
     @staticmethod
-    def sortino_ratio(returns: list[float], annual_factor: int = 252, risk_free_rate: float = 0.0) -> float:
+    def sortino_ratio(
+        returns: list[float], annual_factor: int = 252, risk_free_rate: float = 0.0
+    ) -> float:
         """Compute the annualised Sortino ratio (downside deviation only).
 
         ``sortino = (mean(returns) - risk_free_rate) / downside_std * sqrt(annual_factor)``
@@ -123,13 +129,13 @@ class StatisticsEngine:
             InsufficientDataError: If the returns list is empty.
         """
         if not returns:
-            raise InsufficientDataError("Empty returns list — cannot compute Sortino ratio.")
+            raise InsufficientDataError(
+                "Empty returns list — cannot compute Sortino ratio."
+            )
 
         mean_return = sum(returns) / len(returns)
         downside_deviations = [
-            (r - risk_free_rate) ** 2
-            for r in returns
-            if r < risk_free_rate
+            (r - risk_free_rate) ** 2 for r in returns if r < risk_free_rate
         ]
 
         if not downside_deviations:
@@ -164,7 +170,9 @@ class StatisticsEngine:
             InsufficientDataError: If the equity list is empty.
         """
         if not equity:
-            raise InsufficientDataError("Empty equity curve — cannot compute max drawdown.")
+            raise InsufficientDataError(
+                "Empty equity curve — cannot compute max drawdown."
+            )
 
         peak = equity[0].equity
         max_dd = 0.0
@@ -306,8 +314,12 @@ class StatisticsEngine:
 
         if returns is not None:
             try:
-                result.sharpe_ratio = self.sharpe_ratio(returns, annual_factor, risk_free_rate)
-                result.sortino_ratio = self.sortino_ratio(returns, annual_factor, risk_free_rate)
+                result.sharpe_ratio = self.sharpe_ratio(
+                    returns, annual_factor, risk_free_rate
+                )
+                result.sortino_ratio = self.sortino_ratio(
+                    returns, annual_factor, risk_free_rate
+                )
             except InsufficientDataError:
                 pass
 

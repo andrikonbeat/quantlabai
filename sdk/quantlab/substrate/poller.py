@@ -80,6 +80,8 @@ async def poll_until_done(
 
     logger.warning(
         "Substrate poll for '%s' timed out after %.0fs (%d polls)",
-        campaign_id, timeout, polls,
+        campaign_id,
+        timeout,
+        polls,
     )
     return PollResult(completed=False, status_text=status_text, polls=polls)

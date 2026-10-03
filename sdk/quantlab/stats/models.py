@@ -14,15 +14,31 @@ class StatsResult(BaseModel):
     structured result with typed metric values.
     """
 
-    profit_factor: float | None = Field(default=None, description="Gross profit / abs(gross loss)")
-    sharpe_ratio: float | None = Field(default=None, description="Annualised Sharpe ratio")
-    sortino_ratio: float | None = Field(default=None, description="Annualised Sortino ratio")
-    max_drawdown: float | None = Field(default=None, description="Maximum drawdown as a percentage")
+    profit_factor: float | None = Field(
+        default=None, description="Gross profit / abs(gross loss)"
+    )
+    sharpe_ratio: float | None = Field(
+        default=None, description="Annualised Sharpe ratio"
+    )
+    sortino_ratio: float | None = Field(
+        default=None, description="Annualised Sortino ratio"
+    )
+    max_drawdown: float | None = Field(
+        default=None, description="Maximum drawdown as a percentage"
+    )
     mar_ratio: float | None = Field(default=None, description="CAGR / max drawdown")
-    recovery_factor: float | None = Field(default=None, description="Net profit / max drawdown")
-    expectancy: float | None = Field(default=None, description="Average expected trade outcome")
-    expectancy_ratio: float | None = Field(default=None, description="Expectancy / avg loss")
-    win_rate: float | None = Field(default=None, description="Percentage of winning trades")
+    recovery_factor: float | None = Field(
+        default=None, description="Net profit / max drawdown"
+    )
+    expectancy: float | None = Field(
+        default=None, description="Average expected trade outcome"
+    )
+    expectancy_ratio: float | None = Field(
+        default=None, description="Expectancy / avg loss"
+    )
+    win_rate: float | None = Field(
+        default=None, description="Percentage of winning trades"
+    )
     total_trades: int | None = Field(default=None, description="Total number of trades")
 
 

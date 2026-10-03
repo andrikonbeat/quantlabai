@@ -11,7 +11,6 @@ Usage:
 """
 
 
-
 class QuantLabError(Exception):
     """Base exception for all QuantLab SDK errors."""
 
@@ -46,7 +45,13 @@ class SQXNotFoundError(QuantLabError):
 class LicenseError(QuantLabError):
     """Raised when SQX license validation fails."""
 
-    def __init__(self, detail: str = "", *, cause: BaseException | None = None, license_path: str | None = None) -> None:
+    def __init__(
+        self,
+        detail: str = "",
+        *,
+        cause: BaseException | None = None,
+        license_path: str | None = None,
+    ) -> None:
         super().__init__(detail, cause=cause)
         self.license_path = license_path
 
@@ -55,7 +60,12 @@ class CampaignError(QuantLabError):
     """Raised when a campaign execution fails."""
 
     def __init__(
-        self, detail: str = "", *, cause: BaseException | None = None, phase: str | None = None, campaign_name: str | None = None
+        self,
+        detail: str = "",
+        *,
+        cause: BaseException | None = None,
+        phase: str | None = None,
+        campaign_name: str | None = None,
     ) -> None:
         if campaign_name:
             prefix = f"[{campaign_name}] "
@@ -80,7 +90,13 @@ class InsufficientDataError(QuantLabError):
 class PipelineError(QuantLabError):
     """Base exception for pipeline execution errors."""
 
-    def __init__(self, detail: str = "", *, cause: BaseException | None = None, stage_name: str | None = None) -> None:
+    def __init__(
+        self,
+        detail: str = "",
+        *,
+        cause: BaseException | None = None,
+        stage_name: str | None = None,
+    ) -> None:
         super().__init__(detail, cause=cause)
         self.stage_name = stage_name
 
@@ -89,7 +105,12 @@ class StageExecutionError(PipelineError):
     """Raised when a pipeline stage fails during execution."""
 
     def __init__(
-        self, detail: str = "", *, cause: BaseException | None = None, stage_name: str | None = None, original_error: BaseException | None = None
+        self,
+        detail: str = "",
+        *,
+        cause: BaseException | None = None,
+        stage_name: str | None = None,
+        original_error: BaseException | None = None,
     ) -> None:
         super().__init__(detail, cause=cause, stage_name=stage_name)
         self.original_error = original_error
@@ -98,6 +119,12 @@ class StageExecutionError(PipelineError):
 class PipelineConfigError(PipelineError):
     """Raised when pipeline configuration is invalid."""
 
-    def __init__(self, detail: str = "", *, cause: BaseException | None = None, config_field: str | None = None) -> None:
+    def __init__(
+        self,
+        detail: str = "",
+        *,
+        cause: BaseException | None = None,
+        config_field: str | None = None,
+    ) -> None:
         super().__init__(detail, cause=cause)
         self.config_field = config_field

@@ -120,9 +120,7 @@ class VersionPreflight:
         )
         if trigger_workflow:
             try:
-                DriftWorkflow(self.knowledge_root).run(
-                    PINNED_SQX_VERSION, installed
-                )
+                DriftWorkflow(self.knowledge_root).run(PINNED_SQX_VERSION, installed)
             except Exception as exc:  # pragma: no cover - defensive
                 logger.warning("SQX drift workflow failed (continuing): %s", exc)
         return "drift"

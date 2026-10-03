@@ -187,9 +187,7 @@ class DaemonLifecycle:
         ``IDLE → LOADED`` is not forced and no completed work is redone.
         """
         if state not in WORK_STAGES:
-            raise ValueError(
-                f"cannot resume at non-work stage: {state.value}"
-            )
+            raise ValueError(f"cannot resume at non-work stage: {state.value}")
         self._state = state
 
     async def start(self) -> str:
@@ -248,9 +246,7 @@ class SubstrateCheckpoint:
         completed = WORK_STAGES[: WORK_STAGES.index(stage) + 1]
         checkpoint = CampaignCheckpoint(
             project_name=self._project,
-            completed_phases=[
-                _STAGE_TO_CAMPAIGN_PHASE[s] for s in completed
-            ],
+            completed_phases=[_STAGE_TO_CAMPAIGN_PHASE[s] for s in completed],
             phase_results=[
                 PhaseResult(
                     phase=_STAGE_TO_CAMPAIGN_PHASE[s],
@@ -259,9 +255,7 @@ class SubstrateCheckpoint:
                 )
                 for s in completed
             ],
-            export_paths={
-                str(i): p for i, p in enumerate(export_paths or [])
-            },
+            export_paths={str(i): p for i, p in enumerate(export_paths or [])},
         )
         return self._mgr.save(checkpoint)
 
