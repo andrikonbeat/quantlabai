@@ -125,18 +125,49 @@ class TestValidateContracts:
         """
         pipeline = Pipeline(name="test-agent-chain")
         pipeline.stages = [
-            _make_stage("research", [], ["research_config", "objectives", "hypotheses"]),
-            _make_stage("builder", ["research_config"], ["cfx_bytes", "campaign_id", "export_paths"]),
-            _make_stage("statistics", ["export_paths"], ["statistics", "aggregate_stats", "monte_carlo_bands"]),
-            _make_stage("analysis", ["export_paths", "statistics"],
-                       ["strategy_analysis", "selected_strategies", "strategy_verdicts", "wf_cycles"]),
-            _make_stage("review", ["statistics", "aggregate_stats", "monte_carlo_bands", "strategy_analysis"],
-                       ["review_decision", "iteration_proposal"]),
-            _make_stage("gate",
-                       [],
-                       ["gate_decision_HUMAN_APPROVE_PORTFOLIO"]),
-            _make_stage("portfolio", ["review_decision", "gate_decision_HUMAN_APPROVE_PORTFOLIO", "selected_strategies"],
-                       ["portfolio_cfx", "portfolio_result"]),
+            _make_stage(
+                "research", [], ["research_config", "objectives", "hypotheses"]
+            ),
+            _make_stage(
+                "builder",
+                ["research_config"],
+                ["cfx_bytes", "campaign_id", "export_paths"],
+            ),
+            _make_stage(
+                "statistics",
+                ["export_paths"],
+                ["statistics", "aggregate_stats", "monte_carlo_bands"],
+            ),
+            _make_stage(
+                "analysis",
+                ["export_paths", "statistics"],
+                [
+                    "strategy_analysis",
+                    "selected_strategies",
+                    "strategy_verdicts",
+                    "wf_cycles",
+                ],
+            ),
+            _make_stage(
+                "review",
+                [
+                    "statistics",
+                    "aggregate_stats",
+                    "monte_carlo_bands",
+                    "strategy_analysis",
+                ],
+                ["review_decision", "iteration_proposal"],
+            ),
+            _make_stage("gate", [], ["gate_decision_HUMAN_APPROVE_PORTFOLIO"]),
+            _make_stage(
+                "portfolio",
+                [
+                    "review_decision",
+                    "gate_decision_HUMAN_APPROVE_PORTFOLIO",
+                    "selected_strategies",
+                ],
+                ["portfolio_cfx", "portfolio_result"],
+            ),
         ]
 
         runner = PipelineRunner()
@@ -166,16 +197,17 @@ def _make_stage(
     stage_provides: list[str],
 ) -> Stage:
     """Helper to create a concrete stage for contract testing.
-    
+
     Uses a dynamically created subclass to avoid Python 3.14 ABC
     instantiation restrictions.
     """
+
     class _ConcreteStage(Stage):
         name = stage_name
         requires = stage_requires
         provides = stage_provides
-        
+
         async def execute(self, ctx: PipelineContext) -> dict:
             return {"stage": self.name, "status": "ok"}
-    
+
     return _ConcreteStage()

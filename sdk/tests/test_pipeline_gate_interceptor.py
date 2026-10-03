@@ -85,9 +85,7 @@ class TestGateInterceptorStage:
         missing = [g for g in HUMAN_GATE_IDS if g not in DEFAULT_GATE_POLICIES]
         assert missing == [], f"unregistered stage gates: {missing}"
 
-        registry_only = [
-            g for g in DEFAULT_GATE_POLICIES if g not in HUMAN_GATE_IDS
-        ]
+        registry_only = [g for g in DEFAULT_GATE_POLICIES if g not in HUMAN_GATE_IDS]
         assert registry_only == ["HUMAN_APPROVE_REPLACEMENT"]
 
     def test_set_callback(self) -> None:

@@ -115,7 +115,12 @@ class TestReviewStage:
 
     def test_requires(self) -> None:
         stage = ReviewStage()
-        expected = ["statistics", "aggregate_stats", "monte_carlo_bands", "strategy_analysis"]
+        expected = [
+            "statistics",
+            "aggregate_stats",
+            "monte_carlo_bands",
+            "strategy_analysis",
+        ]
         assert stage.requires == expected
 
     def test_provides(self) -> None:
@@ -197,7 +202,7 @@ class TestMonitorStage:
 
 class TestFullChainContract:
     """Verify the complete agent-stage chain satisfies contracts.
-    
+
     Some keys come from external sources (config, gates, environment):
     - ``selected_strategies`` → provided by AnalysisStage
     - ``live_equity`` → provided by external data feed
@@ -220,10 +225,10 @@ class TestFullChainContract:
 
         # External keys that would come from config, gates, or environment
         external_keys = {
-            "live_equity",             # from external data feed
+            "live_equity",  # from external data feed
             "gate_decision_HUMAN_APPROVE_PORTFOLIO",  # from gate
-            "gate_decision_HUMAN_REVIEW_PERFORMANCE", # from gate
-            "deployment_result",       # from DeployStage
+            "gate_decision_HUMAN_REVIEW_PERFORMANCE",  # from gate
+            "deployment_result",  # from DeployStage
         }
 
         provided: set[str] = set(external_keys)

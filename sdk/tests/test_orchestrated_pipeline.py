@@ -81,6 +81,7 @@ class _SpyBuilder:
 
 # ── Stage wiring ──────────────────────────────────────────────────────────────
 
+
 class TestOrchestratedStageWiring:
     """REQ-06/REQ-01: orchestrated stage order with config review + dispatch."""
 
@@ -94,7 +95,11 @@ class TestOrchestratedStageWiring:
 
         assert "config_review" in names
         assert "dispatch" in names
-        assert names.index("builder") < names.index("config_review") < names.index("dispatch")
+        assert (
+            names.index("builder")
+            < names.index("config_review")
+            < names.index("dispatch")
+        )
 
     def test_orchestrated_research_leads_into_config_review(self) -> None:
         """GIVEN orchestrated=True
@@ -125,7 +130,11 @@ class TestOrchestratedStageWiring:
         )
         names = _stage_names(pipeline)
 
-        assert names.index("execution_monitor") < names.index("retester") < names.index("optimizer")
+        assert (
+            names.index("execution_monitor")
+            < names.index("retester")
+            < names.index("optimizer")
+        )
 
     def test_retester_optimizer_absent_without_blocks(self) -> None:
         """GIVEN no retest/optimize blocks
@@ -155,6 +164,7 @@ class TestOrchestratedStageWiring:
 
 
 # ── Gate wiring ───────────────────────────────────────────────────────────────
+
 
 class TestOrchestratedGateWiring:
     """REQ-06: HUMAN_APPROVE_CONFIG between review and dispatch."""
@@ -208,6 +218,7 @@ class TestOrchestratedGateWiring:
 
 # ── BLOCK → dispatch never invoked ────────────────────────────────────────────
 
+
 class TestBlockStopsDispatch:
     """REQ-05/06: a BLOCK verdict on config review stops dispatch."""
 
@@ -227,9 +238,7 @@ class TestBlockStopsDispatch:
 
         async def _fail_closed_wrapper(gate_ctx) -> None:
             ctx_dict = (
-                gate_ctx.__dict__
-                if hasattr(gate_ctx, "__dict__")
-                else dict(gate_ctx)
+                gate_ctx.__dict__ if hasattr(gate_ctx, "__dict__") else dict(gate_ctx)
             )
             return await fail_closed_callback(ctx_dict)
 

@@ -70,7 +70,13 @@ class TestCaptureAtPhaseBoundary:
         assert engram.calls[0]["topic_key"] == "agent/research-director/campaign-7"
 
         # Lake side: agent-memory/{agent}/{campaign}/memory.yaml holds the record.
-        memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-director"
+            / "campaign-7"
+            / "memory.yaml"
+        )
         import yaml
 
         records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
@@ -80,7 +86,9 @@ class TestCaptureAtPhaseBoundary:
         assert records[0]["phase"] == "config"
 
     @pytest.mark.asyncio
-    async def test_decision_includes_phase_and_config(self, tmp_path, enabled_config) -> None:
+    async def test_decision_includes_phase_and_config(
+        self, tmp_path, enabled_config
+    ) -> None:
         engram = FakeEngram()
         service = MemoryCaptureService(
             knowledge_root=tmp_path,
@@ -89,13 +97,21 @@ class TestCaptureAtPhaseBoundary:
         )
         phase_config = {"sqx_install_path": "/opt/SQX", "license_note": "default"}
         await service.capture_phase(
-            "research-director", "campaign-7", "review",
+            "research-director",
+            "campaign-7",
+            "review",
             {"status": "success", "executive_summary": "ok"},
             config=phase_config,
         )
         import yaml
 
-        memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-director"
+            / "campaign-7"
+            / "memory.yaml"
+        )
         records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
         assert records[0]["phase"] == "review"
         assert records[0]["config"] == phase_config
@@ -105,7 +121,9 @@ class TestMissingFieldsDefault:
     """REQ-102 scenario: missing envelope fields default to null."""
 
     @pytest.mark.asyncio
-    async def test_missing_next_recommended_defaults_null(self, tmp_path, enabled_config) -> None:
+    async def test_missing_next_recommended_defaults_null(
+        self, tmp_path, enabled_config
+    ) -> None:
         engram = FakeEngram()
         service = MemoryCaptureService(
             knowledge_root=tmp_path,
@@ -123,7 +141,13 @@ class TestMissingFieldsDefault:
         )
         import yaml
 
-        memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-director"
+            / "campaign-7"
+            / "memory.yaml"
+        )
         records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
         assert "next_recommended" in records[0]
         assert records[0]["next_recommended"] is None
@@ -142,12 +166,20 @@ class TestEngramUnavailable:
         )
         # Must NOT raise even though Engram fails.
         await service.capture_phase(
-            "research-director", "campaign-7", "dispatch",
+            "research-director",
+            "campaign-7",
+            "dispatch",
             {"status": "success", "executive_summary": "dispatched"},
         )
         import yaml
 
-        memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-director"
+            / "campaign-7"
+            / "memory.yaml"
+        )
         records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
         assert records[0]["status"] == "success"
 
@@ -156,7 +188,9 @@ class TestSaveFailureNonBlocking:
     """REQ-102 scenario: lake write failure is non-blocking."""
 
     @pytest.mark.asyncio
-    async def test_lake_write_failure_does_not_raise(self, tmp_path, enabled_config) -> None:
+    async def test_lake_write_failure_does_not_raise(
+        self, tmp_path, enabled_config
+    ) -> None:
         # knowledge_root points at a FILE, so agent-memory/ cannot be created.
         blocker = tmp_path / "blocker"
         blocker.write_text("not a dir", encoding="utf-8")
@@ -166,7 +200,9 @@ class TestSaveFailureNonBlocking:
             capture_config=enabled_config,
         )
         await service.capture_phase(
-            "research-director", "campaign-7", "portfolio",
+            "research-director",
+            "campaign-7",
+            "portfolio",
             {"status": "success", "executive_summary": "ok"},
         )
         # Reaching here proves the failure was swallowed (non-blocking).
@@ -190,7 +226,13 @@ class TestPrivacyScrubInSaveDecision:
         )
         import yaml
 
-        memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-director"
+            / "campaign-7"
+            / "memory.yaml"
+        )
         records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
         # Lake record: scrubbed, phase/config injected.
         assert records[0]["config"]["sqx_license"] == REDACTED
@@ -213,22 +255,40 @@ class TestConfigDisabled:
             capture_config={"enabled": False},
         )
         await service.capture_phase(
-            "research-director", "campaign-7", "research",
+            "research-director",
+            "campaign-7",
+            "research",
             {"status": "success", "executive_summary": "ok"},
         )
-        memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-director"
+            / "campaign-7"
+            / "memory.yaml"
+        )
         assert not memory_file.exists()
         assert engram.calls == []
 
     @pytest.mark.asyncio
     async def test_research_director_default_is_disabled(self, tmp_path) -> None:
         # ResearchDirector default: no capture config -> capture disabled.
-        director = ResearchDirector(knowledge_root=tmp_path, engram_save_fn=FakeEngram())
+        director = ResearchDirector(
+            knowledge_root=tmp_path, engram_save_fn=FakeEngram()
+        )
         await director.capture_phase(
-            "research-director", "campaign-7", "research",
+            "research-director",
+            "campaign-7",
+            "research",
             {"status": "success", "executive_summary": "ok"},
         )
-        memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-director"
+            / "campaign-7"
+            / "memory.yaml"
+        )
         assert not memory_file.exists()
 
     @pytest.mark.asyncio
@@ -239,10 +299,18 @@ class TestConfigDisabled:
             memory_capture_config={"enabled": True},
         )
         await director.capture_phase(
-            "research-director", "campaign-7", "research",
+            "research-director",
+            "campaign-7",
+            "research",
             {"status": "success", "executive_summary": "ok"},
         )
-        memory_file = tmp_path / "agent-memory" / "research-director" / "campaign-7" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-director"
+            / "campaign-7"
+            / "memory.yaml"
+        )
         assert memory_file.exists()
 
 
@@ -250,7 +318,9 @@ class TestSelfCorrectionCapture:
     """REQ-105: capture_phase reports repeated failure signatures (flag)."""
 
     @pytest.mark.asyncio
-    async def test_capture_flags_repeated_failure_signature(self, tmp_path, enabled_config) -> None:
+    async def test_capture_flags_repeated_failure_signature(
+        self, tmp_path, enabled_config
+    ) -> None:
         import yaml
 
         camp_dir = tmp_path / "agent-memory" / "research-director" / "campaign-7"
@@ -298,8 +368,11 @@ class TestSelfCorrectionCapture:
 
         records = yaml.safe_load((camp_dir / "memory.yaml").read_text(encoding="utf-8"))
         latest = records[-1]
-        assert latest.get("self_correction"), "expected a self-correction flag on the captured decision"
+        assert latest.get("self_correction"), (
+            "expected a self-correction flag on the captured decision"
+        )
         assert any("dispatch" in r for r in latest["self_correction"])
+
 
 class TestParameterMatrixMetadataCapture:
     """Task 4.3: save_decision captures parameter-matrix metadata (REQ-34)."""
@@ -329,7 +402,13 @@ class TestParameterMatrixMetadataCapture:
 
         import yaml
 
-        memory_file = tmp_path / "agent-memory" / "builder-agent" / "campaign-matrix-1" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "builder-agent"
+            / "campaign-matrix-1"
+            / "memory.yaml"
+        )
         records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
         meta = records[0]["parameter_matrix_meta"]
         assert meta["entry_count"] == 2
@@ -363,7 +442,13 @@ class TestParameterMatrixMetadataCapture:
 
         import yaml
 
-        memory_file = tmp_path / "agent-memory" / "builder-agent" / "campaign-matrix-2" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "builder-agent"
+            / "campaign-matrix-2"
+            / "memory.yaml"
+        )
         records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
         assert records[0]["parameter_matrix_meta"] == {
             "entry_count": 1,
@@ -412,6 +497,12 @@ class TestParameterMatrixMetadataCapture:
 
         import yaml
 
-        memory_file = tmp_path / "agent-memory" / "research-agent" / "campaign-plain" / "memory.yaml"
+        memory_file = (
+            tmp_path
+            / "agent-memory"
+            / "research-agent"
+            / "campaign-plain"
+            / "memory.yaml"
+        )
         records = yaml.safe_load(memory_file.read_text(encoding="utf-8"))
         assert "parameter_matrix_meta" not in records[0]

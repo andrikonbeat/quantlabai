@@ -58,8 +58,9 @@ class TestBuildFromConfig:
             StageConfig(name="statistics", type="agent"),
             StageConfig(name="review", type="agent"),
             StageConfig(name="portfolio", type="agent"),
-            StageConfig(name="gate", type="gate",
-                       config={"gate_id": "HUMAN_APPROVE_PORTFOLIO"}),
+            StageConfig(
+                name="gate", type="gate", config={"gate_id": "HUMAN_APPROVE_PORTFOLIO"}
+            ),
             StageConfig(name="deploy", type="agent"),
             StageConfig(name="monitor", type="agent"),
         ]
@@ -75,11 +76,25 @@ class TestBuildFromConfig:
 
         stage_names = [s.name for s in pipeline.stages]
         expected = [
-            "validate", "translate", "daemon_start", "load_config",
-            "run_campaign", "poll_campaign", "export", "read",
-            "compute_stats", "knowledge_store", "report",
-            "research", "builder", "statistics", "review",
-            "portfolio", "gate", "deploy", "monitor",
+            "validate",
+            "translate",
+            "daemon_start",
+            "load_config",
+            "run_campaign",
+            "poll_campaign",
+            "export",
+            "read",
+            "compute_stats",
+            "knowledge_store",
+            "report",
+            "research",
+            "builder",
+            "statistics",
+            "review",
+            "portfolio",
+            "gate",
+            "deploy",
+            "monitor",
         ]
         assert stage_names == expected
 
@@ -110,8 +125,13 @@ class TestBuildFromConfig:
         stage_names = [s.name for s in pipeline.stages]
         assert len(stage_names) == 7
         assert stage_names == [
-            "research", "builder", "statistics", "review",
-            "portfolio", "deploy", "monitor",
+            "research",
+            "builder",
+            "statistics",
+            "review",
+            "portfolio",
+            "deploy",
+            "monitor",
         ]
 
     def test_build_from_yaml(self) -> None:
@@ -134,9 +154,7 @@ class TestBuildFromConfig:
             "risk": {"max_portfolio_drawdown": 0.15},
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".yaml", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump(config_data, f)
             tmp_path = f.name
 
@@ -295,12 +313,18 @@ class TestBackwardCompatibility:
         pipeline = Pipeline(name="sqx-classic")
         pipeline.stages = [
             _make_stage_simple("validate", [], ["validated_config"]),
-            _make_stage_simple("translate", ["validated_config"], ["cfx_bytes", "cfx_path"]),
+            _make_stage_simple(
+                "translate", ["validated_config"], ["cfx_bytes", "cfx_path"]
+            ),
             _make_stage_simple("export", ["cfx_path"], ["export_paths"]),
             _make_stage_simple("read", ["export_paths"], ["parsed_results"]),
             _make_stage_simple("compute_stats", ["parsed_results"], ["statistics"]),
-            _make_stage_simple("knowledge_store", ["parsed_results", "statistics"], ["artifact_paths"]),
-            _make_stage_simple("report", ["parsed_results", "statistics"], ["report_path"]),
+            _make_stage_simple(
+                "knowledge_store", ["parsed_results", "statistics"], ["artifact_paths"]
+            ),
+            _make_stage_simple(
+                "report", ["parsed_results", "statistics"], ["report_path"]
+            ),
         ]
 
         ctx = PipelineContext(config={"dry_run": True})
@@ -367,17 +391,31 @@ class TestBackwardCompatibility:
         reg = StageRegistry()
 
         original_stages = [
-            "validate", "translate", "daemon_start", "load_config",
-            "run_campaign", "poll_campaign", "campaign", "export",
-            "read", "compute_stats", "knowledge_store", "report",
+            "validate",
+            "translate",
+            "daemon_start",
+            "load_config",
+            "run_campaign",
+            "poll_campaign",
+            "campaign",
+            "export",
+            "read",
+            "compute_stats",
+            "knowledge_store",
+            "report",
         ]
         for name in original_stages:
             stage_class = reg.get_stage_class(name)
             assert stage_class is not None, f"Original stage '{name}' not found"
 
         agent_stages = [
-            "research", "builder", "statistics", "review",
-            "portfolio", "deploy", "monitor",
+            "research",
+            "builder",
+            "statistics",
+            "review",
+            "portfolio",
+            "deploy",
+            "monitor",
         ]
         for name in agent_stages:
             stage_class = reg.get_stage_class(name)
@@ -390,16 +428,17 @@ def _make_stage_simple(
     stage_provides: list[str],
 ) -> Stage:
     """Helper to create a concrete test stage.
-    
+
     Uses a dynamically created subclass to avoid Python 3.14 ABC
     instantiation restrictions.
     """
+
     class _ConcreteStage(Stage):
         name = stage_name
         requires = stage_requires
         provides = stage_provides
-        
+
         async def execute(self, ctx: PipelineContext) -> dict:
             return {"stage": self.name, "status": "ok"}
-    
+
     return _ConcreteStage()
