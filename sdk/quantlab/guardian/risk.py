@@ -53,10 +53,10 @@ class RiskGuardian(BaseGuardian):
             "kelly": 0.2,
         }
         composite_score = (
-            weights["drawdown"] * drawdown_score +
-            weights["sharpe"] * sharpe_score +
-            weights["exposure"] * exposure_score +
-            weights["kelly"] * kelly_score
+            weights["drawdown"] * drawdown_score
+            + weights["sharpe"] * sharpe_score
+            + weights["exposure"] * exposure_score
+            + weights["kelly"] * kelly_score
         )
 
         # Determine status
@@ -79,27 +79,31 @@ class RiskGuardian(BaseGuardian):
 
     def _get_risk_metrics(self) -> dict:
         """Get risk metrics from the data provider.
-        
+
         This is a placeholder - in reality, this would query the portfolio
         tracker, trade history, etc.
         """
         # For now, return mock data structure
         # In implementation, this would call actual portfolio methods
-        return getattr(self.portfolio_data, 'get_risk_metrics', lambda: {
-            "current_drawdown": 0.05,
-            "max_drawdown": 0.08,
-            "sharpe_ratio": 1.2,
-            "total_exposure": 0.6,
-            "kelly_fraction": 0.15,
-            "var_95": 0.02,
-        })()
+        return getattr(
+            self.portfolio_data,
+            "get_risk_metrics",
+            lambda: {
+                "current_drawdown": 0.05,
+                "max_drawdown": 0.08,
+                "sharpe_ratio": 1.2,
+                "total_exposure": 0.6,
+                "kelly_fraction": 0.15,
+                "var_95": 0.02,
+            },
+        )()
 
     def _score_drawdown(self, current_drawdown: float) -> float:
         """Score based on current drawdown (lower is better).
-        
+
         Args:
             current_drawdown: Current drawdown as decimal (0.05 = 5%)
-            
+
         Returns:
             Score from 0.0 (bad) to 1.0 (good)
         """
@@ -109,10 +113,10 @@ class RiskGuardian(BaseGuardian):
 
     def _score_sharpe(self, sharpe_ratio: float) -> float:
         """Score based on Sharpe ratio (higher is better).
-        
+
         Args:
             sharpe_ratio: Sharpe ratio (typically -3 to +3)
-            
+
         Returns:
             Score from 0.0 (bad) to 1.0 (good)
         """
@@ -127,10 +131,10 @@ class RiskGuardian(BaseGuardian):
 
     def _score_exposure(self, total_exposure: float) -> float:
         """Score based on total exposure (lower is better).
-        
+
         Args:
             total_exposure: Total exposure as decimal (0.6 = 60% of capital)
-            
+
         Returns:
             Score from 0.0 (bad) to 1.0 (good)
         """
@@ -146,10 +150,10 @@ class RiskGuardian(BaseGuardian):
 
     def _score_kelly(self, kelly_fraction: float) -> float:
         """Score based on Kelly fraction usage.
-        
+
         Args:
             kelly_fraction: Suggested fraction of capital per bet (0.0 to 1.0)
-            
+
         Returns:
             Score from 0.0 (bad) to 1.0 (good)
         """

@@ -70,7 +70,9 @@ class CapitalGuardian(BaseGuardian):
         # Score based on allocation efficiency and diversification
         try:
             efficiency_score = self._score_allocation_efficiency(allocation_scores)
-            diversification_score = self._score_allocation_diversification(allocation_scores)
+            diversification_score = self._score_allocation_diversification(
+                allocation_scores
+            )
         except Exception as e:
             return GuardianResult(
                 guardian_type=GuardianType.CAPITAL,
@@ -84,10 +86,9 @@ class CapitalGuardian(BaseGuardian):
             "efficiency": 0.6,
             "diversification": 0.4,
         }
-        composite_score = (
-            weights["efficiency"] * max(0.0, min(1.0, efficiency_score)) +
-            weights["diversification"] * max(0.0, min(1.0, diversification_score))
-        )
+        composite_score = weights["efficiency"] * max(
+            0.0, min(1.0, efficiency_score)
+        ) + weights["diversification"] * max(0.0, min(1.0, diversification_score))
 
         # Ensure score is in valid range
         composite_score = max(0.0, min(1.0, composite_score))
@@ -112,16 +113,18 @@ class CapitalGuardian(BaseGuardian):
 
     def _get_strategy_performance(self) -> dict[str, dict[str, float]]:
         """Get strategy performance metrics from data provider.
-        
+
         Returns:
             Dict mapping strategy names to performance metrics
         """
         # Try to get actual data
-        if hasattr(self.performance_data, 'get_strategy_performance') and callable(self.performance_data.get_strategy_performance):
+        if hasattr(self.performance_data, "get_strategy_performance") and callable(
+            self.performance_data.get_strategy_performance
+        ):
             result = self.performance_data.get_strategy_performance()
             if isinstance(result, dict):
                 return result
-        
+
         # Fallback to reasonable mock data
         return {
             "Strategy_A": {
@@ -159,54 +162,62 @@ class CapitalGuardian(BaseGuardian):
         }
 
     def _calculate_allocation_scores(
-        self, 
-        performance_data: dict[str, dict[str, float]]
+        self, performance_data: dict[str, dict[str, float]]
     ) -> dict[str, float]:
         """Calculate allocation scores for each strategy.
-        
+
         Args:
             performance_data: Strategy performance metrics
-            
+
         Returns:
             Dict mapping strategy names to allocation scores (0-1)
         """
         scores = {}
-        
+
         for strategy_name, metrics in performance_data.items():
             # Base score on multiple factors
             expectancy = max(0, metrics.get("expectancy", 0))
             sharpe = max(0, metrics.get("sharpe", 0))
             win_rate = max(0, min(1, metrics.get("win_rate", 0.5)))
-            profit_factor = max(0, min(3, metrics.get("profit_factor", 1))) / 3  # Normalize to 0-1
-            
+            profit_factor = (
+                max(0, min(3, metrics.get("profit_factor", 1))) / 3
+            )  # Normalize to 0-1
+
             # Normalize expectancy (assuming reasonable range 0-0.02)
             exp_score = min(1.0, expectancy / 0.02)
-            
+
             # Normalize Sharpe (assuming reasonable range 0-2)
             sharpe_score = min(1.0, sharpe / 2.0)
-            
+
             # Combine scores with weights
-            score = (0.3 * exp_score + 0.3 * sharpe_score + 0.2 * win_rate + 0.2 * profit_factor)
+            score = (
+                0.3 * exp_score
+                + 0.3 * sharpe_score
+                + 0.2 * win_rate
+                + 0.2 * profit_factor
+            )
             scores[strategy_name] = max(0.0, min(1.0, score))  # Ensure in range
-        
+
         return scores
 
-    def _score_allocation_efficiency(self, allocation_scores: dict[str, float]) -> float:
+    def _score_allocation_efficiency(
+        self, allocation_scores: dict[str, float]
+    ) -> float:
         """Score based on how well capital is allocated to better strategies.
-        
+
         Args:
             allocation_scores: Strategy scores (0-1)
-            
+
         Returns:
             Score from 0.0 (poor allocation) to 1.0 (optimal allocation)
         """
         if not allocation_scores:
             return 0.0
-        
+
         scores = list(allocation_scores.values())
         if len(scores) == 1:
             return 0.5  # Single strategy - neutral
-        
+
         # Calculate what the ideal allocation would be (proportional to scores)
         total_score = sum(scores)
         if total_score == 0:
@@ -214,47 +225,49 @@ class CapitalGuardian(BaseGuardian):
             ideal_weights = [1.0 / len(scores)] * len(scores)
         else:
             ideal_weights = [s / total_score for s in scores]
-        
+
         # For now, assume equal actual allocation (would need actual positions in reality)
         # This is a simplification - in reality we'd compare actual vs ideal weights
         actual_weights = [1.0 / len(scores)] * len(scores)
-        
+
         # Calculate how well actual allocation matches ideal using cosine similarity
         # 1.0 = perfect match, 0.0 = orthogonal, -1.0 = opposite
         dot_product = sum(a * i for a, i in zip(actual_weights, ideal_weights))
         norm_a = sum(a * a for a in actual_weights) ** 0.5
         norm_i = sum(i * i for i in ideal_weights) ** 0.5
-        
+
         if norm_a == 0 or norm_i == 0:
             similarity = 0.0
         else:
             similarity = dot_product / (norm_a * norm_i)
-        
+
         # Convert from [-1,1] to [0,1] range
         return max(0.0, min(1.0, (similarity + 1) / 2))
 
-    def _score_allocation_diversification(self, allocation_scores: dict[str, float]) -> float:
+    def _score_allocation_diversification(
+        self, allocation_scores: dict[str, float]
+    ) -> float:
         """Score based on allocation diversification (using entropy).
-        
+
         Args:
             allocation_scores: Strategy scores (0-1)
-            
+
         Returns:
             Score from 0.0 (fully concentrated) to 1.0 (fully diversified)
         """
         if not allocation_scores:
             return 0.0
-        
+
         scores = list(allocation_scores.values())
         total_score = sum(scores)
-        
+
         if total_score == 0:
             # All scores equal (zero) - uniform distribution
             weights = [1.0 / len(scores)] * len(scores)
         else:
             # Normalize scores to weights
             weights = [s / total_score for s in scores]
-        
+
         # Calculate Shannon entropy (simplified)
         # H = -sum(p_i * log(p_i))
         # Max entropy = log(n) when uniform
@@ -265,16 +278,16 @@ class CapitalGuardian(BaseGuardian):
                 # Simplified entropy calculation for demo
                 # In reality: -w * log(w)
                 # Here using a simpler approximation
-                entropy -= w * (w ** 0.5)  
-        
+                entropy -= w * (w**0.5)
+
         # Normalize by maximum possible entropy
         n = len(weights)
         if n <= 1:
             max_entropy = 1.0
         else:
             max_entropy = (n - 1) / n  # Approximation for our simplified entropy
-        
+
         if max_entropy == 0:
             return 0.0
-        
+
         return min(1.0, entropy / max_entropy)

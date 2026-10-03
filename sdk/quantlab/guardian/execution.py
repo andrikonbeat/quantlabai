@@ -92,15 +92,15 @@ class ExecutionGuardian(BaseGuardian):
             "slippage": 0.2,
             "health": 0.2,
         }
-        
+
         # Connection is binary - if not connected, everything else is 0
         connection_score = 1.0 if connected else 0.0
-        
+
         composite_score = (
-            weights["connection"] * connection_score +
-            weights["latency"] * latency_score +
-            weights["slippage"] * slippage_score +
-            weights["health"] * health_score
+            weights["connection"] * connection_score
+            + weights["latency"] * latency_score
+            + weights["slippage"] * slippage_score
+            + weights["health"] * health_score
         )
 
         # Determine status
@@ -122,7 +122,7 @@ class ExecutionGuardian(BaseGuardian):
             details.append(f"slippage check failed: {slippage_error}")
         if health_error:
             details.append(f"health check failed: {health_error}")
-        
+
         if details:
             message += f" ({'; '.join(details)})"
 
@@ -135,21 +135,21 @@ class ExecutionGuardian(BaseGuardian):
 
     def _check_connection(self) -> bool:
         """Check if broker is connected and responsive.
-        
+
         Returns:
             True if connected, False otherwise
-            
+
         Raises:
             Exception: If a connection check method exists but fails
         """
         # Try multiple methods to check connection
         check_methods = [
-            'is_connected',
-            'check_connection',
-            'get_connection_status',
-            'is_connected_and_ready'
+            "is_connected",
+            "check_connection",
+            "get_connection_status",
+            "is_connected_and_ready",
         ]
-        
+
         for method_name in check_methods:
             if hasattr(self.broker, method_name):
                 method = getattr(self.broker, method_name)
@@ -159,40 +159,46 @@ class ExecutionGuardian(BaseGuardian):
                         if isinstance(result, bool):
                             return result
                         elif isinstance(result, str):
-                            return result.lower() in ('true', 'yes', '1', 'connected', 'ready')
+                            return result.lower() in (
+                                "true",
+                                "yes",
+                                "1",
+                                "connected",
+                                "ready",
+                            )
                     except Exception as e:
                         # If a method exists and is callable but throws an exception,
                         # we treat this as a connection failure
                         raise e
-        
+
         # Fallback: try a simple attribute
-        if hasattr(self.broker, 'connected'):
+        if hasattr(self.broker, "connected"):
             conn_attr = self.broker.connected
             if isinstance(conn_attr, bool):
                 return conn_attr
             elif isinstance(conn_attr, str):
-                return conn_attr.lower() in ('true', 'yes', '1', 'connected', 'ready')
-        
+                return conn_attr.lower() in ("true", "yes", "1", "connected", "ready")
+
         # If we couldn't determine connection status through any method,
         # assume disconnected (fail safe)
         return False
 
     def _check_latency(self) -> float:
         """Check broker latency and return score (0-1).
-        
+
         Returns:
             Score from 0.0 (high latency) to 1.0 (low latency)
         """
         # Try to get latency from various methods
         latency_ms = None
         latency_methods = [
-            'get_latency',
-            'latency',
-            'ping',
-            'get_ping_time',
-            'get_response_time'
+            "get_latency",
+            "latency",
+            "ping",
+            "get_ping_time",
+            "get_response_time",
         ]
-        
+
         for method_name in latency_methods:
             if hasattr(self.broker, method_name):
                 method = getattr(self.broker, method_name)
@@ -204,18 +210,18 @@ class ExecutionGuardian(BaseGuardian):
                             break
                     except Exception:
                         continue  # Try next method
-        
+
         # Fallback to attribute
-        if latency_ms is None and hasattr(self.broker, 'latency'):
+        if latency_ms is None and hasattr(self.broker, "latency"):
             latency_attr = self.broker.latency
             if isinstance(latency_attr, (int, float)) and latency_attr >= 0:
                 latency_ms = float(latency_attr)
-        
+
         # If still no latency, use a reasonable default
         if latency_ms is None:
             logger.debug("No latency information available, using default of 50ms")
             latency_ms = 50.0  # 50ms default - reasonable for good connection
-        
+
         # Convert latency to score: 0ms = 1.0, 250ms+ = 0.0
         # 250ms is considered high latency for trading
         return max(0.0, min(1.0, 1.0 - (latency_ms / 250.0)))
@@ -233,12 +239,12 @@ class ExecutionGuardian(BaseGuardian):
             return 0.7  # Reasonable default
 
         try:
-            if hasattr(self.cost_collector, 'get_recent_slippage'):
+            if hasattr(self.cost_collector, "get_recent_slippage"):
                 slippage_data = self.cost_collector.get_recent_slippage()
                 if isinstance(slippage_data, (int, float)) and slippage_data >= 0:
                     # Slippage in bps: 0-3 bps excellent, 10+ bps concerning
                     return max(0.0, min(1.0, 1.0 - (slippage_data / 15.0)))
-            elif hasattr(self.cost_collector, 'slippage'):
+            elif hasattr(self.cost_collector, "slippage"):
                 slippage_attr = self.cost_collector.slippage
                 if isinstance(slippage_attr, (int, float)) and slippage_attr >= 0:
                     return max(0.0, min(1.0, 1.0 - (slippage_attr / 15.0)))
@@ -249,20 +255,20 @@ class ExecutionGuardian(BaseGuardian):
 
     def _check_broker_health(self) -> float:
         """Check overall broker health and return score (0-1).
-        
+
         Returns:
             Score from 0.0 (unhealthy) to 1.0 (healthy)
         """
         # Try to get health score from various methods
         health_score = None
         health_methods = [
-            'get_health_score',
-            'health',
-            'get_status',
-            'is_healthy',
-            'get_health'
+            "get_health_score",
+            "health",
+            "get_status",
+            "is_healthy",
+            "get_health",
         ]
-        
+
         for method_name in health_methods:
             if hasattr(self.broker, method_name):
                 method = getattr(self.broker, method_name)
@@ -274,25 +280,28 @@ class ExecutionGuardian(BaseGuardian):
                         elif isinstance(result, str):
                             # Try to parse common health strings
                             result_lower = result.lower()
-                            if result_lower in ('excellent', 'perfect', 'optimal'):
+                            if result_lower in ("excellent", "perfect", "optimal"):
                                 return 1.0
-                            elif result_lower in ('good', 'healthy', 'ok'):
+                            elif result_lower in ("good", "healthy", "ok"):
                                 return 0.8
-                            elif result_lower in ('fair', 'degraded', 'warning'):
+                            elif result_lower in ("fair", "degraded", "warning"):
                                 return 0.5
-                            elif result_lower in ('poor', 'unhealthy', 'critical'):
+                            elif result_lower in ("poor", "unhealthy", "critical"):
                                 return 0.2
-                            elif result_lower in ('down', 'offline', 'failed'):
+                            elif result_lower in ("down", "offline", "failed"):
                                 return 0.0
                     except (ValueError, TypeError):
                         continue  # Try next method
-        
+
         # Try to get health from attributes
         if health_score is None:
-            for attr_name in ['health', 'health_status', 'status']:
+            for attr_name in ["health", "health_status", "status"]:
                 if hasattr(self.broker, attr_name):
                     attr_value = getattr(self.broker, attr_name)
-                    if isinstance(attr_value, (int, float)) and 0.0 <= attr_value <= 1.0:
+                    if (
+                        isinstance(attr_value, (int, float))
+                        and 0.0 <= attr_value <= 1.0
+                    ):
                         return float(attr_value)
                     elif isinstance(attr_value, str):
                         # Try string conversion as above
@@ -302,6 +311,6 @@ class ExecutionGuardian(BaseGuardian):
                                 return val
                         except ValueError:
                             pass  # Not a simple float
-        
+
         # Default assumption: reasonably healthy
         return 0.85

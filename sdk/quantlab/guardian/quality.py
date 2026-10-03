@@ -70,22 +70,24 @@ class QualityGuardian(BaseGuardian):
         # 1. Average score (higher is better)
         # 2. Minimum score (avoid weak links)
         # 3. Consistency (lower standard deviation is better)
-        
+
         avg_component = avg_score  # Already 0-1 scale
         min_component = min_score  # Already 0-1 scale
-        
+
         # Consistency score: lower std dev is better
         # Assuming max reasonable std dev is 0.3 for scores in [0,1]
         consistency_score = max(0.0, 1.0 - (score_std / 0.3))
-        
+
         # Poor performer penalty: percentage below acceptable threshold
         threshold = 0.5
         below_threshold_count = sum(1 for s in scores if s < threshold)
         penalty_ratio = below_threshold_count / len(scores) if scores else 0
         penalty_factor = 1.0 - (penalty_ratio * 0.5)  # Reduce score by up to 50%
-        
+
         # Combine scores
-        raw_score = (0.4 * avg_component + 0.3 * min_component + 0.3 * consistency_score) * penalty_factor
+        raw_score = (
+            0.4 * avg_component + 0.3 * min_component + 0.3 * consistency_score
+        ) * penalty_factor
         final_score = max(0.0, min(1.0, raw_score))
 
         # Determine status
@@ -108,12 +110,12 @@ class QualityGuardian(BaseGuardian):
 
     def _get_health_scores(self) -> dict[str, float]:
         """Get health scores from the health score system.
-        
+
         Returns:
             Dict mapping strategy names to health scores (0.0-1.0)
         """
         # Try to get actual data from the health score system
-        get_scores_method = getattr(self.health_system, 'get_all_strategy_scores', None)
+        get_scores_method = getattr(self.health_system, "get_all_strategy_scores", None)
         if get_scores_method and callable(get_scores_method):
             result = get_scores_method()
             if isinstance(result, dict):
@@ -125,7 +127,7 @@ class QualityGuardian(BaseGuardian):
                 # Use the result if it has any valid entries, or if it's explicitly empty
                 # (an empty dict is a valid response indicating no data)
                 return validated
-    
+
         # Fallback to reasonable mock data only if we couldn't get data from the system
         return {
             "Strategy_A": 0.85,

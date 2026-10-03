@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class GuardianType(str, Enum):
     """Types of guardians in the MetaGuardian system."""
+
     MARKET = "market"
     RISK = "risk"
     PORTFOLIO = "portfolio"
@@ -20,6 +21,7 @@ class GuardianType(str, Enum):
 
 class GuardianStatus(str, Enum):
     """Status levels for guardian health checks."""
+
     GREEN = "green"
     YELLOW = "yellow"
     RED = "red"
@@ -27,6 +29,7 @@ class GuardianStatus(str, Enum):
 
 class GuardianResult(BaseModel):
     """Result of a guardian health check."""
+
     model_config = ConfigDict(frozen=True)
 
     guardian_type: GuardianType
@@ -38,6 +41,7 @@ class GuardianResult(BaseModel):
 
 class PortfolioState(str, Enum):
     """Portfolio-level states in the MetaGuardian state machine."""
+
     NORMAL = "NORMAL"
     VIGILANCE = "VIGILANCE"
     DEFENSIVE = "DEFENSIVE"
@@ -47,6 +51,7 @@ class PortfolioState(str, Enum):
 
 class StrategyState(str, Enum):
     """Per-strategy states for degradation tracking."""
+
     ACTIVE = "ACTIVE"
     MONITORING = "MONITORING"
     DEGRADING = "DEGRADING"
@@ -56,6 +61,7 @@ class StrategyState(str, Enum):
 
 class MetaGuardianConfig(BaseModel):
     """Configuration for the MetaGuardian orchestrator."""
+
     model_config = ConfigDict(frozen=True)
 
     weights: dict[GuardianType, float] = Field(

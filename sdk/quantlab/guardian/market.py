@@ -59,10 +59,10 @@ class MarketGuardian(BaseGuardian):
             "session": 0.2,
         }
         composite_score = (
-            weights["regime"] * regime_score +
-            weights["volatility"] * volatility_score +
-            weights["liquidity"] * liquidity_score +
-            weights["session"] * session_score
+            weights["regime"] * regime_score
+            + weights["volatility"] * volatility_score
+            + weights["liquidity"] * liquidity_score
+            + weights["session"] * session_score
         )
 
         # Determine status based on score
@@ -122,8 +122,8 @@ class MarketGuardian(BaseGuardian):
         # Average spread across pairs (lower spread = better liquidity)
         spreads = []
         for pair_data in cost_data.values():
-            if isinstance(pair_data, dict) and 'spread_pips' in pair_data:
-                spreads.append(pair_data['spread_pips'])
+            if isinstance(pair_data, dict) and "spread_pips" in pair_data:
+                spreads.append(pair_data["spread_pips"])
 
         if not spreads:
             return 0.5

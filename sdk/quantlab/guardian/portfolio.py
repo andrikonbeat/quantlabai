@@ -83,9 +83,9 @@ class PortfolioGuardian(BaseGuardian):
             "concentration": 0.3,
         }
         composite_score = (
-            weights["correlation"] * correlation_score +
-            weights["diversification"] * diversification_score +
-            weights["concentration"] * concentration_score
+            weights["correlation"] * correlation_score
+            + weights["diversification"] * diversification_score
+            + weights["concentration"] * concentration_score
         )
 
         # Determine status
@@ -108,20 +108,28 @@ class PortfolioGuardian(BaseGuardian):
 
     def _get_returns_data(self) -> dict[str, list[float]]:
         """Get returns data from the data provider.
-        
+
         Returns:
             Dict mapping strategy names to lists of returns
         """
-# Try to get actual data from the provider
-        if hasattr(self.returns_data, 'get_strategy_returns') and callable(self.returns_data.get_strategy_returns):
+        # Try to get actual data from the provider
+        if hasattr(self.returns_data, "get_strategy_returns") and callable(
+            self.returns_data.get_strategy_returns
+        ):
             result = self.returns_data.get_strategy_returns()
             if isinstance(result, dict):
                 # Validate the data structure
                 validated = {}
                 for key, value in result.items():
-                    if isinstance(key, str) and isinstance(value, list) and all(isinstance(x, (int, float)) for x in value):
+                    if (
+                        isinstance(key, str)
+                        and isinstance(value, list)
+                        and all(isinstance(x, (int, float)) for x in value)
+                    ):
                         validated[key] = value
-                return validated  # Return even if empty (will be handled by check method)
+                return (
+                    validated  # Return even if empty (will be handled by check method)
+                )
 
         # Fallback to reasonable mock data for testing (when provider doesn't have method or returns non-dict)
         return {
@@ -131,12 +139,14 @@ class PortfolioGuardian(BaseGuardian):
             "Strategy_D": [0.005, -0.008, 0.003, 0.009, -0.004, 0.006, -0.002, 0.004],
         }
 
-    def _calculate_correlation_matrix(self, returns_dict: dict[str, list[float]]) -> np.ndarray:
+    def _calculate_correlation_matrix(
+        self, returns_dict: dict[str, list[float]]
+    ) -> np.ndarray:
         """Calculate correlation matrix from returns data.
-        
+
         Args:
             returns_dict: Strategy returns data
-            
+
         Returns:
             Correlation matrix as numpy array
         """
@@ -144,60 +154,60 @@ class PortfolioGuardian(BaseGuardian):
         strategies = list(returns_dict.keys())
         if not strategies:
             return np.array([]).reshape(0, 0)
-        
+
         # Find minimum length to align series
         min_length = min(len(returns) for returns in returns_dict.values())
         if min_length < 2:
             # Not enough data for meaningful correlation
             n = len(strategies)
             return np.eye(n)  # Identity matrix - no correlation
-        
+
         # Build returns matrix
         returns_matrix = []
         for strategy in strategies:
             returns_matrix.append(returns_dict[strategy][-min_length:])
-        
+
         # Calculate correlation matrix
         return np.corrcoef(returns_matrix)
 
     def _score_correlation(self, corr_matrix: np.ndarray) -> float:
         """Score based on average correlation (lower is better).
-        
+
         Args:
             corr_matrix: Correlation matrix
-            
+
         Returns:
             Score from 0.0 (high correlation) to 1.0 (low correlation)
         """
         # Handle empty or single strategy case
         if corr_matrix.size == 0:
             return 1.0  # No strategies = no correlation risk
-        
+
         n = corr_matrix.shape[0]
         if n <= 1:
             return 1.0  # Single strategy - no correlation risk
-        
+
         # Extract upper triangle values (excluding diagonal)
         correlations = []
         for i in range(n):
-            for j in range(i+1, n):
+            for j in range(i + 1, n):
                 corr = abs(corr_matrix[i, j])  # Use absolute value
                 if not (np.isnan(corr) or np.isinf(corr)):
                     correlations.append(corr)
-        
+
         if not correlations:
             return 1.0
-        
+
         avg_correlation = sum(correlations) / len(correlations)
         # 0 correlation = 1.0 score, 1.0 correlation = 0.0 score
         return max(0.0, min(1.0, 1.0 - avg_correlation))
 
     def _score_diversification(self, returns_dict: dict[str, list[float]]) -> float:
         """Score based on effective number of strategies.
-        
+
         Args:
             returns_dict: Strategy returns data
-            
+
         Returns:
             Score from 0.0 (poor diversification) to 1.0 (good)
         """
@@ -214,17 +224,17 @@ class PortfolioGuardian(BaseGuardian):
 
     def _score_concentration(self, returns_dict: dict[str, list[float]]) -> float:
         """Score based on return volatility concentration (proxy for capital concentration).
-        
+
         Args:
             returns_dict: Strategy returns data
-            
+
         Returns:
             Score from 0.0 (high concentration) to 1.0 (low concentration)
         """
         n_strategies = len(returns_dict)
         if n_strategies == 0:
             return 0.0
-        
+
         # Calculate volatility for each strategy as proxy for risk contribution
         volatilities = []
         for returns in returns_dict.values():
@@ -233,16 +243,16 @@ class PortfolioGuardian(BaseGuardian):
                 volatilities.append(vol)
             else:
                 volatilities.append(0.0)
-        
+
         if not volatilities or sum(volatilities) == 0:
             # Equal volatility assumption if no data
             return self._score_concentration_equal_weights(n_strategies)
-        
-# Normalize volatilities to weights
+
+        # Normalize volatilities to weights
         total_vol = sum(volatilities)
         if total_vol == 0:
             return self._score_concentration_equal_weights(n_strategies)
-        
+
         weights = [v / total_vol for v in volatilities]
         return self._score_from_weights(weights)
 
@@ -260,31 +270,31 @@ class PortfolioGuardian(BaseGuardian):
 
     def _score_from_weights(self, weights: list[float]) -> float:
         """Convert weights to a concentration score using Herfindahl index.
-        
+
         Args:
             weights: List of weights (should sum to approximately 1.0)
-            
+
         Returns:
             Score from 0.0 (high concentration) to 1.0 (low concentration)
         """
         if not weights:
             return 0.0
-        
+
         # Calculate Herfindahl-Hirschman Index (HHI)
         # HHI = sum(w_i^2), ranges from 1/n (equal) to 1 (monopoly)
         hhi = sum(w * w for w in weights)
-        
+
         # Convert to diversification score: 1 = perfect diversity, 0 = monopoly
         n = len(weights)
         if n == 0:
             return 0.0
-        
+
         min_hhi = 1.0 / n  # Perfectly equal distribution
-        max_hhi = 1.0      # Complete concentration
-        
+        max_hhi = 1.0  # Complete concentration
+
         if max_hhi == min_hhi:
             return 1.0
-        
+
         # Invert and normalize: (max_hhi - hhi) / (max_hhi - min_hhi)
         diversification_score = (max_hhi - hhi) / (max_hhi - min_hhi)
         return max(0.0, min(1.0, diversification_score))
