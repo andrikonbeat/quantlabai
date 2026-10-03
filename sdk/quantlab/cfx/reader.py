@@ -49,32 +49,36 @@ _MIN_VERSION = "130.0"
 _MAX_VERSION = "146.0"
 
 # Elements that should be parsed as simple key-value settings sections.
-_SETTINGS_SECTIONS = frozenset({
-    "Options",
-    "RiskMoneyManagement",
-    "WhatToBuild",
-    "Data",
-    "PartsToImprove",
-    "Notes",
-})
+_SETTINGS_SECTIONS = frozenset(
+    {
+        "Options",
+        "RiskMoneyManagement",
+        "WhatToBuild",
+        "Data",
+        "PartsToImprove",
+        "Notes",
+    }
+)
 
 # Elements that are parsed as typed complex sections.
-_COMPLEX_SECTIONS = frozenset({
-    "Blocks",
-    "ATMs",
-    "DataBanks",
-    "Resources",
-    # Phase 4 complex sections
-    "AutomaticPortfolioBuilder",
-    "PortfolioSettings",
-    "Optimization",
-    "OptimizationParameters",
-    "WalkForward",
-    "Databanks",
-    "Rankings",
-    "CrossChecks",
-    "RetesterData",
-})
+_COMPLEX_SECTIONS = frozenset(
+    {
+        "Blocks",
+        "ATMs",
+        "DataBanks",
+        "Resources",
+        # Phase 4 complex sections
+        "AutomaticPortfolioBuilder",
+        "PortfolioSettings",
+        "Optimization",
+        "OptimizationParameters",
+        "WalkForward",
+        "Databanks",
+        "Rankings",
+        "CrossChecks",
+        "RetesterData",
+    }
+)
 
 # ``<Data>`` children that no lane owns, so they are excluded from the flat lane
 # and parked verbatim in ``DataRangeParts.raw_xml`` instead. Real SQX writes
@@ -139,9 +143,7 @@ class CfxReader:
         elif root.tag == "Project":
             return CfxReader._parse_project(zf, root, task_files, path)
         else:
-            raise CfxParseError(
-                f"Unexpected root element <{root.tag}> in config.xml"
-            )
+            raise CfxParseError(f"Unexpected root element <{root.tag}> in config.xml")
 
     # ── Phase 4: Portfolio / Optimizer / Retester CFX Readers ─────────
 
@@ -203,7 +205,9 @@ class CfxReader:
             task = BuildTask()
 
         config = CfxConfig(task=task, schema_version=version)
-        return CfxArchive(config=config, task_files={task_xml_file: task} if task_xml_file else {})
+        return CfxArchive(
+            config=config, task_files={task_xml_file: task} if task_xml_file else {}
+        )
 
     # ── Multi-file Project ───────────────────────────────────────
 
@@ -253,9 +257,7 @@ def _validate_zip_paths(zf: zipfile.ZipFile) -> None:
         # Normalise to POSIX separators for consistent checking.
         normalised = name.replace("\\", "/")
         if normalised.startswith("/") or normalised.startswith(".."):
-            raise CfxCorruptError(
-                f"Path traversal detected in archive entry: {name!r}"
-            )
+            raise CfxCorruptError(f"Path traversal detected in archive entry: {name!r}")
         # Deeply nested ".." also rejected.
         parts = normalised.split("/")
         for part in parts:
@@ -265,9 +267,7 @@ def _validate_zip_paths(zf: zipfile.ZipFile) -> None:
                 )
 
 
-def _read_entry(
-    zf: zipfile.ZipFile, name: str, available: list[str]
-) -> str:
+def _read_entry(zf: zipfile.ZipFile, name: str, available: list[str]) -> str:
     """Read an XML entry, raising CfxCorruptError on failure."""
     if name not in available:
         raise CfxParseError(f"Required entry {name!r} not found in archive")
@@ -313,9 +313,7 @@ def _validate_schema_version(root: ElementTree.Element) -> None:
         )
 
 
-def _parse_settings_xml(
-    zf: zipfile.ZipFile, filename: str
-) -> BuildTask:
+def _parse_settings_xml(zf: zipfile.ZipFile, filename: str) -> BuildTask:
     """Parse a task-XML file (e.g. Build-Task1.xml) into a BuildTask model."""
     names = zf.namelist()
     raw = _read_entry(zf, filename, names)
@@ -407,9 +405,7 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
     )
 
 
-def _is_flat_lane_child(
-    child: ElementTree.Element, exclude: frozenset[str]
-) -> bool:
+def _is_flat_lane_child(child: ElementTree.Element, exclude: frozenset[str]) -> bool:
     """True when ``child`` belongs to a flat section's key-value lane.
 
     Both halves of the test matter: a child must be a **leaf**, so a nested

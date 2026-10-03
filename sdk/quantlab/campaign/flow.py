@@ -80,9 +80,7 @@ def assert_flow(phases: Sequence[str]) -> None:
                 f"flow-integrity error: unknown phase '{phase}' at position {idx}"
             )
         if phase in seen:
-            raise FlowIntegrityError(
-                f"flow-integrity error: duplicate phase '{phase}'"
-            )
+            raise FlowIntegrityError(f"flow-integrity error: duplicate phase '{phase}'")
         seen.add(phase)
         if phase != PHASES[idx]:
             raise FlowIntegrityError(

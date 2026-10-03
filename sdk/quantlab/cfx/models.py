@@ -308,7 +308,9 @@ class DataRangeParts(BaseModel):
         root = ET.fromstring(xml)
         children = list(root) if root.tag == "Data" else [root]
 
-        known_elements = {element: field_name for field_name, element in _DATA_RANGE_PART_ELEMENTS}
+        known_elements = {
+            element: field_name for field_name, element in _DATA_RANGE_PART_ELEMENTS
+        }
         values: dict[str, str] = {}
         unknown: list[str] = []
         for child in children:
@@ -524,7 +526,9 @@ class CrossChecksConfig(BaseModel):
             ]
             if g.parameters:
                 parts.append(f"  {g.parameters.strip()}")
-            parts.append(f'  <WalkForward enabled="{str(g.wf_enabled).lower()}" cycles="{g.wf_cycles}"/>')
+            parts.append(
+                f'  <WalkForward enabled="{str(g.wf_enabled).lower()}" cycles="{g.wf_cycles}"/>'
+            )
             parts.append(f'  <ConfidenceLevel value="{g.confidence_level}"/>')
             if self.raw_xml:
                 parts.append(f"  {self.raw_xml.strip()}")
@@ -547,7 +551,7 @@ class CrossChecksConfig(BaseModel):
                         settings_parts.append(f"<Spread>{rwp.spread}</Spread>")
                     settings_inner = "".join(settings_parts)
                     parts.append(
-                        f"  <RetestWithHigherPrecision use=\"{str(rwp.use).lower()}\">"
+                        f'  <RetestWithHigherPrecision use="{str(rwp.use).lower()}">'
                         f"<Settings>{settings_inner}</Settings>"
                         f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
                         f"</RetestWithHigherPrecision>"
@@ -559,8 +563,8 @@ class CrossChecksConfig(BaseModel):
                     parts.append(f"  {mc.raw_xml.strip()}")
                 else:
                     parts.append(
-                        f"  <MonteCarloRetest use=\"{str(mc.use).lower()}\">"
-                        f"<Settings><NumberOfSimulations value=\"{mc.number_of_simulations}\"/></Settings>"
+                        f'  <MonteCarloRetest use="{str(mc.use).lower()}">'
+                        f'<Settings><NumberOfSimulations value="{mc.number_of_simulations}"/></Settings>'
                         f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
                         f"</MonteCarloRetest>"
                     )
@@ -571,8 +575,8 @@ class CrossChecksConfig(BaseModel):
                     parts.append(f"  {mc.raw_xml.strip()}")
                 else:
                     parts.append(
-                        f"  <MonteCarloManipulation use=\"{str(mc.use).lower()}\">"
-                        f"<Settings><NumberOfSimulations value=\"100\"/></Settings>"
+                        f'  <MonteCarloManipulation use="{str(mc.use).lower()}">'
+                        f'<Settings><NumberOfSimulations value="100"/></Settings>'
                         f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
                         f"</MonteCarloManipulation>"
                     )
@@ -583,7 +587,7 @@ class CrossChecksConfig(BaseModel):
                     parts.append(f"  {rp.raw_xml.strip()}")
                 else:
                     parts.append(
-                        f"  <RetestOnAdditionalMarkets use=\"{str(rp.use).lower()}\">"
+                        f'  <RetestOnAdditionalMarkets use="{str(rp.use).lower()}">'
                         f"<Settings><Setups /></Settings>"
                         f"<AcceptanceSettings><Conditions /></AcceptanceSettings>"
                         f"</RetestOnAdditionalMarkets>"
@@ -595,22 +599,27 @@ class CrossChecksConfig(BaseModel):
                     parts.append(f"  {wfo.raw_xml.strip()}")
                 else:
                     parts.append(
-                        f"  <WalkForwardOptimization use=\"{str(wfo.use).lower()}\">"
+                        f'  <WalkForwardOptimization use="{str(wfo.use).lower()}">'
                         f"<Settings>"
-                        f"<WalkForward type=\"{wfo.walk_forward_type}\" period=\"{wfo.period}\" optimization=\"{wfo.optimization}\">"
-                        f"<Param1 value=\"\" /><Param2 value=\"\" />"
+                        f'<WalkForward type="{wfo.walk_forward_type}" period="{wfo.period}" optimization="{wfo.optimization}">'
+                        f'<Param1 value="" /><Param2 value="" />'
                         f"</WalkForward>"
                         f"<OptimizePeriods>{str(wfo.optimize_periods).lower()}</OptimizePeriods>"
                         f"</Settings>"
-                        f"<AcceptanceSettings><Conditions CrossCheck=\"WalkForwardOptimization\" thresholdPct=\"50\" /></AcceptanceSettings>"
+                        f'<AcceptanceSettings><Conditions CrossCheck="WalkForwardOptimization" thresholdPct="50" /></AcceptanceSettings>'
                         f"</WalkForwardOptimization>"
                     )
 
             if ar.walk_forward_matrix is not None and ar.walk_forward_matrix.raw_xml:
                 parts.append(f"  {ar.walk_forward_matrix.raw_xml.strip()}")
 
-            if ar.opt_profile_sys_param_permutation is not None and ar.opt_profile_sys_param_permutation.raw_xml:
-                parts.append(f"  {ar.opt_profile_sys_param_permutation.raw_xml.strip()}")
+            if (
+                ar.opt_profile_sys_param_permutation is not None
+                and ar.opt_profile_sys_param_permutation.raw_xml
+            ):
+                parts.append(
+                    f"  {ar.opt_profile_sys_param_permutation.raw_xml.strip()}"
+                )
 
             if self.raw_xml:
                 parts.append(f"  {self.raw_xml.strip()}")

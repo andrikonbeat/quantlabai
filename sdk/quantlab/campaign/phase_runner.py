@@ -166,7 +166,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--directive",
         required=True,
-        help='Directive JSON with optional scope/payload keys, e.g. \'{"payload": {...}}\'',
+        help="Directive JSON with optional scope/payload keys, e.g. '{\"payload\": {...}}'",
     )
     args = parser.parse_args(argv)
 

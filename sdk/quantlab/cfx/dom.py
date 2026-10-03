@@ -275,9 +275,7 @@ def add_advanced_ranking_condition(
     return archive
 
 
-def set_data_range_parts(
-    archive: CfxArchive, parts: DataRangeParts
-) -> CfxArchive:
+def set_data_range_parts(archive: CfxArchive, parts: DataRangeParts) -> CfxArchive:
     """Set the IS / validation / OOS sub-ranges of the ``<Data>`` section.
 
     Stores the typed model rather than a pre-rendered blob, so the typed fields
@@ -297,4 +295,18 @@ def set_data_range_parts(
 
 # ── Public API ────────────────────────────────────────────────────────
 
-__all__ = ["add_advanced_ranking_condition", "add_ranking_condition", "add_timeframe", "disable_block", "enable_block", "enable_crosscheck", "set_commission_settings", "set_data_range_parts", "set_date_range", "set_genetic", "set_market", "set_spread_settings", "SettingsSection"]
+__all__ = [
+    "add_advanced_ranking_condition",
+    "add_ranking_condition",
+    "add_timeframe",
+    "disable_block",
+    "enable_block",
+    "enable_crosscheck",
+    "set_commission_settings",
+    "set_data_range_parts",
+    "set_date_range",
+    "set_genetic",
+    "set_market",
+    "set_spread_settings",
+    "SettingsSection",
+]

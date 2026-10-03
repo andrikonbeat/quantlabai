@@ -57,7 +57,6 @@ class ValidationError(CfxParseError):
     """Raised when a patch instruction fails validation."""
 
 
-
 # Attribute emission order for advanced ranking filters. The order reproduces a
 # real SQX 144/2953 Retester CFX export. Every attribute is always emitted, but
 # the justification is not simply "SQX does the same": SQX writes the full set
@@ -112,7 +111,9 @@ def _render_attributes(source: Any, spec: tuple[tuple[str, str], ...]) -> str:
     return " ".join(rendered)
 
 
-def build_conditions_xml(conditions: list[AdvancedRankingCondition], indent: str = "  ") -> str:
+def build_conditions_xml(
+    conditions: list[AdvancedRankingCondition], indent: str = "  "
+) -> str:
     """Render ``conditions`` as the inner ``<Conditions>`` block of a Rankings section.
 
     Every attribute is emitted, defaults included. SQX itself is not
@@ -131,7 +132,11 @@ def build_conditions_xml(conditions: list[AdvancedRankingCondition], indent: str
     lines = [f"{indent}<Conditions>"]
     for cond in conditions:
         use_attr = f'use="{str(cond.use).lower()}"'
-        attrs = " ".join(part for part in (use_attr, _render_attributes(cond, _CONDITION_ATTRS)) if part)
+        attrs = " ".join(
+            part
+            for part in (use_attr, _render_attributes(cond, _CONDITION_ATTRS))
+            if part
+        )
         lines.append(f"{indent}  <Condition {attrs}>")
         for cv in cond.column_values:
             cv_attrs = _render_attributes(cv, _COLUMN_VALUE_ATTRS)
@@ -214,7 +219,10 @@ def _sync_generic_cross_checks_xml(generic: CrossChecksGeneric) -> None:
             ET.SubElement(
                 root,
                 tag,
-                {attr: _cross_check_value(getattr(generic, field)) for attr, field in attrs},
+                {
+                    attr: _cross_check_value(getattr(generic, field))
+                    for attr, field in attrs
+                },
             )
 
     # Drop the wrapper: only the inner children are stored. Tails are cleared
@@ -318,7 +326,9 @@ class CfxPatcher:
 
         validator = validator_map.get(instruction.instruction_type)
         if validator is None:
-            raise ValidationError(f"Unknown instruction type: {instruction.instruction_type}")
+            raise ValidationError(
+                f"Unknown instruction type: {instruction.instruction_type}"
+            )
 
         validator(instruction)
 
@@ -342,7 +352,9 @@ class CfxPatcher:
 
     def _validate_disable_block(self, instruction: DisableBlockInstruction) -> None:
         if not instruction.block_key or not instruction.block_key.strip():
-            raise ValidationError("DisableBlockInstruction: block_key must not be empty")
+            raise ValidationError(
+                "DisableBlockInstruction: block_key must not be empty"
+            )
 
     def _validate_set_genetic(self, instruction: SetGeneticInstruction) -> None:
         if instruction.generations <= 0:
@@ -352,9 +364,14 @@ class CfxPatcher:
 
     def _validate_set_date_range(self, instruction: SetDateRangeInstruction) -> None:
         # Basic format validation - accept YYYY.MM.DD or epoch ms
-        for field_name, value in [("start", instruction.start), ("end", instruction.end)]:
+        for field_name, value in [
+            ("start", instruction.start),
+            ("end", instruction.end),
+        ]:
             if not value or not value.strip():
-                raise ValidationError(f"SetDateRangeInstruction: {field_name} must not be empty")
+                raise ValidationError(
+                    f"SetDateRangeInstruction: {field_name} must not be empty"
+                )
 
     def _validate_add_ranking_condition(
         self, instruction: AddRankingConditionInstruction
@@ -366,11 +383,17 @@ class CfxPatcher:
                 f"Valid: {', '.join(sorted(valid_operators))}"
             )
         if not instruction.metric or not instruction.metric.strip():
-            raise ValidationError("AddRankingConditionInstruction: metric must not be empty")
+            raise ValidationError(
+                "AddRankingConditionInstruction: metric must not be empty"
+            )
 
-    def _validate_enable_crosscheck(self, instruction: EnableCrosscheckInstruction) -> None:
+    def _validate_enable_crosscheck(
+        self, instruction: EnableCrosscheckInstruction
+    ) -> None:
         if instruction.wf_cycles <= 0:
-            raise ValidationError("EnableCrosscheckInstruction: wf_cycles must be positive")
+            raise ValidationError(
+                "EnableCrosscheckInstruction: wf_cycles must be positive"
+            )
 
     # ── Phase 4 Validators ────────────────────────────────────────────
 
@@ -389,12 +412,17 @@ class CfxPatcher:
             raise ValidationError(
                 "SetAutomaticPortfolioBuilderInstruction: min_strategies must be positive"
             )
-        if instruction.max_strategies is not None and instruction.max_strategies < instruction.min_strategies:
+        if (
+            instruction.max_strategies is not None
+            and instruction.max_strategies < instruction.min_strategies
+        ):
             raise ValidationError(
                 "SetAutomaticPortfolioBuilderInstruction: max_strategies must be >= min_strategies"
             )
         if not instruction.fitness or not instruction.fitness.strip():
-            raise ValidationError("SetAutomaticPortfolioBuilderInstruction: fitness must not be empty")
+            raise ValidationError(
+                "SetAutomaticPortfolioBuilderInstruction: fitness must not be empty"
+            )
 
     def _validate_set_portfolio_settings(
         self, instruction: SetPortfolioSettingsInstruction
@@ -402,30 +430,47 @@ class CfxPatcher:
         if instruction.weight_constraints is not None:
             for sid, constraint in instruction.weight_constraints.items():
                 if not sid or not sid.strip():
-                    raise ValidationError("SetPortfolioSettingsInstruction: strategy_id must not be empty")
+                    raise ValidationError(
+                        "SetPortfolioSettingsInstruction: strategy_id must not be empty"
+                    )
 
-    def _validate_set_optimization(self, instruction: SetOptimizationInstruction) -> None:
+    def _validate_set_optimization(
+        self, instruction: SetOptimizationInstruction
+    ) -> None:
         valid_methods = {"Genetic", "BruteForce", "Grid"}
         if instruction.method not in valid_methods:
             raise ValidationError(
                 f"SetOptimizationInstruction: invalid method '{instruction.method}'. "
                 f"Valid: {', '.join(sorted(valid_methods))}"
             )
-        if not instruction.objective_function or not instruction.objective_function.strip():
-            raise ValidationError("SetOptimizationInstruction: objective_function must not be empty")
+        if (
+            not instruction.objective_function
+            or not instruction.objective_function.strip()
+        ):
+            raise ValidationError(
+                "SetOptimizationInstruction: objective_function must not be empty"
+            )
         if instruction.walkforward_cycles <= 0:
-            raise ValidationError("SetOptimizationInstruction: walkforward_cycles must be positive")
+            raise ValidationError(
+                "SetOptimizationInstruction: walkforward_cycles must be positive"
+            )
         if not (0 < instruction.walkforward_oot_ratio < 1):
-            raise ValidationError("SetOptimizationInstruction: walkforward_oot_ratio must be in (0, 1)")
+            raise ValidationError(
+                "SetOptimizationInstruction: walkforward_oot_ratio must be in (0, 1)"
+            )
 
     def _validate_set_optimization_parameters(
         self, instruction: SetOptimizationParametersInstruction
     ) -> None:
         if not instruction.parameters:
-            raise ValidationError("SetOptimizationParametersInstruction: parameters must not be empty")
+            raise ValidationError(
+                "SetOptimizationParametersInstruction: parameters must not be empty"
+            )
         for param_name, param_range in instruction.parameters.items():
             if not param_name or not param_name.strip():
-                raise ValidationError("SetOptimizationParametersInstruction: parameter name must not be empty")
+                raise ValidationError(
+                    "SetOptimizationParametersInstruction: parameter name must not be empty"
+                )
             required_keys = {"min", "max", "step"}
             if not all(k in param_range for k in required_keys):
                 raise ValidationError(
@@ -444,12 +489,17 @@ class CfxPatcher:
         if instruction.cycles <= 0:
             raise ValidationError("SetWalkForwardInstruction: cycles must be positive")
         if not (0 < instruction.oot_ratio < 1):
-            raise ValidationError("SetWalkForwardInstruction: oot_ratio must be in (0, 1)")
+            raise ValidationError(
+                "SetWalkForwardInstruction: oot_ratio must be in (0, 1)"
+            )
 
     def _validate_set_databanks(self, instruction: SetDatabanksInstruction) -> None:
         if not instruction.databanks:
-            raise ValidationError("SetDatabanksInstruction: databanks must not be empty")
+            raise ValidationError(
+                "SetDatabanksInstruction: databanks must not be empty"
+            )
         import re
+
         pattern = re.compile(r"^[A-Z]{6}_[A-Z]\d+$")
         for db in instruction.databanks:
             if not pattern.match(db):
@@ -466,18 +516,31 @@ class CfxPatcher:
 
     def _validate_set_crosschecks(self, instruction: SetCrossChecksInstruction) -> None:
         if instruction.mc_enabled and instruction.mc_runs <= 0:
-            raise ValidationError("SetCrossChecksInstruction: mc_runs must be positive when mc_enabled")
+            raise ValidationError(
+                "SetCrossChecksInstruction: mc_runs must be positive when mc_enabled"
+            )
         if instruction.mc_enabled and not (1 <= instruction.mc_percentile <= 99):
-            raise ValidationError("SetCrossChecksInstruction: mc_percentile must be in [1, 99]")
+            raise ValidationError(
+                "SetCrossChecksInstruction: mc_percentile must be in [1, 99]"
+            )
         if instruction.wf_enabled and instruction.wf_cycles <= 0:
-            raise ValidationError("SetCrossChecksInstruction: wf_cycles must be positive when wf_enabled")
+            raise ValidationError(
+                "SetCrossChecksInstruction: wf_cycles must be positive when wf_enabled"
+            )
         if not (0.5 < instruction.confidence_level < 0.99):
-            raise ValidationError("SetCrossChecksInstruction: confidence_level must be in (0.5, 0.99)")
+            raise ValidationError(
+                "SetCrossChecksInstruction: confidence_level must be in (0.5, 0.99)"
+            )
 
-    def _validate_set_retester_data(self, instruction: SetRetesterDataInstruction) -> None:
+    def _validate_set_retester_data(
+        self, instruction: SetRetesterDataInstruction
+    ) -> None:
         if not instruction.databanks:
-            raise ValidationError("SetRetesterDataInstruction: databanks must not be empty")
+            raise ValidationError(
+                "SetRetesterDataInstruction: databanks must not be empty"
+            )
         import re
+
         pattern = re.compile(r"^[A-Z]{6}_[A-Z]\d+$")
         for db in instruction.databanks:
             if not pattern.match(db):
@@ -485,27 +548,45 @@ class CfxPatcher:
                     f"SetRetesterDataInstruction: invalid databank name '{db}'"
                 )
         if instruction.monte_carlo_runs <= 0:
-            raise ValidationError("SetRetesterDataInstruction: monte_carlo_runs must be positive")
+            raise ValidationError(
+                "SetRetesterDataInstruction: monte_carlo_runs must be positive"
+            )
         if instruction.walkforward_cycles <= 0:
-            raise ValidationError("SetRetesterDataInstruction: walkforward_cycles must be positive")
+            raise ValidationError(
+                "SetRetesterDataInstruction: walkforward_cycles must be positive"
+            )
         if not (0.5 < instruction.confidence_level < 0.99):
-            raise ValidationError("SetRetesterDataInstruction: confidence_level must be in (0.5, 0.99)")
+            raise ValidationError(
+                "SetRetesterDataInstruction: confidence_level must be in (0.5, 0.99)"
+            )
         if instruction.min_trades <= 0:
-            raise ValidationError("SetRetesterDataInstruction: min_trades must be positive")
+            raise ValidationError(
+                "SetRetesterDataInstruction: min_trades must be positive"
+            )
         if not (1 <= instruction.mc_percentile <= 99):
-            raise ValidationError("SetRetesterDataInstruction: mc_percentile must be in [1, 99]")
+            raise ValidationError(
+                "SetRetesterDataInstruction: mc_percentile must be in [1, 99]"
+            )
 
-    def _validate_set_advanced_rankings(self, instruction: SetAdvancedRankingsInstruction) -> None:
+    def _validate_set_advanced_rankings(
+        self, instruction: SetAdvancedRankingsInstruction
+    ) -> None:
         if not instruction.conditions:
-            raise ValidationError("SetAdvancedRankingsInstruction: conditions must not be empty")
+            raise ValidationError(
+                "SetAdvancedRankingsInstruction: conditions must not be empty"
+            )
 
-    def _validate_add_advanced_ranking_condition(self, instruction: AddAdvancedRankingConditionInstruction) -> None:
+    def _validate_add_advanced_ranking_condition(
+        self, instruction: AddAdvancedRankingConditionInstruction
+    ) -> None:
         if not instruction.condition.column_values:
             raise ValidationError(
                 "AddAdvancedRankingConditionInstruction: condition must have at least one ColumnValue"
             )
 
-    def _validate_set_data_range_parts(self, instruction: SetDataRangePartsInstruction) -> None:
+    def _validate_set_data_range_parts(
+        self, instruction: SetDataRangePartsInstruction
+    ) -> None:
         # A ratio of 0 or >= 1 is not a split; accepting it would let a caller
         # silently emit a degenerate range-parts block into the CFX.
         for field_name in ("validation_ratio", "test_ratio"):
@@ -566,7 +647,9 @@ class CfxPatcher:
 
         applier = applier_map.get(instruction.instruction_type)
         if applier is None:
-            raise ValidationError(f"Unknown instruction type: {instruction.instruction_type}")
+            raise ValidationError(
+                f"Unknown instruction type: {instruction.instruction_type}"
+            )
 
         applier(instruction)
 
@@ -607,7 +690,9 @@ class CfxPatcher:
         # WhatToBuild section → Timeframes
         if self._task.what_to_build:
             existing_keys = [
-                k for k in self._task.what_to_build.settings.keys() if k.startswith("Timeframe")
+                k
+                for k in self._task.what_to_build.settings.keys()
+                if k.startswith("Timeframe")
             ]
             next_idx = len(existing_keys) + 1
             self._task.what_to_build.settings[f"Timeframe{next_idx}@value"] = tf
@@ -657,7 +742,9 @@ class CfxPatcher:
             self._task.data.settings["FromDate@value"] = self._format_date_for_section(
                 start, "Data"
             )
-            self._task.data.settings["ToDate@value"] = self._format_date_for_section(end, "Data")
+            self._task.data.settings["ToDate@value"] = self._format_date_for_section(
+                end, "Data"
+            )
 
         # Resources/Symbols/Sessions → epoch ms (handled via raw_xml for complex sections)
         # For SettingsSection, we store the epoch format
@@ -715,7 +802,9 @@ class CfxPatcher:
             value = int(value)
         self._task.rankings.settings[f"{prefix}@value"] = str(value)
 
-    def _apply_enable_crosscheck(self, instruction: EnableCrosscheckInstruction) -> None:
+    def _apply_enable_crosscheck(
+        self, instruction: EnableCrosscheckInstruction
+    ) -> None:
         """Enable walk-forward and Monte-Carlo cross-checks.
 
         This applier used to be guarded by ``if self._task.cross_checks``, so on
@@ -771,8 +860,7 @@ class CfxPatcher:
         self, instruction: SetAutomaticPortfolioBuilderInstruction
     ) -> None:
         """Configure Automatic Portfolio Builder settings (create if missing)."""
-        xml = (
-            f"""<AutomaticPortfolioBuilder>
+        xml = f"""<AutomaticPortfolioBuilder>
   <Generations value="{instruction.generations}"/>
   <PopulationSize value="{instruction.population}"/>
   <FitnessFunction value="{instruction.fitness}"/>
@@ -780,9 +868,10 @@ class CfxPatcher:
   <MaxStrategies value="{instruction.max_strategies if instruction.max_strategies else 10}"/>
   <RebalancingPeriod value="{instruction.rebalancing}"/>
 </AutomaticPortfolioBuilder>"""
-        )
         if not self._task.automatic_portfolio_builder:
-            self._task.automatic_portfolio_builder = AutomaticPortfolioBuilderConfig(raw_xml="")
+            self._task.automatic_portfolio_builder = AutomaticPortfolioBuilderConfig(
+                raw_xml=""
+            )
         self._task.automatic_portfolio_builder.raw_xml = xml
 
     def _apply_set_portfolio_settings(
@@ -819,7 +908,9 @@ class CfxPatcher:
             xml += f'<Parameter name="{name}" min="{rng["min"]}" max="{rng["max"]}" step="{rng["step"]}"/>'
         xml += "</OptimizationParameters>"
         if not self._task.optimization_parameters:
-            self._task.optimization_parameters = OptimizationParametersConfig(raw_xml="")
+            self._task.optimization_parameters = OptimizationParametersConfig(
+                raw_xml=""
+            )
         self._task.optimization_parameters.raw_xml = xml
 
     def _apply_set_walkforward(self, instruction: SetWalkForwardInstruction) -> None:
@@ -899,7 +990,9 @@ class CfxPatcher:
         """Build nested ``<Rankings><Conditions>`` XML from typed conditions."""
         return build_advanced_rankings_xml(conditions)
 
-    def _apply_set_advanced_rankings(self, instruction: SetAdvancedRankingsInstruction) -> None:
+    def _apply_set_advanced_rankings(
+        self, instruction: SetAdvancedRankingsInstruction
+    ) -> None:
         """Replace the advanced rankings block with the given conditions."""
         xml = self._build_advanced_rankings_xml(instruction.conditions)
         if not self._task.rankings_section:
@@ -1000,6 +1093,7 @@ class CfxPatcher:
                 )
             )
         return conditions
+
     @staticmethod
     def _parse_conditions_from_xml(xml: str) -> list[AdvancedRankingCondition]:
         """Parse advanced ranking conditions from raw XML."""

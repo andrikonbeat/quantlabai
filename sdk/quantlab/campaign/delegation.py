@@ -240,18 +240,11 @@ async def _persist_stage_success(
     """
     campaign_id = payload.get("campaign_id")
     knowledge_root = payload.get("knowledge_root")
-    missing = [
-        key
-        for key in ("campaign_id", "knowledge_root")
-        if not payload.get(key)
-    ]
+    missing = [key for key in ("campaign_id", "knowledge_root") if not payload.get(key)]
     if missing:
         return (
             [],
-            [
-                f"{', '.join(missing)} missing — no stage artifacts "
-                "persisted (REQ-819)"
-            ],
+            [f"{', '.join(missing)} missing — no stage artifacts persisted (REQ-819)"],
         )
 
     from quantlab.knowledge.artifacts import (
@@ -329,7 +322,9 @@ async def _persist_stage_failure(
         from quantlab.knowledge.store import KnowledgeStore
 
         store = KnowledgeStore(root=str(knowledge_root))
-        error_rel = f"campaign-phases/{campaign_id}/{phase}/{phase}_{stage_name}.error.json"
+        error_rel = (
+            f"campaign-phases/{campaign_id}/{phase}/{phase}_{stage_name}.error.json"
+        )
         await store.write(
             error_rel,
             json.dumps(
@@ -458,8 +453,7 @@ def _make_reasoning_executor() -> PhaseExecutor:
             return PhaseResult(
                 status="failed",
                 executive_summary=(
-                    f"{phase} SDK stage '{stage}' failed: "
-                    f"{type(exc).__name__}: {exc}"
+                    f"{phase} SDK stage '{stage}' failed: {type(exc).__name__}: {exc}"
                 ),
                 artifacts=[],
                 next_recommended="halt",
@@ -501,8 +495,8 @@ def _make_mechanical_executor(phase: str) -> PhaseExecutor:
         command = (
             f"nohup python3 -c 'import asyncio,base64,json;"
             f"from quantlab.campaign.delegation import run_stage_for_handoff;"
-            f"d=json.loads(base64.b64decode(\"{payload_b64}\").decode());"
-            f"r=asyncio.run(run_stage_for_handoff(\"{phase}\", d));"
+            f'd=json.loads(base64.b64decode("{payload_b64}").decode());'
+            f'r=asyncio.run(run_stage_for_handoff("{phase}", d));'
             f"print(json.dumps(r, default=str))' "
             f">> '{log_path}' 2>&1"
         )
@@ -587,9 +581,7 @@ async def _live_ops_executor(directive: PhaseDirective) -> PhaseResult:
     report_dict = {
         "guardian_state": report.guardian_state,
         "feedback": (
-            report.feedback.next_cycle_inputs()
-            if report.feedback is not None
-            else None
+            report.feedback.next_cycle_inputs() if report.feedback is not None else None
         ),
         "live_ops_status": report.live_ops_status,
         "escalations_acked": list(report.escalations_acked),
@@ -597,8 +589,7 @@ async def _live_ops_executor(directive: PhaseDirective) -> PhaseResult:
     return PhaseResult(
         status="success",
         executive_summary=(
-            "live-ops delegated to the guardian surface "
-            f"(kind={guardian.kind})"
+            f"live-ops delegated to the guardian surface (kind={guardian.kind})"
         ),
         artifacts=[],
         next_recommended="live-ops",
@@ -622,8 +613,13 @@ def _build_production_executors() -> dict[str, PhaseExecutor]:
     guardian surface.
     """
     reasoning = (
-        "research", "hypothesis", "config", "review",
-        "portfolio", "optimize", "archive",
+        "research",
+        "hypothesis",
+        "config",
+        "review",
+        "portfolio",
+        "optimize",
+        "archive",
     )
     mechanical = ("dispatch", "monitor", "compile", "deploy", "demo")
 

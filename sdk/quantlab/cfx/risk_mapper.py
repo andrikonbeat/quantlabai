@@ -110,9 +110,7 @@ class RiskConfigMapper:
             settings[key] = self._format_value(config, field)
         return SettingsSection(name=RISK_SECTION_NAME, settings=settings)
 
-    def from_cfx(
-        self, source: SettingsSection | BuildTask | CfxConfig
-    ) -> RiskConfig:
+    def from_cfx(self, source: SettingsSection | BuildTask | CfxConfig) -> RiskConfig:
         """Deserialise a CFX ``risk_money_mgmt`` section into a ``RiskConfig``.
 
         Args:
