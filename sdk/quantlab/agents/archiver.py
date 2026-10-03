@@ -96,9 +96,7 @@ class ReplacementRunbook:
     recommendation: str  # "REPLACE" | "MAINTAIN"
     candidates: list[ReplacementCandidate] = field(default_factory=list)
     drawdown_threshold: float = REPLACEMENT_DRAWDOWN_THRESHOLD
-    required_confirmations: list[str] = field(
-        default_factory=lambda: [ARCHIVE_GATE_ID]
-    )
+    required_confirmations: list[str] = field(default_factory=lambda: [ARCHIVE_GATE_ID])
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -164,10 +162,16 @@ class Archiver:
         deployed = str(portfolio_data.get("deployed_strategy_id") or "")
         strategy_state = portfolio_data.get("strategy_state")
         state_text = self._state_text(strategy_state)
-        has_live_data = bool(equity_points) or state_text not in ("", "UNKNOWN") or guardian_state is not None
+        has_live_data = (
+            bool(equity_points)
+            or state_text not in ("", "UNKNOWN")
+            or guardian_state is not None
+        )
         parameter_matrix = portfolio_data.get("parameter_matrix")
         candidate_metrics = portfolio_data.get("candidate_metrics") or {}
-        budget = float(portfolio_data.get("next_cycle_budget", DEFAULT_NEXT_CYCLE_BUDGET))
+        budget = float(
+            portfolio_data.get("next_cycle_budget", DEFAULT_NEXT_CYCLE_BUDGET)
+        )
 
         # ── Account statistics over the demo window (REQ-33) ────────────────
         stats = account_stats(equity_points)
@@ -202,16 +206,14 @@ class Archiver:
         # ── Maintenance plan (REQ-33 scenario 1) ─────────────────────────────
         cycle_days = review_cycle_days(has_live_data=has_live_data)
         if not has_live_data:
-            warnings.append(
-                "missing live data — using default review intervals"
-            )
+            warnings.append("missing live data — using default review intervals")
         triggers = refresh_triggers(parameter_matrix)
         notes = json.dumps(
             {
                 "next_review_days": cycle_days,
-                "next_review_date": (
-                    datetime.now(UTC) + timedelta(days=cycle_days)
-                ).date().isoformat(),
+                "next_review_date": (datetime.now(UTC) + timedelta(days=cycle_days))
+                .date()
+                .isoformat(),
                 "refresh_triggers": triggers,
                 "replacement_criteria": [
                     f"drawdown > {REPLACEMENT_DRAWDOWN_THRESHOLD:.0%}",
@@ -255,9 +257,7 @@ class Archiver:
         from quantlab.readers.models import EquityPoint
 
         points = raw or []
-        return [
-            EquityPoint(**p) if isinstance(p, dict) else p for p in points
-        ]
+        return [EquityPoint(**p) if isinstance(p, dict) else p for p in points]
 
     @staticmethod
     def _state_text(strategy_state: Any) -> str:

@@ -65,14 +65,18 @@ class AnalysisAgent(AnalysisStage):
 
     # ── Helpers ──────────────────────────────────────────────────────────────────
 
-    def _resolve_export_path(self, export_paths: list[str], filename: str) -> str | None:
+    def _resolve_export_path(
+        self, export_paths: list[str], filename: str
+    ) -> str | None:
         """Find a file by name in the export paths list."""
         for path in export_paths:
             if path.endswith(filename):
                 return path
         return None
 
-    def _build_thresholds(self, research_config: dict[str, Any] | None) -> AnalysisThresholds:
+    def _build_thresholds(
+        self, research_config: dict[str, Any] | None
+    ) -> AnalysisThresholds:
         """Build AnalysisThresholds from research_config.analysis or defaults."""
         if not research_config:
             return AnalysisThresholds(
@@ -137,7 +141,9 @@ class AnalysisAgent(AnalysisStage):
         # Resolve strategies.csv
         strategies_path = self._resolve_export_path(export_paths, "strategies.csv")
         if not strategies_path:
-            logger.warning("No strategies.csv found in export paths — analysis will be empty")
+            logger.warning(
+                "No strategies.csv found in export paths — analysis will be empty"
+            )
             context.artifacts["strategy_analysis"] = []
             context.artifacts["selected_strategies"] = []
             context.artifacts["strategy_verdicts"] = {}
@@ -154,7 +160,9 @@ class AnalysisAgent(AnalysisStage):
             strategies = self._reader.parse(strategies_path)
             logger.info("Read %d strategies from %s", len(strategies), strategies_path)
         except ParseError as exc:
-            logger.warning("Failed to parse strategies.csv: %s — analysis will be empty", exc)
+            logger.warning(
+                "Failed to parse strategies.csv: %s — analysis will be empty", exc
+            )
             context.artifacts["strategy_analysis"] = []
             context.artifacts["selected_strategies"] = []
             context.artifacts["strategy_verdicts"] = {}
@@ -178,18 +186,22 @@ class AnalysisAgent(AnalysisStage):
         wf_cycles: list[dict[str, Any]] = []
         for strategy in strategies:
             if strategy.wf_cycles is not None and strategy.wf_cycles > 0:
-                wf_cycles.append({
-                    "strategy_name": strategy.strategy_name,
-                    "cycles": strategy.wf_cycles,
-                    "wf_is_sharpe": strategy.wf_is_sharpe,
-                    "wf_oos_sharpe": strategy.wf_oos_sharpe,
-                })
+                wf_cycles.append(
+                    {
+                        "strategy_name": strategy.strategy_name,
+                        "cycles": strategy.wf_cycles,
+                        "wf_is_sharpe": strategy.wf_is_sharpe,
+                        "wf_oos_sharpe": strategy.wf_oos_sharpe,
+                    }
+                )
 
         # Serialize analyses for context artifacts
         strategy_analysis_list = [
             {
                 "name": a.name,
-                "metrics": a.metrics.model_dump() if hasattr(a.metrics, "model_dump") else {},
+                "metrics": a.metrics.model_dump()
+                if hasattr(a.metrics, "model_dump")
+                else {},
                 "flags": a.flags,
                 "score": a.score,
             }
