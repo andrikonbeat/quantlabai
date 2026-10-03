@@ -16,12 +16,11 @@ from typing import Optional
 
 import yaml
 
-from quantlab.pipeline.base import PipelineContext
-from quantlab.pipeline.registry import PipelineRegistry
-from quantlab.pipeline.models import PipelineRun, StageRun, StageStatus
-from quantlab.pipeline.runner import PipelineRunner
 from quantlab.knowledge.store import KnowledgeStore
-
+from quantlab.pipeline.base import PipelineContext
+from quantlab.pipeline.models import PipelineRun, StageRun, StageStatus
+from quantlab.pipeline.registry import PipelineRegistry
+from quantlab.pipeline.runner import PipelineRunner
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Output formatting
@@ -224,8 +223,8 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
 async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) -> int:
     """Run a multi-agent research campaign via ResearchDirector."""
     try:
-        from pathlib import Path as _Path
         import sys as _sys
+        from pathlib import Path as _Path
 
         # Load research config
         from quantlab.dsl.models import ResearchConfig
@@ -277,7 +276,8 @@ async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) 
     except Exception as e:
         print_error(f"Multi-agent campaign failed: {e}")
         if getattr(args, "json", False):
-            import json as _json, traceback
+            import json as _json
+            import traceback
             _sys.stderr.flush()
             print(_json.dumps({"error": str(e), "traceback": traceback.format_exc()}))
         return 1
@@ -426,16 +426,16 @@ def add_pipeline_subparser(subparsers: argparse._SubParsersAction) -> None:
 
 async def cmd_pipeline_validate(args: argparse.Namespace) -> int:
     """Validate pipeline configuration file."""
-    from quantlab.pipeline.config.models import MultiAgentPipelineConfig
     from quantlab.pipeline.config.loader import MultiAgentPipelineConfigLoader
+    from quantlab.pipeline.config.models import MultiAgentPipelineConfig
     
     try:
         # Load and validate the configuration
         config = MultiAgentPipelineConfig.load(args.config)
         
         # Additional validation - run contract validation
-        from quantlab.pipeline.runner import PipelineRunner
         from quantlab.pipeline.registry import PipelineRegistry
+        from quantlab.pipeline.runner import PipelineRunner
         
         # Create a runner to validate contracts
         registry = PipelineRegistry()
@@ -469,7 +469,6 @@ async def cmd_pipeline_validate(args: argparse.Namespace) -> int:
 
 def dispatch_pipeline(args: argparse.Namespace) -> int:
     """Dispatch pipeline subcommand using async runner."""
-    import asyncio
 
     func = getattr(args, "func", None)
     if func is None:

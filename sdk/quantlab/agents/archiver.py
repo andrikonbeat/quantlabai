@@ -19,9 +19,10 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any, Sequence
+from datetime import UTC, datetime, timedelta, timezone
+from typing import Any
 
 import yaml
 
@@ -209,7 +210,7 @@ class Archiver:
             {
                 "next_review_days": cycle_days,
                 "next_review_date": (
-                    datetime.now(timezone.utc) + timedelta(days=cycle_days)
+                    datetime.now(UTC) + timedelta(days=cycle_days)
                 ).date().isoformat(),
                 "refresh_triggers": triggers,
                 "replacement_criteria": [
@@ -226,7 +227,7 @@ class Archiver:
             replacement_candidates=replacement_ids,
             live_strategy_ids=[deployed] if deployed else [],
             notes=notes,
-            updated_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(UTC).isoformat(),
         )
 
         # ── Persist to the KnowledgeStore (maintenance/ + campaign-phases/) ──
@@ -343,7 +344,7 @@ class Archiver:
                     "strategy_state": runbook.strategy_state,
                     "recommendation": runbook.recommendation,
                     "stats": stats,
-                    "archived_at": datetime.now(timezone.utc).isoformat(),
+                    "archived_at": datetime.now(UTC).isoformat(),
                 },
                 default_flow_style=False,
                 sort_keys=False,

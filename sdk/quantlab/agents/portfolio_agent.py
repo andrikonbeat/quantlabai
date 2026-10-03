@@ -80,9 +80,9 @@ class PortfolioAgent(PortfolioStage):
     def run_portfolio_master(
         self,
         strategies: list[str],
-        generations: Optional[int] = None,
-        population: Optional[int] = None,
-        fitness: Optional[str] = None,
+        generations: int | None = None,
+        population: int | None = None,
+        fitness: str | None = None,
     ) -> dict[str, Any]:
         """Run Portfolio Master genetic builder to select and weight strategies.
 
@@ -249,7 +249,7 @@ class PortfolioAgent(PortfolioStage):
                     "strategies": cluster_ids,
                     "size": len(cluster_ids),
                     "max_correlation": round(float(np.max(corr_matrix[np.ix_(cluster, cluster)])), 4),
-                    "recommendation": f"Select 1 from cluster, diversify across low-correlation assets",
+                    "recommendation": "Select 1 from cluster, diversify across low-correlation assets",
                 })
                 warnings.append(
                     f"High correlation cluster: {', '.join(cluster_ids)} "
@@ -271,7 +271,7 @@ class PortfolioAgent(PortfolioStage):
         avg_win: float,
         avg_loss: float,
         account_equity: float = 10000.0,
-        max_kelly: Optional[float] = None,
+        max_kelly: float | None = None,
     ) -> dict[str, Any]:
         """Compute optimal position size using the Kelly criterion.
 
@@ -336,9 +336,9 @@ class PortfolioAgent(PortfolioStage):
     def optimize_mean_variance(
         self,
         returns_dict: dict[str, list[float]],
-        target_return: Optional[float] = None,
-        min_weight: Optional[float] = None,
-        max_weight: Optional[float] = None,
+        target_return: float | None = None,
+        min_weight: float | None = None,
+        max_weight: float | None = None,
     ) -> dict[str, Any]:
         """Run mean-variance optimization to find optimal portfolio weights.
 
@@ -554,8 +554,8 @@ class PortfolioAgent(PortfolioStage):
     def run_walk_forward(
         self,
         strategies: list[str],
-        wf_cycles: Optional[int] = None,
-        is_ratio: Optional[float] = None,
+        wf_cycles: int | None = None,
+        is_ratio: float | None = None,
     ) -> dict[str, Any]:
         """Execute walk-forward optimization for robustness validation.
 

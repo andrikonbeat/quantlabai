@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +65,7 @@ class AgentMemoryManager:
         lake record and the Engram content both carry only scrubbed values.
         """
         decision.setdefault(
-            "timestamp", datetime.now(timezone.utc).isoformat()
+            "timestamp", datetime.now(UTC).isoformat()
         )
         decision.setdefault("agent_name", agent)
         decision.setdefault("campaign_id", campaign)
@@ -133,7 +133,7 @@ class AgentMemoryManager:
         memory_path = self._agent_memory_path(agent, campaign)
         memory_path.mkdir(parents=True, exist_ok=True)
         memory_file = memory_path / "memory.yaml"
-        import yaml  # noqa: F811
+        import yaml
         existing: list[dict[str, Any]] = []
         if memory_file.exists():
             try:

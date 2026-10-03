@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -42,7 +42,7 @@ class CampaignRecord:
     campaign_id: str
     config: ResearchConfig
     state: CampaignState = CampaignState.CREATED
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
     current_iteration: int = 0
     result: Any = None
@@ -774,7 +774,7 @@ class ResearchDirector:
             if self.check_convergence(ctx, current_config):
                 record.state = CampaignState.CONVERGED
                 logger.info("Campaign '%s' converged at iteration %d", cid, iteration + 1)
-                record.completed_at = datetime.now(timezone.utc)
+                record.completed_at = datetime.now(UTC)
                 return record
 
             # Evaluate iteration score and track best result
@@ -792,7 +792,7 @@ class ResearchDirector:
                         "Campaign '%s' aborted due to consecutive degradation at iteration %d",
                         cid, iteration + 1,
                     )
-                    record.completed_at = datetime.now(timezone.utc)
+                    record.completed_at = datetime.now(UTC)
                     if record.best_result_config is not None:
                         current_config = record.best_result_config
                     return record
@@ -833,12 +833,12 @@ class ResearchDirector:
             elif review_decision == "REJECT":
                 record.state = CampaignState.FAILED
                 record.error = f"Rejected by reviewer at iteration {iteration + 1}"
-                record.completed_at = datetime.now(timezone.utc)
+                record.completed_at = datetime.now(UTC)
                 return record
 
             elif review_decision == "APPROVE":
                 record.state = CampaignState.COMPLETED
-                record.completed_at = datetime.now(timezone.utc)
+                record.completed_at = datetime.now(UTC)
                 return record
 
             # If auto-iteration is disabled, stop after the current iteration
@@ -851,7 +851,7 @@ class ResearchDirector:
 
         # All iterations completed without convergence
         record.state = CampaignState.COMPLETED
-        record.completed_at = datetime.now(timezone.utc)
+        record.completed_at = datetime.now(UTC)
         logger.info("Campaign '%s' completed all %d iterations", cid, max_iterations)
         return record
 

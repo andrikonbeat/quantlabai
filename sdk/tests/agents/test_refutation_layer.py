@@ -13,17 +13,19 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from quantlab.dsl.models import HypothesisConfig
-
 # These imports will fail initially (RED) — that's intentional TDD:
-from quantlab.agents.refutation import FalsationVerdict, RefutationLayer, RefutationResult
+from quantlab.agents.refutation import (
+    FalsationVerdict,
+    RefutationLayer,
+    RefutationResult,
+)
 from quantlab.agents.refutation.config import RefutationConfig
 from quantlab.agents.refutation.strategies import RefutationStrategy
 from quantlab.agents.refutation.strategies.regime import (
     RegimeMismatchStrategy,
     _infer_assumed_regime,
 )
-
+from quantlab.dsl.models import HypothesisConfig
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -813,11 +815,11 @@ class TestRefutationLayerPR2Integration:
         self, hyp_rsi: HypothesisConfig
     ) -> None:
         """Default strategy list includes all three strategies."""
-        from quantlab.agents.refutation.strategies.historical import (
-            HistoricalCounterExampleStrategy,
-        )
         from quantlab.agents.refutation.strategies.adversarial import (
             LLMAdversarialStrategy,
+        )
+        from quantlab.agents.refutation.strategies.historical import (
+            HistoricalCounterExampleStrategy,
         )
 
         layer = RefutationLayer()
@@ -832,11 +834,11 @@ class TestRefutationLayerPR2Integration:
         self, hyp_rsi: HypothesisConfig
     ) -> None:
         """RF-5: Final score is max of all strategy scores."""
-        from quantlab.agents.refutation.strategies.historical import (
-            HistoricalCounterExampleStrategy,
-        )
         from quantlab.agents.refutation.strategies.adversarial import (
             LLMAdversarialStrategy,
+        )
+        from quantlab.agents.refutation.strategies.historical import (
+            HistoricalCounterExampleStrategy,
         )
 
         mock_historical = AsyncMock(spec=HistoricalCounterExampleStrategy)
@@ -867,11 +869,11 @@ class TestRefutationLayerPR2Integration:
         self, hyp_rsi: HypothesisConfig
     ) -> None:
         """When all strategies return 0, aggregate score is 0."""
-        from quantlab.agents.refutation.strategies.historical import (
-            HistoricalCounterExampleStrategy,
-        )
         from quantlab.agents.refutation.strategies.adversarial import (
             LLMAdversarialStrategy,
+        )
+        from quantlab.agents.refutation.strategies.historical import (
+            HistoricalCounterExampleStrategy,
         )
 
         mock_historical = AsyncMock(spec=HistoricalCounterExampleStrategy)
@@ -900,11 +902,11 @@ class TestRefutationLayerPR2Integration:
         self, hyp_rsi: HypothesisConfig
     ) -> None:
         """When one strategy fails, others still contribute to max."""
-        from quantlab.agents.refutation.strategies.historical import (
-            HistoricalCounterExampleStrategy,
-        )
         from quantlab.agents.refutation.strategies.adversarial import (
             LLMAdversarialStrategy,
+        )
+        from quantlab.agents.refutation.strategies.historical import (
+            HistoricalCounterExampleStrategy,
         )
 
         mock_historical = AsyncMock(spec=HistoricalCounterExampleStrategy)

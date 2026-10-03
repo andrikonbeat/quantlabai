@@ -18,7 +18,6 @@ import pytest
 from quantlab.agents.llm_research_agent import LLMResearchAgent
 from quantlab.data.news.models import NewsItem, WebResult
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 

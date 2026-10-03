@@ -16,10 +16,10 @@ import logging
 import re
 from typing import Any
 
-from quantlab.dsl.models import HypothesisConfig
 from quantlab.agents.refutation.models import FalsationVerdict
 from quantlab.agents.refutation.strategies import RefutationStrategy
 from quantlab.data.fundamental.yahoo import YahooFinanceProvider
+from quantlab.dsl.models import HypothesisConfig
 
 logger = logging.getLogger(__name__)
 
@@ -242,4 +242,4 @@ class HistoricalCounterExampleStrategy(RefutationStrategy):
         )
 
 
-__all__ = ["HistoricalCounterExampleStrategy", "_extract_symbol", "_compute_rsi"]
+__all__ = ["HistoricalCounterExampleStrategy", "_compute_rsi", "_extract_symbol"]

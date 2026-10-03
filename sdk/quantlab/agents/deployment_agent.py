@@ -12,10 +12,11 @@ import json
 import logging
 import os
 import zipfile
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.agent_stages import DeployStage
@@ -40,7 +41,7 @@ class JCloudConfig:
         }
 
     @classmethod
-    def from_manifest(cls, data: Mapping[str, Any]) -> "JCloudConfig":
+    def from_manifest(cls, data: Mapping[str, Any]) -> JCloudConfig:
         """Rebuild from a manifest produced by :meth:`to_manifest`."""
         return cls(
             account=data["account"],
@@ -410,7 +411,9 @@ class DeploymentAgent(DeployStage):
     ) -> dict[str, Any]:
         """Generate a JCloud deployment manifest."""
         try:
-            from jforex_deploy import jcloud_config as jcloud_gen  # type: ignore[import]
+            from jforex_deploy import (
+                jcloud_config as jcloud_gen,  # type: ignore[import]
+            )
 
             config = jcloud_gen(
                 campaign_id=campaign_id,

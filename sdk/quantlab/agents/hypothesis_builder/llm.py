@@ -164,13 +164,13 @@ class LLMMode:
                 params=b_data["indicator"].get("params", {}),
             )
             entry: EntryRule | None = None
-            if "entry" in b_data and b_data["entry"]:
+            if b_data.get("entry"):
                 entry = EntryRule(
                     description=b_data["entry"].get("description", ""),
                     conditions=b_data["entry"].get("conditions", []),
                 )
             exit_rule: ExitRule | None = None
-            if "exit" in b_data and b_data["exit"]:
+            if b_data.get("exit"):
                 exit_rule = ExitRule(
                     description=b_data["exit"].get("description", ""),
                     conditions=b_data["exit"].get("conditions", []),

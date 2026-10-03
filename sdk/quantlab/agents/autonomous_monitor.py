@@ -16,9 +16,10 @@ import inspect
 import logging
 import os
 import time
+from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Callable
+from datetime import UTC, datetime, timezone
+from typing import Any
 
 import yaml
 
@@ -34,7 +35,6 @@ from quantlab.gates.notifiers import (
 from quantlab.knowledge.store import TimeSeriesStore
 from quantlab.readers.models import EquityPoint
 from quantlab.readers.result_reader import ResultReader
-
 
 logger = logging.getLogger(__name__)
 
@@ -245,7 +245,7 @@ class NotifierDispatcher:
                 continue
             try:
                 await notifier.send(alert.get("message", ""), **alert)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.warning(
                     "NotifierDispatcher: %s failed for alert %s — continuing",
                     channel,
@@ -349,7 +349,7 @@ class AutoActionExecutor:
             ``status``, and action-specific fields.
         """
         strategy_id = alert.get("strategy_id", self._config.strategy_id)
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
 
         result: dict[str, Any] = {
             "action": action,
@@ -527,7 +527,7 @@ class AutonomousMonitorDaemon:
             self._task.cancel()
             try:
                 await asyncio.wait_for(self._task, timeout=5.0)
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (TimeoutError, asyncio.CancelledError):
                 pass
             self._task = None
         logger.info("AutonomousMonitorDaemon: stopped for %s", self._config.strategy_id)
@@ -706,7 +706,7 @@ class AutonomousMonitorDaemon:
         except asyncio.CancelledError:
             logger.info("Daemon loop cancelled")
             self._state = "stopped"
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self._loop_exception = exc
             self._state = "error"
             logger.exception("Daemon loop fatal error: %s", exc)
@@ -757,7 +757,7 @@ class AutonomousMonitorDaemon:
         for alert in all_alerts:
             alert.setdefault("strategy_id", self._config.strategy_id)
             alert.setdefault(
-                "timestamp", datetime.now(timezone.utc).isoformat()
+                "timestamp", datetime.now(UTC).isoformat()
             )
             alert.setdefault("message", alert.get("type", "alert"))
 
@@ -809,12 +809,12 @@ class AutonomousMonitorDaemon:
             self._missed_heartbeats += 1
             if self._missed_heartbeats == 3:
                 alert: dict[str, Any] = {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "type": "DAEMON_FAILURE",
                     "severity": "CRITICAL",
                     "strategy_id": self._config.strategy_id,
                     "message": (
-                        f"3 consecutive heartbeats missed — daemon may be stalled"
+                        "3 consecutive heartbeats missed — daemon may be stalled"
                     ),
                     "details": {
                         "last_heartbeat": self._last_heartbeat,
@@ -833,7 +833,7 @@ class AutonomousMonitorDaemon:
         if result.status == HealthStatus.UNHEALTHY:
             self._store_unhealthy = True
             alert: dict[str, Any] = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "type": "STORE_UNHEALTHY",
                 "severity": "CRITICAL",
                 "strategy_id": self._config.strategy_id,
@@ -886,7 +886,7 @@ class AutonomousMonitorDaemon:
 
             # Dispatch STREAM_LOST CRITICAL alert
             alert: dict[str, Any] = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "type": "STREAM_LOST",
                 "severity": "CRITICAL",
                 "strategy_id": self._config.strategy_id,

@@ -11,8 +11,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from quantlab.dsl.models import HypothesisConfig
 from quantlab.agents.refutation.models import FalsationVerdict
+from quantlab.dsl.models import HypothesisConfig
 
 
 class RefutationStrategy(ABC):

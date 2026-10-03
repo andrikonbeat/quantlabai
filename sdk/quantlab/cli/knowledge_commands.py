@@ -10,9 +10,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from quantlab.knowledge.store import KnowledgeStore
-from quantlab.knowledge.query import QueryBuilder
 from quantlab.knowledge.models import CampaignSummary
+from quantlab.knowledge.query import QueryBuilder
+from quantlab.knowledge.store import KnowledgeStore
 
 
 def print_json(data: dict | list, pretty: bool = True) -> None:

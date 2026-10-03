@@ -14,6 +14,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from quantlab.agents.hypothesis_builder import HypothesisBuilder
+from quantlab.agents.hypothesis_builder.llm import LLMMode
+
+# These imports will fail initially (RED) — that's intentional TDD:
+from quantlab.agents.hypothesis_builder.rule import RuleMode
+from quantlab.agents.hypothesis_builder.validate import BuildingBlockValidator
 from quantlab.dsl.models import (
     BuildingBlock,
     EntryRule,
@@ -24,12 +30,6 @@ from quantlab.dsl.models import (
     Strategy,
     StrategyDirection,
 )
-# These imports will fail initially (RED) — that's intentional TDD:
-from quantlab.agents.hypothesis_builder.rule import RuleMode
-from quantlab.agents.hypothesis_builder.validate import BuildingBlockValidator
-from quantlab.agents.hypothesis_builder import HypothesisBuilder
-from quantlab.agents.hypothesis_builder.llm import LLMMode
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

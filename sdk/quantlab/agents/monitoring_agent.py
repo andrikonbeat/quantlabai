@@ -267,7 +267,7 @@ class MonitoringAgent(MonitorStage):
             )
 
         # Volatility spike detection
-        if len(valid_vols) >= mid and mid > 0:
+        if len(valid_vols) >= mid > 0:
             baseline_vol = sum(valid_vols[:mid]) / mid
             current_vol = valid_vols[-1]
             if baseline_vol > 0 and current_vol > 3 * baseline_vol:

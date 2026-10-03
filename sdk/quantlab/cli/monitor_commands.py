@@ -21,7 +21,6 @@ from quantlab.agents.autonomous_monitor import (
     MonitorConfig,
 )
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Output formatting (matches agent_commands.py pattern)
 # ──────────────────────────────────────────────────────────────────────────────

@@ -44,7 +44,7 @@ class AnalysisAgent(AnalysisStage):
         extreme_pf: float = 3.0,
         extreme_sharpe: float = 2.0,
         oos_is_threshold: float = 0.7,
-        score_weights: Optional[dict[str, float]] = None,
+        score_weights: dict[str, float] | None = None,
     ) -> None:
         self._min_trades = min_trades
         self._extreme_pf = extreme_pf
@@ -65,14 +65,14 @@ class AnalysisAgent(AnalysisStage):
 
     # ── Helpers ──────────────────────────────────────────────────────────────────
 
-    def _resolve_export_path(self, export_paths: list[str], filename: str) -> Optional[str]:
+    def _resolve_export_path(self, export_paths: list[str], filename: str) -> str | None:
         """Find a file by name in the export paths list."""
         for path in export_paths:
             if path.endswith(filename):
                 return path
         return None
 
-    def _build_thresholds(self, research_config: Optional[dict[str, Any]]) -> AnalysisThresholds:
+    def _build_thresholds(self, research_config: dict[str, Any] | None) -> AnalysisThresholds:
         """Build AnalysisThresholds from research_config.analysis or defaults."""
         if not research_config:
             return AnalysisThresholds(

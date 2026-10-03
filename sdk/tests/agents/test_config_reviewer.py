@@ -9,11 +9,10 @@ Covers:
 
 import pytest
 
+from quantlab.agents.config_reviewer import ConfigReviewer, ConfigReviewVerdict
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
 from quantlab.sqx.project_builder import BuildConfig
-
-from quantlab.agents.config_reviewer import ConfigReviewer, ConfigReviewVerdict
 
 
 class TestConfigReviewerVerdicts:

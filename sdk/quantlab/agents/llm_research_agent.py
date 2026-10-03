@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from quantlab.agents.parameter_validator import ParameterValidator
 from quantlab.agents.prompts import PROMPT_TEMPLATES
 from quantlab.agents.research_agent import ResearchAgent
 from quantlab.analysis.indicators import IndicatorEngine
@@ -33,9 +34,8 @@ from quantlab.dsl.models import (
     ResearchConfig,
     Timeframe,
 )
-from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
-from quantlab.agents.parameter_validator import ParameterValidator
+from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 
 try:
     from quantlab.data.news.web_search import WebSearchProvider
@@ -593,7 +593,7 @@ class LLMResearchAgent:
 
         if provider == "openai":
             try:
-                import openai  # noqa: F811
+                import openai
             except ImportError:
                 raise ImportError(
                     "openai SDK is not installed. Install with: pip install openai"

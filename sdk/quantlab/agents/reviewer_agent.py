@@ -73,8 +73,8 @@ class ReviewerAgent(ReviewStage):
     def evaluate(
         self,
         statistics: dict[str, Any],
-        aggregate_stats: Optional[dict[str, Any]] = None,
-        monte_carlo_bands: Optional[dict[int, list[float]]] = None,
+        aggregate_stats: dict[str, Any] | None = None,
+        monte_carlo_bands: dict[int, list[float]] | None = None,
     ) -> dict[str, Any]:
         """Evaluate campaign statistics against acceptance criteria.
 
@@ -270,7 +270,7 @@ class ReviewerAgent(ReviewStage):
 
     def check_mc_overfitting(
         self,
-        live_equity: Optional[list[float]],
+        live_equity: list[float] | None,
         monte_carlo_bands: dict[int, list[float]],
     ) -> dict[str, Any]:
         """Check if live/backtest equity breaches MC percentile bands.
@@ -455,7 +455,7 @@ class ReviewerAgent(ReviewStage):
         self,
         failed_checks: list[str],
         statistics: dict[str, Any],
-        wf_degradation: Optional[dict[str, Any]] = None,
+        wf_degradation: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Generate a structured iteration proposal based on failed checks.
 

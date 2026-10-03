@@ -268,7 +268,7 @@ class ExecutionMonitor:
             diagnostics = await asyncio.wait_for(
                 self._diagnostics_fn(context), timeout=self._llm_timeout
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._emit(
                 events,
                 {

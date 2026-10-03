@@ -36,17 +36,17 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from quantlab.dsl.models import HypothesisConfig
 from quantlab.agents.refutation.config import RefutationConfig
 from quantlab.agents.refutation.models import FalsationVerdict, RefutationResult
 from quantlab.agents.refutation.strategies import RefutationStrategy
-from quantlab.agents.refutation.strategies.regime import RegimeMismatchStrategy
-from quantlab.agents.refutation.strategies.historical import (
-    HistoricalCounterExampleStrategy,
-)
 from quantlab.agents.refutation.strategies.adversarial import (
     LLMAdversarialStrategy,
 )
+from quantlab.agents.refutation.strategies.historical import (
+    HistoricalCounterExampleStrategy,
+)
+from quantlab.agents.refutation.strategies.regime import RegimeMismatchStrategy
+from quantlab.dsl.models import HypothesisConfig
 
 logger = logging.getLogger(__name__)
 

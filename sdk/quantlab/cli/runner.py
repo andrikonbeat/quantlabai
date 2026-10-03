@@ -33,7 +33,7 @@ _SQCLI_TIMEOUT_ENV = "QUANTLAB_SQCLI_TIMEOUT"
 _DEFAULT_SQCLI_TIMEOUT = 180.0
 
 
-def resolve_sqcli_timeout(timeout: float | int | None = None) -> float:
+def resolve_sqcli_timeout(timeout: float | None = None) -> float:
     """Resolve the effective sqcli command/daemon timeout in seconds.
 
     Precedence: explicit ``timeout`` argument, then the
@@ -176,7 +176,7 @@ class RealExecutor:
     def execute(
         self,
         command: str | list[str],
-        timeout: float | int | None = None,
+        timeout: float | None = None,
         **kwargs: object,
     ) -> CliResult:
         """Execute an ``sqcli`` subprocess command.

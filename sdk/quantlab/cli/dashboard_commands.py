@@ -8,7 +8,7 @@ import os
 import signal
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 from quantlab.dashboard.app import DashboardServer, ServerConfig
@@ -43,7 +43,7 @@ def write_pid_file(pid_file: Path, pid: int | None = None, started_at: str | Non
     payload = {
         "pid": pid if pid is not None else os.getpid(),
         "started_at": started_at
-        or datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        or datetime.now(UTC).isoformat(timespec="seconds"),
     }
     pid_file.parent.mkdir(parents=True, exist_ok=True)
     pid_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -70,7 +70,7 @@ def _uptime_s(started_at: str | None) -> float | None:
     except (ValueError, TypeError):
         return None
     if start.tzinfo is None:
-        start = start.replace(tzinfo=timezone.utc)
+        start = start.replace(tzinfo=UTC)
     return max(0.0, time.time() - start.timestamp())
 
 

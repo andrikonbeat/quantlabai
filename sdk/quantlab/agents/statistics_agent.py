@@ -43,7 +43,7 @@ class StatisticsAgent(StatisticsStage):
     def __init__(
         self,
         n_simulations: int = 1000,
-        percentiles: Optional[list[int]] = None,
+        percentiles: list[int] | None = None,
         mc_seed: int = 42,
         rolling_window: int = 60,
         annual_factor: int = 252,
@@ -82,8 +82,8 @@ class StatisticsAgent(StatisticsStage):
         trades: list[Trade] = []
         equity: list[EquityPoint] = []
         returns: list[float] = []
-        net_profit: Optional[float] = None
-        cagr: Optional[float] = None
+        net_profit: float | None = None
+        cagr: float | None = None
 
         # Resolve paths — find trades.csv and equity.csv
         trades_path = self._resolve_export_path(export_paths, "trades.csv")
@@ -116,7 +116,7 @@ class StatisticsAgent(StatisticsStage):
                     stats_data = json.load(f)
                 net_profit = stats_data.get("net_profit")
                 cagr = stats_data.get("cagr")
-            except (json.JSONDecodeError, IOError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.warning("Could not read statistics.json: %s", e)
 
         # Compute all metrics
@@ -139,7 +139,7 @@ class StatisticsAgent(StatisticsStage):
 
         return result
 
-    def _resolve_export_path(self, export_paths: list[str], filename: str) -> Optional[str]:
+    def _resolve_export_path(self, export_paths: list[str], filename: str) -> str | None:
         """Find a file by name in the export paths list.
 
         Args:
@@ -214,7 +214,7 @@ class StatisticsAgent(StatisticsStage):
     def aggregate_campaigns(
         self,
         campaign_results: list[Any],
-        metrics: Optional[list[str]] = None,
+        metrics: list[str] | None = None,
     ) -> dict[str, Any]:
         """Aggregate statistics across multiple campaigns.
 
@@ -243,9 +243,9 @@ class StatisticsAgent(StatisticsStage):
     def monte_carlo_bands(
         self,
         trades: list[Trade],
-        n_simulations: Optional[int] = None,
-        percentiles: Optional[list[int]] = None,
-        seed: Optional[int] = None,
+        n_simulations: int | None = None,
+        percentiles: list[int] | None = None,
+        seed: int | None = None,
     ) -> dict[int, Any]:
         """Run Monte Carlo bootstrap resampling of trade profits.
 
@@ -349,7 +349,7 @@ class StatisticsAgent(StatisticsStage):
     def compute_rolling_metrics(
         self,
         equity: list[EquityPoint],
-        window: Optional[int] = None,
+        window: int | None = None,
     ) -> dict[str, Any]:
         """Compute rolling Sharpe and drawdown over equity curve.
 

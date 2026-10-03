@@ -24,45 +24,45 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from quantlab.phase4.daemon import SQXDaemonManager
+from quantlab.cli.agent_commands import add_agent_subparser
+from quantlab.cli.campaign_commands import (
+    add_campaign_subparser,
+    add_generation_subparser,
+)
+
+# Knowledge command handlers (Phase 5c)
+from quantlab.cli.knowledge_commands import add_knowledge_subparser
+from quantlab.cli.monitor_commands import add_monitor_subparser
+
+# Pipeline command handlers (Phase 5d)
+from quantlab.cli.pipeline_commands import (
+    cmd_pipeline_history,
+    cmd_pipeline_list,
+    cmd_pipeline_run,
+)
+
+# SQX KB command handlers (WU3, REQ-207)
+from quantlab.cli.sq_commands import add_sqx_subparser
 from quantlab.phase4.command_dispatcher import CommandDispatcher
-from quantlab.phase4.templates import CfxTemplateBuilder
+from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.errors import (
-    SQXDaemonStartError,
-    SQXBindingError,
+    DatabankPathError,
     JForexConnectionError,
     JForexStrategyNotFoundError,
-    SQXSessionLockError,
     OptimizerRunError,
-    RetesterRunError,
     RetesterDatabankError,
-    DatabankPathError,
+    RetesterRunError,
+    SQXBindingError,
+    SQXDaemonStartError,
+    SQXSessionLockError,
 )
 from quantlab.phase4.http_client import AsyncSQXClient
 from quantlab.phase4.jforex_deploy import JForexDeployer
 from quantlab.phase4.optimizer import Optimizer, OptimizerConfig
 from quantlab.phase4.portfolio_master import PortfolioMaster
 from quantlab.phase4.retester import Retester, RetesterConfig
+from quantlab.phase4.templates import CfxTemplateBuilder
 from quantlab.translate.cfx import CfxArchiveFactory, CfxResult
-
-# Pipeline command handlers (Phase 5d)
-from quantlab.cli.pipeline_commands import (
-    cmd_pipeline_run,
-    cmd_pipeline_list,
-    cmd_pipeline_history,
-)
-
-# Knowledge command handlers (Phase 5c)
-from quantlab.cli.knowledge_commands import add_knowledge_subparser
-from quantlab.cli.agent_commands import add_agent_subparser
-from quantlab.cli.campaign_commands import (
-    add_campaign_subparser,
-    add_generation_subparser,
-)
-from quantlab.cli.monitor_commands import add_monitor_subparser
-
-# SQX KB command handlers (WU3, REQ-207)
-from quantlab.cli.sq_commands import add_sqx_subparser
 
 # NOTE: dashboard_commands / dashboard.app are imported lazily inside
 # build_parser() and cmd_api(): the dashboard package ships in Slice 2 and is
@@ -800,7 +800,6 @@ async def _wait_for_completion(
     dispatcher: CommandDispatcher, campaign_name: str, timeout: float = 3600.0
 ) -> None:
     """Poll campaign status until complete."""
-    import time
 
     start = time.time()
     while time.time() - start < timeout:

@@ -25,7 +25,6 @@ from quantlab.dsl.models import (
     Timeframe,
 )
 
-
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 

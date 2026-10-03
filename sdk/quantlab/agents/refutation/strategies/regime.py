@@ -13,9 +13,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from quantlab.dsl.models import HypothesisConfig
 from quantlab.agents.refutation.models import FalsationVerdict
 from quantlab.agents.refutation.strategies import RefutationStrategy
+from quantlab.dsl.models import HypothesisConfig
 
 logger = logging.getLogger(__name__)
 

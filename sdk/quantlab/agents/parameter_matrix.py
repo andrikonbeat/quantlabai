@@ -30,7 +30,8 @@ tab classification); retest/optimize entries carry self-describing tabs.
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from quantlab.knowledge.kb.educational import (
     EducationalRecord,

@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from quantlab.agents.economic_sense.validator import EconomicSenseValidator
+from quantlab.agents.tag_calibrator import TagCalibrator
 from quantlab.dsl.models import (
     AcceptanceCriterion,
     BuildingBlock,
@@ -24,8 +26,6 @@ from quantlab.dsl.models import (
     StrategyDirection,
     Timeframe,
 )
-from quantlab.agents.economic_sense.validator import EconomicSenseValidator
-from quantlab.agents.tag_calibrator import TagCalibrator
 
 logger = logging.getLogger(__name__)
 
@@ -367,6 +367,7 @@ class ResearchAgent:
         try:
             # Lazy import to avoid circular dependency
             from pathlib import Path
+
             from quantlab.knowledge.query import QueryBuilder
 
             builder_cls = self._query_builder_cls or QueryBuilder
@@ -610,8 +611,9 @@ class ResearchAgent:
         when the constraint is present.
         """
         try:
-            from quantlab.knowledge.query import QueryBuilder
             from pathlib import Path
+
+            from quantlab.knowledge.query import QueryBuilder
 
             knowledge_root = Path("knowledge/structured")
             index: dict[str, Any] = {"directories": {"results": {}, "campaigns": {}}}

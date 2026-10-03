@@ -19,16 +19,16 @@ from pathlib import Path
 
 from quantlab.data import DataManager
 from quantlab.data.market.models import Bar
-from quantlab.knowledge.kb.models import KB_TABS, SQX_VERSION
-from quantlab.knowledge.kb.seeding_flow import (
-    _default_evidence_base,
-    run_seed_flow,
-)
-from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH
 from quantlab.knowledge.kb.educational import (
     build_educational_dataset,
     build_educational_table,
     parse_tpl_build,
+)
+from quantlab.knowledge.kb.models import KB_TABS, SQX_VERSION
+from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH
+from quantlab.knowledge.kb.seeding_flow import (
+    _default_evidence_base,
+    run_seed_flow,
 )
 from quantlab.knowledge.kb.store import KbParamNotFoundError, KbStore
 from quantlab.knowledge.kb.validation import validate_seed
@@ -348,7 +348,7 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
 # ── builder template path: real install templates dir, on the lake root's
 # project. CLI default: repo `assets/SQX_*/.../tpl_build.xml`; tests
 # monkeypatch this factory.
-_DEFAULT_TPL_PATH_FACTORY = lambda knowledge_root: Path(  # noqa: E731
+_DEFAULT_TPL_PATH_FACTORY = lambda knowledge_root: Path(
     knowledge_root
 ).parent / "assets" / "SQX_144_2953_linux_20260601" / "internal" / "web" / "BUILDER" / "templates" / "tpl_build.xml"
 

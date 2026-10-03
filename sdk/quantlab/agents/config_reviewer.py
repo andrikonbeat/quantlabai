@@ -49,7 +49,7 @@ class ConfigReviewVerdict(BaseModel):
 _SL_PT_VALUE_TYPES = ("pips", "atr", "percent", "indicator")
 
 
-def build_cost_note(costs: "CostsConfig | None") -> str:
+def build_cost_note(costs: CostsConfig | None) -> str:
     """Surface preset-vs-live cost profiles for the CostConfigReview note."""
     if costs is None:
         return (
@@ -84,7 +84,7 @@ class ConfigReviewer:
     def review(
         self,
         build_config: BuildConfig | None,
-        costs: "CostsConfig | None" = None,
+        costs: CostsConfig | None = None,
     ) -> ConfigReviewVerdict:
         """Review ``build_config`` and emit APPROVE / MODIFY / BLOCK.
 

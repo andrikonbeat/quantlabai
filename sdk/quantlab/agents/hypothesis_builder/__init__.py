@@ -17,10 +17,10 @@ from __future__ import annotations
 import logging
 from typing import Any, Literal
 
-from quantlab.dsl.models import BuildingBlock, HypothesisConfig, LLMConfig, Strategy
 from quantlab.agents.hypothesis_builder.llm import LLMMode
 from quantlab.agents.hypothesis_builder.rule import RuleMode
 from quantlab.agents.hypothesis_builder.validate import BuildingBlockValidator
+from quantlab.dsl.models import BuildingBlock, HypothesisConfig, LLMConfig, Strategy
 
 logger = logging.getLogger(__name__)
 

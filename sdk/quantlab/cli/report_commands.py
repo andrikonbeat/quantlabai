@@ -6,9 +6,9 @@ import argparse
 import sys
 from pathlib import Path
 
+from quantlab.knowledge.store import KnowledgeStore
 from quantlab.reporting.generator import generate_report
 from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
-from quantlab.knowledge.store import KnowledgeStore
 
 
 def add_report_subparser(subparsers: argparse._SubParsersAction) -> None:

@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from collections.abc import Callable
 from pathlib import Path
-from typing import AsyncContextManager, Callable, Optional
+from typing import AsyncContextManager, Optional
 
-from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.command_dispatcher import CommandDispatcher
+from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.http_client import AsyncSQXClient
 
 
@@ -45,9 +46,9 @@ class DaemonContext:
         self.startup_timeout = startup_timeout
         self.force_stop_timeout = force_stop_timeout
 
-        self._daemon: Optional[SQXDaemonManager] = None
-        self._client: Optional[AsyncSQXClient] = None
-        self._dispatcher: Optional[CommandDispatcher] = None
+        self._daemon: SQXDaemonManager | None = None
+        self._client: AsyncSQXClient | None = None
+        self._dispatcher: CommandDispatcher | None = None
 
     async def __aenter__(self):
         """Start daemon, create client + dispatcher."""
@@ -75,17 +76,17 @@ class DaemonContext:
                 pass  # Force kill will handle it
 
     @property
-    def daemon(self) -> Optional[object]:
+    def daemon(self) -> object | None:
         """SQXDaemonManager instance."""
         return self._daemon
 
     @property
-    def client(self) -> Optional[object]:
+    def client(self) -> object | None:
         """AsyncSQXClient for direct HTTP calls."""
         return self._client
 
     @property
-    def dispatcher(self) -> Optional[object]:
+    def dispatcher(self) -> object | None:
         """CommandDispatcher for high-level SQX operations."""
         return self._dispatcher
 
@@ -94,7 +95,7 @@ async def run_with_daemon(
     sqx_install_path: str | Path = "/opt/StrategyQuantX",
     port: int = 8888,
     startup_timeout: float = 60.0,
-    func: Optional[Callable] = None,
+    func: Callable | None = None,
     *args,
     **kwargs,
 ):

@@ -19,22 +19,22 @@ This package provides all agent stages for the multi-agent pipeline:
   risk allocation (Kelly/mean-variance), and walk-forward optimization.
 """
 
+from quantlab.agents.builder_agent import BuilderAgent
+from quantlab.agents.portfolio_agent import PortfolioAgent
+from quantlab.agents.research_agent import ResearchAgent
 from quantlab.agents.research_director import (
     CampaignState,
     ResearchDirector,
 )
-from quantlab.agents.research_agent import ResearchAgent
-from quantlab.agents.builder_agent import BuilderAgent
-from quantlab.agents.statistics_agent import StatisticsAgent
 from quantlab.agents.reviewer_agent import ReviewerAgent
-from quantlab.agents.portfolio_agent import PortfolioAgent
+from quantlab.agents.statistics_agent import StatisticsAgent
 
 __all__ = [
-    "ResearchDirector",
-    "CampaignState",
-    "ResearchAgent",
     "BuilderAgent",
-    "StatisticsAgent",
-    "ReviewerAgent",
+    "CampaignState",
     "PortfolioAgent",
+    "ResearchAgent",
+    "ResearchDirector",
+    "ReviewerAgent",
+    "StatisticsAgent",
 ]

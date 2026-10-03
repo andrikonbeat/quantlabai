@@ -14,8 +14,9 @@ import logging
 import os
 import time
 import urllib.parse
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import httpx
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 # Re-exported for BuilderAgent callers (parameter-justification-matrix REQ-1):
 # raised when a manual override lacks its rationale, blocking the run.
-from quantlab.agents.parameter_matrix import ParameterMatrixError  # noqa: E402
+from quantlab.agents.parameter_matrix import ParameterMatrixError
 
 
 def _try_int(value: str, default: int) -> int:
@@ -185,8 +186,8 @@ class BuilderAgent:
             ConfigurationError: When ``strict_kb`` is True and any tab
                 has no KB entries.
         """
-        from quantlab.knowledge.kb.store import KbStore
         from quantlab.knowledge.kb.models import KB_TABS
+        from quantlab.knowledge.kb.store import KbStore
         from quantlab.pipeline.errors import ConfigurationError
 
         active_tabs = self._active_kb_tabs(config)
@@ -242,7 +243,6 @@ class BuilderAgent:
             ParameterMatrixError: A manual override lacks its rationale.
         """
         from quantlab.agents.parameter_matrix import (
-            ParameterMatrixError,
             generate_parameter_matrix as _generate_parameter_matrix,
         )
 
@@ -478,16 +478,18 @@ class BuilderAgent:
 
         try:
             if _is_custom_project_enabled():
-                from quantlab.customproject.generator import generate_cfx_archive as cp_generate
                 from quantlab.cfx.writer import CfxWriter
+                from quantlab.customproject.generator import (
+                    generate_cfx_archive as cp_generate,
+                )
 
                 project = _research_config_to_custom_project(config)
                 archive = cp_generate(project)
                 cfx_bytes = CfxWriter.to_bytes(archive)
                 log["dialect"] = "custom_project"
             else:
-                from quantlab.translate.translator import generate_cfx_archive
                 from quantlab.cfx.writer import CfxWriter
+                from quantlab.translate.translator import generate_cfx_archive
 
                 archive = generate_cfx_archive(config)
                 cfx_bytes = CfxWriter.to_bytes(archive)
@@ -683,7 +685,7 @@ class BuilderAgent:
                 log_entry["status"] = "completed"
                 return result
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 from quantlab.tools.exceptions import BuildTimeoutError
 
                 log_entry["status"] = "timeout"
