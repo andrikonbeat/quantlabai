@@ -22,7 +22,9 @@ class TestAnalysisAgentFrameConsumption:
     """AnalysisAgent additive Frame consumption."""
 
     @pytest.mark.asyncio
-    async def test_frame_present_includes_market_context_in_output(self, tmp_path: Path) -> None:
+    async def test_frame_present_includes_market_context_in_output(
+        self, tmp_path: Path
+    ) -> None:
         """GIVEN context.artifacts contains a Frame
         WHEN AnalysisAgent.run() is called
         THEN the returned dict includes a 'market_context' key
@@ -33,13 +35,30 @@ class TestAnalysisAgentFrameConsumption:
         csv_path = tmp_path / "strategies.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Name", "Profit Factor", "Sharpe Ratio", "Win Rate",
-                "Trades", "Max DD", "WF IS Sharpe", "WF OOS Sharpe",
-            ])
-            writer.writerow([
-                "Strat0", 1.5, 1.2, 0.55, 100, 0.10, 1.1, 1.0,
-            ])
+            writer.writerow(
+                [
+                    "Name",
+                    "Profit Factor",
+                    "Sharpe Ratio",
+                    "Win Rate",
+                    "Trades",
+                    "Max DD",
+                    "WF IS Sharpe",
+                    "WF OOS Sharpe",
+                ]
+            )
+            writer.writerow(
+                [
+                    "Strat0",
+                    1.5,
+                    1.2,
+                    0.55,
+                    100,
+                    0.10,
+                    1.1,
+                    1.0,
+                ]
+            )
 
         frame = Frame(
             regime="trending",
@@ -49,9 +68,21 @@ class TestAnalysisAgentFrameConsumption:
             edge="trend-following",
             instruments=["EURUSD"],
             guardian_hints={
-                "regime_shift": {"detected": False, "confidence": 0.0, "recommended_action": "none"},
-                "sentiment_shift": {"detected": False, "confidence": 0.0, "recommended_action": "none"},
-                "volatility_expansion": {"detected": False, "confidence": 0.0, "recommended_action": "none"},
+                "regime_shift": {
+                    "detected": False,
+                    "confidence": 0.0,
+                    "recommended_action": "none",
+                },
+                "sentiment_shift": {
+                    "detected": False,
+                    "confidence": 0.0,
+                    "recommended_action": "none",
+                },
+                "volatility_expansion": {
+                    "detected": False,
+                    "confidence": 0.0,
+                    "recommended_action": "none",
+                },
             },
         )
 
@@ -65,13 +96,17 @@ class TestAnalysisAgentFrameConsumption:
         )
 
         result = await agent.run(ctx)
-        assert "market_context" in result, "AnalysisAgent must include 'market_context' when Frame is present"
+        assert "market_context" in result, (
+            "AnalysisAgent must include 'market_context' when Frame is present"
+        )
         assert result["market_context"]["regime"] == "trending"
         assert result["market_context"]["sentiment"] == 0.5
         assert result["market_context"]["timeframe"] == "H1"
 
     @pytest.mark.asyncio
-    async def test_frame_absent_preserves_original_behavior(self, tmp_path: Path) -> None:
+    async def test_frame_absent_preserves_original_behavior(
+        self, tmp_path: Path
+    ) -> None:
         """GIVEN context.artifacts does NOT contain a Frame
         WHEN AnalysisAgent.run() is called
         THEN the returned dict has only the original keys
@@ -82,13 +117,30 @@ class TestAnalysisAgentFrameConsumption:
         csv_path = tmp_path / "strategies.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Name", "Profit Factor", "Sharpe Ratio", "Win Rate",
-                "Trades", "Max DD", "WF IS Sharpe", "WF OOS Sharpe",
-            ])
-            writer.writerow([
-                "Strat0", 1.5, 1.2, 0.55, 100, 0.10, 1.1, 1.0,
-            ])
+            writer.writerow(
+                [
+                    "Name",
+                    "Profit Factor",
+                    "Sharpe Ratio",
+                    "Win Rate",
+                    "Trades",
+                    "Max DD",
+                    "WF IS Sharpe",
+                    "WF OOS Sharpe",
+                ]
+            )
+            writer.writerow(
+                [
+                    "Strat0",
+                    1.5,
+                    1.2,
+                    0.55,
+                    100,
+                    0.10,
+                    1.1,
+                    1.0,
+                ]
+            )
 
         agent = AnalysisAgent()
         ctx = PipelineContext(
@@ -99,7 +151,9 @@ class TestAnalysisAgentFrameConsumption:
         )
 
         result = await agent.run(ctx)
-        assert "market_context" not in result, "AnalysisAgent must NOT add 'market_context' when Frame is absent"
+        assert "market_context" not in result, (
+            "AnalysisAgent must NOT add 'market_context' when Frame is absent"
+        )
         assert set(result.keys()) == {
             "strategy_analysis",
             "selected_strategies",
@@ -108,7 +162,9 @@ class TestAnalysisAgentFrameConsumption:
         }
 
     @pytest.mark.asyncio
-    async def test_frame_json_string_present_includes_market_context(self, tmp_path: Path) -> None:
+    async def test_frame_json_string_present_includes_market_context(
+        self, tmp_path: Path
+    ) -> None:
         """GIVEN context.artifacts contains a Frame as raw JSON string
         WHEN AnalysisAgent.run() is called
         THEN the returned dict includes 'market_context'.
@@ -118,13 +174,30 @@ class TestAnalysisAgentFrameConsumption:
         csv_path = tmp_path / "strategies.csv"
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Name", "Profit Factor", "Sharpe Ratio", "Win Rate",
-                "Trades", "Max DD", "WF IS Sharpe", "WF OOS Sharpe",
-            ])
-            writer.writerow([
-                "Strat0", 1.5, 1.2, 0.55, 100, 0.10, 1.1, 1.0,
-            ])
+            writer.writerow(
+                [
+                    "Name",
+                    "Profit Factor",
+                    "Sharpe Ratio",
+                    "Win Rate",
+                    "Trades",
+                    "Max DD",
+                    "WF IS Sharpe",
+                    "WF OOS Sharpe",
+                ]
+            )
+            writer.writerow(
+                [
+                    "Strat0",
+                    1.5,
+                    1.2,
+                    0.55,
+                    100,
+                    0.10,
+                    1.1,
+                    1.0,
+                ]
+            )
 
         frame = Frame(
             regime="range-bound",
