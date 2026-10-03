@@ -173,9 +173,7 @@ def parse_verdict(text: str | None) -> Verdict | None:
     try:
         return Verdict.model_validate(data)
     except ValidationError as exc:
-        logger.warning(
-            "LLM verdict failed validation (%s) — treated as continue", exc
-        )
+        logger.warning("LLM verdict failed validation (%s) — treated as continue", exc)
         return None
 
 
@@ -198,11 +196,11 @@ class ActionExecutor:
         http_timeout: float = 10.0,
     ) -> None:
         """Args:
-            campaign_id: Campaign/project identifier.
-            base_url: Base URL of the SQX HTTP API.
-            monitor: Optional monitor object exposing ``async cancel()``
-                (e.g. ``CampaignMonitor``). Cancelled after a successful stop.
-            http_timeout: HTTP request timeout in seconds.
+        campaign_id: Campaign/project identifier.
+        base_url: Base URL of the SQX HTTP API.
+        monitor: Optional monitor object exposing ``async cancel()``
+            (e.g. ``CampaignMonitor``). Cancelled after a successful stop.
+        http_timeout: HTTP request timeout in seconds.
         """
         self._campaign_id = campaign_id
         self._base_url = base_url.rstrip("/")
@@ -391,24 +389,24 @@ class LLMGenerationMonitor:
         poll_interval: float = 10.0,
     ) -> None:
         """Args:
-            campaign_id: Campaign/project identifier.
-            base_url: Base URL of the SQX HTTP API.
-            snapshot_provider: Sync callable returning the current
-                :class:`MonitorSnapshot`.
-            llm_config: ``LLMConfig`` for the LLM call.
-            llm_caller: Async ``(prompt, llm_config) -> str`` caller.
-                Defaults to :func:`_call_llm`.
-            circuit_breaker: ``LLMCircuitBreaker`` protecting LLM calls.
-                Defaults to a fresh instance.
-            confirm_stop: Async ``(verdict) -> bool`` human-confirmation hook
-                for stop verdicts. ``None`` skips confirmation.
-            confidence_threshold: Minimum confidence for a verdict to dispatch
-                an action (default 0.7).
-            poll_every_n: Run the LLM poll every N-th tick (default 5).
-            on_verdict: Optional sync hook invoked with every valid verdict.
-            monitor: Optional monitor object exposing ``async cancel()``
-                (e.g. ``CampaignMonitor``) used by the stop path.
-            poll_interval: Seconds between monitor ticks (default 10.0).
+        campaign_id: Campaign/project identifier.
+        base_url: Base URL of the SQX HTTP API.
+        snapshot_provider: Sync callable returning the current
+            :class:`MonitorSnapshot`.
+        llm_config: ``LLMConfig`` for the LLM call.
+        llm_caller: Async ``(prompt, llm_config) -> str`` caller.
+            Defaults to :func:`_call_llm`.
+        circuit_breaker: ``LLMCircuitBreaker`` protecting LLM calls.
+            Defaults to a fresh instance.
+        confirm_stop: Async ``(verdict) -> bool`` human-confirmation hook
+            for stop verdicts. ``None`` skips confirmation.
+        confidence_threshold: Minimum confidence for a verdict to dispatch
+            an action (default 0.7).
+        poll_every_n: Run the LLM poll every N-th tick (default 5).
+        on_verdict: Optional sync hook invoked with every valid verdict.
+        monitor: Optional monitor object exposing ``async cancel()``
+            (e.g. ``CampaignMonitor``) used by the stop path.
+        poll_interval: Seconds between monitor ticks (default 10.0).
         """
         self.campaign_id = campaign_id
         self.base_url = base_url.rstrip("/")

@@ -191,9 +191,10 @@ async def dispatch_campaign(
     sqx_install_path_str = str(sqx_install_path)
     sqcli_path = _find_sqcli(sqx_install_path_str)
 
-    use_mock = (
-        force_mock
-        or os.environ.get("SQX_FORCE_MOCK", "").lower() in ("1", "true", "yes")
+    use_mock = force_mock or os.environ.get("SQX_FORCE_MOCK", "").lower() in (
+        "1",
+        "true",
+        "yes",
     )
     mock_mode_guard(force_mock=use_mock)
 
@@ -220,7 +221,9 @@ async def dispatch_campaign(
         else:
             # Write CFX to temp file for mock path
             with tempfile.NamedTemporaryFile(delete=False, suffix=".cfx") as f:
-                f.write(cfx_bytes if isinstance(cfx_bytes, bytes) else cfx_bytes.encode())
+                f.write(
+                    cfx_bytes if isinstance(cfx_bytes, bytes) else cfx_bytes.encode()
+                )
                 temp_cfx = f.name
             try:
                 return await _dispatch_mock(
@@ -358,7 +361,10 @@ async def _dispatch_real(
     # SQX enforces a single-instance lock. Kill any leftover sqcli
     # (including hung data/license pre-flights from the builder) so the
     # daemon can start cleanly in Phase 0.5.
-    for killer in (("pkill", "-9", "-f", str(Path(sqx_install_path) / "sqcli")), ("killall", "-9", "sqcli")):
+    for killer in (
+        ("pkill", "-9", "-f", str(Path(sqx_install_path) / "sqcli")),
+        ("killall", "-9", "sqcli"),
+    ):
         try:
             proc = await asyncio.create_subprocess_exec(
                 *killer,
@@ -409,7 +415,11 @@ async def _dispatch_real(
         val = float(c_dict.get("value", 0))
         if "profit" in metric.lower():
             pf = val
-        elif "sharpe" in metric.lower() or "return" in metric.lower() or "dd" in metric.lower():
+        elif (
+            "sharpe" in metric.lower()
+            or "return" in metric.lower()
+            or "dd" in metric.lower()
+        ):
             return_dd = val
         elif "avg" in metric.lower() or "trades" in metric.lower():
             avg_trades = val
@@ -433,7 +443,9 @@ async def _dispatch_real(
     if criteria:
         import copy
 
-        build_config = copy.copy(build_config) if build_config is not None else BuildConfig()
+        build_config = (
+            copy.copy(build_config) if build_config is not None else BuildConfig()
+        )
         if build_config.ranking_pf_min is None:
             build_config.ranking_pf_min = pf
         if build_config.ranking_return_dd_min is None:
@@ -470,7 +482,12 @@ async def _dispatch_real(
         )
     except Exception as e:
         logger.error("Failed to create project: %s", e)
-        return {"status": "failed", "export_paths": [], "error": f"project creation failed: {e}", "watcher_events": []}
+        return {
+            "status": "failed",
+            "export_paths": [],
+            "error": f"project creation failed: {e}",
+            "watcher_events": [],
+        }
 
     # ── Phase 0.5: Daemon lifecycle ──
     logger.info("Phase 0.5/6: Starting SQX daemon ...")
@@ -478,12 +495,22 @@ async def _dispatch_real(
     try:
         daemon_ready = await daemon.start(base_url)
         if not daemon_ready:
-            return {"status": "failed", "export_paths": [], "error": "daemon start failed", "watcher_events": []}
+            return {
+                "status": "failed",
+                "export_paths": [],
+                "error": "daemon start failed",
+                "watcher_events": [],
+            }
         if daemon.port is not None:
             base_url = f"http://127.0.0.1:{daemon.port}"
     except Exception as e:
         logger.error("Daemon start failed: %s", e)
-        return {"status": "failed", "export_paths": [], "error": f"daemon start failed: {e}", "watcher_events": []}
+        return {
+            "status": "failed",
+            "export_paths": [],
+            "error": f"daemon start failed: {e}",
+            "watcher_events": [],
+        }
 
     # ── Phase 1: Start campaign via HTTP API ──
     logger.info("Phase 1/6: Starting campaign '%s' ...", campaign_id)
@@ -491,13 +518,19 @@ async def _dispatch_real(
     if "Error" in start_resp[:100] or "does not exist" in start_resp:
         logger.error("Start failed: %s", start_resp[:300])
         await daemon.stop()
-        return {"status": "failed", "export_paths": [], "error": f"start failed: {start_resp}", "watcher_events": []}
+        return {
+            "status": "failed",
+            "export_paths": [],
+            "error": f"start failed: {start_resp}",
+            "watcher_events": [],
+        }
 
     # ── CampaignMonitor setup ──
     baseline = compute_baseline(cfg_dict, poll_interval=5.0)
     notifiers = _build_notifiers(webhook_url) if orchestrated else []
-    gate_writer = _build_gate_writer(gate_event_dir, campaign_id) \
-        if orchestrated else None
+    gate_writer = (
+        _build_gate_writer(gate_event_dir, campaign_id) if orchestrated else None
+    )
     monitor = CampaignMonitor(
         campaign_id=campaign_id,
         base_url=base_url,
@@ -532,7 +565,9 @@ async def _dispatch_real(
     is_completed = False
     try:
         while time.monotonic() < deadline:
-            status_text = await _send_http(base_url, f"-project action=status name={campaign_id}")
+            status_text = await _send_http(
+                base_url, f"-project action=status name={campaign_id}"
+            )
             # Check if still running — if the "In databank" line shows strategies
             if "Project execution stopped" in status_text:
                 is_completed = True
@@ -585,7 +620,9 @@ async def _dispatch_real(
         logger.warning("Export failed: %s", e)
 
     # Also collect from SQX-standard paths
-    export_paths = list(set(export_paths + _collect_exports(sqx_install_path, campaign_id)))
+    export_paths = list(
+        set(export_paths + _collect_exports(sqx_install_path, campaign_id))
+    )
 
     # ── Phase 5: Stop daemon ──
     logger.info("Phase 5/6: Stopping daemon ...")
@@ -626,7 +663,9 @@ class _SQXDaemonHandle:
         # Kill any process on either candidate port
         for port in (_SQX_PORT, 5051):
             proc = await asyncio.create_subprocess_exec(
-                "fuser", "-k", f"{port}/tcp",
+                "fuser",
+                "-k",
+                f"{port}/tcp",
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
@@ -637,7 +676,10 @@ class _SQXDaemonHandle:
         # sqcli under this install before launching the daemon. Retry for a
         # few seconds because the builder may respawn a pre-flight sqcli
         # just before we reach this point.
-        for killer in (("pkill", "-9", "-f", str(Path(self.sqx_install_path) / "sqcli")), ("killall", "-9", "sqcli")):
+        for killer in (
+            ("pkill", "-9", "-f", str(Path(self.sqx_install_path) / "sqcli")),
+            ("killall", "-9", "sqcli"),
+        ):
             try:
                 proc = await asyncio.create_subprocess_exec(
                     *killer,
@@ -649,7 +691,9 @@ class _SQXDaemonHandle:
                 pass
         for _ in range(5):
             proc = await asyncio.create_subprocess_exec(
-                "pgrep", "-f", str(Path(self.sqx_install_path) / "sqcli"),
+                "pgrep",
+                "-f",
+                str(Path(self.sqx_install_path) / "sqcli"),
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
@@ -683,20 +727,22 @@ class _SQXDaemonHandle:
                     return False
                 for candidate in (5050, 5051):
                     try:
-                        resp = await client.get(f"http://127.0.0.1:{candidate}/call?cmd=-h")
+                        resp = await client.get(
+                            f"http://127.0.0.1:{candidate}/call?cmd=-h"
+                        )
                         if resp.status_code == 200:
                             body = resp.text
                             if "Usage" in body and "not ready" not in body.lower():
                                 self.port = candidate
-                                logger.info("SQX daemon ready at http://127.0.0.1:%d", candidate)
+                                logger.info(
+                                    "SQX daemon ready at http://127.0.0.1:%d", candidate
+                                )
                                 return True
                     except Exception:
                         pass
                 await asyncio.sleep(1)
 
-        logger.error(
-            "SQX daemon not ready after %.0fs", resolve_sqcli_timeout()
-        )
+        logger.error("SQX daemon not ready after %.0fs", resolve_sqcli_timeout())
         return False
 
     async def stop(self) -> None:
@@ -711,7 +757,9 @@ class _SQXDaemonHandle:
 
         # Also ensure port is free
         proc = await asyncio.create_subprocess_exec(
-            "fuser", "-k", f"{_SQX_PORT}/tcp",
+            "fuser",
+            "-k",
+            f"{_SQX_PORT}/tcp",
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
@@ -768,7 +816,9 @@ async def _dispatch_mock(
         logger.warning("Mock project creation failed: %s", exc)
 
     # Load config
-    await _send_http(base_url, f"-project action=loadconfig name={campaign_id} file={temp_cfx}")
+    await _send_http(
+        base_url, f"-project action=loadconfig name={campaign_id} file={temp_cfx}"
+    )
 
     # Start project
     await _send_http(base_url, f"-project action=start name={campaign_id}")
@@ -777,8 +827,9 @@ async def _dispatch_mock(
     monitor_poll = max(0.5, poll_interval / 2)
     baseline = compute_baseline({"timeframe": "H1"}, poll_interval=monitor_poll)
     notifiers = _build_notifiers(webhook_url) if orchestrated else []
-    gate_writer = _build_gate_writer(gate_event_dir, campaign_id) \
-        if orchestrated else None
+    gate_writer = (
+        _build_gate_writer(gate_event_dir, campaign_id) if orchestrated else None
+    )
     monitor = CampaignMonitor(
         campaign_id=campaign_id,
         base_url=base_url,
@@ -999,9 +1050,7 @@ def _exported_strategy_names(export_paths: list[str]) -> list[str]:
     return sorted(set(names))
 
 
-def _validate_blocks(
-    build_config: Any, export_paths: list[str]
-) -> dict[str, Any]:
+def _validate_blocks(build_config: Any, export_paths: list[str]) -> dict[str, Any]:
     """Validate exported strategies against intended blocks (REQ-04).
 
     Builds the ``blocks_report`` for orchestrated dispatch results:

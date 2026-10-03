@@ -55,6 +55,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
         body = self.rfile.read(length).decode("utf-8") if length else ""
         if body.startswith("cmd="):
             import urllib.parse
+
             return urllib.parse.unquote(body[4:])
         return body
 
@@ -63,6 +64,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
             cmd = ""
             if self.path.startswith("/call?"):
                 import urllib.parse
+
                 qs = urllib.parse.urlparse(self.path).query
                 params = urllib.parse.parse_qs(qs)
                 cmd = params.get("cmd", [""])[0]
@@ -107,7 +109,10 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                 )
             if action == "action=loadconfig":
                 with MockSQXHandler._lock:
-                    MockSQXHandler._campaigns[name] = {"status": "loaded", "progress": 0}
+                    MockSQXHandler._campaigns[name] = {
+                        "status": "loaded",
+                        "progress": 0,
+                    }
                 return self._send_text(f"Project loaded '{name}'.\n")
             if action == "action=start":
                 with MockSQXHandler._lock:
@@ -124,7 +129,9 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                 )
             if action == "action=status":
                 with MockSQXHandler._lock:
-                    camp = MockSQXHandler._campaigns.get(name, {"status": "not found", "progress": 0})
+                    camp = MockSQXHandler._campaigns.get(
+                        name, {"status": "not found", "progress": 0}
+                    )
                     # Rejection mode: grow the generated count on each poll.
                     if (
                         MockSQXHandler._mode == "rejection"
@@ -164,7 +171,10 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                 return self._send_text(text)
             if action == "action=stop":
                 with MockSQXHandler._lock:
-                    MockSQXHandler._campaigns[name] = {"status": "stopped", "progress": 0}
+                    MockSQXHandler._campaigns[name] = {
+                        "status": "stopped",
+                        "progress": 0,
+                    }
                 return self._send_text("Project execution stopped.\n")
 
         if parts[0] == "-databank":
@@ -202,6 +212,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
                 if camp:
                     camp["progress"] = i * 25
             import time
+
             time.sleep(0.5)
         with MockSQXHandler._lock:
             MockSQXHandler._campaigns[name] = {"status": "completed", "progress": 100}
@@ -217,14 +228,16 @@ class MockSQXHandler(BaseHTTPRequestHandler):
         for i in range(10):
             pnl = random.uniform(-100, 150)
             equity += pnl
-            trades.append({
-                "id": i + 1,
-                "entry_time": f"2024-01-{(i+1):02d} 00:00:00",
-                "exit_time": f"2024-01-{(i+1):02d} 12:00:00",
-                "direction": random.choice(["long", "short"]),
-                "pnl": round(pnl, 2),
-                "equity": round(equity, 2),
-            })
+            trades.append(
+                {
+                    "id": i + 1,
+                    "entry_time": f"2024-01-{(i + 1):02d} 00:00:00",
+                    "exit_time": f"2024-01-{(i + 1):02d} 12:00:00",
+                    "direction": random.choice(["long", "short"]),
+                    "pnl": round(pnl, 2),
+                    "equity": round(equity, 2),
+                }
+            )
 
         trades_path = base / "trades.csv"
         with trades_path.open("w", newline="") as f:
@@ -239,12 +252,16 @@ class MockSQXHandler(BaseHTTPRequestHandler):
             eq = 10000.0
             for i in range(10):
                 eq += random.uniform(-100, 150)
-                writer.writerow([f"2024-01-{(i+1):02d} 00:00:00", round(eq, 2)])
+                writer.writerow([f"2024-01-{(i + 1):02d} 00:00:00", round(eq, 2)])
 
         stats = {
             "total_trades": len(trades),
             "net_profit": round(sum(t["pnl"] for t in trades), 2),
-            "profit_factor": round(abs(sum(t["pnl"] for t in trades if t["pnl"] > 0)) / max(abs(sum(t["pnl"] for t in trades if t["pnl"] < 0)), 0.01), 2),
+            "profit_factor": round(
+                abs(sum(t["pnl"] for t in trades if t["pnl"] > 0))
+                / max(abs(sum(t["pnl"] for t in trades if t["pnl"] < 0)), 0.01),
+                2,
+            ),
             "sharpe_ratio": round(random.uniform(0.5, 1.5), 2),
             "max_drawdown": round(random.uniform(5, 20), 2),
         }
@@ -389,12 +406,14 @@ class MockSQXServer:
         if self._server is not None:
             try:
                 import httpx
+
                 httpx.get(f"http://{self.host}:{self.port}/call?cmd=-h", timeout=2)
                 return
             except Exception:
                 self.stop()
 
         import socket
+
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
