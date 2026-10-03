@@ -229,7 +229,9 @@ async def cmd_portfolio_run(args: argparse.Namespace) -> int:
         else:
             print_human("Dry-run: Portfolio CFX generated (not dispatched)")
             print_human(f"Strategies: {', '.join(strategies)}")
-            print_human(f"Generations: {args.generations}, Population: {args.population}")
+            print_human(
+                f"Generations: {args.generations}, Population: {args.population}"
+            )
             print_human(f"Fitness: {args.fitness}")
         return EXIT_OK
 
@@ -440,13 +442,15 @@ async def cmd_optimizer_run(args: argparse.Namespace) -> int:
         )
 
         if args.json:
-            print_json({
-                "campaign": args.name or "Optimizer",
-                "output": str(result.raw_path) if result.raw_path else None,
-                "strategy_id": result.strategy_id,
-                "num_cycles": len(result.cycles),
-                "summary": result.summary,
-            })
+            print_json(
+                {
+                    "campaign": args.name or "Optimizer",
+                    "output": str(result.raw_path) if result.raw_path else None,
+                    "strategy_id": result.strategy_id,
+                    "num_cycles": len(result.cycles),
+                    "summary": result.summary,
+                }
+            )
         else:
             csv_path = result.raw_path or "unknown"
             print_human(f"Optimization results: {csv_path}")
@@ -722,7 +726,9 @@ async def cmd_jforex_deploy(args: argparse.Namespace) -> int:
             await client.close()
 
             if args.json:
-                print_json({"strategy_id": args.strategy_id, "java_source": java_source})
+                print_json(
+                    {"strategy_id": args.strategy_id, "java_source": java_source}
+                )
             else:
                 print_human("Dry-run: JForex export (not written to disk)")
                 print_human(f"Strategy: {args.strategy_id}")
@@ -789,9 +795,11 @@ async def cmd_jforex_deploy(args: argparse.Namespace) -> int:
 # Report Command Handlers
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 async def cmd_report_generate(args: argparse.Namespace) -> int:
     """Generate campaign report (HTML/JSON)."""
     from quantlab.reporting.cli import generate_report_command
+
     return generate_report_command(args)
 
 
@@ -862,14 +870,10 @@ def build_parser() -> argparse.ArgumentParser:
         "-v", "--version", action="version", version="quantlab-cli 0.1.0"
     )
 
-    subparsers = parser.add_subparsers(
-        dest="command", metavar="COMMAND", required=True
-    )
+    subparsers = parser.add_subparsers(dest="command", metavar="COMMAND", required=True)
 
     # ── daemon ──────────────────────────────────────────────────────────────
-    p_daemon = subparsers.add_parser(
-        "daemon", help="SQX -gui daemon lifecycle"
-    )
+    p_daemon = subparsers.add_parser("daemon", help="SQX -gui daemon lifecycle")
     daemon_sub = p_daemon.add_subparsers(dest="daemon_cmd", required=True)
 
     p_start = daemon_sub.add_parser("start", help="Start SQX daemon")
@@ -897,11 +901,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     # ── portfolio ───────────────────────────────────────────────────────────
     p_portfolio = subparsers.add_parser("portfolio", help="Portfolio Master")
-    portfolio_sub = p_portfolio.add_subparsers(
-        dest="portfolio_cmd", required=True
-    )
+    portfolio_sub = p_portfolio.add_subparsers(dest="portfolio_cmd", required=True)
 
-    p_pf_run = portfolio_sub.add_parser("run", help="Run Portfolio Master genetic builder")
+    p_pf_run = portfolio_sub.add_parser(
+        "run", help="Run Portfolio Master genetic builder"
+    )
     _add_common_args(p_pf_run)
     p_pf_run.add_argument(
         "--strategies",
@@ -909,30 +913,20 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Strategy IDs (comma or space separated)",
     )
-    p_pf_run.add_argument(
-        "--generations", type=int, default=50, help="GA generations"
-    )
+    p_pf_run.add_argument("--generations", type=int, default=50, help="GA generations")
     p_pf_run.add_argument(
         "--population", type=int, default=200, help="GA population size"
     )
-    p_pf_run.add_argument(
-        "--fitness", default="NetProfit", help="Fitness function"
-    )
+    p_pf_run.add_argument("--fitness", default="NetProfit", help="Fitness function")
     p_pf_run.add_argument(
         "--min-strategies", type=int, default=2, help="Min strategies in portfolio"
     )
     p_pf_run.add_argument(
         "--max-strategies", type=int, default=10, help="Max strategies in portfolio"
     )
-    p_pf_run.add_argument(
-        "--rebalance", default="Monthly", help="Rebalancing period"
-    )
-    p_pf_run.add_argument(
-        "--name", default="PortfolioMaster", help="Campaign name"
-    )
-    p_pf_run.add_argument(
-        "--output-dir", help="Output directory for results"
-    )
+    p_pf_run.add_argument("--rebalance", default="Monthly", help="Rebalancing period")
+    p_pf_run.add_argument("--name", default="PortfolioMaster", help="Campaign name")
+    p_pf_run.add_argument("--output-dir", help="Output directory for results")
     p_pf_run.set_defaults(func=cmd_portfolio_run)
 
     p_pf_status = portfolio_sub.add_parser("status", help="Get campaign status")
@@ -953,33 +947,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_opt_run = optimizer_sub.add_parser("run", help="Run optimization")
     _add_common_args(p_opt_run)
     p_opt_run.add_argument("strategy_id", help="Strategy ID to optimize")
-    p_opt_run.add_argument(
-        "--method", default="Genetic", help="Optimization method"
-    )
+    p_opt_run.add_argument("--method", default="Genetic", help="Optimization method")
     p_opt_run.add_argument(
         "--objective", default="SharpeRatio", help="Objective function"
     )
     p_opt_run.add_argument(
         "--walkforward-cycles", type=int, default=10, help="WF cycles"
     )
-    p_opt_run.add_argument(
-        "--population", type=int, default=100, help="GA population"
-    )
-    p_opt_run.add_argument(
-        "--generations", type=int, default=50, help="GA generations"
-    )
+    p_opt_run.add_argument("--population", type=int, default=100, help="GA population")
+    p_opt_run.add_argument("--generations", type=int, default=50, help="GA generations")
     p_opt_run.add_argument(
         "--crossover", type=float, default=0.8, help="Crossover rate"
     )
-    p_opt_run.add_argument(
-        "--mutation", type=float, default=0.1, help="Mutation rate"
-    )
+    p_opt_run.add_argument("--mutation", type=float, default=0.1, help="Mutation rate")
     p_opt_run.add_argument(
         "--databanks", nargs="+", help="Databank symbols (e.g., EURUSD_H1)"
     )
-    p_opt_run.add_argument(
-        "--name", default="Optimizer", help="Campaign name"
-    )
+    p_opt_run.add_argument("--name", default="Optimizer", help="Campaign name")
     p_opt_run.add_argument("--output-dir", help="Output directory for CSV")
     p_opt_run.set_defaults(func=cmd_optimizer_run)
 
@@ -988,34 +972,33 @@ def build_parser() -> argparse.ArgumentParser:
     p_opt_status.add_argument("name", help="Campaign name")
     p_opt_status.set_defaults(func=cmd_optimizer_status)
 
-    p_opt_export = optimizer_sub.add_parser("export", help="Export optimization results")
+    p_opt_export = optimizer_sub.add_parser(
+        "export", help="Export optimization results"
+    )
     _add_common_args(p_opt_export)
     p_opt_export.add_argument("name", help="Campaign name")
     p_opt_export.add_argument("--output-dir", help="Output directory")
     p_opt_export.set_defaults(func=cmd_optimizer_export)
 
     # ── retester ────────────────────────────────────────────────────────────
-    p_retester = subparsers.add_parser("retester", help="Monte Carlo / Walk-Forward retester")
+    p_retester = subparsers.add_parser(
+        "retester", help="Monte Carlo / Walk-Forward retester"
+    )
     retester_sub = p_retester.add_subparsers(dest="retester_cmd", required=True)
 
     p_rt_run = retester_sub.add_parser("run", help="Run retester")
     _add_common_args(p_rt_run)
     p_rt_run.add_argument("strategy_id", help="Strategy ID to retest")
     p_rt_run.add_argument(
-        "--databanks", nargs="+", required=True, help="Databank symbols (e.g., EURUSD_H1)"
+        "--databanks",
+        nargs="+",
+        required=True,
+        help="Databank symbols (e.g., EURUSD_H1)",
     )
-    p_rt_run.add_argument(
-        "--mc-runs", type=int, default=100, help="Monte Carlo runs"
-    )
-    p_rt_run.add_argument(
-        "--mc-percentile", type=int, default=95, help="MC percentile"
-    )
-    p_rt_run.add_argument(
-        "--walkforward-cycles", type=int, default=5, help="WF cycles"
-    )
-    p_rt_run.add_argument(
-        "--min-trades", type=int, default=30, help="Minimum trades"
-    )
+    p_rt_run.add_argument("--mc-runs", type=int, default=100, help="Monte Carlo runs")
+    p_rt_run.add_argument("--mc-percentile", type=int, default=95, help="MC percentile")
+    p_rt_run.add_argument("--walkforward-cycles", type=int, default=5, help="WF cycles")
+    p_rt_run.add_argument("--min-trades", type=int, default=30, help="Minimum trades")
     p_rt_run.add_argument(
         "--confidence-level", type=float, default=0.95, help="Confidence level"
     )
@@ -1038,7 +1021,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_jforex = subparsers.add_parser("jforex", help="JForex 4 deployment")
     jforex_sub = p_jforex.add_subparsers(dest="jforex_cmd", required=True)
 
-    p_jf_deploy = jforex_sub.add_parser("deploy", help="Export strategy + deploy indicators")
+    p_jf_deploy = jforex_sub.add_parser(
+        "deploy", help="Export strategy + deploy indicators"
+    )
     _add_common_args(p_jf_deploy)
     p_jf_deploy.add_argument("strategy_id", help="Strategy ID to export")
     p_jf_deploy.add_argument(
@@ -1050,36 +1035,59 @@ def build_parser() -> argparse.ArgumentParser:
     p_jf_deploy.add_argument(
         "--deploy-indicators", action="store_true", help="Deploy custom indicators"
     )
-    p_jf_deploy.add_argument(
-        "--jforex-dir", help="JForex SDK strategies directory"
-    )
+    p_jf_deploy.add_argument("--jforex-dir", help="JForex SDK strategies directory")
     p_jf_deploy.add_argument(
         "--sqx-indicators-dir", help="SQX custom_indicators/JForex directory"
     )
     p_jf_deploy.set_defaults(func=cmd_jforex_deploy)
 
-# ── report ─────────────────────────────────────────────────────────────────
+    # ── report ─────────────────────────────────────────────────────────────────
     p_report = subparsers.add_parser("report", help="Generate campaign reports")
     report_sub = p_report.add_subparsers(dest="report_cmd", required=True)
 
     p_rpt_gen = report_sub.add_parser("generate", help="Generate campaign report")
     # Don't use _add_common_args - it conflicts with explicit --json/--html/--dry-run
-    p_rpt_gen.add_argument("--sqx-path", default=DEFAULT_SQX_PATH, help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})")
-    p_rpt_gen.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"SQX -gui port (default: {DEFAULT_PORT})")
+    p_rpt_gen.add_argument(
+        "--sqx-path",
+        default=DEFAULT_SQX_PATH,
+        help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})",
+    )
+    p_rpt_gen.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help=f"SQX -gui port (default: {DEFAULT_PORT})",
+    )
     p_rpt_gen.add_argument("--dry-run", action="store_true", help="Generate CFX only")
-    p_rpt_gen.add_argument("--no-daemon-stop", action="store_true", help="Leave daemon running")
+    p_rpt_gen.add_argument(
+        "--no-daemon-stop", action="store_true", help="Leave daemon running"
+    )
     p_rpt_gen.add_argument("campaign_id", help="Campaign ID")
     p_rpt_gen.add_argument("--output-dir", default="reports", help="Output directory")
-    p_rpt_gen.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
-    p_rpt_gen.add_argument("--html", action="store_true", default=True, help="Generate HTML")
-    p_rpt_gen.add_argument("--no-html", action="store_false", dest="html", help="Skip HTML")
-    p_rpt_gen.add_argument("--json", action="store_true", default=True, help="Generate JSON")
-    p_rpt_gen.add_argument("--no-json", action="store_false", dest="json", help="Skip JSON")
+    p_rpt_gen.add_argument(
+        "--knowledge-root", default="knowledge", help="Knowledge Lake root path"
+    )
+    p_rpt_gen.add_argument(
+        "--html", action="store_true", default=True, help="Generate HTML"
+    )
+    p_rpt_gen.add_argument(
+        "--no-html", action="store_false", dest="html", help="Skip HTML"
+    )
+    p_rpt_gen.add_argument(
+        "--json", action="store_true", default=True, help="Generate JSON"
+    )
+    p_rpt_gen.add_argument(
+        "--no-json", action="store_false", dest="json", help="Skip JSON"
+    )
     p_rpt_gen.add_argument("--theme", choices=["light", "dark"], default="light")
-    p_rpt_gen.add_argument("--no-charts", action="store_true", help="Skip charts in HTML")
+    p_rpt_gen.add_argument(
+        "--no-charts", action="store_true", help="Skip charts in HTML"
+    )
     p_rpt_gen.add_argument("--title", help="Custom report title")
     p_rpt_gen.add_argument("--template", help="Custom Jinja2 template file path")
-    p_rpt_gen.add_argument("--benchmark", help="Benchmark equity CSV file for comparison")
+    p_rpt_gen.add_argument(
+        "--benchmark", help="Benchmark equity CSV file for comparison"
+    )
     p_rpt_gen.set_defaults(func=cmd_report_generate)
 
     # ── knowledge ──────────────────────────────────────────────────────────────
@@ -1129,39 +1137,99 @@ def build_parser() -> argparse.ArgumentParser:
     add_monitor_subparser(subparsers)
 
     # ── pipeline ───────────────────────────────────────────────────────────────
-    p_pipeline = subparsers.add_parser("pipeline", help="Pipeline execution and management")
+    p_pipeline = subparsers.add_parser(
+        "pipeline", help="Pipeline execution and management"
+    )
     pipeline_sub = p_pipeline.add_subparsers(dest="pipeline_cmd", required=True)
 
     p_pipe_run = pipeline_sub.add_parser("run", help="Run a pipeline")
     # Don't use _add_common_args - it conflicts with explicit --dry-run
-    p_pipe_run.add_argument("--sqx-path", default=DEFAULT_SQX_PATH, help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})")
-    p_pipe_run.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"SQX -gui port (default: {DEFAULT_PORT})")
-    p_pipe_run.add_argument("--dry-run", action="store_true", help="Generate CFX only or show multi-agent plan")
-    p_pipe_run.add_argument("--no-daemon-stop", action="store_true", help="Leave daemon running")
-    p_pipe_run.add_argument("name", nargs="?", default="default", help="Pipeline name (from registry)")
+    p_pipe_run.add_argument(
+        "--sqx-path",
+        default=DEFAULT_SQX_PATH,
+        help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})",
+    )
+    p_pipe_run.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help=f"SQX -gui port (default: {DEFAULT_PORT})",
+    )
+    p_pipe_run.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Generate CFX only or show multi-agent plan",
+    )
+    p_pipe_run.add_argument(
+        "--no-daemon-stop", action="store_true", help="Leave daemon running"
+    )
+    p_pipe_run.add_argument(
+        "name", nargs="?", default="default", help="Pipeline name (from registry)"
+    )
     p_pipe_run.add_argument("--config", help="Pipeline config YAML")
-    p_pipe_run.add_argument("--research-config", help="Multi-agent research config YAML (activates ResearchDirector)")
+    p_pipe_run.add_argument(
+        "--research-config",
+        help="Multi-agent research config YAML (activates ResearchDirector)",
+    )
     p_pipe_run.add_argument("--output-dir", default="_output", help="Output directory")
     p_pipe_run.add_argument("--json", action="store_true", help="Output JSON")
-    p_pipe_run.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
-    p_pipe_run.add_argument("--poll-interval", type=float, default=30.0, help="SQX polling interval (seconds)")
-    p_pipe_run.add_argument("--poll-timeout", type=float, default=3600.0, help="SQX polling timeout")
-    p_pipe_run.add_argument("--export-formats", nargs="+", default=["csv"], help="Export formats")
-    p_pipe_run.add_argument("--no-export-databanks", action="store_false", dest="export_databanks", help="Skip databank export")
+    p_pipe_run.add_argument(
+        "--knowledge-root", default="knowledge", help="Knowledge Lake root path"
+    )
+    p_pipe_run.add_argument(
+        "--poll-interval",
+        type=float,
+        default=30.0,
+        help="SQX polling interval (seconds)",
+    )
+    p_pipe_run.add_argument(
+        "--poll-timeout", type=float, default=3600.0, help="SQX polling timeout"
+    )
+    p_pipe_run.add_argument(
+        "--export-formats", nargs="+", default=["csv"], help="Export formats"
+    )
+    p_pipe_run.add_argument(
+        "--no-export-databanks",
+        action="store_false",
+        dest="export_databanks",
+        help="Skip databank export",
+    )
     p_pipe_run.set_defaults(func=cmd_pipeline_run)
 
     p_pipe_list = pipeline_sub.add_parser("list", help="List available pipelines")
     p_pipe_list.add_argument("--config", help="Pipeline config directory or file")
     p_pipe_list.add_argument("--json", action="store_true", help="Output JSON")
-    p_pipe_list.add_argument("--sqx-path", default=DEFAULT_SQX_PATH, help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})")
-    p_pipe_list.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"SQX -gui port (default: {DEFAULT_PORT})")
+    p_pipe_list.add_argument(
+        "--sqx-path",
+        default=DEFAULT_SQX_PATH,
+        help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})",
+    )
+    p_pipe_list.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help=f"SQX -gui port (default: {DEFAULT_PORT})",
+    )
     p_pipe_list.set_defaults(func=cmd_pipeline_list)
 
     p_pipe_hist = pipeline_sub.add_parser("history", help="Show pipeline run history")
     p_pipe_hist.add_argument("--json", action="store_true", help="Output JSON")
-    p_pipe_hist.add_argument("--knowledge-root", default="knowledge", help="Path to Knowledge Lake (default: knowledge)")
-    p_pipe_hist.add_argument("--sqx-path", default=DEFAULT_SQX_PATH, help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})")
-    p_pipe_hist.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"SQX -gui port (default: {DEFAULT_PORT})")
+    p_pipe_hist.add_argument(
+        "--knowledge-root",
+        default="knowledge",
+        help="Path to Knowledge Lake (default: knowledge)",
+    )
+    p_pipe_hist.add_argument(
+        "--sqx-path",
+        default=DEFAULT_SQX_PATH,
+        help=f"Path to SQX installation (default: {DEFAULT_SQX_PATH})",
+    )
+    p_pipe_hist.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help=f"SQX -gui port (default: {DEFAULT_PORT})",
+    )
     p_pipe_hist.add_argument("--limit", type=int, default=10)
     p_pipe_hist.add_argument("--status", choices=["running", "completed", "failed"])
     p_pipe_hist.set_defaults(func=cmd_pipeline_history)
