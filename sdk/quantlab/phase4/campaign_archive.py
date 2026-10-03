@@ -19,9 +19,10 @@ for FALLBACK).
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Sequence
+from datetime import UTC, datetime, timezone
+from typing import Any
 
 from quantlab.gates.models import GateDecision, GateDecisionAction
 from quantlab.guardian.feedback import FeedbackRecord
@@ -323,7 +324,7 @@ class ArchivePhase:
             artifacts=list(artifacts),
             feedback=feedback,
             decision_action=decision.action.value,
-            archived_at=now or datetime.now(timezone.utc),
+            archived_at=now or datetime.now(UTC),
         )
 
     # ── Gate resolution ───────────────────────────────────────────────────────

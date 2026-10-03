@@ -12,10 +12,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from quantlab.phase4.templates import CfxTemplateBuilder
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.errors import OptimizerError, OptimizerRunError
-
+from quantlab.phase4.templates import CfxTemplateBuilder
 
 # ── Known SQX metric column names (lowercased, no spaces/dashes/underscores) ──
 
@@ -109,10 +108,10 @@ class OptimizationResult:
     strategy_id: str
     cycles: list[WalkForwardCycle] = field(default_factory=list)
     summary: dict[str, float] = field(default_factory=dict)
-    csv_path: Optional[Path] = None
+    csv_path: Path | None = None
 
     @property
-    def raw_path(self) -> Optional[Path]:
+    def raw_path(self) -> Path | None:
         """Return the raw CSV path for backward compatibility with ``run()``."""
         return self.csv_path
 
@@ -134,7 +133,7 @@ class OptimizerConfig:
         generations: int = 50,
         crossover: float = 0.8,
         mutation: float = 0.1,
-        databanks: Optional[list[str]] = None,
+        databanks: list[str] | None = None,
     ):
         self.strategy_id = strategy_id
         self.method = method
@@ -163,7 +162,7 @@ class Optimizer:
     def __init__(
         self,
         sqx_install_path: str | Path,
-        dispatcher: Optional[CommandDispatcher] = None,
+        dispatcher: CommandDispatcher | None = None,
     ):
         self.sqx_install_path = Path(sqx_install_path).resolve()
         self.dispatcher = dispatcher or CommandDispatcher()
@@ -172,7 +171,7 @@ class Optimizer:
         self,
         config: OptimizerConfig,
         campaign_name: str = "Optimizer",
-        output_dir: Optional[Path] = None,
+        output_dir: Path | None = None,
         timeout: float = 7200.0,
     ) -> OptimizationResult:
         """Run optimization and return parsed results.
@@ -454,7 +453,7 @@ class Optimizer:
         ]
 
         # ── Header ────────────────────────────────────────────────────────
-        parts.append(f"<h1>Optimization Report</h1>\n")
+        parts.append("<h1>Optimization Report</h1>\n")
         if result.strategy_id:
             parts.append(
                 f'<p class="subtitle">Strategy: <strong>'

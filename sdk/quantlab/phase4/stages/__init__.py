@@ -10,35 +10,37 @@ so the module can be imported without Phase 4 present.
 
 from __future__ import annotations
 
-from quantlab.pipeline.stages import (
-    ValidateStage,
-    TranslateStage,
-    DaemonStartStage,
-    LoadConfigStage,
-    RunCampaignStage,
-    PollCampaignStage,
-    CampaignStage,
-    ExportStage,
-    ReadStage,
-    ComputeStatsStage,
-    KnowledgeStoreStage,
-    ReportStage,
-)
-from quantlab.pipeline.base import PipelineContext
-from quantlab.pipeline.models import StageStatus, StageResult
-from quantlab.dsl.parser import parse_yaml
-from quantlab.dsl.models import ResearchConfig
-from quantlab.translate.cfx import CfxArchive
-from quantlab.readers.databank import DatabankCSVReader
-from quantlab.stats.engine import StatisticsEngine
-from quantlab.knowledge.store import KnowledgeStore
-from quantlab.knowledge.conformance import assert_conformance
-from pathlib import Path
+import asyncio
 import re
 import tempfile
 import time
-import asyncio
+from pathlib import Path
+
 import yaml
+
+from quantlab.dsl.models import ResearchConfig
+from quantlab.dsl.parser import parse_yaml
+from quantlab.knowledge.conformance import assert_conformance
+from quantlab.knowledge.store import KnowledgeStore
+from quantlab.pipeline.base import PipelineContext
+from quantlab.pipeline.models import StageResult, StageStatus
+from quantlab.pipeline.stages import (
+    CampaignStage,
+    ComputeStatsStage,
+    DaemonStartStage,
+    ExportStage,
+    KnowledgeStoreStage,
+    LoadConfigStage,
+    PollCampaignStage,
+    ReadStage,
+    ReportStage,
+    RunCampaignStage,
+    TranslateStage,
+    ValidateStage,
+)
+from quantlab.readers.databank import DatabankCSVReader
+from quantlab.stats.engine import StatisticsEngine
+from quantlab.translate.cfx import CfxArchive
 
 
 class SQXValidateStage(ValidateStage):
@@ -55,8 +57,9 @@ class SQXValidateStage(ValidateStage):
         if dry_run:
             return {"validated": True, "dry_run": True}
         
-        from quantlab.tools.platform import resolve_sqcli_path, get_sqcli_binary
         from pathlib import Path
+
+        from quantlab.tools.platform import get_sqcli_binary, resolve_sqcli_path
         
         install_path = Path(config.get("sqx_install_path", "/opt/StrategyQuantX"))
         binary_name = get_sqcli_binary()
@@ -127,8 +130,8 @@ class SQXDaemonStartStage(DaemonStartStage):
     
     async def execute(self, ctx: PipelineContext) -> dict:
         # Deferred imports: Phase 4 modules not guaranteed present at import time
-        from quantlab.phase4.daemon import SQXDaemonManager
         from quantlab.phase4.command_dispatcher import CommandDispatcher
+        from quantlab.phase4.daemon import SQXDaemonManager
         from quantlab.phase4.http_client import AsyncSQXClient
 
         config = ctx.config
@@ -464,9 +467,10 @@ class SQXReportStage(ReportStage):
     
     async def execute(self, ctx: PipelineContext) -> dict:
         # Delegate to Phase 5b ReportGenerator
+        from pathlib import Path
+
         from quantlab.reporting.generator import ReportGenerator
         from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
-        from pathlib import Path
         
         campaign_name = ctx.config.get("campaign_name", "campaign")
         output_dir = Path(ctx.config.get("output_dir", "reports"))

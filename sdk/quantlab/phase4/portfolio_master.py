@@ -16,11 +16,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from quantlab.phase4.templates import CfxTemplateBuilder
-from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.command_dispatcher import CommandDispatcher
+from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.errors import PortfolioError, PortfolioMasterError
-
+from quantlab.phase4.templates import CfxTemplateBuilder
 
 # ── Result dataclasses ─────────────────────────────────────────────────────────
 
@@ -39,7 +38,7 @@ class SelectedStrategy:
     strategy_id: str
     weight: float
     rank: int
-    fitness: Optional[float] = None
+    fitness: float | None = None
 
 
 @dataclass
@@ -65,7 +64,7 @@ _CSV_RANK_ALIASES = {"rank", "ranking", "ranks"}
 _CSV_FITNESS_ALIASES = {"fitness", "fitnessvalue", "fitness_value", "fit"}
 
 
-def _resolve_col(headers: list[str], aliases: set[str]) -> Optional[str]:
+def _resolve_col(headers: list[str], aliases: set[str]) -> str | None:
     """Find first header matching any of the aliases (case-insensitive, stripped)."""
     for h in headers:
         stripped = h.strip().lower()
@@ -90,15 +89,15 @@ class PortfolioMaster:
         self,
         sqx_install_path: str | Path,
         *,
-        daemon_manager: Optional[SQXDaemonManager] = None,
-        dispatcher: Optional[CommandDispatcher] = None,
+        daemon_manager: SQXDaemonManager | None = None,
+        dispatcher: CommandDispatcher | None = None,
     ):
         self.sqx_install_path = Path(sqx_install_path).resolve()
         self.daemon_manager = daemon_manager
         self.dispatcher = dispatcher or CommandDispatcher()
-        self._daemon: Optional[SQXDaemonManager] = None
+        self._daemon: SQXDaemonManager | None = None
 
-    async def __aenter__(self) -> "PortfolioMaster":
+    async def __aenter__(self) -> PortfolioMaster:
         if self.daemon_manager:
             self._daemon = self.daemon_manager
             await self._daemon.start()
@@ -119,7 +118,7 @@ class PortfolioMaster:
         max_strategies: int = 10,
         rebalance: str = "Monthly",
         campaign_name: str = "PortfolioMaster",
-        output_dir: Optional[Path] = None,
+        output_dir: Path | None = None,
     ) -> PortfolioMasterResult:
         """Run Portfolio Master genetic builder and return selected strategies.
 
@@ -255,7 +254,7 @@ class PortfolioMaster:
                             f"Non-numeric rank '{raw_r}' at row {row_num}"
                         )
 
-            fitness: Optional[float] = None
+            fitness: float | None = None
             if fitness_col:
                 raw_f = row.get(fitness_col)
                 raw_f = raw_f.strip() if raw_f else ""
@@ -344,7 +343,7 @@ class PortfolioMaster:
                         f"Non-numeric rank '{raw_rank}' for strategy '{sid}'"
                     )
 
-            fitness: Optional[float] = None
+            fitness: float | None = None
             raw_fitness = strat.get("fitness", "").strip()
             if raw_fitness:
                 try:
@@ -411,7 +410,7 @@ class PortfolioMaster:
                 pass  # fall through to XML
 
         # ── Try fallback format ─────────────────────────────────────────
-        last_error: Optional[Exception] = None
+        last_error: Exception | None = None
         if is_xml_like:
             try:
                 return PortfolioMaster.parse_csv_results(stripped)

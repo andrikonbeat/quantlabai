@@ -20,7 +20,6 @@ from quantlab.phase4.http_client import (
     SQXSessionLock,
 )
 
-
 # ── Status parsing regex helpers ─────────────────────────────────────────────
 
 # Flexible patterns for SQUANT CLI status output
@@ -56,7 +55,7 @@ class CampaignStatus:
         progress: float = 0.0,
         current_generation: int = 0,
         total_generations: int = 0,
-        error_message: Optional[str] = None,
+        error_message: str | None = None,
     ):
         self.campaign_name = campaign_name
         self.status = status
@@ -168,13 +167,13 @@ class CommandDispatcher:
 
     def __init__(
         self,
-        client: Optional[AsyncSQXClient] = None,
+        client: AsyncSQXClient | None = None,
         *,
-        sqx_install_path: Optional[str | Path] = None,
-        project_output_dir: Optional[str | Path] = None,
+        sqx_install_path: str | Path | None = None,
+        project_output_dir: str | Path | None = None,
         use_file_lock: bool = False,
         lock_blocking: bool = True,
-        lock_timeout: Optional[float] = None,
+        lock_timeout: float | None = None,
     ):
         self._client = client
         self._sqx_install_path = Path(sqx_install_path).resolve() if sqx_install_path else None
@@ -220,7 +219,7 @@ class CommandDispatcher:
                 blocking=self._lock_blocking,
                 timeout=timeout,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             coro.close()
             if not self._lock_blocking:
                 raise SQXSessionLockError(

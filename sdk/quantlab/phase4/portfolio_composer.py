@@ -10,15 +10,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from quantlab.phase4.http_client import AsyncSQXClient
 from quantlab.phase4.errors import (
     JForexStrategyNotFoundError,
     PortfolioError,
     PortfolioOptimizationError,
-    PortfolioStrategyLoadError,
     PortfolioSaveError,
+    PortfolioStrategyLoadError,
     StrategyNotFoundError,
 )
+from quantlab.phase4.http_client import AsyncSQXClient
 from quantlab.phase4.templates import CfxTemplateBuilder
 
 

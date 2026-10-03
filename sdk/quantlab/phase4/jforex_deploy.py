@@ -6,21 +6,22 @@ import logging
 import os
 import re
 import shutil
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 from quantlab.compiler import (
     JfxArtifact,
     is_compiler_enabled,
 )
 from quantlab.compiler.compiler import CompilerPipeline
-from quantlab.phase4.http_client import DEFAULT_PORT, AsyncSQXClient
 from quantlab.phase4.errors import (
-    JForexError,
     JForexConnectionError,
-    JForexStrategyNotFoundError,
+    JForexError,
     JForexServerError,
+    JForexStrategyNotFoundError,
 )
+from quantlab.phase4.http_client import DEFAULT_PORT, AsyncSQXClient
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class JForexDeployer:
         strategy_id: str,
         output_dir: str | Path,
         *,
-        strategy_name: Optional[str] = None,
+        strategy_name: str | None = None,
     ) -> Path:
         """Export a strategy by ID as a JForex-compatible .java file.
 
@@ -108,9 +109,9 @@ class JForexDeployer:
         self,
         java_path: str | Path,
         *,
-        jdk_home: Optional[str | Path] = None,
-        env: Optional[dict[str, str]] = None,
-        fixer: Optional[Callable[[str, list[str]], str]] = None,
+        jdk_home: str | Path | None = None,
+        env: dict[str, str] | None = None,
+        fixer: Callable[[str, list[str]], str] | None = None,
         max_fix_iterations: int = 5,
     ) -> JfxArtifact | Path:
         """Route an exported ``.java`` through the compiler pipeline (REQ-39).
@@ -154,10 +155,10 @@ class JForexDeployer:
         strategy_id: str,
         output_dir: str | Path,
         *,
-        strategy_name: Optional[str] = None,
-        jdk_home: Optional[str | Path] = None,
-        env: Optional[dict[str, str]] = None,
-        fixer: Optional[Callable[[str, list[str]], str]] = None,
+        strategy_name: str | None = None,
+        jdk_home: str | Path | None = None,
+        env: dict[str, str] | None = None,
+        fixer: Callable[[str, list[str]], str] | None = None,
         max_fix_iterations: int = 5,
     ) -> JfxArtifact | Path:
         """Export a strategy and route it through the compiler (REQ-39).
@@ -181,7 +182,7 @@ class JForexDeployer:
         self,
         jforex_strategies_dir: str | Path,
         *,
-        sqx_custom_indicators_dir: Optional[str | Path] = None,
+        sqx_custom_indicators_dir: str | Path | None = None,
     ) -> list[Path]:
         """Copy custom indicators from SQX installation to JForex strategies directory.
 

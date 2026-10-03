@@ -14,47 +14,49 @@ from __future__ import annotations
 import asyncio
 import tempfile
 import time
-import yaml
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Optional
+
+import yaml
 
 from quantlab.dsl.models import ResearchConfig
 from quantlab.dsl.parser import parse_yaml
-from quantlab.translate.cfx import CfxArchive
-from quantlab.phase4.daemon import SQXDaemonManager
-from quantlab.phase4.command_dispatcher import CommandDispatcher, CampaignStatus
-from quantlab.phase4.http_client import AsyncSQXClient
-from quantlab.phase4.models import CampaignPhase, PhaseResult, PhaseStatus
-from quantlab.tools.exceptions import LicenseError, CampaignError
-from quantlab.readers.databank import DatabankCSVReader
-from quantlab.stats.engine import StatisticsEngine
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.phase4.checkpoint import CampaignCheckpoint, CheckpointManager
-from quantlab.sqx.campaign_monitor import WatcherEvent
+from quantlab.phase4.command_dispatcher import CampaignStatus, CommandDispatcher
+from quantlab.phase4.daemon import SQXDaemonManager
+from quantlab.phase4.http_client import AsyncSQXClient
+from quantlab.phase4.models import CampaignPhase, PhaseResult, PhaseStatus
+from quantlab.phase4.stages import (
+    SQXComputeStatsStage,
+    SQXDaemonStartStage,
+    SQXExportStage,
+    SQXKnowledgeStoreStage,
+    SQXLoadConfigStage,
+    SQXPollCampaignStage,
+    SQXReadStage,
+    SQXReportStage,
+    SQXRunCampaignStage,
+    SQXTranslateStage,
+    SQXValidateStage,
+)
 
 # Import pipeline framework
 from quantlab.pipeline import (
     Pipeline,
     PipelineContext,
-    PipelineRunner,
     PipelineResult,
+    PipelineRunner,
     StageResult,
     StageStatus,
 )
-from quantlab.phase4.stages import (
-    SQXValidateStage,
-    SQXTranslateStage,
-    SQXDaemonStartStage,
-    SQXLoadConfigStage,
-    SQXRunCampaignStage,
-    SQXPollCampaignStage,
-    SQXExportStage,
-    SQXReadStage,
-    SQXComputeStatsStage,
-    SQXKnowledgeStoreStage,
-    SQXReportStage,
-)
+from quantlab.readers.databank import DatabankCSVReader
+from quantlab.sqx.campaign_monitor import WatcherEvent
+from quantlab.stats.engine import StatisticsEngine
+from quantlab.tools.exceptions import CampaignError, LicenseError
+from quantlab.translate.cfx import CfxArchive
 
 
 @dataclass
@@ -63,9 +65,9 @@ class CampaignResult:
 
     campaign_name: str
     phase_results: list[PhaseResult] = field(default_factory=list)
-    cfx_path: Optional[Path] = None
-    cfx_bytes: Optional[bytes] = None
-    campaign_status: Optional[CampaignStatus] = None
+    cfx_path: Path | None = None
+    cfx_bytes: bytes | None = None
+    campaign_status: CampaignStatus | None = None
     export_paths: dict[str, Path] = field(default_factory=dict)
     trades: list = field(default_factory=list)
     equity: list = field(default_factory=list)
@@ -74,7 +76,7 @@ class CampaignResult:
     artifact_paths: dict[str, Path] = field(default_factory=dict)
     watcher_events: list[WatcherEvent] = field(default_factory=list)
     total_duration: float = 0.0
-    error: Optional[str] = None
+    error: str | None = None
 
     @property
     def is_successful(self) -> bool:
@@ -93,7 +95,7 @@ class CampaignConfig:
     sqx_license: str = "FUTLABF255"
 
     # Pipeline
-    research_config_path: Optional[Path] = None
+    research_config_path: Path | None = None
     output_dir: Path = Path("_output")
     dry_run: bool = False
 
@@ -110,11 +112,11 @@ class CampaignConfig:
     export_databanks: bool = True
 
     # Knowledge Lake
-    knowledge_root: Optional[Path] = None
+    knowledge_root: Path | None = None
 
     # Callbacks
-    progress_callback: Optional[Callable[[CampaignPhase, PhaseStatus, Optional[str]], Any]] = None
-    on_watcher_event: Optional[Callable] = None
+    progress_callback: Callable[[CampaignPhase, PhaseStatus, str | None], Any] | None = None
+    on_watcher_event: Callable | None = None
 
 
 class CampaignOrchestrator:
@@ -129,11 +131,11 @@ class CampaignOrchestrator:
 
     def __init__(self, config: CampaignConfig):
         self.config = config
-        self._daemon: Optional[SQXDaemonManager] = None
-        self._dispatcher: Optional[CommandDispatcher] = None
-        self._client: Optional[AsyncSQXClient] = None
+        self._daemon: SQXDaemonManager | None = None
+        self._dispatcher: CommandDispatcher | None = None
+        self._client: AsyncSQXClient | None = None
         self._result = CampaignResult(campaign_name=config.campaign_name)
-        self._checkpoint_mgr: Optional[CheckpointManager] = None
+        self._checkpoint_mgr: CheckpointManager | None = None
 
     def enable_checkpoints(self, root: Path) -> None:
         """Enable checkpoint persistence for this campaign.
@@ -384,7 +386,7 @@ class CampaignOrchestrator:
         self,
         phase: CampaignPhase,
         status: PhaseStatus,
-        detail: Optional[str] = None,
+        detail: str | None = None,
     ) -> None:
         """Fire progress callback if registered."""
         if self.config.progress_callback:
@@ -416,8 +418,8 @@ async def run_campaign(
     sqx_install_path: str = "/opt/StrategyQuantX",
     poll_interval: float = 30.0,
     poll_timeout: float = 3600.0,
-    progress_callback: Optional[Callable] = None,
-    on_watcher_event: Optional[Callable] = None,
+    progress_callback: Callable | None = None,
+    on_watcher_event: Callable | None = None,
 ) -> CampaignResult:
     """High-level function to run a complete campaign.
 

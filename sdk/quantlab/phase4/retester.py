@@ -13,15 +13,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
-from quantlab.phase4.templates import CfxTemplateBuilder
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.errors import (
+    DatabankPathError,
+    RetesterDatabankError,
     RetesterError,
     RetesterRunError,
-    RetesterDatabankError,
-    DatabankPathError,
 )
-
+from quantlab.phase4.templates import CfxTemplateBuilder
 
 # Databank name validation pattern (e.g., EURUSD_H1, GBPUSD_M15)
 DATABANK_PATTERN = re.compile(r"^[A-Z]{6}_[A-Z]\d+$")
@@ -64,11 +63,11 @@ class RetestResult:
     strategy_id: str
     monte_carlo: MonteCarloResult
     walk_forward: WalkForwardResult
-    html_path: Optional[Path] = None
-    csv_path: Optional[Path] = None
+    html_path: Path | None = None
+    csv_path: Path | None = None
 
     @property
-    def html_report(self) -> Optional[Path]:
+    def html_report(self) -> Path | None:
         """Return the HTML report path (backward-compatible alias)."""
         return self.html_path
 
@@ -141,7 +140,7 @@ class RetesterConfig:
         return None
 
     @classmethod
-    def from_cfx(cls, cfx_path: str | Path) -> "RetesterConfig":
+    def from_cfx(cls, cfx_path: str | Path) -> RetesterConfig:
         """Build a ``RetesterConfig`` from a CFX archive's RetesterData section.
 
         Reads the archive with :class:`~quantlab.cfx.reader.CfxReader`, extracts
@@ -218,7 +217,7 @@ class Retester:
     def __init__(
         self,
         sqx_install_path: str | Path,
-        dispatcher: Optional[CommandDispatcher] = None,
+        dispatcher: CommandDispatcher | None = None,
     ):
         self.sqx_install_path = Path(sqx_install_path).resolve()
         self.dispatcher = dispatcher or CommandDispatcher()
@@ -227,7 +226,7 @@ class Retester:
         self,
         config: RetesterConfig,
         campaign_name: str = "Retester",
-        output_dir: Optional[Path] = None,
+        output_dir: Path | None = None,
         timeout: float = 7200.0,
     ) -> RetestResult:
         """Run retester and return a RetestResult with HTML + CSV reports.
@@ -260,8 +259,8 @@ class Retester:
             tmp.write(cfx_bytes)
             cfx_path = Path(tmp.name)
 
-        html_path: Optional[Path] = None
-        csv_path: Optional[Path] = None
+        html_path: Path | None = None
+        csv_path: Path | None = None
 
         try:
             # Load config

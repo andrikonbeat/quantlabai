@@ -7,7 +7,7 @@ Provides ``CheckpointManager`` backed by the orchestrator's campaign types
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +39,7 @@ class CampaignCheckpoint:
         self.phase_results = list(phase_results)
         self.cfx_path = cfx_path
         self.export_paths = export_paths or {}
-        self._created_at = datetime.now(timezone.utc).isoformat()
+        self._created_at = datetime.now(UTC).isoformat()
 
 
 class CheckpointManager:

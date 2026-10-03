@@ -8,26 +8,26 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from quantlab.cfx import CfxArchive, BuildTask, CfxWriter
+from quantlab.cfx import BuildTask, CfxArchive, CfxWriter
 from quantlab.cfx.dom import set_commission_settings, set_spread_settings
-from quantlab.versioning import PINNED_SQX_VERSION
 from quantlab.cfx.models import (
     AdvancedRankingCondition,
+    AutomaticPortfolioBuilderConfig,
     CfxConfig,
     CfxProject,
+    CrossChecksConfig,
+    DatabanksConfig,
     DataRangeParts,
-    SettingsSection,
-    AutomaticPortfolioBuilderConfig,
-    PortfolioSettingsConfig,
     OptimizationConfig,
     OptimizationParametersConfig,
-    WalkForwardConfig,
-    DatabanksConfig,
+    PortfolioSettingsConfig,
     RankingsConfig,
-    CrossChecksConfig,
     RetesterDataConfig,
+    SettingsSection,
+    WalkForwardConfig,
 )
 from quantlab.cfx.patcher import build_conditions_xml
+from quantlab.versioning import PINNED_SQX_VERSION
 
 
 class CfxTemplateBuilder:
@@ -106,7 +106,7 @@ class CfxTemplateBuilder:
         generations: int = 50,
         crossover: float = 0.8,
         mutation: float = 0.1,
-        databanks: Optional[list[str]] = None,
+        databanks: list[str] | None = None,
     ) -> bytes:
         """Build Optimizer CFX.
 

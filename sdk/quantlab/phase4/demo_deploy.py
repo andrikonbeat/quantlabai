@@ -15,10 +15,11 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +236,7 @@ class DemoDeployer:
             status="BLOCKED_EXPIRED",
             pending_gate="HUMAN_APPROVE_DEMO",
             errors=[
-                f"Demo window expired — renewal blocked pending "
+                "Demo window expired — renewal blocked pending "
                 "HUMAN_APPROVE_DEMO"
             ],
         )

@@ -47,8 +47,8 @@ class PhaseResult:
     status: PhaseStatus
     detail: str = ""
     started_at: float = field(default_factory=time.time)
-    completed_at: Optional[float] = None
-    error: Optional[str] = None
+    completed_at: float | None = None
+    error: str | None = None
 
     @property
     def duration(self) -> float:

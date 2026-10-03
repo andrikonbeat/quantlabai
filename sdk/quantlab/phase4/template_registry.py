@@ -29,7 +29,7 @@ class TemplateDefinition:
     """
 
     name: str
-    template_class: Type["CampaignTemplate"]
+    template_class: type[CampaignTemplate]
     profile: str
 
 

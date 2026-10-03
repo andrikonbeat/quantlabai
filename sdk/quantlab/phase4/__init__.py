@@ -18,57 +18,67 @@ Modules (committed in PR 3 — Optimizer + Retester):
 - campaign_orchestrator: End-to-end Campaign Orchestrator (requires pipeline framework)
 """
 
+from quantlab.phase4.command_dispatcher import CampaignStatus, CommandDispatcher
+from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.errors import (
-    Phase4Error,
-    JForexError,
+    DatabankPathError,
     JForexConnectionError,
-    JForexStrategyNotFoundError,
+    JForexError,
     JForexServerError,
-    PortfolioError,
-    StrategyNotFoundError,
-    PortfolioOptimizationError,
-    PortfolioStrategyLoadError,
-    PortfolioSaveError,
-    PortfolioMasterError,
+    JForexStrategyNotFoundError,
     OptimizerError,
     OptimizerRunError,
+    Phase4Error,
+    PortfolioError,
+    PortfolioMasterError,
+    PortfolioOptimizationError,
+    PortfolioSaveError,
+    PortfolioStrategyLoadError,
+    RetesterDatabankError,
     RetesterError,
     RetesterRunError,
-    RetesterDatabankError,
-    DatabankPathError,
-    SQXError,
     SQXBindingError,
-    UnsupportedSQXVersionError,
     SQXDaemonStartError,
+    SQXError,
     SQXSessionLockError,
+    StrategyNotFoundError,
+    UnsupportedSQXVersionError,
 )
-
 from quantlab.phase4.http_client import (
     AsyncSQXClient,
-    SQXSessionLock,
     CircuitBreaker,
+    SQXSessionLock,
 )
-
-from quantlab.phase4.daemon import SQXDaemonManager
-from quantlab.phase4.templates import CfxTemplateBuilder
-
 from quantlab.phase4.jforex_deploy import JForexDeployer
-from quantlab.phase4.portfolio_composer import PortfolioComposer, PortfolioWeightResult, WeightResult
-from quantlab.phase4.portfolio_master import PortfolioMaster, PortfolioMasterResult, SelectedStrategy
-from quantlab.phase4.command_dispatcher import CommandDispatcher, CampaignStatus
-
-# Phase 3 — Optimizer + Retester
-from quantlab.phase4.optimizer import Optimizer, OptimizerConfig, OptimizationResult, WalkForwardCycle
-from quantlab.phase4.retester import (
-    Retester,
-    RetesterConfig,
-    RetestResult,
-    MonteCarloResult,
-    WalkForwardResult,
-)
 
 # Phase 3 shared models
 from quantlab.phase4.models import CampaignPhase, PhaseResult, PhaseStatus
+
+# Phase 3 — Optimizer + Retester
+from quantlab.phase4.optimizer import (
+    OptimizationResult,
+    Optimizer,
+    OptimizerConfig,
+    WalkForwardCycle,
+)
+from quantlab.phase4.portfolio_composer import (
+    PortfolioComposer,
+    PortfolioWeightResult,
+    WeightResult,
+)
+from quantlab.phase4.portfolio_master import (
+    PortfolioMaster,
+    PortfolioMasterResult,
+    SelectedStrategy,
+)
+from quantlab.phase4.retester import (
+    MonteCarloResult,
+    Retester,
+    RetesterConfig,
+    RetestResult,
+    WalkForwardResult,
+)
+from quantlab.phase4.templates import CfxTemplateBuilder
 
 # Phase 3 — Campaign Orchestrator (guarded: requires pipeline framework)
 # Imported lazily (PEP 562) so importing any phase4 submodule — e.g. daemon or
@@ -93,8 +103,8 @@ def __getattr__(name: str):
         if not _ORCHESTRATOR_IMPORTED:
             try:
                 from quantlab.phase4.campaign_orchestrator import (
-                    CampaignOrchestrator,
                     CampaignConfig,
+                    CampaignOrchestrator,
                     CampaignResult,
                     run_campaign,
                 )

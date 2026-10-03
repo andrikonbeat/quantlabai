@@ -22,8 +22,8 @@ from typing import Optional
 
 import httpx
 
-from quantlab.phase4.errors import SQXDaemonStartError, SQXBindingError
-from quantlab.phase4.http_client import AsyncSQXClient, DEFAULT_PORT
+from quantlab.phase4.errors import SQXBindingError, SQXDaemonStartError
+from quantlab.phase4.http_client import DEFAULT_PORT, AsyncSQXClient
 
 
 class SQXDaemonManager:
@@ -58,10 +58,10 @@ class SQXDaemonManager:
         self.restart_delay = restart_delay
         self._monitor_interval = 5.0
 
-        self._process: Optional[subprocess.Popen] = None
+        self._process: subprocess.Popen | None = None
         self._restart_count = 0
-        self._monitor_task: Optional[asyncio.Task] = None
-        self._client: Optional[httpx.AsyncClient] = None
+        self._monitor_task: asyncio.Task | None = None
+        self._client: httpx.AsyncClient | None = None
         self._is_restarting = False
 
         _localhost_aliases = {"127.0.0.1", "::1", "localhost"}
@@ -235,7 +235,7 @@ class SQXDaemonManager:
                         asyncio.to_thread(self._process.wait),
                         timeout=10.0,
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     self._process.kill()
                     await asyncio.to_thread(self._process.wait)
 
@@ -260,7 +260,7 @@ class SQXDaemonManager:
         except Exception:
             return False
 
-    async def __aenter__(self) -> "SQXDaemonManager":
+    async def __aenter__(self) -> SQXDaemonManager:
         await self.start()
         return self
 

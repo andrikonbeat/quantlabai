@@ -21,7 +21,6 @@ from quantlab.phase4.errors import (
     SQXSessionLockError,
 )
 
-
 DEFAULT_PORT = 5050
 COMMAND_ENDPOINT = "/call"
 
@@ -33,14 +32,14 @@ class CircuitBreaker:
         self,
         failure_threshold: int = 5,
         recovery_timeout: float = 30.0,
-        excluded_codes: Optional[set[int]] = None,
+        excluded_codes: set[int] | None = None,
     ):
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
         self.excluded_codes = excluded_codes or {429}
 
         self._failure_count = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._state = "closed"  # closed, open, half-open
         self._lock = asyncio.Lock()
 
@@ -56,7 +55,7 @@ class CircuitBreaker:
             self._failure_count = 0
             self._state = "closed"
 
-    async def record_failure(self, status_code: Optional[int] = None) -> None:
+    async def record_failure(self, status_code: int | None = None) -> None:
         async with self._lock:
             if status_code in (429,):
                 return
@@ -91,7 +90,7 @@ class SQXSessionLock:
         self.sqx_install_path = Path(sqx_install_path).resolve()
         self.use_file_lock = use_file_lock
         self._async_lock = asyncio.Lock()
-        self._file_lock: Optional[Any] = None
+        self._file_lock: Any | None = None
         self._acquired = False
 
         path_hash = hashlib.sha256(str(self.sqx_install_path).encode()).hexdigest()[:16]
@@ -99,14 +98,14 @@ class SQXSessionLock:
         self._lock_file = self._lock_dir / f"sqx-{path_hash}.lock"
         self._lock_dir.mkdir(parents=True, exist_ok=True)
 
-    async def acquire(self, blocking: bool = True, timeout: Optional[float] = None) -> bool:
+    async def acquire(self, blocking: bool = True, timeout: float | None = None) -> bool:
         """Acquire both async and file locks."""
         try:
             if timeout is not None:
                 await asyncio.wait_for(self._async_lock.acquire(), timeout=timeout)
             else:
                 await self._async_lock.acquire()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             if blocking:
                 return False
             raise
@@ -146,7 +145,7 @@ class SQXSessionLock:
             self._async_lock.release()
             self._acquired = False
 
-    async def __aenter__(self) -> "SQXSessionLock":
+    async def __aenter__(self) -> SQXSessionLock:
         await self.acquire()
         return self
 
@@ -186,7 +185,7 @@ class AsyncSQXClient:
         self._timeout_value = timeout
         self._timeout = httpx.Timeout(timeout)
         self._max_retries = max_retries
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
         self._circuit_breaker = CircuitBreaker()
 
     async def _ensure_client(self) -> httpx.AsyncClient:
@@ -329,7 +328,7 @@ class AsyncSQXClient:
             await self._client.aclose()
             self._client = None
 
-    async def __aenter__(self) -> "AsyncSQXClient":
+    async def __aenter__(self) -> AsyncSQXClient:
         return self
 
     async def __aexit__(self, *args) -> None:
