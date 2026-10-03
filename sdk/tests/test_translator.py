@@ -17,7 +17,10 @@ from quantlab.dsl.models import (
     ResearchConfig,
     Strategy,
 )
-from quantlab.tools.exceptions import TranslationError, ValidationError as ValidationError
+from quantlab.tools.exceptions import (
+    TranslationError,
+    ValidationError as ValidationError,
+)
 from quantlab.translate.translator import generate_cfx_archive, generate_cfx_xml
 
 
@@ -318,9 +321,7 @@ class TestCfxArchiveFactory:
         )
         output_dir = tmp_path / "output"
 
-        result = CfxArchive.from_model(
-            config, dry_run=True, output_dir=str(output_dir)
-        )
+        result = CfxArchive.from_model(config, dry_run=True, output_dir=str(output_dir))
 
         # File should NOT be in output/
         assert not (output_dir / "DryDirCheck.cfx.xml").exists()
@@ -334,10 +335,16 @@ class TestCfxArchiveFactory:
         from quantlab.translate.cfx import CfxArchive
 
         config_a = ResearchConfig(
-            campaign="CampaignA", market="EURUSD", timeframe="H1", strategies=[Strategy(name="A", direction="LONG")]
+            campaign="CampaignA",
+            market="EURUSD",
+            timeframe="H1",
+            strategies=[Strategy(name="A", direction="LONG")],
         )
         config_b = ResearchConfig(
-            campaign="CampaignB", market="BTCUSD", timeframe="D1", strategies=[Strategy(name="B", direction="LONG")]
+            campaign="CampaignB",
+            market="BTCUSD",
+            timeframe="D1",
+            strategies=[Strategy(name="B", direction="LONG")],
         )
 
         result_a = CfxArchive.from_model(config_a, output_dir=str(tmp_path / "output"))

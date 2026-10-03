@@ -61,22 +61,40 @@ class TestFindSimilarCampaigns:
     def _seed_text_lake(self, root: Path) -> None:
         """Three campaigns: A and B share breakout vocabulary, C is distinct."""
         write_memory(
-            root, "research-director", "campaign-A",
-            [decision(executive_summary="EURUSD H1 breakout with ATR trailing stop",
-                      config={"market": "EURUSD", "timeframe": "H1"},
-                      timestamp="2026-01-01T00:00:00+00:00")],
+            root,
+            "research-director",
+            "campaign-A",
+            [
+                decision(
+                    executive_summary="EURUSD H1 breakout with ATR trailing stop",
+                    config={"market": "EURUSD", "timeframe": "H1"},
+                    timestamp="2026-01-01T00:00:00+00:00",
+                )
+            ],
         )
         write_memory(
-            root, "research-director", "campaign-B",
-            [decision(executive_summary="EURUSD H1 breakout ATR trailing stop momentum",
-                      config={"market": "EURUSD", "timeframe": "H1"},
-                      timestamp="2026-01-02T00:00:00+00:00")],
+            root,
+            "research-director",
+            "campaign-B",
+            [
+                decision(
+                    executive_summary="EURUSD H1 breakout ATR trailing stop momentum",
+                    config={"market": "EURUSD", "timeframe": "H1"},
+                    timestamp="2026-01-02T00:00:00+00:00",
+                )
+            ],
         )
         write_memory(
-            root, "research-director", "campaign-C",
-            [decision(executive_summary="GBPUSD M15 mean reversion with RSI bollinger",
-                      config={"market": "GBPUSD", "timeframe": "M15"},
-                      timestamp="2026-01-03T00:00:00+00:00")],
+            root,
+            "research-director",
+            "campaign-C",
+            [
+                decision(
+                    executive_summary="GBPUSD M15 mean reversion with RSI bollinger",
+                    config={"market": "GBPUSD", "timeframe": "M15"},
+                    timestamp="2026-01-03T00:00:00+00:00",
+                )
+            ],
         )
 
     def test_ranks_most_similar_campaign_first(self, tmp_path: Path) -> None:
@@ -95,7 +113,9 @@ class TestFindSimilarCampaigns:
         b_score = next(
             m["similarity_score"] for m in matches if m["campaign_id"] == "campaign-B"
         )
-        c_scores = [m["similarity_score"] for m in matches if m["campaign_id"] == "campaign-C"]
+        c_scores = [
+            m["similarity_score"] for m in matches if m["campaign_id"] == "campaign-C"
+        ]
         if c_scores:  # if C made the cut, it must rank below B
             assert b_score > c_scores[0]
 

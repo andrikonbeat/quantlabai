@@ -51,14 +51,16 @@ class _EchoResearchStage(ResearchStage):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        ctx.artifacts.update({
-            "research_config": {},
-            "objectives": ["test objective"],
-            "hypotheses": [],
-            "iteration_config": {"max_iterations": 1},
-            "gate_policies": [],
-            "gate_decision_HUMAN_REVIEW_OBJECTIVES": {"status": "approved"},
-        })
+        ctx.artifacts.update(
+            {
+                "research_config": {},
+                "objectives": ["test objective"],
+                "hypotheses": [],
+                "iteration_config": {"max_iterations": 1},
+                "gate_policies": [],
+                "gate_decision_HUMAN_REVIEW_OBJECTIVES": {"status": "approved"},
+            }
+        )
         return ctx.artifacts
 
 
@@ -67,12 +69,14 @@ class _EchoBuilderStage(BuilderStage):
     provides = ["cfx_bytes", "campaign_id", "sqcli_status", "export_paths"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        ctx.artifacts.update({
-            "cfx_bytes": b"cfx-bytes",
-            "campaign_id": ctx.config.get("campaign_id", "test"),
-            "sqcli_status": "completed",
-            "export_paths": ["/tmp/fake_export"],
-        })
+        ctx.artifacts.update(
+            {
+                "cfx_bytes": b"cfx-bytes",
+                "campaign_id": ctx.config.get("campaign_id", "test"),
+                "sqcli_status": "completed",
+                "export_paths": ["/tmp/fake_export"],
+            }
+        )
         return ctx.artifacts
 
 
@@ -81,11 +85,13 @@ class _EchoStatisticsStage(StatisticsStage):
     provides = ["statistics", "aggregate_stats", "monte_carlo_bands"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        ctx.artifacts.update({
-            "statistics": {"sharpe_ratio": 1.5, "max_drawdown": 0.1},
-            "aggregate_stats": {},
-            "monte_carlo_bands": {},
-        })
+        ctx.artifacts.update(
+            {
+                "statistics": {"sharpe_ratio": 1.5, "max_drawdown": 0.1},
+                "aggregate_stats": {},
+                "monte_carlo_bands": {},
+            }
+        )
         return ctx.artifacts
 
 
@@ -101,14 +107,16 @@ class _EchoReviewStage(ReviewStage):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        ctx.artifacts.update({
-            "review_decision": "ACCEPT",
-            "iteration_proposal": {},
-            "wf_degradation": 0.0,
-            "mc_overfit_flag": False,
-            "benchmark_comparison": {},
-            "gate_decision_HUMAN_APPROVE_ITERATION": {"status": "approved"},
-        })
+        ctx.artifacts.update(
+            {
+                "review_decision": "ACCEPT",
+                "iteration_proposal": {},
+                "wf_degradation": 0.0,
+                "mc_overfit_flag": False,
+                "benchmark_comparison": {},
+                "gate_decision_HUMAN_APPROVE_ITERATION": {"status": "approved"},
+            }
+        )
         return ctx.artifacts
 
 
@@ -124,14 +132,16 @@ class _EchoPortfolioStage(PortfolioStage):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        ctx.artifacts.update({
-            "portfolio_cfx": b"portfolio-cfx-bytes",
-            "portfolio_result": {"status": "ok"},
-            "correlation_matrix": {},
-            "risk_allocation": {},
-            "wf_aggregate_stats": {},
-            "gate_decision_HUMAN_APPROVE_PORTFOLIO": {"status": "approved"},
-        })
+        ctx.artifacts.update(
+            {
+                "portfolio_cfx": b"portfolio-cfx-bytes",
+                "portfolio_result": {"status": "ok"},
+                "correlation_matrix": {},
+                "risk_allocation": {},
+                "wf_aggregate_stats": {},
+                "gate_decision_HUMAN_APPROVE_PORTFOLIO": {"status": "approved"},
+            }
+        )
         return ctx.artifacts
 
 
@@ -140,11 +150,13 @@ class _EchoDeployStage(DeployStage):
     provides = ["jforex_package", "jcloud_config", "deployment_result"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        ctx.artifacts.update({
-            "jforex_package": "/tmp/deploy/portfolio.jar",
-            "jcloud_config": {"instance_type": "t3.medium"},
-            "deployment_result": {"status": "DRY_RUN_SUCCESS"},
-        })
+        ctx.artifacts.update(
+            {
+                "jforex_package": "/tmp/deploy/portfolio.jar",
+                "jcloud_config": {"instance_type": "t3.medium"},
+                "deployment_result": {"status": "DRY_RUN_SUCCESS"},
+            }
+        )
         return ctx.artifacts
 
 
@@ -158,13 +170,15 @@ class _EchoMonitorStage(MonitorStage):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        ctx.artifacts.update({
-            "rolling_metrics": {},
-            "regime_alerts": [],
-            "performance_alerts": [],
-            "live_equity": {},
-            "gate_decision_HUMAN_REVIEW_PERFORMANCE": {"status": "approved"},
-        })
+        ctx.artifacts.update(
+            {
+                "rolling_metrics": {},
+                "regime_alerts": [],
+                "performance_alerts": [],
+                "live_equity": {},
+                "gate_decision_HUMAN_REVIEW_PERFORMANCE": {"status": "approved"},
+            }
+        )
         return ctx.artifacts
 
 
@@ -182,20 +196,22 @@ _GATE_IDS = [
 def _build_minimal_pipeline() -> Pipeline:
     """Build a 12-stage pipeline with gate positions matching PR 4 spec."""
     pipeline = Pipeline(name="test-pipeline")
-    pipeline.stages.extend([
-        _EchoResearchStage(),
-        GateInterceptorStage(),
-        _EchoBuilderStage(),
-        _EchoStatisticsStage(),
-        _EchoReviewStage(),
-        GateInterceptorStage(),
-        _EchoPortfolioStage(),
-        GateInterceptorStage(),
-        _EchoDeployStage(),
-        GateInterceptorStage(),
-        _EchoMonitorStage(),
-        GateInterceptorStage(),
-    ])
+    pipeline.stages.extend(
+        [
+            _EchoResearchStage(),
+            GateInterceptorStage(),
+            _EchoBuilderStage(),
+            _EchoStatisticsStage(),
+            _EchoReviewStage(),
+            GateInterceptorStage(),
+            _EchoPortfolioStage(),
+            GateInterceptorStage(),
+            _EchoDeployStage(),
+            GateInterceptorStage(),
+            _EchoMonitorStage(),
+            GateInterceptorStage(),
+        ]
+    )
     return pipeline
 
 
@@ -213,7 +229,9 @@ class TestFullPipelineWithGates:
         """
         pipeline = _build_minimal_pipeline()
         assert len(pipeline.stages) == 12
-        gate_stages = [s for s in pipeline.stages if isinstance(s, GateInterceptorStage)]
+        gate_stages = [
+            s for s in pipeline.stages if isinstance(s, GateInterceptorStage)
+        ]
         assert len(gate_stages) == 5
 
     @pytest.mark.asyncio
@@ -232,8 +250,11 @@ class TestFullPipelineWithGates:
             },
         )
         # Set auto-approve callbacks on all gates
-        gate_stages = [s for s in pipeline.stages if isinstance(s, GateInterceptorStage)]
+        gate_stages = [
+            s for s in pipeline.stages if isinstance(s, GateInterceptorStage)
+        ]
         for stage, gate_id in zip(gate_stages, _GATE_IDS):
+
             async def _approve(gctx: Any, gid: str = gate_id) -> Any:
                 # GateInterceptorStage expects gate_interceptor.GateDecision dataclass
                 # with GateAction values (e.g. "approved", "rejected")
@@ -243,6 +264,7 @@ class TestFullPipelineWithGates:
                     reason="test auto-approve",
                     decided_by="test",
                 )
+
             stage.set_callback(_approve)
             stage.gate_id = gate_id
 
@@ -292,7 +314,9 @@ class TestFullPipelineWithGates:
         assert key in ctx.artifacts
         action = ctx.artifacts[key]["action"]
         # CONTINUE fallback maps to GateAction.FALLBACK (still allows pipeline)
-        assert action in ("approved", "fallback"), f"Unexpected fallback action: {action}"
+        assert action in ("approved", "fallback"), (
+            f"Unexpected fallback action: {action}"
+        )
 
     @pytest.mark.asyncio
     async def test_human_gate_orchestrator_routes_decision(self) -> None:

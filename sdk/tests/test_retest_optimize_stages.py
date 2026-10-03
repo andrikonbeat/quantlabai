@@ -19,6 +19,7 @@ from quantlab.pipeline.stages.retester_stage import RetesterStage
 
 # ── Fakes ─────────────────────────────────────────────────────────────────────
 
+
 class _FakeRetester:
     """Records the RetesterConfig it receives and returns a canned RetestResult."""
 
@@ -146,6 +147,7 @@ def _ctx(research_config: ResearchConfig, **kwargs) -> PipelineContext:
 
 # ── REQ-17: StageRegistry registration ────────────────────────────────────────
 
+
 class TestStageRegistryRegistration:
     """REQ-17: config_review / retester / optimizer / dispatch registered."""
 
@@ -167,6 +169,7 @@ class TestStageRegistryRegistration:
 
 
 # ── REQ-07/08: RetesterStage ──────────────────────────────────────────────────
+
 
 class TestRetesterStage:
     """RetesterStage wraps phase4 Retester (REQ-07/08)."""
@@ -248,6 +251,7 @@ class TestRetesterStage:
 
 # ── REQ-09: OptimizerStage ────────────────────────────────────────────────────
 
+
 class TestOptimizerStage:
     """OptimizerStage wraps phase4 Optimizer and parses CSV (REQ-09)."""
 
@@ -322,6 +326,7 @@ class TestOptimizerStage:
 
 # ── DispatchStage ─────────────────────────────────────────────────────────────
 
+
 class TestDispatchStage:
     """DispatchStage encapsulates builder dispatch; never deploys (AD-8)."""
 
@@ -387,7 +392,10 @@ class TestDispatchStage:
         ctx = _ctx(
             _research_config(),
             cfx_bytes=b"cfx-bytes",
-            gate_decision_HUMAN_APPROVE_CONFIG={"action": "hold", "reason": "fail closed"},
+            gate_decision_HUMAN_APPROVE_CONFIG={
+                "action": "hold",
+                "reason": "fail closed",
+            },
         )
 
         result = await stage.execute(ctx)

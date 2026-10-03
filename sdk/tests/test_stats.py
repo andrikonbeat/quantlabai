@@ -15,21 +15,103 @@ engine = StatisticsEngine()
 # ── Sample data ───────────────────────────────────────────────────────────────
 
 SAMPLE_TRADES = [
-    Trade(entry_time="2024-01-01 08:00", exit_time="2024-01-01 16:00", direction="LONG", lots=0.1, profit=250.0, drawdown=50.0),
-    Trade(entry_time="2024-01-02 08:00", exit_time="2024-01-02 16:00", direction="SHORT", lots=0.2, profit=-150.0, drawdown=30.0),
-    Trade(entry_time="2024-01-03 08:00", exit_time="2024-01-03 16:00", direction="LONG", lots=0.1, profit=100.0, drawdown=20.0),
-    Trade(entry_time="2024-01-04 08:00", exit_time="2024-01-04 16:00", direction="SHORT", lots=0.15, profit=180.0, drawdown=40.0),
-    Trade(entry_time="2024-01-05 08:00", exit_time="2024-01-05 16:00", direction="LONG", lots=0.2, profit=-80.0, drawdown=10.0),
-    Trade(entry_time="2024-01-06 08:00", exit_time="2024-01-06 16:00", direction="LONG", lots=0.1, profit=320.0, drawdown=60.0),
-    Trade(entry_time="2024-01-07 08:00", exit_time="2024-01-07 16:00", direction="SHORT", lots=0.2, profit=200.0, drawdown=25.0),
-    Trade(entry_time="2024-01-08 08:00", exit_time="2024-01-08 16:00", direction="LONG", lots=0.15, profit=-200.0, drawdown=45.0),
-    Trade(entry_time="2024-01-09 08:00", exit_time="2024-01-09 16:00", direction="SHORT", lots=0.1, profit=150.0, drawdown=15.0),
-    Trade(entry_time="2024-01-10 08:00", exit_time="2024-01-10 16:00", direction="LONG", lots=0.2, profit=90.0, drawdown=5.0),
+    Trade(
+        entry_time="2024-01-01 08:00",
+        exit_time="2024-01-01 16:00",
+        direction="LONG",
+        lots=0.1,
+        profit=250.0,
+        drawdown=50.0,
+    ),
+    Trade(
+        entry_time="2024-01-02 08:00",
+        exit_time="2024-01-02 16:00",
+        direction="SHORT",
+        lots=0.2,
+        profit=-150.0,
+        drawdown=30.0,
+    ),
+    Trade(
+        entry_time="2024-01-03 08:00",
+        exit_time="2024-01-03 16:00",
+        direction="LONG",
+        lots=0.1,
+        profit=100.0,
+        drawdown=20.0,
+    ),
+    Trade(
+        entry_time="2024-01-04 08:00",
+        exit_time="2024-01-04 16:00",
+        direction="SHORT",
+        lots=0.15,
+        profit=180.0,
+        drawdown=40.0,
+    ),
+    Trade(
+        entry_time="2024-01-05 08:00",
+        exit_time="2024-01-05 16:00",
+        direction="LONG",
+        lots=0.2,
+        profit=-80.0,
+        drawdown=10.0,
+    ),
+    Trade(
+        entry_time="2024-01-06 08:00",
+        exit_time="2024-01-06 16:00",
+        direction="LONG",
+        lots=0.1,
+        profit=320.0,
+        drawdown=60.0,
+    ),
+    Trade(
+        entry_time="2024-01-07 08:00",
+        exit_time="2024-01-07 16:00",
+        direction="SHORT",
+        lots=0.2,
+        profit=200.0,
+        drawdown=25.0,
+    ),
+    Trade(
+        entry_time="2024-01-08 08:00",
+        exit_time="2024-01-08 16:00",
+        direction="LONG",
+        lots=0.15,
+        profit=-200.0,
+        drawdown=45.0,
+    ),
+    Trade(
+        entry_time="2024-01-09 08:00",
+        exit_time="2024-01-09 16:00",
+        direction="SHORT",
+        lots=0.1,
+        profit=150.0,
+        drawdown=15.0,
+    ),
+    Trade(
+        entry_time="2024-01-10 08:00",
+        exit_time="2024-01-10 16:00",
+        direction="LONG",
+        lots=0.2,
+        profit=90.0,
+        drawdown=5.0,
+    ),
 ]
 
 ALL_PROFITABLE_TRADES = [
-    Trade(entry_time="2024-01-01 08:00", exit_time="2024-01-01 16:00", direction="LONG", lots=0.1, profit=100.0),
-    Trade(entry_time="2024-01-02 08:00", exit_time="2024-01-02 16:00", direction="LONG", lots=0.1, profit=200.0),
+    Trade(
+        entry_time="2024-01-01 08:00",
+        exit_time="2024-01-01 16:00",
+        direction="LONG",
+        lots=0.1,
+        profit=100.0,
+    ),
+    Trade(
+        entry_time="2024-01-02 08:00",
+        exit_time="2024-01-02 16:00",
+        direction="LONG",
+        lots=0.1,
+        profit=200.0,
+    ),
 ]
 
 SAMPLE_EQUITY = [
@@ -104,7 +186,9 @@ class TestSharpeRatio:
 
         # Manual calculation
         mean_r = sum(SAMPLE_RETURNS) / len(SAMPLE_RETURNS)
-        variance = sum((r - mean_r) ** 2 for r in SAMPLE_RETURNS) / (len(SAMPLE_RETURNS) - 1)
+        variance = sum((r - mean_r) ** 2 for r in SAMPLE_RETURNS) / (
+            len(SAMPLE_RETURNS) - 1
+        )
         std_dev = math.sqrt(variance)
         expected = (mean_r / std_dev) * math.sqrt(252)
 

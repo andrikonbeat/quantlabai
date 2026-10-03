@@ -81,9 +81,18 @@ class TestDatabankCSVReader:
         equity = self.reader.read_equity(FIXTURES / "sample_equity.csv")
         values = [e.equity for e in equity]
         assert values == [
-            100000.0, 100250.0, 100100.0, 100200.0, 100380.0,
-            100300.0, 100620.0, 100820.0, 100420.0, 100620.0,
-            100710.0, 100570.0,
+            100000.0,
+            100250.0,
+            100100.0,
+            100200.0,
+            100380.0,
+            100300.0,
+            100620.0,
+            100820.0,
+            100420.0,
+            100620.0,
+            100710.0,
+            100570.0,
         ]
 
     def test_read_summary_valid_csv(self) -> None:
@@ -343,7 +352,6 @@ class TestReadStrategies:
         """
         # Create a minimal CSV with only strategy_name
         import tempfile
-
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("Name\n")
