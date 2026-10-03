@@ -177,11 +177,15 @@ class TagCalibrator:
         blended = (n * tag_mean + prior * global_mean) / (n + prior)
         where prior defaults to 5 (the sparse threshold).
         """
-        total_samples = sum(tag_stats.get(tag, {}).get("sample_count", 0) for tag in tags)
+        total_samples = sum(
+            tag_stats.get(tag, {}).get("sample_count", 0) for tag in tags
+        )
         prior = 5.0
         if total_samples >= 5:
             return tag_mean
-        return (total_samples * tag_mean + prior * global_mean) / (total_samples + prior)
+        return (total_samples * tag_mean + prior * global_mean) / (
+            total_samples + prior
+        )
 
 
 __all__ = ["TagCalibrator"]

@@ -41,8 +41,7 @@ class SelectionResult(BaseModel):
         default_factory=dict, description="Per-strategy verdict (ACCEPT/REJECT)"
     )
     selected: list[str] = Field(
-        default_factory=list, description="Accepted strategy names ordered by score desc"
+        default_factory=list,
+        description="Accepted strategy names ordered by score desc",
     )
-    warnings: list[str] = Field(
-        default_factory=list, description="Non-fatal warnings"
-    )
+    warnings: list[str] = Field(default_factory=list, description="Non-fatal warnings")

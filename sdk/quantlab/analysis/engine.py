@@ -242,13 +242,23 @@ class AnalysisEngine:
         ``None`` inputs normalise to 0.0.
         """
         return {
-            "profit_factor": AnalysisEngine._normalise_profit_factor(metrics.profit_factor),
-            "sharpe_ratio": AnalysisEngine._normalise_sharpe_ratio(metrics.sharpe_ratio),
+            "profit_factor": AnalysisEngine._normalise_profit_factor(
+                metrics.profit_factor
+            ),
+            "sharpe_ratio": AnalysisEngine._normalise_sharpe_ratio(
+                metrics.sharpe_ratio
+            ),
             "win_rate": AnalysisEngine._normalise_win_rate(metrics.win_rate),
-            "max_drawdown": AnalysisEngine._normalise_max_drawdown(metrics.max_drawdown),
+            "max_drawdown": AnalysisEngine._normalise_max_drawdown(
+                metrics.max_drawdown
+            ),
             "mar_ratio": AnalysisEngine._normalise_mar_ratio(metrics.mar_ratio),
-            "recovery_factor": AnalysisEngine._normalise_recovery_factor(metrics.recovery_factor),
-            "expectancy_ratio": AnalysisEngine._normalise_expectancy_ratio(metrics.expectancy_ratio),
+            "recovery_factor": AnalysisEngine._normalise_recovery_factor(
+                metrics.recovery_factor
+            ),
+            "expectancy_ratio": AnalysisEngine._normalise_expectancy_ratio(
+                metrics.expectancy_ratio
+            ),
         }
 
     @staticmethod

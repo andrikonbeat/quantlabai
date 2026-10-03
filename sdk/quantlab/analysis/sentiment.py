@@ -82,7 +82,9 @@ class SentimentScorer:
             SentimentResult with score, rationale, and source_count.
         """
         if not news:
-            return SentimentResult(score=0.0, rationale="insufficient data", source_count=0)
+            return SentimentResult(
+                score=0.0, rationale="insufficient data", source_count=0
+            )
 
         total_score = 0.0
         matched_keywords: list[str] = []
@@ -101,10 +103,21 @@ class SentimentScorer:
                 matched_keywords.extend(sorted(bearish_hits))
 
         if not matched_keywords:
-            return SentimentResult(score=0.0, rationale="no sentiment keywords detected", source_count=len(news))
+            return SentimentResult(
+                score=0.0,
+                rationale="no sentiment keywords detected",
+                source_count=len(news),
+            )
 
         # Average across items that had sentiment.
-        scored_items = sum(1 for item in news if (set(f"{item.title} {item.summary}".lower().split()) & (_BULLISH_WORDS | _BEARISH_WORDS)))
+        scored_items = sum(
+            1
+            for item in news
+            if (
+                set(f"{item.title} {item.summary}".lower().split())
+                & (_BULLISH_WORDS | _BEARISH_WORDS)
+            )
+        )
         avg = total_score / max(scored_items, 1)
 
         # Clamp to [-1, 1].

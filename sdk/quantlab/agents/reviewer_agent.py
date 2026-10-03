@@ -29,8 +29,9 @@ MC_BREACH_SEVERITY_MEDIUM = "MEDIUM"
 
 class ReviewDecision(str):
     """Review decision type."""
+
     APPROVE = "APPROVE"
-    ACCEPT = "ACCEPT"      # Alias for APPROVE for spec compatibility
+    ACCEPT = "ACCEPT"  # Alias for APPROVE for spec compatibility
     ITERATE = "ITERATE"
     REJECT = "REJECT"
 
@@ -188,7 +189,7 @@ class ReviewerAgent(ReviewStage):
         assessment: dict[str, Any] = {}
         for metric, agg in aggregate_stats.items():
             if isinstance(agg, dict):
-        # Check if mean meets threshold for this metric
+                # Check if mean meets threshold for this metric
                 mean_val = agg.get("mean", 0)
                 if metric == "sharpe":
                     assessment[metric] = mean_val >= self._sharpe_threshold
@@ -238,7 +239,8 @@ class ReviewerAgent(ReviewStage):
         if len(is_metrics) != len(oos_metrics):
             logger.warning(
                 "IS/OOS metric length mismatch: IS=%d, OOS=%d",
-                len(is_metrics), len(oos_metrics),
+                len(is_metrics),
+                len(oos_metrics),
             )
 
         mean_is = sum(is_metrics) / len(is_metrics)
@@ -249,7 +251,9 @@ class ReviewerAgent(ReviewStage):
 
         result: dict[str, Any] = {
             "overfitting_flag": overfitting_flag,
-            "degradation_ratio": round(degradation_ratio, 4) if not math.isnan(degradation_ratio) else None,
+            "degradation_ratio": round(degradation_ratio, 4)
+            if not math.isnan(degradation_ratio)
+            else None,
             "mean_is": round(mean_is, 4),
             "mean_oos": round(mean_oos, 4),
             "metric": metric_name,
@@ -349,7 +353,9 @@ class ReviewerAgent(ReviewStage):
     @staticmethod
     def _has_alpha(alpha: float) -> bool:
         """Check if alpha is a meaningful positive value (not nan)."""
-        return alpha is not None and not (isinstance(alpha, float) and math.isnan(alpha))
+        return alpha is not None and not (
+            isinstance(alpha, float) and math.isnan(alpha)
+        )
 
     def compare_benchmark(
         self,
@@ -410,7 +416,9 @@ class ReviewerAgent(ReviewStage):
 
         # Handle nan values from constant return series
         alpha_valid = self._has_alpha(alpha)
-        ir_valid = info_ratio is not None and not (isinstance(info_ratio, float) and math.isnan(info_ratio))
+        ir_valid = info_ratio is not None and not (
+            isinstance(info_ratio, float) and math.isnan(info_ratio)
+        )
 
         if alpha_valid and alpha > 0 and ir_valid and info_ratio > 0.5:
             verdict = "OUTPERFORMS"
@@ -434,8 +442,7 @@ class ReviewerAgent(ReviewStage):
                 suggestions = ["Review market regime alignment"]
                 iteration_proposal = (
                     f"Benchmark underperformance: strategy_mean={strat_mean:.6f}, "
-                    f"benchmark_mean={bench_mean:.6f}. "
-                    + " ".join(suggestions)
+                    f"benchmark_mean={bench_mean:.6f}. " + " ".join(suggestions)
                 )
                 comparison_dict["alpha"] = strat_mean - bench_mean
                 comparison_dict["information_ratio"] = float("nan")
@@ -480,25 +487,37 @@ class ReviewerAgent(ReviewStage):
 
         for check in failed_checks:
             if check == "sharpe":
-                current = statistics.get("sharpe_ratio") or statistics.get("sharpe", "?")
+                current = statistics.get("sharpe_ratio") or statistics.get(
+                    "sharpe", "?"
+                )
                 parameter_changes["position_size"] = "0.5x"
                 parameter_changes["add_filter"] = "trend_confirmation"
-                new_hypotheses.append("Trend confirmation filter improves risk-adjusted returns")
+                new_hypotheses.append(
+                    "Trend confirmation filter improves risk-adjusted returns"
+                )
                 rationale_parts.append(f"Sharpe {current}<{self._sharpe_threshold}")
 
             elif check == "max_drawdown":
-                current = statistics.get("max_drawdown") or statistics.get("max_dd", "?")
+                current = statistics.get("max_drawdown") or statistics.get(
+                    "max_dd", "?"
+                )
                 parameter_changes["position_size"] = "0.5x"
                 parameter_changes["add_filter"] = "ATR>20"
                 parameter_changes["stop_loss"] = "tighter"
-                new_hypotheses.append("Volatility filter reduces drawdown in choppy markets")
-                rationale_parts.append(f"MDD {current}%>{self._max_drawdown_threshold}%")
+                new_hypotheses.append(
+                    "Volatility filter reduces drawdown in choppy markets"
+                )
+                rationale_parts.append(
+                    f"MDD {current}%>{self._max_drawdown_threshold}%"
+                )
 
             elif check == "profit_factor":
                 current = statistics.get("profit_factor") or statistics.get("pf", "?")
                 parameter_changes["take_profit"] = "2.0x"
                 parameter_changes["add_filter"] = "quality_entry"
-                new_hypotheses.append("Higher take-profit target improves profit factor")
+                new_hypotheses.append(
+                    "Higher take-profit target improves profit factor"
+                )
                 rationale_parts.append(f"PF {current}<{self._min_profit_factor}")
 
             elif check == "win_rate":
@@ -509,9 +528,13 @@ class ReviewerAgent(ReviewStage):
                 rationale_parts.append(f"Win rate {current}<{self._min_win_rate}")
 
             elif check == "total_trades":
-                current = statistics.get("total_trades") or statistics.get("trades", "?")
+                current = statistics.get("total_trades") or statistics.get(
+                    "trades", "?"
+                )
                 parameter_changes["data_range"] = "extend"
-                new_hypotheses.append("Extended data range increases sample size for robust metrics")
+                new_hypotheses.append(
+                    "Extended data range increases sample size for robust metrics"
+                )
                 rationale_parts.append(f"Trades {current}<{self._min_trades}")
 
         # Add WF degradation to rationale if present
@@ -526,7 +549,9 @@ class ReviewerAgent(ReviewStage):
             "action": "MODIFY_AND_RETEST",
             "parameter_changes": parameter_changes,
             "new_hypotheses": new_hypotheses,
-            "rationale": "; ".join(rationale_parts) if rationale_parts else "All checks passed",
+            "rationale": "; ".join(rationale_parts)
+            if rationale_parts
+            else "All checks passed",
             "failed_checks": failed_checks,
         }
 
@@ -571,10 +596,16 @@ class ReviewerAgent(ReviewStage):
             return {
                 "review_decision": "needs_review",
                 "iteration_proposal": None,
-                "wf_degradation": {"overfitting_flag": False, "degradation_ratio": None},
+                "wf_degradation": {
+                    "overfitting_flag": False,
+                    "degradation_ratio": None,
+                },
                 "mc_overfit_flag": False,
                 "benchmark_comparison": {},
-                "gate_decision_HUMAN_APPROVE_ITERATION": {"status": "pending", "decision": "abstain"},
+                "gate_decision_HUMAN_APPROVE_ITERATION": {
+                    "status": "pending",
+                    "decision": "abstain",
+                },
             }
 
         # Task 3.6: Evaluate acceptance criteria
@@ -594,7 +625,9 @@ class ReviewerAgent(ReviewStage):
         )
 
         # Walk-forward check — read WF cycles from context if available
-        wf_cycles = context.artifacts.get("wf_cycles", context.artifacts.get("walkforward_cycles", None))
+        wf_cycles = context.artifacts.get(
+            "wf_cycles", context.artifacts.get("walkforward_cycles", None)
+        )
         wf_degradation: dict[str, Any] = {
             "overfitting_flag": False,
             "degradation_ratio": None,
@@ -611,8 +644,12 @@ class ReviewerAgent(ReviewStage):
                         is_metrics.append(float(cycle.get("wf_is_sharpe") or 0))
                         oos_metrics.append(float(cycle.get("wf_oos_sharpe") or 0))
                     elif "in_sample" in cycle and "out_of_sample" in cycle:
-                        is_metrics.append(float(cycle.get("in_sample", {}).get("sharpe", 0)))
-                        oos_metrics.append(float(cycle.get("out_of_sample", {}).get("sharpe", 0)))
+                        is_metrics.append(
+                            float(cycle.get("in_sample", {}).get("sharpe", 0))
+                        )
+                        oos_metrics.append(
+                            float(cycle.get("out_of_sample", {}).get("sharpe", 0))
+                        )
             if is_metrics and oos_metrics:
                 wf_degradation = self.check_wf_overfitting(is_metrics, oos_metrics)
 
@@ -638,7 +675,9 @@ class ReviewerAgent(ReviewStage):
             merged["new_hypotheses"] = merged.get("new_hypotheses", []) + [
                 wf_degradation.get("iteration_proposal", "")
             ]
-            merged["rationale"] += f"; WF degradation ratio {wf_degradation.get('degradation_ratio')}"
+            merged["rationale"] += (
+                f"; WF degradation ratio {wf_degradation.get('degradation_ratio')}"
+            )
             merged["parameter_changes"]["parameter_space"] = "reduce"
             iteration_proposal = merged
 

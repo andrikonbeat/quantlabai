@@ -88,13 +88,17 @@ class StatisticsAgent(StatisticsStage):
         equity_path = self._resolve_export_path(export_paths, "equity.csv")
 
         if not trades_path:
-            logger.warning("No trades.csv found in export paths — statistics will be partial")
+            logger.warning(
+                "No trades.csv found in export paths — statistics will be partial"
+            )
         else:
             trades = self._read_trades(trades_path)
             logger.info("Read %d trades from %s", len(trades), trades_path)
 
         if not equity_path:
-            logger.warning("No equity.csv found in export paths — MDD and returns will be unavailable")
+            logger.warning(
+                "No equity.csv found in export paths — MDD and returns will be unavailable"
+            )
         else:
             equity = self._read_equity(equity_path)
             logger.info("Read %d equity points from %s", len(equity), equity_path)
@@ -137,7 +141,9 @@ class StatisticsAgent(StatisticsStage):
 
         return result
 
-    def _resolve_export_path(self, export_paths: list[str], filename: str) -> str | None:
+    def _resolve_export_path(
+        self, export_paths: list[str], filename: str
+    ) -> str | None:
         """Find a file by name in the export paths list.
 
         Args:
@@ -171,17 +177,23 @@ class StatisticsAgent(StatisticsStage):
             reader = csv.DictReader(f)
             for row in reader:
                 profit = float(row.get("profit", 0))
-                entry_time = datetime.fromisoformat(row.get("entry_time", "2024-01-01T00:00:00"))
-                exit_time = datetime.fromisoformat(row.get("exit_time", "2024-01-02T00:00:00"))
+                entry_time = datetime.fromisoformat(
+                    row.get("entry_time", "2024-01-01T00:00:00")
+                )
+                exit_time = datetime.fromisoformat(
+                    row.get("exit_time", "2024-01-02T00:00:00")
+                )
                 direction = row.get("direction", "LONG")
                 lots = float(row.get("lots", 1.0))
-                trades.append(Trade(
-                    profit=profit,
-                    entry_time=entry_time,
-                    exit_time=exit_time,
-                    direction=direction,
-                    lots=lots,
-                ))
+                trades.append(
+                    Trade(
+                        profit=profit,
+                        entry_time=entry_time,
+                        exit_time=exit_time,
+                        direction=direction,
+                        lots=lots,
+                    )
+                )
         return trades
 
     def _read_equity(self, path: str) -> list[EquityPoint]:
@@ -382,9 +394,7 @@ class StatisticsAgent(StatisticsStage):
         # Convert to dicts for context serialization
         result = {}
         for metric_name, rm in rolling.items():
-            result[metric_name] = (
-                rm.model_dump() if hasattr(rm, "model_dump") else rm
-            )
+            result[metric_name] = rm.model_dump() if hasattr(rm, "model_dump") else rm
         return result
 
     def detect_regime_change(
@@ -415,8 +425,12 @@ class StatisticsAgent(StatisticsStage):
         alerts: list[dict[str, Any]] = []
 
         # Filter out NaN values
-        valid_sharpes = [s for s in rolling_sharpe if not (isinstance(s, float) and math.isnan(s))]
-        valid_drawdowns = [d for d in rolling_drawdown if not (isinstance(d, float) and math.isnan(d))]
+        valid_sharpes = [
+            s for s in rolling_sharpe if not (isinstance(s, float) and math.isnan(s))
+        ]
+        valid_drawdowns = [
+            d for d in rolling_drawdown if not (isinstance(d, float) and math.isnan(d))
+        ]
 
         if len(valid_sharpes) < 20 or len(valid_drawdowns) < 20:
             return alerts
@@ -433,12 +447,16 @@ class StatisticsAgent(StatisticsStage):
         late_avg_dd = sum(valid_drawdowns[mid:]) / max(len(valid_drawdowns[mid:]), 1)
 
         # Check for regime change
-        sharpe_drop_ratio = late_avg_sharpe / early_avg_sharpe if early_avg_sharpe > 0 else 1.0
+        sharpe_drop_ratio = (
+            late_avg_sharpe / early_avg_sharpe if early_avg_sharpe > 0 else 1.0
+        )
         dd_spike_ratio = late_avg_dd / early_avg_dd if early_avg_dd > 0 else 1.0
 
         if sharpe_drop_ratio < threshold_drop and dd_spike_ratio > 2.0:
             # Significant regime shift detected
-            confidence = min(0.85, (1.0 - sharpe_drop_ratio) * 0.5 + min(dd_spike_ratio * 0.1, 0.35))
+            confidence = min(
+                0.85, (1.0 - sharpe_drop_ratio) * 0.5 + min(dd_spike_ratio * 0.1, 0.35)
+            )
 
             from_regime = "trending" if early_avg_sharpe > 1.0 else "choppy"
             to_regime = "choppy" if from_regime == "trending" else "volatile"
@@ -451,15 +469,17 @@ class StatisticsAgent(StatisticsStage):
             else:
                 action = "Review market regime alignment"
 
-            alerts.append({
-                "type": "REGIME_SHIFT",
-                "confidence": round(confidence, 2),
-                "from_regime": from_regime,
-                "to_regime": to_regime,
-                "action": action,
-                "sharpe_drop_ratio": round(sharpe_drop_ratio, 3),
-                "dd_spike_ratio": round(dd_spike_ratio, 3),
-            })
+            alerts.append(
+                {
+                    "type": "REGIME_SHIFT",
+                    "confidence": round(confidence, 2),
+                    "from_regime": from_regime,
+                    "to_regime": to_regime,
+                    "action": action,
+                    "sharpe_drop_ratio": round(sharpe_drop_ratio, 3),
+                    "dd_spike_ratio": round(dd_spike_ratio, 3),
+                }
+            )
 
         return alerts
 
@@ -498,7 +518,9 @@ class StatisticsAgent(StatisticsStage):
             )
             empty_stats = StatsResult()
             return {
-                "statistics": empty_stats.model_dump() if hasattr(empty_stats, "model_dump") else {},
+                "statistics": empty_stats.model_dump()
+                if hasattr(empty_stats, "model_dump")
+                else {},
                 "aggregate_stats": {},
                 "monte_carlo_bands": {},
                 "rolling_metrics": {},
@@ -507,7 +529,9 @@ class StatisticsAgent(StatisticsStage):
 
         # Task 3.2: Compute statistics from exports
         statistics = self.compute_statistics(export_paths)
-        statistics_dict = statistics.model_dump() if hasattr(statistics, "model_dump") else {}
+        statistics_dict = (
+            statistics.model_dump() if hasattr(statistics, "model_dump") else {}
+        )
 
         # Task 3.3: Cross-campaign aggregation and Monte Carlo bands
         # Read trades from exports for MC bands
@@ -537,7 +561,9 @@ class StatisticsAgent(StatisticsStage):
                 # Detect regime changes from rolling metrics
                 rolling_sharpe = rolling_metrics.get("sharpe", {}).get("values", [])
                 rolling_drawdown = rolling_metrics.get("drawdown", {}).get("values", [])
-                regime_alerts = self.detect_regime_change(rolling_sharpe, rolling_drawdown)
+                regime_alerts = self.detect_regime_change(
+                    rolling_sharpe, rolling_drawdown
+                )
 
         # Write to context artifacts
         context.artifacts["statistics"] = statistics_dict

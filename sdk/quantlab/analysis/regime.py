@@ -120,7 +120,10 @@ class RegimeClassifier:
         if len(bars) >= 14:
             try:
                 adx_ind = ADXIndicator(
-                    high=df_full["High"], low=df_full["Low"], close=df_full["Close"], window=14
+                    high=df_full["High"],
+                    low=df_full["Low"],
+                    close=df_full["Close"],
+                    window=14,
                 )
                 adx_value = float(adx_ind.adx().iloc[-1])
                 plus_di = float(adx_ind.adx_pos().iloc[-1])

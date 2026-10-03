@@ -138,9 +138,7 @@ class IndicatorEngine:
     def ta_version(self) -> str:
         return self._ta_version
 
-    def compute(
-        self, bars: list[Bar], indicators: list[str]
-    ) -> list[IndicatorResult]:
+    def compute(self, bars: list[Bar], indicators: list[str]) -> list[IndicatorResult]:
         """Compute requested indicators and return only those results.
 
         Returns `zone="insufficient_data"` for each requested indicator when
@@ -346,7 +344,12 @@ class IndicatorEngine:
             indicator_name="Bollinger",
             value=round(close, 4),
             zone=zone,
-            metadata={"upper": round(upper, 4), "lower": round(lower, 4), "width": round(band_width, 4), "percent_b": round(percent_b, 4) if band_width != 0 else None},
+            metadata={
+                "upper": round(upper, 4),
+                "lower": round(lower, 4),
+                "width": round(band_width, 4),
+                "percent_b": round(percent_b, 4) if band_width != 0 else None,
+            },
         )
 
     @staticmethod

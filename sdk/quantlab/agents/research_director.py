@@ -213,12 +213,16 @@ class ResearchDirector:
             # fallback, notifications, and Engram audit around it.
             orchestrator = self._gate_orchestrator
 
-            async def _orchestrator_callback(ctx: dict[str, Any], gid: str, cb: Any) -> Any:
+            async def _orchestrator_callback(
+                ctx: dict[str, Any], gid: str, cb: Any
+            ) -> Any:
                 return await orchestrator.on_gate(gid, ctx)
 
             self._gate_orchestrator.register_callback(
                 gate_id,
-                lambda ctx, gid=gate_id, cb=callback: _orchestrator_callback(ctx, gid, cb),
+                lambda ctx, gid=gate_id, cb=callback: _orchestrator_callback(
+                    ctx, gid, cb
+                ),
             )
 
     # ── Task 2.1: Pipeline construction ────────────────────────────────────────
@@ -298,18 +302,20 @@ class ResearchDirector:
             # at the split boundary (builder no longer dispatches).
             stages.append({"name": "config_review", "type": "agent"})
             stages.append({"name": "dispatch", "type": "agent"})
-        stages.extend([
-            {"name": "statistics", "type": "agent"},
-            {"name": "analysis", "type": "agent"},
-            {"name": "review", "type": "agent"},
-            {"name": "portfolio", "type": "agent"},
-            # Canonical 14-phase order (REQ-01/REQ-37): portfolio -> compile ->
-            # deploy. CompileStage provides "compiled_strategies", which the
-            # deploy stage requires; the pipeline must include it between
-            # portfolio and deploy to satisfy the internal stage contract.
-            {"name": "compile", "type": "agent"},
-            {"name": "deploy", "type": "agent"},
-        ])
+        stages.extend(
+            [
+                {"name": "statistics", "type": "agent"},
+                {"name": "analysis", "type": "agent"},
+                {"name": "review", "type": "agent"},
+                {"name": "portfolio", "type": "agent"},
+                # Canonical 14-phase order (REQ-01/REQ-37): portfolio -> compile ->
+                # deploy. CompileStage provides "compiled_strategies", which the
+                # deploy stage requires; the pipeline must include it between
+                # portfolio and deploy to satisfy the internal stage contract.
+                {"name": "compile", "type": "agent"},
+                {"name": "deploy", "type": "agent"},
+            ]
+        )
         if orchestrated:
             # Post-deploy boundary (REQ-01 phases 12-14 + live-ops loop,
             # design: deploy → demo → archive → live-ops loop (monitor →
@@ -524,7 +530,9 @@ class ResearchDirector:
             try:
                 if key == "position_size":
                     factor = float(str(value).replace("x", ""))
-                    updated.population = int(updated.population * factor) if updated.population else None
+                    updated.population = (
+                        int(updated.population * factor) if updated.population else None
+                    )
 
                 elif key == "generations":
                     val = str(value)
@@ -566,13 +574,17 @@ class ResearchDirector:
 
                 elif key == "wf_optimization":
                     delta = 2 if str(value).lower() == "increase" else -2
-                    updated.wf_optimization = max(1, (updated.wf_optimization or 1) + delta)
+                    updated.wf_optimization = max(
+                        1, (updated.wf_optimization or 1) + delta
+                    )
 
                 else:
                     logger.warning("Unknown parameter_change key: %s", key)
 
             except (ValueError, TypeError) as exc:
-                logger.warning("Invalid value for parameter_change '%s': %s (%s)", key, value, exc)
+                logger.warning(
+                    "Invalid value for parameter_change '%s': %s (%s)", key, value, exc
+                )
 
         return updated
 
@@ -626,7 +638,9 @@ class ResearchDirector:
         self._campaigns[cid] = record
 
         # Iteration loop
-        current_config = config.model_copy(deep=True) if hasattr(config, "model_copy") else config
+        current_config = (
+            config.model_copy(deep=True) if hasattr(config, "model_copy") else config
+        )
         max_iterations = config.iteration_config.max_iterations
         auto_iterate = getattr(config.iteration_config, "auto_iterate", True)
         current_build_config = BuildConfig()
@@ -636,7 +650,9 @@ class ResearchDirector:
             record.state = CampaignState.RUNNING
             logger.info(
                 "Campaign '%s' — iteration %d/%d",
-                cid, iteration + 1, max_iterations,
+                cid,
+                iteration + 1,
+                max_iterations,
             )
 
             # Versioned campaign ID for iterations after the first
@@ -658,8 +674,12 @@ class ResearchDirector:
                     # Preserve user-defined DSL fields so downstream stages
                     # (ResearchAgent, BuilderAgent, _dispatch_real) can honor
                     # the original config instead of regenerating defaults.
-                    "market": current_config.market.value if hasattr(current_config.market, "value") else current_config.market,
-                    "timeframe": current_config.timeframe.value if hasattr(current_config.timeframe, "value") else current_config.timeframe,
+                    "market": current_config.market.value
+                    if hasattr(current_config.market, "value")
+                    else current_config.market,
+                    "timeframe": current_config.timeframe.value
+                    if hasattr(current_config.timeframe, "value")
+                    else current_config.timeframe,
                     "criteria": [
                         c.model_dump(mode="json") if hasattr(c, "model_dump") else c
                         for c in current_config.criteria
@@ -680,8 +700,11 @@ class ResearchDirector:
             )
 
             # Inject configuration into context artifacts
-            ctx.artifacts["research_config"] = current_config.model_dump(mode="json") \
-                if hasattr(current_config, "model_dump") else current_config
+            ctx.artifacts["research_config"] = (
+                current_config.model_dump(mode="json")
+                if hasattr(current_config, "model_dump")
+                else current_config
+            )
             ctx.artifacts["objectives"] = [config.campaign]
             ctx.artifacts["hypotheses"] = [
                 h.model_dump(mode="json") if hasattr(h, "model_dump") else h
@@ -703,7 +726,11 @@ class ResearchDirector:
             # (monitoring agent needs live_equity from broker)
             ctx.artifacts.setdefault("live_equity", {})
             # (gate decisions — these will be provided by gate stages at runtime)
-            for gate_id in ("HUMAN_APPROVE_PORTFOLIO", "HUMAN_APPROVE_DEPLOY", "HUMAN_REVIEW_PERFORMANCE"):
+            for gate_id in (
+                "HUMAN_APPROVE_PORTFOLIO",
+                "HUMAN_APPROVE_DEPLOY",
+                "HUMAN_REVIEW_PERFORMANCE",
+            ):
                 key = f"gate_decision_{gate_id}"
                 ctx.artifacts.setdefault(key, {"status": "pending"})
 
@@ -719,7 +746,8 @@ class ResearchDirector:
                     "gate_decision_HUMAN_REVIEW_PERFORMANCE",
                 }
                 result = await runner.run(
-                    pipeline, ctx,
+                    pipeline,
+                    ctx,
                     external_provides=EXTERNAL_INPUTS,
                 )
                 record.result = result
@@ -731,9 +759,7 @@ class ResearchDirector:
                     campaign=cid,
                     phase=f"iteration_{iteration + 1}",
                     envelope={
-                        "status": (
-                            "success" if result.is_successful else "failed"
-                        ),
+                        "status": ("success" if result.is_successful else "failed"),
                         "executive_summary": (
                             f"Campaign '{cid}' iteration {iteration + 1} "
                             "completed successfully"
@@ -757,14 +783,17 @@ class ResearchDirector:
                 if result.is_successful:
                     logger.info(
                         "Campaign '%s' iteration %d completed successfully",
-                        cid, iteration + 1,
+                        cid,
+                        iteration + 1,
                     )
                 else:
                     record.state = CampaignState.FAILED
                     record.error = result.error
                     logger.error(
                         "Campaign '%s' iteration %d failed: %s",
-                        cid, iteration + 1, result.error,
+                        cid,
+                        iteration + 1,
+                        result.error,
                     )
                     return record
 
@@ -777,7 +806,9 @@ class ResearchDirector:
             # Check convergence
             if self.check_convergence(ctx, current_config):
                 record.state = CampaignState.CONVERGED
-                logger.info("Campaign '%s' converged at iteration %d", cid, iteration + 1)
+                logger.info(
+                    "Campaign '%s' converged at iteration %d", cid, iteration + 1
+                )
                 record.completed_at = datetime.now(UTC)
                 return record
 
@@ -794,7 +825,8 @@ class ResearchDirector:
                     record.state = CampaignState.CONVERGED
                     logger.info(
                         "Campaign '%s' aborted due to consecutive degradation at iteration %d",
-                        cid, iteration + 1,
+                        cid,
+                        iteration + 1,
                     )
                     record.completed_at = datetime.now(UTC)
                     if record.best_result_config is not None:
@@ -819,7 +851,11 @@ class ResearchDirector:
                 if isinstance(iteration_proposal, dict):
                     new_hypotheses = iteration_proposal.get("new_hypotheses", [])
                     if new_hypotheses:
-                        updated = current_config.model_copy(deep=True) if hasattr(current_config, "model_copy") else current_config
+                        updated = (
+                            current_config.model_copy(deep=True)
+                            if hasattr(current_config, "model_copy")
+                            else current_config
+                        )
                         if hasattr(updated, "hypotheses"):
                             updated.hypotheses = list(updated.hypotheses) + [
                                 HypothesisConfig(
@@ -953,12 +989,15 @@ class ResearchDirector:
 
                 if improvement < threshold:
                     # Increment consecutive count
-                    record._consecutive_below = getattr(record, "_consecutive_below", 0) + 1
+                    record._consecutive_below = (
+                        getattr(record, "_consecutive_below", 0) + 1
+                    )
                     if record._consecutive_below >= patience:
                         logger.info(
                             "Convergence detected: Sharpe improvement < %.4f "
                             "for %d consecutive iterations",
-                            threshold, patience,
+                            threshold,
+                            patience,
                         )
                         return True
                 else:
@@ -994,7 +1033,9 @@ class ResearchDirector:
         max_drawdown = None
 
         if isinstance(statistics, dict):
-            portfolio_sharpe = statistics.get("sharpe_ratio") or statistics.get("sharpe")
+            portfolio_sharpe = statistics.get("sharpe_ratio") or statistics.get(
+                "sharpe"
+            )
             max_drawdown = statistics.get("max_drawdown")
 
         # Build new hypotheses targeting improvements
@@ -1040,7 +1081,9 @@ class ResearchDirector:
             )
 
         # Build updated config
-        updated = config.model_copy(deep=True) if hasattr(config, "model_copy") else config
+        updated = (
+            config.model_copy(deep=True) if hasattr(config, "model_copy") else config
+        )
         if hasattr(updated, "hypotheses"):
             updated.hypotheses = new_hypotheses
 
