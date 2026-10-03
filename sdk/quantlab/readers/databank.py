@@ -88,7 +88,10 @@ def _parse_trades(df: pd.DataFrame) -> list[Trade]:
                 direction=str(row[mapped["direction"]]).strip().upper(),
                 lots=float(row[mapped["lots"]]),
                 profit=float(row[mapped["profit"]]),
-                drawdown=float(row[mapped.get("drawdown", "")]) if mapped.get("drawdown") and pd.notna(row.get(mapped["drawdown"], None)) else 0.0,
+                drawdown=float(row[mapped.get("drawdown", "")])
+                if mapped.get("drawdown")
+                and pd.notna(row.get(mapped["drawdown"], None))
+                else 0.0,
             )
         )
 
@@ -138,12 +141,29 @@ def _parse_summary(df: pd.DataFrame) -> SummaryStats:
         row = kv
 
     return SummaryStats(
-        net_profit=_safe_float(row.get("net_profit") or row.get("NetProfit") or row.get("Net Profit")),
-        total_trades=_safe_int(row.get("total_trades") or row.get("TotalTrades") or row.get("Total Trades")),
-        win_rate=_safe_float(row.get("win_rate") or row.get("WinRate") or row.get("Win Rate")),
-        max_drawdown=_safe_float(row.get("max_drawdown") or row.get("MaxDrawdown") or row.get("Max Drawdown") or row.get("MaxDD")),
-        profit_factor=_safe_float(row.get("profit_factor") or row.get("ProfitFactor") or row.get("Profit Factor")),
-        sharpe_ratio=_safe_float(row.get("sharpe_ratio") or row.get("SharpeRatio") or row.get("Sharpe Ratio")),
+        net_profit=_safe_float(
+            row.get("net_profit") or row.get("NetProfit") or row.get("Net Profit")
+        ),
+        total_trades=_safe_int(
+            row.get("total_trades") or row.get("TotalTrades") or row.get("Total Trades")
+        ),
+        win_rate=_safe_float(
+            row.get("win_rate") or row.get("WinRate") or row.get("Win Rate")
+        ),
+        max_drawdown=_safe_float(
+            row.get("max_drawdown")
+            or row.get("MaxDrawdown")
+            or row.get("Max Drawdown")
+            or row.get("MaxDD")
+        ),
+        profit_factor=_safe_float(
+            row.get("profit_factor")
+            or row.get("ProfitFactor")
+            or row.get("Profit Factor")
+        ),
+        sharpe_ratio=_safe_float(
+            row.get("sharpe_ratio") or row.get("SharpeRatio") or row.get("Sharpe Ratio")
+        ),
     )
 
 
@@ -169,15 +189,33 @@ def _parse_strategies(df: pd.DataFrame) -> list[StrategySummary]:
                     if mapped.get("strategy_name")
                     else None
                 ),
-                profit_factor=_safe_float(row.get(mapped["profit_factor"])) if mapped.get("profit_factor") else None,
-                sharpe_ratio=_safe_float(row.get(mapped["sharpe_ratio"])) if mapped.get("sharpe_ratio") else None,
-                win_rate=_safe_float(row.get(mapped["win_rate"])) if mapped.get("win_rate") else None,
-                total_trades=_safe_int(row.get(mapped["total_trades"])) if mapped.get("total_trades") else None,
-                max_drawdown=_safe_float(row.get(mapped["max_drawdown"])) if mapped.get("max_drawdown") else None,
-                mc_p10=_safe_float(row.get(mapped["mc_p10"])) if mapped.get("mc_p10") else None,
-                wf_is_sharpe=_safe_float(row.get(mapped["wf_is_sharpe"])) if mapped.get("wf_is_sharpe") else None,
-                wf_oos_sharpe=_safe_float(row.get(mapped["wf_oos_sharpe"])) if mapped.get("wf_oos_sharpe") else None,
-                wf_cycles=_safe_int(row.get(mapped["wf_cycles"])) if mapped.get("wf_cycles") else None,
+                profit_factor=_safe_float(row.get(mapped["profit_factor"]))
+                if mapped.get("profit_factor")
+                else None,
+                sharpe_ratio=_safe_float(row.get(mapped["sharpe_ratio"]))
+                if mapped.get("sharpe_ratio")
+                else None,
+                win_rate=_safe_float(row.get(mapped["win_rate"]))
+                if mapped.get("win_rate")
+                else None,
+                total_trades=_safe_int(row.get(mapped["total_trades"]))
+                if mapped.get("total_trades")
+                else None,
+                max_drawdown=_safe_float(row.get(mapped["max_drawdown"]))
+                if mapped.get("max_drawdown")
+                else None,
+                mc_p10=_safe_float(row.get(mapped["mc_p10"]))
+                if mapped.get("mc_p10")
+                else None,
+                wf_is_sharpe=_safe_float(row.get(mapped["wf_is_sharpe"]))
+                if mapped.get("wf_is_sharpe")
+                else None,
+                wf_oos_sharpe=_safe_float(row.get(mapped["wf_oos_sharpe"]))
+                if mapped.get("wf_oos_sharpe")
+                else None,
+                wf_cycles=_safe_int(row.get(mapped["wf_cycles"]))
+                if mapped.get("wf_cycles")
+                else None,
             )
         )
 

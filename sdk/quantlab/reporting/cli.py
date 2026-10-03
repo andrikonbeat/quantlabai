@@ -9,7 +9,10 @@ from datetime import datetime
 from pathlib import Path
 
 from quantlab.knowledge.store import KnowledgeStore
-from quantlab.reporting.generator import ReportGenerator as ReportGenerator, generate_report
+from quantlab.reporting.generator import (
+    ReportGenerator as ReportGenerator,
+    generate_report,
+)
 from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
 
 
@@ -83,19 +86,35 @@ def _load_benchmark_equity(path: str) -> list[dict]:
     """Load benchmark equity data from CSV file."""
 
     equity = []
-    with open(path, newline='') as f:
+    with open(path, newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             # Try common column names
-            timestamp = row.get("timestamp") or row.get("Timestamp") or row.get("time") or row.get("Time")
-            equity_val = row.get("equity") or row.get("Equity") or row.get("value") or row.get("Value")
+            timestamp = (
+                row.get("timestamp")
+                or row.get("Timestamp")
+                or row.get("time")
+                or row.get("Time")
+            )
+            equity_val = (
+                row.get("equity")
+                or row.get("Equity")
+                or row.get("value")
+                or row.get("Value")
+            )
 
             if timestamp and equity_val:
                 try:
-                    equity.append({
-                        "timestamp": datetime.fromisoformat(timestamp.replace('Z', '+00:00')) if 'T' in timestamp else timestamp,
-                        "equity": float(equity_val)
-                    })
+                    equity.append(
+                        {
+                            "timestamp": datetime.fromisoformat(
+                                timestamp.replace("Z", "+00:00")
+                            )
+                            if "T" in timestamp
+                            else timestamp,
+                            "equity": float(equity_val),
+                        }
+                    )
                 except (ValueError, TypeError):
                     pass  # Skip invalid rows
 
@@ -122,7 +141,8 @@ def _load_campaign_data(store: KnowledgeStore, campaign_id: str):
     trades = []
     if trades_path.exists():
         import csv
-        with open(trades_path, newline='') as f:
+
+        with open(trades_path, newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 # Map CSV columns to Trade model
@@ -140,12 +160,17 @@ def _load_campaign_data(store: KnowledgeStore, campaign_id: str):
     equity = []
     if equity_path.exists():
         import csv
-        with open(equity_path, newline='') as f:
+
+        with open(equity_path, newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 eq = EquityPoint(
-                    timestamp=row.get("timestamp", row.get("Timestamp", row.get("Time", ""))),
-                    equity=float(row.get("equity", row.get("Equity", row.get("Value", 0.0)))),
+                    timestamp=row.get(
+                        "timestamp", row.get("Timestamp", row.get("Time", ""))
+                    ),
+                    equity=float(
+                        row.get("equity", row.get("Equity", row.get("Value", 0.0)))
+                    ),
                 )
                 equity.append(eq)
 
@@ -166,12 +191,16 @@ def _load_campaign_data(store: KnowledgeStore, campaign_id: str):
             returns=returns if returns else None,
         )
         # Merge with loaded stats
-        stats_dict = computed_stats.model_dump() if hasattr(computed_stats, "model_dump") else computed_stats.__dict__
+        stats_dict = (
+            computed_stats.model_dump()
+            if hasattr(computed_stats, "model_dump")
+            else computed_stats.__dict__
+        )
         stats_dict.update({k: v for k, v in stats_data.items() if v is not None})
-        statistics = type('StatsResult', (), stats_dict)()
+        statistics = type("StatsResult", (), stats_dict)()
     else:
         # Fallback to loaded stats only
-        statistics = type('StatsResult', (), stats_data)()
+        statistics = type("StatsResult", (), stats_data)()
 
     return trades, equity, statistics
 
@@ -189,7 +218,9 @@ def add_report_subparser(subparsers: argparse._SubParsersAction) -> None:
     gen = report_sub.add_parser("generate", help="Generate campaign report")
     gen.add_argument("campaign_id", help="Campaign ID")
     gen.add_argument("--output-dir", default="reports", help="Output directory")
-    gen.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
+    gen.add_argument(
+        "--knowledge-root", default="knowledge", help="Knowledge Lake root path"
+    )
     gen.add_argument("--html", action="store_true", default=True, help="Generate HTML")
     gen.add_argument("--no-html", action="store_false", dest="html", help="Skip HTML")
     gen.add_argument("--json", action="store_true", default=True, help="Generate JSON")

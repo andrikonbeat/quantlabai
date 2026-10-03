@@ -121,9 +121,7 @@ class DemoStage(Stage):
         """
         if self._store is None:
             return
-        campaign_id = (
-            ctx.config.get("campaign_id") if ctx.config else None
-        )
+        campaign_id = ctx.config.get("campaign_id") if ctx.config else None
         if not campaign_id:
             return
         window: dict[str, object] | None = None

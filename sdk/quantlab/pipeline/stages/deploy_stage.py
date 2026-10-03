@@ -70,7 +70,9 @@ class DeployStage(_DeployStage):
         # Legacy backward-compatible path: single agent.package_jfx() call.
         return await self._execute_legacy(ctx, compiled)
 
-    async def _execute_multi(self, ctx: PipelineContext, compiled: Any) -> dict[str, Any]:
+    async def _execute_multi(
+        self, ctx: PipelineContext, compiled: Any
+    ) -> dict[str, Any]:
         """New path: deploy each strategy via JCloudDeployClient."""
         if self._strategy_ids is not None:
             strategy_ids = self._strategy_ids
@@ -99,7 +101,9 @@ class DeployStage(_DeployStage):
 
             try:
                 result = await client.deploy(jfx_path, sid, account)
-                results[sid] = result.__dict__ if hasattr(result, "__dict__") else result
+                results[sid] = (
+                    result.__dict__ if hasattr(result, "__dict__") else result
+                )
             except Exception as exc:  # noqa: BLE001
                 results[sid] = {
                     "status": "FAILED",
@@ -109,7 +113,9 @@ class DeployStage(_DeployStage):
         ctx.artifacts["deployment_result"] = results
         return {"deployment_result": results}
 
-    async def _execute_legacy(self, ctx: PipelineContext, compiled: Any) -> dict[str, Any]:
+    async def _execute_legacy(
+        self, ctx: PipelineContext, compiled: Any
+    ) -> dict[str, Any]:
         """Legacy path: package the first compiled strategy via DeploymentAgent."""
         agent = self._agent
         if agent is None:  # pragma: no cover - exercised by integration

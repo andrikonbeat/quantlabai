@@ -93,7 +93,9 @@ class RetesterStage(Stage):
         from quantlab.agents.parameter_matrix import generate_run_matrix
 
         overrides = (
-            ctx.config.get("rationale_overrides") if isinstance(ctx.config, dict) else None
+            ctx.config.get("rationale_overrides")
+            if isinstance(ctx.config, dict)
+            else None
         )
         parameter_matrix = generate_run_matrix(
             config, run_type="retest", rationale_overrides=overrides

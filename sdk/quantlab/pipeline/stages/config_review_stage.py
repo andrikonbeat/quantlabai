@@ -136,9 +136,7 @@ def build_review_teaching_table(
         return EMPTY_TABLE_NOTE
 
     fields = [
-        name
-        for name in REVIEW_FIELDS
-        if getattr(build_config, name, None) is not None
+        name for name in REVIEW_FIELDS if getattr(build_config, name, None) is not None
     ]
     if not fields:
         return EMPTY_TABLE_NOTE

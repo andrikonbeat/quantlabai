@@ -22,6 +22,7 @@ class MonteCarloStage(Stage):
     **Requires**: strategy_stats, candidate_id
     **Provides**: mc_results, mc_metrics
     """
+
     name: str = "monte_carlo"
     requires: list[str] = [
         "strategy_stats",

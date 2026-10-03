@@ -64,7 +64,9 @@ class PortfolioStage(_PortfolioStage):
             raw_weights = dict(ctx.config.get("portfolio_weights") or {})
         if not raw_weights:
             selected = ctx.artifacts.get("selected_strategies") or []
-            raw_weights = {name: 1.0 / len(selected) for name in selected} if selected else {}
+            raw_weights = (
+                {name: 1.0 / len(selected) for name in selected} if selected else {}
+            )
 
         normalize = self._optimize_fn or _default_normalize
         result = normalize(raw_weights)

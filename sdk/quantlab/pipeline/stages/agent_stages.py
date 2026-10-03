@@ -36,6 +36,7 @@ class ResearchStage(Stage, ABC):
 
     **Provides**: research_config, objectives, hypotheses, iteration_config, gate_policies
     """
+
     name: str = "research"
     requires: list[str] = []
     provides: list[str] = [
@@ -47,7 +48,9 @@ class ResearchStage(Stage, ABC):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        raise NotImplementedError("ResearchStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "ResearchStage must be implemented by a concrete agent subclass"
+        )
 
 
 class BuilderStage(Stage, ABC):
@@ -65,6 +68,7 @@ class BuilderStage(Stage, ABC):
     **Requires**: research_config
     **Provides**: cfx_bytes, campaign_id, sqcli_status, export_paths
     """
+
     name: str = "builder"
     requires: list[str] = ["research_config"]
     provides: list[str] = [
@@ -74,14 +78,18 @@ class BuilderStage(Stage, ABC):
         "export_paths",
     ]
     #: Portfolio states that block the stage until a human override is granted.
-    blocked_states: frozenset[str] = frozenset({
-        PortfolioState.QUARANTINE.value,
-        PortfolioState.DEFENSIVE.value,
-    })
+    blocked_states: frozenset[str] = frozenset(
+        {
+            PortfolioState.QUARANTINE.value,
+            PortfolioState.DEFENSIVE.value,
+        }
+    )
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         self._assert_portfolio_state_permits_build(ctx)
-        raise NotImplementedError("BuilderStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "BuilderStage must be implemented by a concrete agent subclass"
+        )
 
     @classmethod
     def _assert_portfolio_state_permits_build(cls, ctx: PipelineContext) -> None:
@@ -109,6 +117,7 @@ class StatisticsStage(Stage, ABC):
     **Requires**: export_paths
     **Provides**: statistics, aggregate_stats, monte_carlo_bands, rolling_metrics, regime_alerts
     """
+
     name: str = "statistics"
     requires: list[str] = ["export_paths"]
     provides: list[str] = [
@@ -120,7 +129,9 @@ class StatisticsStage(Stage, ABC):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        raise NotImplementedError("StatisticsStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "StatisticsStage must be implemented by a concrete agent subclass"
+        )
 
 
 class AnalysisStage(Stage, ABC):
@@ -140,7 +151,9 @@ class AnalysisStage(Stage, ABC):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        raise NotImplementedError("AnalysisStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "AnalysisStage must be implemented by a concrete agent subclass"
+        )
 
 
 class ReviewStage(Stage, ABC):
@@ -149,6 +162,7 @@ class ReviewStage(Stage, ABC):
     **Requires**: statistics, aggregate_stats, monte_carlo_bands, strategy_analysis
     **Provides**: review_decision, iteration_proposal, wf_degradation, mc_overfit_flag, benchmark_comparison
     """
+
     name: str = "review"
     requires: list[str] = [
         "statistics",
@@ -165,7 +179,9 @@ class ReviewStage(Stage, ABC):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        raise NotImplementedError("ReviewStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "ReviewStage must be implemented by a concrete agent subclass"
+        )
 
 
 class PortfolioStage(Stage, ABC):
@@ -174,6 +190,7 @@ class PortfolioStage(Stage, ABC):
     **Requires**: selected_strategies, review_decision
     **Provides**: portfolio_cfx, portfolio_result, correlation_matrix, risk_allocation, wf_aggregate_stats
     """
+
     name: str = "portfolio"
     requires: list[str] = [
         "selected_strategies",
@@ -188,7 +205,9 @@ class PortfolioStage(Stage, ABC):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        raise NotImplementedError("PortfolioStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "PortfolioStage must be implemented by a concrete agent subclass"
+        )
 
 
 class DeployStage(Stage, ABC):
@@ -197,6 +216,7 @@ class DeployStage(Stage, ABC):
     **Requires**: portfolio_cfx, gate_decision_HUMAN_APPROVE_PORTFOLIO
     **Provides**: jforex_package, jcloud_config, deployment_result
     """
+
     name: str = "deploy"
     requires: list[str] = [
         "portfolio_cfx",
@@ -209,7 +229,9 @@ class DeployStage(Stage, ABC):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        raise NotImplementedError("DeployStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "DeployStage must be implemented by a concrete agent subclass"
+        )
 
 
 class MonitorStage(Stage, ABC):
@@ -218,6 +240,7 @@ class MonitorStage(Stage, ABC):
     **Requires**: live_equity, deployment_result
     **Provides**: rolling_metrics, regime_alerts, performance_alerts, gate_decision_HUMAN_REVIEW_PERFORMANCE
     """
+
     name: str = "monitor"
     requires: list[str] = [
         "live_equity",
@@ -231,7 +254,9 @@ class MonitorStage(Stage, ABC):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        raise NotImplementedError("MonitorStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "MonitorStage must be implemented by a concrete agent subclass"
+        )
 
 
 class LLMResearchStage(Stage, ABC):
@@ -242,6 +267,7 @@ class LLMResearchStage(Stage, ABC):
 
     **Provides**: research_config, objectives, hypotheses, iteration_config, gate_policies
     """
+
     name: str = "research_llm"
     requires: list[str] = []
     provides: list[str] = [
@@ -268,6 +294,7 @@ class HypothesisBuilderStage(Stage, ABC):
     **Requires**: research_config, hypotheses, objectives
     **Provides**: building_blocks, strategies
     """
+
     name: str = "hypothesis_builder"
     requires: list[str] = [
         "research_config",
@@ -295,6 +322,7 @@ class RefutationStage(Stage, ABC):
     **Requires**: research_config, hypotheses, building_blocks, strategies
     **Provides**: falsation_results (annotations, no filtering)
     """
+
     name: str = "refutation"
     requires: list[str] = [
         "research_config",
@@ -323,6 +351,7 @@ class GuardianEvaluationStage(Stage, ABC):
     **Requires**: research_config
     **Provides**: guardian_state, portfolio_state, correction_events
     """
+
     name: str = "guardian_evaluate"
     requires: list[str] = [
         "research_config",
@@ -334,7 +363,9 @@ class GuardianEvaluationStage(Stage, ABC):
     ]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
-        raise NotImplementedError("GuardianEvaluationStage must be implemented by a concrete agent subclass")
+        raise NotImplementedError(
+            "GuardianEvaluationStage must be implemented by a concrete agent subclass"
+        )
 
 
 class GuardianEvaluationAgentStage(GuardianEvaluationStage):
@@ -427,10 +458,19 @@ class GuardianEvaluationAgentStage(GuardianEvaluationStage):
 
         return [event.model_dump(mode="json")]
 
-
-    def _build_guardians(self, research_config: dict[str, Any], pipeline_config: dict[str, Any]) -> list:
-        market_context = research_config.get("market_context") if isinstance(research_config, dict) else {}
-        capital_constraints = research_config.get("capital_constraints") if isinstance(research_config, dict) else {}
+    def _build_guardians(
+        self, research_config: dict[str, Any], pipeline_config: dict[str, Any]
+    ) -> list:
+        market_context = (
+            research_config.get("market_context")
+            if isinstance(research_config, dict)
+            else {}
+        )
+        capital_constraints = (
+            research_config.get("capital_constraints")
+            if isinstance(research_config, dict)
+            else {}
+        )
 
         config = pipeline_config if isinstance(pipeline_config, dict) else {}
 

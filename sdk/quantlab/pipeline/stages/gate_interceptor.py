@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class GateAction(str, Enum):
     """Possible outcomes of a gate decision."""
+
     APPROVED = "approved"
     REJECTED = "rejected"
     ABORT = "abort"
@@ -34,15 +35,17 @@ class GateAction(str, Enum):
 
 class FallbackPolicy(str, Enum):
     """Fallback behaviour when a gate times out without a response."""
-    ABORT = "ABORT"          # Stop the pipeline
-    CONTINUE = "CONTINUE"    # Proceed as if approved
-    ESCALATE = "ESCALATE"    # Escalate to a human lead (external)
-    HOLD = "HOLD"            # Hold the pipeline until manually resolved
+
+    ABORT = "ABORT"  # Stop the pipeline
+    CONTINUE = "CONTINUE"  # Proceed as if approved
+    ESCALATE = "ESCALATE"  # Escalate to a human lead (external)
+    HOLD = "HOLD"  # Hold the pipeline until manually resolved
 
 
 @dataclass
 class GateDecision:
     """Decision produced by a gate interceptor after callback resolution."""
+
     gate_id: str
     action: GateAction = GateAction.APPROVED
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -54,6 +57,7 @@ class GateDecision:
 @dataclass
 class GateContext:
     """Context provided to the gate callback."""
+
     gate_id: str
     pipeline_name: str
     stage_name: str
@@ -80,6 +84,7 @@ class GateInterceptorStage(Stage, ABC):
         callback: Async callable invoked with GateContext, returns GateDecision.
             Set via ``set_callback()``.
     """
+
     name: str = "gate"
     gate_id: str = ""
     requires: list[str] = []
@@ -129,12 +134,15 @@ class GateInterceptorStage(Stage, ABC):
             except TimeoutError:
                 logger.warning(
                     "Gate '%s' timed out after %.1f h — applying fallback '%s'",
-                    self.gate_id, self.timeout_hours, self.fallback.value,
+                    self.gate_id,
+                    self.timeout_hours,
+                    self.fallback.value,
                 )
         else:
             logger.info(
                 "Gate '%s' has no callback — applying fallback '%s'",
-                self.gate_id, self.fallback.value,
+                self.gate_id,
+                self.fallback.value,
             )
 
         # Apply fallback on timeout or missing callback
@@ -159,7 +167,9 @@ class GateInterceptorStage(Stage, ABC):
             decided_by="system",
         )
 
-    async def _record_to_engram(self, ctx: PipelineContext, decision: GateDecision) -> None:
+    async def _record_to_engram(
+        self, ctx: PipelineContext, decision: GateDecision
+    ) -> None:
         """Record the gate decision to Engram.
 
         Uses the Engram protocol from the pipeline context if available.
@@ -199,6 +209,7 @@ class GateInterceptorStage(Stage, ABC):
             # Record to Engram before raising
             await self._record_to_engram(ctx, decision)
             from quantlab.pipeline.errors import GateTimeoutError
+
             raise GateTimeoutError(
                 message=f"Gate '{self.gate_id}' aborted pipeline: {decision.reason}",
                 gate_id=self.gate_id,

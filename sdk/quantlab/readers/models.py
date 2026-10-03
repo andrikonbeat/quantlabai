@@ -46,12 +46,18 @@ class SummaryStats(BaseModel):
 
     net_profit: float | None = Field(default=None, description="Total net profit")
     total_trades: int | None = Field(default=None, description="Total number of trades")
-    win_rate: float | None = Field(default=None, description="Win rate as a decimal (0.0–1.0)")
+    win_rate: float | None = Field(
+        default=None, description="Win rate as a decimal (0.0–1.0)"
+    )
     max_drawdown: float | None = Field(
         default=None, description="Maximum drawdown as a percentage"
     )
-    profit_factor: float | None = Field(default=None, description="Profit factor (gross profit / gross loss)")
-    sharpe_ratio: float | None = Field(default=None, description="Annualised Sharpe ratio")
+    profit_factor: float | None = Field(
+        default=None, description="Profit factor (gross profit / gross loss)"
+    )
+    sharpe_ratio: float | None = Field(
+        default=None, description="Annualised Sharpe ratio"
+    )
 
 
 class StrategySummary(BaseModel):
@@ -65,10 +71,20 @@ class StrategySummary(BaseModel):
     strategy_name: str | None = Field(default=None, description="Strategy name")
     profit_factor: float | None = Field(default=None, description="Profit factor")
     sharpe_ratio: float | None = Field(default=None, description="Sharpe ratio")
-    win_rate: float | None = Field(default=None, description="Win rate as a decimal (0.0–1.0)")
+    win_rate: float | None = Field(
+        default=None, description="Win rate as a decimal (0.0–1.0)"
+    )
     total_trades: int | None = Field(default=None, description="Total number of trades")
-    max_drawdown: float | None = Field(default=None, description="Maximum drawdown as a percentage")
+    max_drawdown: float | None = Field(
+        default=None, description="Maximum drawdown as a percentage"
+    )
     mc_p10: float | None = Field(default=None, description="Monte Carlo p10 metric")
-    wf_is_sharpe: float | None = Field(default=None, description="Walk-forward in-sample Sharpe")
-    wf_oos_sharpe: float | None = Field(default=None, description="Walk-forward out-of-sample Sharpe")
-    wf_cycles: int | None = Field(default=None, description="Number of walk-forward cycles")
+    wf_is_sharpe: float | None = Field(
+        default=None, description="Walk-forward in-sample Sharpe"
+    )
+    wf_oos_sharpe: float | None = Field(
+        default=None, description="Walk-forward out-of-sample Sharpe"
+    )
+    wf_cycles: int | None = Field(
+        default=None, description="Number of walk-forward cycles"
+    )

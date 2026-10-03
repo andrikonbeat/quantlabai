@@ -55,7 +55,9 @@ class ExecutionMonitorStage(Stage):
         campaign_id = "campaign"
         if ctx.config and ctx.config.get("campaign_id"):
             campaign_id = str(ctx.config["campaign_id"])
-        phase = ctx.config.get("monitor_phase", "live_ops") if ctx.config else "live_ops"
+        phase = (
+            ctx.config.get("monitor_phase", "live_ops") if ctx.config else "live_ops"
+        )
 
         monitor = self._monitor
         if monitor is None:  # pragma: no cover - exercised by integration
