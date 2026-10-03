@@ -384,7 +384,7 @@ class GuardianEvaluationAgentStage(GuardianEvaluationStage):
     def __init__(self, **kwargs: Any) -> None:
         self._kwargs = kwargs
 
-    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+    async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         research_config = ctx.artifacts.get("research_config") or {}
         config = ctx.config or {}
 

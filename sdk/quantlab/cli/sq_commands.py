@@ -335,7 +335,7 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
             f"seeded {summary['seeded']}, verified {summary['verified']}, "
             f"needs_review {summary['needs_review']}"
         )
-        for tab, stats in summary["tabs"].items():  # type: ignore[union-attr]
+        for tab, stats in summary["tabs"].items():
             print_human(
                 f"  {tab}: {stats['total']} (seeded {stats['seeded']}, "
                 f"verified {stats['verified']}, needs_review {stats['needs_review']})"

@@ -282,7 +282,7 @@ class KbStore:
                 entry.tab, {"total": 0, "seeded": 0, "verified": 0, "needs_review": 0}
             )
             tab_stats["total"] += 1
-            tab_stats[entry.status] += 1  # type: ignore[index]
+            tab_stats[entry.status] += 1
         summary["tabs"] = by_tab
         return summary
 

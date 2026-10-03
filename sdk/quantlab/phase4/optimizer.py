@@ -333,7 +333,7 @@ class Optimizer:
 
         for row in data_rows:
             try:
-                cycle_num = int(row[fixed_map["cycle"]])  # type: ignore[arg-type]
+                cycle_num = int(row[fixed_map["cycle"]])
             except (ValueError, IndexError) as exc:
                 raise OptimizerRunError(
                     f"Invalid or missing cycle number: {exc}"
@@ -342,10 +342,10 @@ class Optimizer:
             try:
                 cycle = WalkForwardCycle(
                     cycle=cycle_num,
-                    in_sample_start=row[fixed_map["insamplestart"]],  # type: ignore[arg-type]
-                    in_sample_end=row[fixed_map["insampleend"]],  # type: ignore[arg-type]
-                    out_sample_start=row[fixed_map["outsamplestart"]],  # type: ignore[arg-type]
-                    out_sample_end=row[fixed_map["outsampleend"]],  # type: ignore[arg-type]
+                    in_sample_start=row[fixed_map["insamplestart"]],
+                    in_sample_end=row[fixed_map["insampleend"]],
+                    out_sample_start=row[fixed_map["outsamplestart"]],
+                    out_sample_end=row[fixed_map["outsampleend"]],
                 )
             except IndexError as exc:
                 raise OptimizerRunError(

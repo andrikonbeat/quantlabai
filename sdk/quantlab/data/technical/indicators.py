@@ -20,7 +20,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 try:
-    import ta  # type: ignore[import-untyped]
+    import ta
 
     _TA_AVAILABLE = True
 except ImportError:  # pragma: no cover

@@ -142,7 +142,7 @@ class LLMResearchAgent:
         """
         if self._web_search is None:
             try:
-                if WebSearchProvider is None:  # type: ignore[truthy-function]
+                if WebSearchProvider is None:
                     return None
                 self._web_search = WebSearchProvider()
             except ImportError:  # pragma: no cover
@@ -157,7 +157,7 @@ class LLMResearchAgent:
         """
         if self._rss_news is None:
             try:
-                if RSSNewsProvider is None:  # type: ignore[truthy-function]
+                if RSSNewsProvider is None:
                     return None
                 self._rss_news = RSSNewsProvider()
             except ImportError:  # pragma: no cover

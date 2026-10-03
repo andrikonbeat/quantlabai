@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 try:
     import feedparser
 except ImportError:  # pragma: no cover
-    feedparser = None  # type: ignore[assignment]
+    feedparser = None
 
 
 _DEFAULT_RSS_URLS: list[str] = [
@@ -51,7 +51,7 @@ class RSSNewsProvider(NewsProvider):
         **kwargs: Any,
     ) -> None:
         self.rss_urls = rss_urls or list(_DEFAULT_RSS_URLS)
-        super().__init__(**kwargs)  # type: ignore[call-arg]
+        super().__init__(**kwargs)
 
     async def fetch_news(self, query: str, **params: Any) -> list[NewsItem]:
         """Fetch news articles matching the query from configured RSS feeds.

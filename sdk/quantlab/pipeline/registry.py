@@ -72,7 +72,7 @@ class StageRegistry:
         try:
             # Also import SQXCampaignStage — the combined stage
             from quantlab.phase4.stages import (
-                SQXCampaignStage,  # type: ignore[no-redef]
+                SQXCampaignStage,
                 SQXComputeStatsStage,
                 SQXDaemonStartStage,
                 SQXExportStage,
@@ -193,7 +193,7 @@ class StageRegistry:
                 self._agent = ResearchAgent()
                 super().__init__(**kwargs)
 
-            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
                 return await self._agent.run(ctx)
 
         class BuilderAgentStage(BuilderStage):
@@ -203,7 +203,7 @@ class StageRegistry:
                 self._agent = BuilderAgent()
                 super().__init__(**kwargs)
 
-            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
                 return await self._agent.run(ctx)
 
         class AnalysisAgentStage(AnalysisStage):
@@ -213,7 +213,7 @@ class StageRegistry:
                 self._agent = AnalysisAgent()
                 super().__init__(**kwargs)
 
-            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
                 return await self._agent.run(ctx)
 
         class HypothesisBuilderAgentStage(HypothesisBuilderStage):
@@ -225,7 +225,7 @@ class StageRegistry:
                 self._builder = HypothesisBuilder()
                 super().__init__(**kwargs)
 
-            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
                 from quantlab.dsl.models import HypothesisConfig
 
                 raw_hypotheses = ctx.artifacts.get("hypotheses", [])
@@ -265,7 +265,7 @@ class StageRegistry:
                 self._agent = LLMResearchAgent()
                 super().__init__(**kwargs)
 
-            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
                 config = ctx.config or {}
                 objectives: list[str] = config.get("objectives", ["Research"])
                 if isinstance(objectives, str):
@@ -325,7 +325,7 @@ class StageRegistry:
                 self._layer = RefutationLayer()
                 super().__init__(**kwargs)
 
-            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:  # type: ignore[override]
+            async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
                 from quantlab.dsl.models import HypothesisConfig
 
                 raw_hypotheses = ctx.artifacts.get("hypotheses", [])

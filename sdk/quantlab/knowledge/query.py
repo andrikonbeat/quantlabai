@@ -397,7 +397,7 @@ class QueryBuilder:
         try:
             import numpy as np
             from sentence_transformers import (
-                SentenceTransformer,  # type: ignore[import-untyped]
+                SentenceTransformer,
             )
         except ImportError:
             logger.warning(
