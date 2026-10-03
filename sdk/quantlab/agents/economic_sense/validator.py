@@ -83,7 +83,9 @@ class EconomicSenseValidator:
     @staticmethod
     def _format_param_name(name: str) -> str:
         """Return a human-readable label for a parameter name."""
-        return EconomicSenseValidator._PARAM_LABELS.get(name, name.replace("_", " ").title())
+        return EconomicSenseValidator._PARAM_LABELS.get(
+            name, name.replace("_", " ").title()
+        )
 
     def _check_bb_sma_coherence(self, params: dict[str, Any]) -> list[str]:
         """Warn if BB period vs SMA period ratio is outside [0.33, 3.0]."""

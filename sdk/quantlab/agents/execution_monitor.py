@@ -104,7 +104,8 @@ class ExecutionMonitor:
         client: Any | None = None,
         progress_fn: Callable[[], Awaitable[tuple[bool, float | None]]] | None = None,
         checkpoint_writer: Callable[[], Awaitable[None]] | None = None,
-        diagnostics_fn: Callable[[dict[str, Any]], Awaitable[dict[str, Any] | None]] | None = None,
+        diagnostics_fn: Callable[[dict[str, Any]], Awaitable[dict[str, Any] | None]]
+        | None = None,
         event_bus: Callable[[dict[str, Any]], None] | None = None,
         poll_interval: float = 30.0,
         expected_duration: float = 180.0,

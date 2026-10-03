@@ -243,9 +243,7 @@ class DeploymentAgent(DeployStage):
         if not portfolio_cfx:
             raise ValueError("No portfolio_cfx found in context artifacts")
 
-        output_dir = Path(
-            self._output_dir or f"deploy/{campaign_id}"
-        )
+        output_dir = Path(self._output_dir or f"deploy/{campaign_id}")
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # --- Step 1: validate CFX (task 4.10 dry-run validation) ---
@@ -323,7 +321,9 @@ class DeploymentAgent(DeployStage):
             }
         return {
             "valid": False,
-            "errors": [f"Unsupported portfolio_cfx type: {type(portfolio_cfx).__name__}"],
+            "errors": [
+                f"Unsupported portfolio_cfx type: {type(portfolio_cfx).__name__}"
+            ],
         }
 
     # ── Step 2: JForex packaging (task 4.9) ─────────────────────────────────────
@@ -427,7 +427,9 @@ class DeploymentAgent(DeployStage):
                 return config
             return {"generated": str(config)}
         except ImportError:
-            logger.debug("jforex_deploy.jcloud_config not available — generating default config")
+            logger.debug(
+                "jforex_deploy.jcloud_config not available — generating default config"
+            )
 
         return {
             "campaign_id": campaign_id,

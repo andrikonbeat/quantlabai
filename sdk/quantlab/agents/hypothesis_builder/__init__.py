@@ -164,9 +164,7 @@ class HypothesisBuilder:
                 seen_strat_names.add(s.name)
                 merged_strategies.append(s)
             else:
-                existing = next(
-                    es for es in merged_strategies if es.name == s.name
-                )
+                existing = next(es for es in merged_strategies if es.name == s.name)
                 for ref in s.building_blocks:
                     if ref not in existing.building_blocks:
                         existing.building_blocks.append(ref)
@@ -176,8 +174,7 @@ class HypothesisBuilder:
             self._validator.validate(deduped_blocks, merged_strategies)
         except ValueError:
             logger.exception(
-                "Validation failed — unexpected. "
-                "Blocks: %d, Strategies: %d",
+                "Validation failed — unexpected. Blocks: %d, Strategies: %d",
                 len(deduped_blocks),
                 len(merged_strategies),
             )

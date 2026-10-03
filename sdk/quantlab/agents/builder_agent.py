@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 
 # Re-exported for BuilderAgent callers (parameter-justification-matrix REQ-1):
 # raised when a manual override lacks its rationale, blocking the run.
-from quantlab.agents.parameter_matrix import ParameterMatrixError as ParameterMatrixError
+from quantlab.agents.parameter_matrix import (
+    ParameterMatrixError as ParameterMatrixError,
+)
 
 
 def _try_int(value: str, default: int) -> int:
@@ -54,6 +56,7 @@ class BuildProgress:
         status: One of ``running``, ``completed``, ``failed``, ``timeout``, or ``unknown``.
         eta_seconds: Estimated seconds remaining, if available.
     """
+
     strategies_generated: int = 0
     strategies_accepted: int = 0
     generation: int = 0
@@ -65,6 +68,7 @@ class BuildProgress:
 @dataclass
 class DispatchResult:
     """Result of an SQX campaign dispatch."""
+
     campaign_id: str = ""
     cfx_bytes: bytes = b""
     sqcli_status: str = "pending"
@@ -126,7 +130,6 @@ def _research_config_to_custom_project(config: Any) -> Any:
     )
 
     # ── Phase 2: Validation ─────────────────────────────────────────────────────
-
 
 
 class BuilderAgent:
@@ -201,15 +204,11 @@ class BuilderAgent:
 
             for entry in entries:
                 if entry.get("status") == "needs_review":
-                    warnings.append(
-                        f"KB tab '{tab}' has entries needing review"
-                    )
+                    warnings.append(f"KB tab '{tab}' has entries needing review")
                     break
 
         if warnings and self._strict_kb:
-            raise ConfigurationError(
-                f"Missing or unverified KB entries: {warnings}"
-            )
+            raise ConfigurationError(f"Missing or unverified KB entries: {warnings}")
 
         return warnings
 
@@ -355,7 +354,9 @@ class BuilderAgent:
         elif isinstance(research_config_raw, ResearchConfig):
             research_config = research_config_raw
         else:
-            raise ValueError(f"Unexpected research_config type: {type(research_config_raw)}")
+            raise ValueError(
+                f"Unexpected research_config type: {type(research_config_raw)}"
+            )
 
         # Apply guardian state from context if available
         guardian_state = context.artifacts.get("guardian_state")
@@ -395,7 +396,9 @@ class BuilderAgent:
         # must be justified, otherwise ParameterMatrixError blocks the run
         # from advancing (spec: "Missing rationale blocks advancement").
         if build_config is not None:
-            rationale_overrides = self._collect_rationale_overrides(context, build_config)
+            rationale_overrides = self._collect_rationale_overrides(
+                context, build_config
+            )
             parameter_matrix = self.generate_parameter_matrix(
                 build_config, rationale_overrides=rationale_overrides
             )
@@ -431,7 +434,8 @@ class BuilderAgent:
             }
 
         dispatch_result = await self._dispatch_with_retry(
-            cfx_bytes, research_config,
+            cfx_bytes,
+            research_config,
             campaign_id=versioned_campaign_id,
             build_config=build_config,
         )
@@ -524,7 +528,6 @@ class BuilderAgent:
         result = await self._translate(config)
         return result[0]
 
-
     async def _validate(self, cfx_bytes: bytes) -> dict[str, Any]:
         """Validate CFX bytes via ``cfx_editor.validate()``.
 
@@ -594,7 +597,10 @@ class BuilderAgent:
 
                 if not valid:
                     logger.warning("License validation failed")
-                    return {"valid": False, "error": "SQX license is invalid or expired"}
+                    return {
+                        "valid": False,
+                        "error": "SQX license is invalid or expired",
+                    }
 
                 logger.info("License validation passed")
                 return {"valid": True}
@@ -604,9 +610,8 @@ class BuilderAgent:
                 import os
                 from pathlib import Path
 
-                license_path = (
-                    os.environ.get("SQX_LICENSE_PATH")
-                    or str(Path.home() / ".sqx" / "license.key")
+                license_path = os.environ.get("SQX_LICENSE_PATH") or str(
+                    Path.home() / ".sqx" / "license.key"
                 )
 
                 if Path(license_path).exists():
@@ -664,7 +669,12 @@ class BuilderAgent:
 
             try:
                 result = await asyncio.wait_for(
-                    self._dispatch_single(cfx_bytes, config, campaign_id=campaign_id, build_config=build_config),
+                    self._dispatch_single(
+                        cfx_bytes,
+                        config,
+                        campaign_id=campaign_id,
+                        build_config=build_config,
+                    ),
                     timeout=self._timeout_minutes * 60,
                 )
                 result.dispatch_log = dispatch_log
@@ -673,10 +683,12 @@ class BuilderAgent:
 
                 if result.sqcli_status in ("timeout", "failed"):
                     log_entry["status"] = result.sqcli_status
-                    log_entry["error"] = result.error or f"SQX dispatch {result.sqcli_status}"
+                    log_entry["error"] = (
+                        result.error or f"SQX dispatch {result.sqcli_status}"
+                    )
                     if attempt < self._max_retries:
                         await self._send_stop()
-                        wait = min(2 ** attempt * 10, 120)
+                        wait = min(2**attempt * 10, 120)
                         logger.info("Retrying in %ds...", wait)
                         await asyncio.sleep(wait)
                     continue
@@ -703,13 +715,14 @@ class BuilderAgent:
                 last_error = f"Campaign timed out after {self._timeout_minutes} minutes"
                 logger.warning(
                     "Dispatch attempt %d/%d timed out",
-                    attempt + 1, self._max_retries + 1,
+                    attempt + 1,
+                    self._max_retries + 1,
                 )
 
                 # Send stop command before retry
                 await self._send_stop()
                 # Exponential backoff
-                wait = min(2 ** attempt * 10, 120)
+                wait = min(2**attempt * 10, 120)
                 logger.info("Retrying in %ds...", wait)
                 await asyncio.sleep(wait)
 
@@ -720,12 +733,14 @@ class BuilderAgent:
                 last_error = str(e)
                 logger.warning(
                     "Dispatch attempt %d/%d failed: %s",
-                    attempt + 1, self._max_retries + 1, e,
+                    attempt + 1,
+                    self._max_retries + 1,
+                    e,
                 )
 
                 if attempt < self._max_retries:
                     await self._send_stop()
-                    wait = min(2 ** attempt * 10, 120)
+                    wait = min(2**attempt * 10, 120)
                     logger.info("Retrying in %ds...", wait)
                     await asyncio.sleep(wait)
 
@@ -735,16 +750,30 @@ class BuilderAgent:
             error=last_error or "All dispatch retries exhausted",
         )
         result.dispatch_log = dispatch_log
-        logger.error("All %d dispatch attempts failed: %s", self._max_retries + 1, last_error)
+        logger.error(
+            "All %d dispatch attempts failed: %s", self._max_retries + 1, last_error
+        )
 
         # Fallback: try existing Builder fixture if generated CFX produced no exports
         try:
             from pathlib import Path
-            fixture_path = Path(__file__).parent.parent / "tests" / "cfx" / "fixtures" / "Builder.cfx"
+
+            fixture_path = (
+                Path(__file__).parent.parent
+                / "tests"
+                / "cfx"
+                / "fixtures"
+                / "Builder.cfx"
+            )
             if fixture_path.exists():
                 fallback_cfx = fixture_path.read_bytes()
                 logger.info("Trying Builder fixture fallback after failed attempts")
-                fallback_result = await self._dispatch_single(fallback_cfx, config, campaign_id=campaign_id, build_config=build_config)
+                fallback_result = await self._dispatch_single(
+                    fallback_cfx,
+                    config,
+                    campaign_id=campaign_id,
+                    build_config=build_config,
+                )
                 fallback_result.dispatch_log = dispatch_log
                 return fallback_result
         except Exception as e:
@@ -772,7 +801,8 @@ class BuilderAgent:
             httpx.HTTPError: If the HTTP request fails.
         """
         encoded = urllib.parse.quote(
-            f"-project action=status name={campaign_id}", safe="=",
+            f"-project action=status name={campaign_id}",
+            safe="=",
         )
         url = f"{base_url}/call?cmd={encoded}"
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -876,9 +906,7 @@ class BuilderAgent:
             raise
         except Exception as e:
             if orchestrated:
-                raise RuntimeError(
-                    f"Data pre-flight failed (orchestrated): {e}"
-                ) from e
+                raise RuntimeError(f"Data pre-flight failed (orchestrated): {e}") from e
             logger.warning("Data pre-flight failed (non-blocking): %s", e)
 
     async def _dispatch_single(
@@ -956,12 +984,19 @@ class BuilderAgent:
                 from quantlab.sqx.cli_wrapper import dispatch_campaign
 
                 # Use mock server when in dry_run mode or SQX_FORCE_MOCK is set
-                _is_dry = config.get("dry_run", False) if isinstance(config, dict) else getattr(config, "dry_run", False)
-                force_mock = _is_dry or os.environ.get("SQX_FORCE_MOCK", "").lower() in ("1", "true", "yes")
+                _is_dry = (
+                    config.get("dry_run", False)
+                    if isinstance(config, dict)
+                    else getattr(config, "dry_run", False)
+                )
+                force_mock = _is_dry or os.environ.get(
+                    "SQX_FORCE_MOCK", ""
+                ).lower() in ("1", "true", "yes")
 
                 # Mock-mode guard: warn always, raise in production without an
                 # explicit SQX_FORCE_MOCK override (MOK-01/02).
                 from quantlab.sqx.cli_wrapper import mock_mode_guard
+
                 mock_mode_guard(force_mock=force_mock)
 
                 sqcli_result = await dispatch_campaign(
@@ -985,7 +1020,14 @@ class BuilderAgent:
                 if not result.export_paths:
                     try:
                         from pathlib import Path
-                        fixture_path = Path(__file__).parent.parent / "tests" / "cfx" / "fixtures" / "Builder.cfx"
+
+                        fixture_path = (
+                            Path(__file__).parent.parent
+                            / "tests"
+                            / "cfx"
+                            / "fixtures"
+                            / "Builder.cfx"
+                        )
                         if fixture_path.exists():
                             fallback_cfx = fixture_path.read_bytes()
                             logger.info(
@@ -1005,7 +1047,9 @@ class BuilderAgent:
                                 confirm_stop=confirm_stop,
                                 gate_event_dir=gate_event_dir,
                             )
-                            result.sqcli_status = sqcli_result.get("status", "completed")
+                            result.sqcli_status = sqcli_result.get(
+                                "status", "completed"
+                            )
                             result.export_paths = sqcli_result.get("export_paths", [])
                     except Exception as e:
                         logger.warning("Fixture fallback failed: %s", e)
@@ -1025,7 +1069,9 @@ class BuilderAgent:
 
             logger.info(
                 "SQX dispatch '%s': status=%s, exports=%d",
-                campaign_id, result.sqcli_status, len(result.export_paths),
+                campaign_id,
+                result.sqcli_status,
+                len(result.export_paths),
             )
             return result
 
@@ -1072,87 +1118,177 @@ class BuilderAgent:
         # Note: gates are listed separately in the gates section and injected
         # by PipelineRunner at configured positions
         stages = [
-            {"name": "research", "type": "agent",
-             "agent": "research-agent",
-             "requires": [], "provides": [
-                 "research_config", "objectives", "hypotheses",
-                 "iteration_config", "gate_policies",
-             ]},
-            {"name": "builder", "type": "agent",
-             "agent": "builder-agent",
-             "requires": ["research_config"],
-             "provides": ["cfx_bytes", "campaign_id", "sqcli_status", "export_paths"],
-             "max_retries": self._max_retries,
-             "timeout": self._timeout_minutes * 60},
-            {"name": "statistics", "type": "agent",
-             "agent": "statistics-agent",
-             "requires": ["export_paths"],
-             "provides": ["statistics", "aggregate_stats", "monte_carlo_bands",
-                          "rolling_metrics", "regime_alerts"]},
-            {"name": "analysis", "type": "agent",
-             "agent": "analysis-agent",
-             "requires": ["export_paths", "statistics"],
-             "provides": ["strategy_analysis", "selected_strategies",
-                          "strategy_verdicts", "wf_cycles"]},
-            {"name": "review", "type": "agent",
-             "agent": "reviewer-agent",
-             "requires": ["statistics", "aggregate_stats", "monte_carlo_bands", "strategy_analysis"],
-             "provides": ["review_decision", "iteration_proposal",
-                          "wf_degradation", "mc_overfit_flag", "benchmark_comparison"]},
-            {"name": "portfolio", "type": "agent",
-             "agent": "portfolio-agent",
-             "requires": ["selected_strategies", "review_decision"],
-             "provides": ["portfolio_cfx", "portfolio_result", "correlation_matrix",
-                          "risk_allocation", "wf_aggregate_stats"]},
-            {"name": "deploy", "type": "agent",
-             "agent": "deployment-agent",
-             "requires": ["portfolio_cfx", "gate_decision_HUMAN_APPROVE_PORTFOLIO"],
-             "provides": ["jforex_package", "jcloud_config", "deployment_result"]},
-            {"name": "monitor", "type": "agent",
-             "agent": "monitoring-agent",
-             "requires": ["live_equity", "deployment_result"],
-             "provides": ["rolling_metrics", "regime_alerts", "performance_alerts",
-                          "gate_decision_HUMAN_REVIEW_PERFORMANCE"]},
+            {
+                "name": "research",
+                "type": "agent",
+                "agent": "research-agent",
+                "requires": [],
+                "provides": [
+                    "research_config",
+                    "objectives",
+                    "hypotheses",
+                    "iteration_config",
+                    "gate_policies",
+                ],
+            },
+            {
+                "name": "builder",
+                "type": "agent",
+                "agent": "builder-agent",
+                "requires": ["research_config"],
+                "provides": [
+                    "cfx_bytes",
+                    "campaign_id",
+                    "sqcli_status",
+                    "export_paths",
+                ],
+                "max_retries": self._max_retries,
+                "timeout": self._timeout_minutes * 60,
+            },
+            {
+                "name": "statistics",
+                "type": "agent",
+                "agent": "statistics-agent",
+                "requires": ["export_paths"],
+                "provides": [
+                    "statistics",
+                    "aggregate_stats",
+                    "monte_carlo_bands",
+                    "rolling_metrics",
+                    "regime_alerts",
+                ],
+            },
+            {
+                "name": "analysis",
+                "type": "agent",
+                "agent": "analysis-agent",
+                "requires": ["export_paths", "statistics"],
+                "provides": [
+                    "strategy_analysis",
+                    "selected_strategies",
+                    "strategy_verdicts",
+                    "wf_cycles",
+                ],
+            },
+            {
+                "name": "review",
+                "type": "agent",
+                "agent": "reviewer-agent",
+                "requires": [
+                    "statistics",
+                    "aggregate_stats",
+                    "monte_carlo_bands",
+                    "strategy_analysis",
+                ],
+                "provides": [
+                    "review_decision",
+                    "iteration_proposal",
+                    "wf_degradation",
+                    "mc_overfit_flag",
+                    "benchmark_comparison",
+                ],
+            },
+            {
+                "name": "portfolio",
+                "type": "agent",
+                "agent": "portfolio-agent",
+                "requires": ["selected_strategies", "review_decision"],
+                "provides": [
+                    "portfolio_cfx",
+                    "portfolio_result",
+                    "correlation_matrix",
+                    "risk_allocation",
+                    "wf_aggregate_stats",
+                ],
+            },
+            {
+                "name": "deploy",
+                "type": "agent",
+                "agent": "deployment-agent",
+                "requires": ["portfolio_cfx", "gate_decision_HUMAN_APPROVE_PORTFOLIO"],
+                "provides": ["jforex_package", "jcloud_config", "deployment_result"],
+            },
+            {
+                "name": "monitor",
+                "type": "agent",
+                "agent": "monitoring-agent",
+                "requires": ["live_equity", "deployment_result"],
+                "provides": [
+                    "rolling_metrics",
+                    "regime_alerts",
+                    "performance_alerts",
+                    "gate_decision_HUMAN_REVIEW_PERFORMANCE",
+                ],
+            },
         ]
 
         # Append extended 14-phase stages when QUANTLAB_14PHASE is enabled.
         if os.environ.get("QUANTLAB_14PHASE") == "1":
-            stages.extend([
-                {"name": "compile", "type": "agent",
-                 "agent": "compiler-agent",
-                 "requires": ["deployment_result"],
-                 "provides": ["compiled_strategies", "compilation_failed"]},
-                {"name": "demo", "type": "agent",
-                 "agent": "demo-agent",
-                 "requires": ["compiled_strategies", "deployment_result"],
-                 "provides": ["demo_result"]},
-                {"name": "archive", "type": "agent",
-                 "agent": "archive-agent",
-                 "requires": ["demo_result", "portfolio_result"],
-                 "provides": ["campaign_archive"]},
-                {"name": "live_ops", "type": "agent",
-                 "agent": "live-ops-agent",
-                 "requires": ["campaign_archive", "deployment_result"],
-                 "provides": ["live_equity", "performance_alerts"]},
-            ])
+            stages.extend(
+                [
+                    {
+                        "name": "compile",
+                        "type": "agent",
+                        "agent": "compiler-agent",
+                        "requires": ["deployment_result"],
+                        "provides": ["compiled_strategies", "compilation_failed"],
+                    },
+                    {
+                        "name": "demo",
+                        "type": "agent",
+                        "agent": "demo-agent",
+                        "requires": ["compiled_strategies", "deployment_result"],
+                        "provides": ["demo_result"],
+                    },
+                    {
+                        "name": "archive",
+                        "type": "agent",
+                        "agent": "archive-agent",
+                        "requires": ["demo_result", "portfolio_result"],
+                        "provides": ["campaign_archive"],
+                    },
+                    {
+                        "name": "live_ops",
+                        "type": "agent",
+                        "agent": "live-ops-agent",
+                        "requires": ["campaign_archive", "deployment_result"],
+                        "provides": ["live_equity", "performance_alerts"],
+                    },
+                ]
+            )
 
         # Build gate list
         gates = [
-            {"gate_id": "HUMAN_REVIEW_OBJECTIVES",
-             "timeout_hours": 24, "fallback": "ESCALATE",
-             "after_stage": "research"},
-            {"gate_id": "HUMAN_APPROVE_ITERATION",
-             "timeout_hours": 24, "fallback": "ABORT",
-             "after_stage": "review"},
-            {"gate_id": "HUMAN_APPROVE_PORTFOLIO",
-             "timeout_hours": 24, "fallback": "ESCALATE",
-             "after_stage": "portfolio"},
-            {"gate_id": "HUMAN_APPROVE_DEPLOY",
-             "timeout_hours": 12, "fallback": "HOLD",
-             "after_stage": "deploy"},
-            {"gate_id": "HUMAN_REVIEW_PERFORMANCE",
-             "timeout_hours": 48, "fallback": "CONTINUE",
-             "after_stage": "monitor"},
+            {
+                "gate_id": "HUMAN_REVIEW_OBJECTIVES",
+                "timeout_hours": 24,
+                "fallback": "ESCALATE",
+                "after_stage": "research",
+            },
+            {
+                "gate_id": "HUMAN_APPROVE_ITERATION",
+                "timeout_hours": 24,
+                "fallback": "ABORT",
+                "after_stage": "review",
+            },
+            {
+                "gate_id": "HUMAN_APPROVE_PORTFOLIO",
+                "timeout_hours": 24,
+                "fallback": "ESCALATE",
+                "after_stage": "portfolio",
+            },
+            {
+                "gate_id": "HUMAN_APPROVE_DEPLOY",
+                "timeout_hours": 12,
+                "fallback": "HOLD",
+                "after_stage": "deploy",
+            },
+            {
+                "gate_id": "HUMAN_REVIEW_PERFORMANCE",
+                "timeout_hours": 48,
+                "fallback": "CONTINUE",
+                "after_stage": "monitor",
+            },
         ]
 
         # Build the config dict
