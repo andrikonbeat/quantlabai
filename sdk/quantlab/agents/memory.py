@@ -64,9 +64,7 @@ class AgentMemoryManager:
         The decision is privacy-scrubbed (REQ-107) before EITHER store: the
         lake record and the Engram content both carry only scrubbed values.
         """
-        decision.setdefault(
-            "timestamp", datetime.now(UTC).isoformat()
-        )
+        decision.setdefault("timestamp", datetime.now(UTC).isoformat())
         decision.setdefault("agent_name", agent)
         decision.setdefault("campaign_id", campaign)
         if phase is not None:
@@ -134,6 +132,7 @@ class AgentMemoryManager:
         memory_path.mkdir(parents=True, exist_ok=True)
         memory_file = memory_path / "memory.yaml"
         import yaml
+
         existing: list[dict[str, Any]] = []
         if memory_file.exists():
             try:
@@ -216,9 +215,9 @@ class AgentMemoryManager:
         if not memory_root.exists():
             return results
 
-        agents_to_search = [agent] if agent else [
-            d.name for d in memory_root.iterdir() if d.is_dir()
-        ]
+        agents_to_search = (
+            [agent] if agent else [d.name for d in memory_root.iterdir() if d.is_dir()]
+        )
 
         search_lower = pattern.lower()
         for agent_name in agents_to_search:
@@ -226,9 +225,11 @@ class AgentMemoryManager:
             if not agent_dir.is_dir():
                 continue
 
-            campaigns_to_search = [campaign] if campaign else [
-                d.name for d in agent_dir.iterdir() if d.is_dir()
-            ]
+            campaigns_to_search = (
+                [campaign]
+                if campaign
+                else [d.name for d in agent_dir.iterdir() if d.is_dir()]
+            )
 
             for camp in campaigns_to_search:
                 camp_dir = agent_dir / camp
@@ -239,9 +240,9 @@ class AgentMemoryManager:
                 import yaml
 
                 try:
-                    decisions = yaml.safe_load(
-                        memory_file.read_text(encoding="utf-8")
-                    ) or []
+                    decisions = (
+                        yaml.safe_load(memory_file.read_text(encoding="utf-8")) or []
+                    )
                     if not isinstance(decisions, list):
                         decisions = [decisions]
                 except Exception:

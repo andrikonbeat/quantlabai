@@ -62,7 +62,9 @@ def _extract_symbol(hypothesis: HypothesisConfig) -> str | None:
     return None
 
 
-def _compute_rsi(prices: list[dict[str, Any]], period: int = _RSI_PERIOD) -> list[float]:
+def _compute_rsi(
+    prices: list[dict[str, Any]], period: int = _RSI_PERIOD
+) -> list[float]:
     """Compute RSI values from a list of OHLCV price dicts.
 
     Uses Wilder's smoothing (SMA of gains/losses over the RSI period).
@@ -149,9 +151,7 @@ def _find_counter_examples(
         if forward_return < 0:
             counter_examples += 1
 
-    total_checkable = sum(
-        1 for idx in signals if idx + _FORWARD_LOOKBACK < len(prices)
-    )
+    total_checkable = sum(1 for idx in signals if idx + _FORWARD_LOOKBACK < len(prices))
     if total_checkable == 0:
         return 0.0, []
 

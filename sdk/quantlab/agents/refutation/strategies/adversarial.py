@@ -59,9 +59,7 @@ class LLMAdversarialStrategy(RefutationStrategy):
         prompt = self._build_prompt(hypothesis)
 
         try:
-            response_text = await self._llm_agent.call_llm(
-                prompt, self._llm_config
-            )
+            response_text = await self._llm_agent.call_llm(prompt, self._llm_config)
         except Exception:
             logger.debug(
                 "LLM unavailable for '%s' — skipping adversarial strategy",

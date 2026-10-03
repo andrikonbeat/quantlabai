@@ -135,7 +135,11 @@ class PortfolioAgent(PortfolioStage):
             # In real mode, PortfolioMaster.build_portfolio() would return
             # a PortfolioMasterResult with selected strategies
             n_strats = len(strategies)
-            weights = {s: round(1.0 / n_strats, 4) for s in strategies} if n_strats > 0 else {}
+            weights = (
+                {s: round(1.0 / n_strats, 4) for s in strategies}
+                if n_strats > 0
+                else {}
+            )
 
             return {
                 "selected_strategies": list(strategies),
@@ -208,9 +212,9 @@ class PortfolioAgent(PortfolioStage):
 
         # Build returns matrix
         min_len = min(len(v) for v in returns_dict.values())
-        returns_matrix = np.array([
-            returns_dict[sid][:min_len] for sid in strategy_ids
-        ], dtype=np.float64)
+        returns_matrix = np.array(
+            [returns_dict[sid][:min_len] for sid in strategy_ids], dtype=np.float64
+        )
 
         # Compute correlation matrix
         corr_matrix = np.corrcoef(returns_matrix)
@@ -245,12 +249,16 @@ class PortfolioAgent(PortfolioStage):
                 cluster_ids = [strategy_ids[idx] for idx in cluster]
                 visited.update(cluster)
 
-                clusters.append({
-                    "strategies": cluster_ids,
-                    "size": len(cluster_ids),
-                    "max_correlation": round(float(np.max(corr_matrix[np.ix_(cluster, cluster)])), 4),
-                    "recommendation": "Select 1 from cluster, diversify across low-correlation assets",
-                })
+                clusters.append(
+                    {
+                        "strategies": cluster_ids,
+                        "size": len(cluster_ids),
+                        "max_correlation": round(
+                            float(np.max(corr_matrix[np.ix_(cluster, cluster)])), 4
+                        ),
+                        "recommendation": "Select 1 from cluster, diversify across low-correlation assets",
+                    }
+                )
                 warnings.append(
                     f"High correlation cluster: {', '.join(cluster_ids)} "
                     f"(corr > {self._correlation_threshold})"
@@ -378,16 +386,20 @@ class PortfolioAgent(PortfolioStage):
         if n == 1:
             return {
                 "weights": {strategy_ids[0]: 1.0},
-                "expected_return": round(float(np.mean(returns_dict[strategy_ids[0]])), 6),
-                "portfolio_variance": round(float(np.var(returns_dict[strategy_ids[0]])), 6),
+                "expected_return": round(
+                    float(np.mean(returns_dict[strategy_ids[0]])), 6
+                ),
+                "portfolio_variance": round(
+                    float(np.var(returns_dict[strategy_ids[0]])), 6
+                ),
                 "note": "Single strategy — full allocation",
             }
 
         # Build returns matrix
         min_len = min(len(v) for v in returns_dict.values())
-        returns_matrix = np.array([
-            returns_dict[sid][:min_len] for sid in strategy_ids
-        ], dtype=np.float64)
+        returns_matrix = np.array(
+            [returns_dict[sid][:min_len] for sid in strategy_ids], dtype=np.float64
+        )
 
         # Mean returns and covariance
         mean_returns = np.mean(returns_matrix, axis=1)
@@ -408,13 +420,12 @@ class PortfolioAgent(PortfolioStage):
         portfolio_variance = float(np.dot(weights, np.dot(cov_matrix, weights)))
 
         # Sharpe (assuming risk-free rate = 0)
-        portfolio_std = math.sqrt(portfolio_variance) if portfolio_variance > 0 else 1e-10
+        portfolio_std = (
+            math.sqrt(portfolio_variance) if portfolio_variance > 0 else 1e-10
+        )
         sharpe = portfolio_return / portfolio_std
 
-        weight_dict = {
-            sid: round(float(w), 4)
-            for sid, w in zip(strategy_ids, weights)
-        }
+        weight_dict = {sid: round(float(w), 4) for sid, w in zip(strategy_ids, weights)}
 
         result = {
             "weights": weight_dict,
@@ -432,7 +443,8 @@ class PortfolioAgent(PortfolioStage):
             # Scale up weights proportionally (within bounds) to meet target
             logger.warning(
                 "Target return %.4f not met (%.4f) — adjusting weights",
-                target_return, portfolio_return,
+                target_return,
+                portfolio_return,
             )
             result["target_return_met"] = False
         else:
@@ -596,11 +608,13 @@ class PortfolioAgent(PortfolioStage):
                 )
                 # Dry-run CFX generation
                 cfx_b64 = optimizer.dry_run(config)
-                results.append({
-                    "strategy_id": sid,
-                    "status": "dry_run",
-                    "cfx_b64": cfx_b64,
-                })
+                results.append(
+                    {
+                        "strategy_id": sid,
+                        "status": "dry_run",
+                        "cfx_b64": cfx_b64,
+                    }
+                )
 
             return {
                 "cycles": results,
@@ -666,7 +680,9 @@ class PortfolioAgent(PortfolioStage):
         selected_strategies = context.artifacts.get("selected_strategies", [])
 
         if not selected_strategies:
-            logger.warning("No selected_strategies in context — portfolio will be empty")
+            logger.warning(
+                "No selected_strategies in context — portfolio will be empty"
+            )
             empty_result = {
                 "portfolio_cfx": None,
                 "portfolio_result": {
@@ -718,10 +734,10 @@ class PortfolioAgent(PortfolioStage):
         if not strategy_returns and pm_selected:
             # Generate synthetic returns for mock mode
             import numpy as np
+
             rng = np.random.RandomState(42)
             strategy_returns = {
-                sid: [float(v) for v in rng.randn(100) * 0.01]
-                for sid in pm_selected
+                sid: [float(v) for v in rng.randn(100) * 0.01] for sid in pm_selected
             }
 
         correlation_result = self.analyze_correlation(strategy_returns)
@@ -757,7 +773,10 @@ class PortfolioAgent(PortfolioStage):
         if total_kelly > 0:
             risk_allocation["allocations"] = {
                 sid: round(
-                    risk_allocation["kelly_results"][sid].get("capped_kelly_fraction", 0.25) / total_kelly,
+                    risk_allocation["kelly_results"][sid].get(
+                        "capped_kelly_fraction", 0.25
+                    )
+                    / total_kelly,
                     4,
                 )
                 for sid in pm_selected
@@ -791,7 +810,9 @@ class PortfolioAgent(PortfolioStage):
         # Write to context artifacts
         context.artifacts["portfolio_cfx"] = portfolio_cfx_result.get("cfx_bytes")
         context.artifacts["portfolio_result"] = portfolio_result
-        context.artifacts["correlation_matrix"] = correlation_result.get("correlation_matrix", [])
+        context.artifacts["correlation_matrix"] = correlation_result.get(
+            "correlation_matrix", []
+        )
         context.artifacts["risk_allocation"] = risk_allocation
         context.artifacts["wf_aggregate_stats"] = wf_aggregate_stats
 

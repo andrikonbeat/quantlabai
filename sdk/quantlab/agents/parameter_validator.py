@@ -63,7 +63,9 @@ class ParameterValidator:
 
             for param_name, value in param_dict.items():
                 # Range check
-                valid_range = self._provider.get_valid_range(indicator, param_name, sqx_version)
+                valid_range = self._provider.get_valid_range(
+                    indicator, param_name, sqx_version
+                )
                 if valid_range is not None and isinstance(value, (int, float)):
                     min_val, max_val = valid_range
                     if not (min_val <= value <= max_val):
@@ -73,15 +75,18 @@ class ParameterValidator:
                         )
 
                 # Enum check
-                enum_values = self._provider.get_enum_values(indicator, param_name, sqx_version)
+                enum_values = self._provider.get_enum_values(
+                    indicator, param_name, sqx_version
+                )
                 if enum_values is not None and value not in enum_values:
                     errors.append(
-                        f"{indicator}.{param_name}={value} not in enum "
-                        f"{enum_values}"
+                        f"{indicator}.{param_name}={value} not in enum {enum_values}"
                     )
 
                 # Type check
-                expected_type = self._provider.get_type(indicator, param_name, sqx_version)
+                expected_type = self._provider.get_type(
+                    indicator, param_name, sqx_version
+                )
                 if expected_type == "int" and not isinstance(value, int):
                     errors.append(
                         f"{indicator}.{param_name} type mismatch: expected int, "

@@ -327,4 +327,6 @@ def generate_run_matrix(
                 f"rationale_overrides['{field}'] to justify it (REQ-1)"
             )
         return entries
-    raise ValueError(f"unknown run_type: {run_type!r} (expected 'retest' or 'optimize')")
+    raise ValueError(
+        f"unknown run_type: {run_type!r} (expected 'retest' or 'optimize')"
+    )

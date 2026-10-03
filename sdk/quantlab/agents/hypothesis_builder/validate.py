@@ -67,9 +67,7 @@ class BuildingBlockValidator:
         for block in blocks:
             # Check unique name
             if block.name in seen_names:
-                raise ValueError(
-                    f"Duplicate building block name: '{block.name}'"
-                )
+                raise ValueError(f"Duplicate building block name: '{block.name}'")
             seen_names.add(block.name)
 
             # Check indicator name

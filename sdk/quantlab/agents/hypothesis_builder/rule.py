@@ -40,9 +40,7 @@ class RuleMode:
     _KEYWORD_MAP: list[tuple[list[str], list[BuildingBlock]]] = []
 
     @staticmethod
-    def _build_keyword_map() -> (
-        list[tuple[list[str], list[BuildingBlock]]]
-    ):
+    def _build_keyword_map() -> list[tuple[list[str], list[BuildingBlock]]]:
         """Build the keyword-to-blocks mapping table.
 
         Returns a list of (keywords, blocks) pairs. Each pair defines which
@@ -358,7 +356,9 @@ class RuleMode:
 
         if params != block.indicator.params:
             return block.model_copy(
-                update={"indicator": block.indicator.model_copy(update={"params": params})}
+                update={
+                    "indicator": block.indicator.model_copy(update={"params": params})
+                }
             )
         return block
 

@@ -109,7 +109,9 @@ class MonitoringAgent(MonitorStage):
         performance_alerts = self.check_alerts(rolling_metrics, live_equity)
 
         # 4. Knowledge Lake persistence (every 100 points)
-        self._persist_metrics(live_equity, rolling_metrics, regime_alerts, performance_alerts)
+        self._persist_metrics(
+            live_equity, rolling_metrics, regime_alerts, performance_alerts
+        )
 
         # 5. Gate decision (auto-approve if no alerts, else flag review)
         gate_decision = self._build_gate_decision(regime_alerts, performance_alerts)
@@ -171,7 +173,9 @@ class MonitoringAgent(MonitorStage):
 
     # ── Task 5.4: Regime detection ───────────────────────────────────────────────
 
-    def detect_regime_change(self, rolling_metrics: dict[str, Any]) -> list[dict[str, Any]]:
+    def detect_regime_change(
+        self, rolling_metrics: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Detect regime shifts from rolling metrics.
 
         Uses two signals:
@@ -218,23 +222,15 @@ class MonitoringAgent(MonitorStage):
         early_avg_sharpe = (
             sum(early_sharpes) / len(early_sharpes) if early_sharpes else 0.0
         )
-        late_avg_sharpe = (
-            sum(late_sharpes) / len(late_sharpes) if late_sharpes else 0.0
-        )
+        late_avg_sharpe = sum(late_sharpes) / len(late_sharpes) if late_sharpes else 0.0
 
-        early_avg_dd = (
-            sum(valid_drawdowns[:mid]) / max(len(valid_drawdowns[:mid]), 1)
-        )
-        late_avg_dd = (
-            sum(valid_drawdowns[mid:]) / max(len(valid_drawdowns[mid:]), 1)
-        )
+        early_avg_dd = sum(valid_drawdowns[:mid]) / max(len(valid_drawdowns[:mid]), 1)
+        late_avg_dd = sum(valid_drawdowns[mid:]) / max(len(valid_drawdowns[mid:]), 1)
 
         sharpe_drop_ratio = (
             late_avg_sharpe / early_avg_sharpe if early_avg_sharpe > 0 else 1.0
         )
-        dd_spike_ratio = (
-            late_avg_dd / early_avg_dd if early_avg_dd > 0 else 1.0
-        )
+        dd_spike_ratio = late_avg_dd / early_avg_dd if early_avg_dd > 0 else 1.0
 
         if sharpe_drop_ratio < 0.7 and dd_spike_ratio > 2.0:
             confidence = min(

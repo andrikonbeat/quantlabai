@@ -195,9 +195,7 @@ class LLMResearchAgent:
         symbol: str, timeframe: str, zones: list[dict[str, Any]]
     ) -> str:
         """Render the compact market block (zone labels only, no series)."""
-        lines = [
-            f"Market Context (Dukascopy/JForex4): {symbol} {timeframe}"
-        ]
+        lines = [f"Market Context (Dukascopy/JForex4): {symbol} {timeframe}"]
         for zone in zones:
             lines.append(f"- {zone['indicator_name']}: {zone['zone']}")
         return "\n".join(lines)
@@ -398,9 +396,7 @@ class LLMResearchAgent:
 
     # ── Task 2.5: build_prompt ──────────────────────────────────────────────────
 
-    def _render_f2_ranges(
-        self, provider: SQXDocProvider | None, ver: str
-    ) -> str:
+    def _render_f2_ranges(self, provider: SQXDocProvider | None, ver: str) -> str:
         """Render F2 SQX parameter reference from KB or fallback defaults.
 
         When the provider returns a range mapping, render it; otherwise fall
@@ -431,9 +427,7 @@ class LLMResearchAgent:
                     )
                 else:
                     lines.append(f"- {indicator} {param}: [{lo}, {hi}]")
-        lines.append(
-            "When generating parameters, stay within these bounds."
-        )
+        lines.append("When generating parameters, stay within these bounds.")
         return "\n".join(lines)
 
     def build_prompt(
@@ -745,9 +739,7 @@ class LLMResearchAgent:
         try:
             data = json.loads(response_text)
         except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"Failed to parse LLM response as JSON: {exc}"
-            ) from exc
+            raise ValueError(f"Failed to parse LLM response as JSON: {exc}") from exc
 
         # Validate required fields
         required = {"campaign", "market", "timeframe"}
@@ -790,8 +782,7 @@ class LLMResearchAgent:
         try:
             validator = ParameterValidator()
             hypotheses = [
-                h for h in hypotheses
-                if validator.validate_hypothesis(h).valid
+                h for h in hypotheses if validator.validate_hypothesis(h).valid
             ]
         except Exception:
             pass
@@ -906,9 +897,8 @@ class LLMResearchAgent:
                 objectives[0] if objectives else "",
                 market_context,
             )
-            fund_ticker: str = (
-                data.get("fundamental", {}).get("ticker")
-                or data.get("ticker", "")
+            fund_ticker: str = data.get("fundamental", {}).get("ticker") or data.get(
+                "ticker", ""
             )
 
             # Step 2: Build prompt
@@ -920,10 +910,7 @@ class LLMResearchAgent:
             # G3: cache the fetched market sample (best-effort).
             context = market_context or {}
             cache_symbol = (
-                fund_ticker
-                or context.get("ticker")
-                or context.get("market")
-                or ""
+                fund_ticker or context.get("ticker") or context.get("market") or ""
             )
             if cache_symbol:
                 await self.cache_market_bars(

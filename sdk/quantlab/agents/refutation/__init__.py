@@ -99,11 +99,14 @@ class RefutationLayer:
             aggregate summary.
         """
         if not hypotheses:
-            return RefutationResult(verdicts=[], summary={
-                "total_verdicts": 0,
-                "max_score": 0.0,
-                "mean_score": 0.0,
-            })
+            return RefutationResult(
+                verdicts=[],
+                summary={
+                    "total_verdicts": 0,
+                    "max_score": 0.0,
+                    "mean_score": 0.0,
+                },
+            )
 
         if not self._config.enabled:
             return self._empty_result(hypotheses)

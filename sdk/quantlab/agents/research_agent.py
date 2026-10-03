@@ -106,7 +106,9 @@ class ResearchAgent:
             strategies=strategies,
             criteria=criteria,
             hypotheses=hypotheses,
-            llm_config=self._build_llm_config(broker_profile) if broker_profile else None,
+            llm_config=self._build_llm_config(broker_profile)
+            if broker_profile
+            else None,
             iteration_config=IterationConfig(
                 max_iterations=5,
                 convergence_threshold=0.02,
@@ -143,7 +145,11 @@ class ResearchAgent:
             if ctx_market:
                 try:
                     market = Market(ctx_market.upper())
-                    tf = Timeframe(ctx_timeframe.upper()) if ctx_timeframe else Timeframe.H1
+                    tf = (
+                        Timeframe(ctx_timeframe.upper())
+                        if ctx_timeframe
+                        else Timeframe.H1
+                    )
                     return market, tf, ctx_tags
                 except ValueError:
                     pass
@@ -212,7 +218,9 @@ class ResearchAgent:
                     )
                     keywords_seen.add("rsi")
 
-                if "bb" not in keywords_seen and ("bollinger" in obj_lower or "bb" in obj_lower):
+                if "bb" not in keywords_seen and (
+                    "bollinger" in obj_lower or "bb" in obj_lower
+                ):
                     blocks.append(
                         BuildingBlock(
                             name="BollingerBands",
@@ -284,7 +292,8 @@ class ResearchAgent:
                 BuildingBlock(
                     name="RSI_Default",
                     indicator=IndicatorConfig(
-                        name="RSI", params={"period": 14},
+                        name="RSI",
+                        params={"period": 14},
                     ),
                 )
             )
@@ -381,8 +390,7 @@ class ResearchAgent:
 
             # Apply filters
             query = (
-                builder
-                .filter_by_sharpe(min_val=min_sharpe)
+                builder.filter_by_sharpe(min_val=min_sharpe)
                 .filter_by_date(start="2022-01-01")
                 .limit(limit)
             )
@@ -448,7 +456,7 @@ class ResearchAgent:
                 HypothesisConfig(
                     name="mean_reversion_rsi_bb",
                     description="RSI(14) < 30 + Bollinger lower band touch entry, "
-                                "take profit at middle band",
+                    "take profit at middle band",
                     parameters={
                         "rsi_period": 14,
                         "rsi_oversold": 30,
@@ -500,7 +508,7 @@ class ResearchAgent:
                 HypothesisConfig(
                     name="bollinger_squeeze",
                     description="Bollinger Band squeeze (bandwidth < 0.1) followed by "
-                                "breakout in direction of ATR expansion",
+                    "breakout in direction of ATR expansion",
                     parameters={
                         "bb_period": 20,
                         "bb_deviation": 2.0,
@@ -517,7 +525,7 @@ class ResearchAgent:
             HypothesisConfig(
                 name="robustness_validation",
                 description="Validate top strategies across 2020-2024 with walk-forward "
-                            "analysis, minimum 30 trades, max 20% drawdown",
+                "analysis, minimum 30 trades, max 20% drawdown",
                 parameters={
                     "min_trades": 30,
                     "max_drawdown": 0.20,
@@ -534,7 +542,7 @@ class ResearchAgent:
             HypothesisConfig(
                 name="regime_adaptive_params",
                 description="Adapt entry parameters based on market regime "
-                            "(trending vs ranging detected via ADX/DMI)",
+                "(trending vs ranging detected via ADX/DMI)",
                 parameters={
                     "adx_period": 14,
                     "trend_threshold": 25,
@@ -592,11 +600,19 @@ class ResearchAgent:
                     f"aligned to {timeframe} for controlled stop-loss sizing"
                 )
             if risk_per_trade is not None:
-                rationale_parts.append(f"risk per trade capped at ${risk_per_trade:.2f}")
+                rationale_parts.append(
+                    f"risk per trade capped at ${risk_per_trade:.2f}"
+                )
 
-            hypothesis.llm_rationale = "; ".join(rationale_parts) if rationale_parts else hypothesis.llm_rationale
+            hypothesis.llm_rationale = (
+                "; ".join(rationale_parts)
+                if rationale_parts
+                else hypothesis.llm_rationale
+            )
 
-    def _build_llm_config(self, broker_profile: dict[str, Any]) -> dict[str, Any] | None:
+    def _build_llm_config(
+        self, broker_profile: dict[str, Any]
+    ) -> dict[str, Any] | None:
         return None
 
     def _extended_knowledge_query(
@@ -620,14 +636,18 @@ class ResearchAgent:
             builder = QueryBuilder(index, knowledge_root)
 
             query = (
-                builder
-                .filter_by_sharpe(min_val=1.0)
+                builder.filter_by_sharpe(min_val=1.0)
                 .filter_by_date(start="2022-01-01")
                 .limit(10)
             )
 
-            if capital_constraints and capital_constraints.get("max_drawdown") is not None:
-                query = query.filter_by_max_drawdown(capital_constraints["max_drawdown"])
+            if (
+                capital_constraints
+                and capital_constraints.get("max_drawdown") is not None
+            ):
+                query = query.filter_by_max_drawdown(
+                    capital_constraints["max_drawdown"]
+                )
 
             result = query.execute()
             return [
@@ -666,7 +686,9 @@ class ResearchAgent:
             ``iteration_config``, and ``gate_policies``.
         """
         config = context.config or {}
-        objectives: list[str] = config.get("objectives", config.get("campaign_name", "Research"))
+        objectives: list[str] = config.get(
+            "objectives", config.get("campaign_name", "Research")
+        )
         if isinstance(objectives, str):
             objectives = [objectives]
 
@@ -685,7 +707,11 @@ class ResearchAgent:
 
         # Respect criteria from the input config if present — generate_config()
         # otherwise overwrites them with the 4 hardcoded defaults.
-        original_criteria = config.get("criteria") if isinstance(config, dict) else getattr(config, "criteria", None)
+        original_criteria = (
+            config.get("criteria")
+            if isinstance(config, dict)
+            else getattr(config, "criteria", None)
+        )
         if original_criteria:
             research_config.criteria = original_criteria
 
@@ -711,7 +737,9 @@ class ResearchAgent:
         research_config_dict = research_config.model_dump(mode="json")
         hypotheses_dict = [h.model_dump(mode="json") for h in hypotheses]
         iteration_config_dict = research_config.iteration_config.model_dump(mode="json")
-        gate_policies_dict = [g.model_dump(mode="json") for g in research_config.gate_policies]
+        gate_policies_dict = [
+            g.model_dump(mode="json") for g in research_config.gate_policies
+        ]
 
         # Write to context artifacts
         context.artifacts["research_config"] = research_config_dict
@@ -719,11 +747,14 @@ class ResearchAgent:
         context.artifacts["hypotheses"] = hypotheses_dict
         context.artifacts["iteration_config"] = iteration_config_dict
         context.artifacts["gate_policies"] = gate_policies_dict
-        context.artifacts["selected_strategies"] = [s.name for s in research_config.strategies]
+        context.artifacts["selected_strategies"] = [
+            s.name for s in research_config.strategies
+        ]
 
         logger.info(
             "ResearchAgent: generated config for '%s' with %d hypotheses",
-            research_config.campaign, len(hypotheses),
+            research_config.campaign,
+            len(hypotheses),
         )
 
         return {

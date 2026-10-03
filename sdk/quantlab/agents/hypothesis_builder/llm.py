@@ -146,17 +146,14 @@ class LLMMode:
         try:
             data: dict[str, Any] = json.loads(response_text)
         except json.JSONDecodeError as exc:
-            raise ValueError(
-                f"Failed to parse LLM response as JSON: {exc}"
-            ) from exc
+            raise ValueError(f"Failed to parse LLM response as JSON: {exc}") from exc
 
         # Validate required top-level keys
         required = {"building_blocks", "strategies"}
         missing = required - set(data.keys())
         if missing:
             raise ValueError(
-                f"LLM response missing required fields: "
-                f"{', '.join(sorted(missing))}"
+                f"LLM response missing required fields: {', '.join(sorted(missing))}"
             )
 
         # Parse building blocks
@@ -193,9 +190,7 @@ class LLMMode:
         # Parse strategies
         strategies: list[Strategy] = []
         for s_data in data["strategies"]:
-            direction = StrategyDirection(
-                s_data.get("direction", "BOTH").upper()
-            )
+            direction = StrategyDirection(s_data.get("direction", "BOTH").upper())
             strategies.append(
                 Strategy(
                     name=s_data["name"],
@@ -213,7 +208,10 @@ class LLMMode:
             validator = ParameterValidator()
             valid_blocks: list[BuildingBlock] = []
             for block in blocks:
-                params = {f"{block.indicator.name.lower()}_{k}": v for k, v in block.indicator.params.items()}
+                params = {
+                    f"{block.indicator.name.lower()}_{k}": v
+                    for k, v in block.indicator.params.items()
+                }
                 hyp = HypothesisConfig(
                     name="llm_parse_check",
                     description="",
