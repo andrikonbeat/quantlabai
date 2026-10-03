@@ -76,12 +76,18 @@ def make_failed_pipeline_result(stages: int = 5) -> PipelineResult:
     """Create a PipelineResult where the first stage fails."""
     result = PipelineResult(pipeline_name="test")
     result.stages = [
-        StageResult(stage_name="stage_0", status=StageStatus.FAILED, duration=0.1,
-                     error="Simulated failure"),
+        StageResult(
+            stage_name="stage_0",
+            status=StageStatus.FAILED,
+            duration=0.1,
+            error="Simulated failure",
+        ),
     ]
     for i in range(1, stages):
         result.stages.append(
-            StageResult(stage_name=f"stage_{i}", status=StageStatus.SKIPPED, duration=0.0)
+            StageResult(
+                stage_name=f"stage_{i}", status=StageStatus.SKIPPED, duration=0.0
+            )
         )
     result.error = "Stage stage_0 failed"
     return result
@@ -114,7 +120,9 @@ class TestCandidateValidator:
 
         # Mock runner to return successful results
         validator._runner = AsyncMock()
-        validator._runner.run = AsyncMock(return_value=make_successful_pipeline_result())
+        validator._runner.run = AsyncMock(
+            return_value=make_successful_pipeline_result()
+        )
 
         candidate = make_candidate()
         pool.add(candidate)
@@ -143,8 +151,10 @@ class TestCandidateValidator:
 
         assert result.status == CandidateStatus.FAILED
         # Should NOT have walk_forward or monte_carlo results
-        assert "walk_forward" not in result.validation_results or \
-               result.validation_results.get("passed_tier2") is False
+        assert (
+            "walk_forward" not in result.validation_results
+            or result.validation_results.get("passed_tier2") is False
+        )
 
     @pytest.mark.asyncio
     async def test_skips_wf_when_bt_fails(self, config, pool, fitness):
@@ -204,7 +214,9 @@ class TestCandidateValidator:
         validator = CandidateValidator(config=config, fitness=fitness, pool=pool)
 
         validator._runner = AsyncMock()
-        validator._runner.run = AsyncMock(return_value=make_successful_pipeline_result())
+        validator._runner.run = AsyncMock(
+            return_value=make_successful_pipeline_result()
+        )
 
         candidate = make_candidate()
         pool.add(candidate)
@@ -220,7 +232,9 @@ class TestCandidateValidator:
         """After validation, the pool should reflect the new status."""
         validator = CandidateValidator(config=config, fitness=fitness, pool=pool)
         validator._runner = AsyncMock()
-        validator._runner.run = AsyncMock(return_value=make_successful_pipeline_result())
+        validator._runner.run = AsyncMock(
+            return_value=make_successful_pipeline_result()
+        )
 
         candidate = make_candidate(candidate_id="pool-test-001")
         pool.add(candidate)
@@ -236,7 +250,9 @@ class TestCandidateValidator:
         """validate_batch should validate multiple candidates sequentially."""
         validator = CandidateValidator(config=config, fitness=fitness, pool=pool)
         validator._runner = AsyncMock()
-        validator._runner.run = AsyncMock(return_value=make_successful_pipeline_result())
+        validator._runner.run = AsyncMock(
+            return_value=make_successful_pipeline_result()
+        )
 
         candidates = [
             make_candidate("batch-001", "s1"),

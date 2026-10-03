@@ -17,14 +17,14 @@ class TestCapitalGuardian:
         """Test that CapitalGuardian can be initialized."""
         performance_data = Mock()
         guardian = CapitalGuardian(performance_data)
-        
+
         assert guardian.performance_data == performance_data
 
     def test_capital_guardian_guardian_type(self):
         """Test that guardian_type returns correct type."""
         performance_data = Mock()
         guardian = CapitalGuardian(performance_data)
-        
+
         assert guardian.guardian_type() == GuardianType.CAPITAL
 
     def test_capital_guardian_check_with_valid_data(self):
@@ -47,23 +47,27 @@ class TestCapitalGuardian:
                 "expectancy": 0.0035,
             },
         }
-        
+
         guardian = CapitalGuardian(performance_data)
         result = guardian.check()
-        
+
         # Verify result structure
-        assert hasattr(result, 'guardian_type')
-        assert hasattr(result, 'status')
-        assert hasattr(result, 'score')
-        assert hasattr(result, 'message')
-        assert hasattr(result, 'timestamp')
-        
+        assert hasattr(result, "guardian_type")
+        assert hasattr(result, "status")
+        assert hasattr(result, "score")
+        assert hasattr(result, "message")
+        assert hasattr(result, "timestamp")
+
         assert result.guardian_type == GuardianType.CAPITAL
-        assert result.status in [GuardianStatus.GREEN, GuardianStatus.YELLOW, GuardianStatus.RED]
+        assert result.status in [
+            GuardianStatus.GREEN,
+            GuardianStatus.YELLOW,
+            GuardianStatus.RED,
+        ]
         assert 0.0 <= result.score <= 1.0
         assert isinstance(result.message, str)
         assert result.timestamp is not None
-        
+
         # Verify mock was called
         performance_data.get_strategy_performance.assert_called_once()
 
@@ -71,11 +75,13 @@ class TestCapitalGuardian:
         """Test check method handles exceptions gracefully."""
         # Setup mock to raise exception
         performance_data = Mock()
-        performance_data.get_strategy_performance.side_effect = Exception("Performance error")
-        
+        performance_data.get_strategy_performance.side_effect = Exception(
+            "Performance error"
+        )
+
         guardian = CapitalGuardian(performance_data)
         result = guardian.check()
-        
+
         # Should return a RED status result with error message
         assert result.guardian_type == GuardianType.CAPITAL
         assert result.status == GuardianStatus.RED
@@ -88,12 +94,12 @@ class TestCapitalGuardian:
         performance_data.get_strategy_performance.return_value = {
             "Strategy_A": {"expectancy": 0.01, "sharpe": 1.0, "win_rate": 0.5}
         }
-        
+
         risk_mock = Mock()
         portfolio_mock = Mock()
-        
+
         guardian = CapitalGuardian(performance_data, risk_mock, portfolio_mock)
-        
+
         assert guardian.performance_data == performance_data
         assert guardian.risk_guardian == risk_mock
         assert guardian.portfolio_guardian == portfolio_mock

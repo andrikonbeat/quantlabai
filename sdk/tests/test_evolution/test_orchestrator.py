@@ -29,8 +29,10 @@ class TestEvolutionOrchestrator:
         orch = EvolutionOrchestrator(config=config)
         signals = [
             EvolutionSignal(
-                strategy_id="strat_1", mg_state="DEGRADING",
-                health_score=0.4, priority=60
+                strategy_id="strat_1",
+                mg_state="DEGRADING",
+                health_score=0.4,
+                priority=60,
             )
         ]
         results = asyncio_run(orch.process_signals(signals))
@@ -42,8 +44,10 @@ class TestEvolutionOrchestrator:
         orch = EvolutionOrchestrator(config=config)
         signals = [
             EvolutionSignal(
-                strategy_id="strat_1", mg_state="DEGRADING",
-                health_score=0.4, priority=60
+                strategy_id="strat_1",
+                mg_state="DEGRADING",
+                health_score=0.4,
+                priority=60,
             )
         ]
         results = await orch.process_signals(signals)
@@ -56,12 +60,10 @@ class TestEvolutionOrchestrator:
         orch = EvolutionOrchestrator(config=config)
         signals = [
             EvolutionSignal(
-                strategy_id="low", mg_state="MONITORING",
-                health_score=0.8, priority=30
+                strategy_id="low", mg_state="MONITORING", health_score=0.8, priority=30
             ),
             EvolutionSignal(
-                strategy_id="high", mg_state="RETIRED",
-                health_score=0.2, priority=100
+                strategy_id="high", mg_state="RETIRED", health_score=0.2, priority=100
             ),
         ]
         results = await orch.process_signals(signals)
@@ -86,6 +88,7 @@ class TestEvolutionOrchestrator:
 def asyncio_run(coro):
     """Helper to run async tests in synchronous context."""
     import asyncio
+
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:

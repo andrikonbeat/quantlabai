@@ -23,17 +23,27 @@ class TestMaxDrawdown:
     def test_no_drawdown_when_flat(self):
         """Test max_drawdown returns 0.0 for constant equity."""
         points = [
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC), equity=10000.0),
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 1, tzinfo=UTC), equity=10000.0),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC), equity=10000.0
+            ),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 1, tzinfo=UTC), equity=10000.0
+            ),
         ]
         assert max_drawdown(points) == 0.0
 
     def test_drawdown_calculation(self):
         """Test max_drawdown computes peak-to-trough correctly."""
         points = [
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC), equity=10000.0),
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 1, tzinfo=UTC), equity=9000.0),
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 2, tzinfo=UTC), equity=9500.0),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC), equity=10000.0
+            ),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 1, tzinfo=UTC), equity=9000.0
+            ),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 2, tzinfo=UTC), equity=9500.0
+            ),
         ]
         assert max_drawdown(points) == pytest.approx(0.1)
 
@@ -100,8 +110,12 @@ class TestEvaluateLiveWithFeed:
     def test_evaluate_live_backward_compatible_with_list(self):
         """Test evaluate_live still works with a plain list of EquityPoint."""
         points = [
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC), equity=10000.0),
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 1, tzinfo=UTC), equity=10050.0),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC), equity=10000.0
+            ),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 1, tzinfo=UTC), equity=10050.0
+            ),
         ]
         result = evaluate_live(points)
 
@@ -112,8 +126,12 @@ class TestEvaluateLiveWithFeed:
     def test_evaluate_live_backward_compatible_with_tuple(self):
         """Test evaluate_live works with a tuple of EquityPoint."""
         points = (
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC), equity=10000.0),
-            EquityPoint(timestamp=datetime(2026, 8, 12, 10, 1, tzinfo=UTC), equity=9000.0),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 0, tzinfo=UTC), equity=10000.0
+            ),
+            EquityPoint(
+                timestamp=datetime(2026, 8, 12, 10, 1, tzinfo=UTC), equity=9000.0
+            ),
         )
         result = evaluate_live(points, drawdown_threshold=0.05)
 
