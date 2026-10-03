@@ -49,27 +49,37 @@ class TestSQXKnowledgeStoreStage:
     """SQXKnowledgeStoreStage writes the canonical Knowledge Lake layout."""
 
     @pytest.mark.asyncio
-    async def test_cfx_written_under_structured_campaign_dir(self, tmp_path: Path) -> None:
+    async def test_cfx_written_under_structured_campaign_dir(
+        self, tmp_path: Path
+    ) -> None:
         ctx, lake, _ = _make_context(tmp_path)
         await SQXKnowledgeStoreStage().execute(ctx)
 
         cfx = lake / "structured" / "MyCampaign" / "MyCampaign.cfx"
         assert cfx.is_file(), f"expected canonical CFX at {cfx}"
         assert cfx.read_bytes() == b"cfx-bytes"
-        assert not (lake / "campaigns").exists(), "legacy campaigns/ layout must not be written"
+        assert not (lake / "campaigns").exists(), (
+            "legacy campaigns/ layout must not be written"
+        )
 
     @pytest.mark.asyncio
-    async def test_results_written_under_structured_campaign_results(self, tmp_path: Path) -> None:
+    async def test_results_written_under_structured_campaign_results(
+        self, tmp_path: Path
+    ) -> None:
         ctx, lake, export_src = _make_context(tmp_path)
         await SQXKnowledgeStoreStage().execute(ctx)
 
         dest = lake / "structured" / "MyCampaign" / "results" / "backtest.csv"
         assert dest.is_file(), f"expected canonical result at {dest}"
         assert dest.read_text(encoding="utf-8") == "a,b\n1,2\n"
-        assert not (lake / "results").exists(), "legacy results/ layout must not be written"
+        assert not (lake / "results").exists(), (
+            "legacy results/ layout must not be written"
+        )
 
     @pytest.mark.asyncio
-    async def test_stats_written_to_structured_campaign_metrics_yaml(self, tmp_path: Path) -> None:
+    async def test_stats_written_to_structured_campaign_metrics_yaml(
+        self, tmp_path: Path
+    ) -> None:
         ctx, lake, _ = _make_context(tmp_path)
         await SQXKnowledgeStoreStage().execute(ctx)
 
@@ -132,7 +142,9 @@ class TestSQXKnowledgeStoreStage:
         assert result == {"artifact_paths": {}}
 
     @pytest.mark.asyncio
-    async def test_campaign_name_with_special_chars_is_sanitized(self, tmp_path: Path) -> None:
+    async def test_campaign_name_with_special_chars_is_sanitized(
+        self, tmp_path: Path
+    ) -> None:
         ctx, lake, _ = _make_context(tmp_path, campaign_name="My Campaign/Test: 2024!")
         await SQXKnowledgeStoreStage().execute(ctx)
 

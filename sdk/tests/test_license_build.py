@@ -43,9 +43,7 @@ class TestBuildNumberParsing:
         info = LicenseManager._parse_info(REAL_BUILD_LINE)
         assert info.expiry_date == "14.08.2026"
 
-    def test_missing_build_token_yields_null_warns_no_raise(
-        self, caplog
-    ) -> None:
+    def test_missing_build_token_yields_null_warns_no_raise(self, caplog) -> None:
         # REQ-301: no Build token → build_number null, a warning is logged,
         # and no exception is raised (license status still parses).
         with caplog.at_level(logging.WARNING, logger="quantlab.pipeline.license"):

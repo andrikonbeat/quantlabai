@@ -142,7 +142,9 @@ class TestKnowledgeStoreFormatValidation:
 
         # Add allowed format files
         (root / "raw" / "data.yaml").write_text("key: value\n", encoding="utf-8")
-        (root / "structured" / "data.json").write_text('{"key": "value"}\n', encoding="utf-8")
+        (root / "structured" / "data.json").write_text(
+            '{"key": "value"}\n', encoding="utf-8"
+        )
         (root / "raw" / "data.csv").write_text("a,b\n1,2\n", encoding="utf-8")
 
         warnings_list = store.validate_formats()
@@ -176,7 +178,10 @@ class TestKnowledgeStoreFormatValidation:
             warnings.simplefilter("always")
             store.validate_formats()
             assert len(w) >= 1
-            assert any(issubclass(category, FormatWarning) for category in [x.category for x in w])
+            assert any(
+                issubclass(category, FormatWarning)
+                for category in [x.category for x in w]
+            )
 
     def test_empty_directory_no_warnings(self, tmp_path: Path) -> None:
         """An empty knowledge lake produces no format warnings."""
@@ -222,7 +227,9 @@ class TestKnowledgeStoreInitBase:
 class TestKnowledgeStoreReconciledLayout:
     """REQ-101/REQ-402: structured/ hosts the reconciled sub-layouts."""
 
-    def test_fresh_init_creates_all_structured_sub_layouts(self, tmp_path: Path) -> None:
+    def test_fresh_init_creates_all_structured_sub_layouts(
+        self, tmp_path: Path
+    ) -> None:
         """GIVEN a fresh knowledge/ path
         WHEN the system initializes the Knowledge Lake
         THEN every canonical structured sub-layout skeleton exists with .gitkeep."""
@@ -301,8 +308,17 @@ class TestKnowledgeStoreIndexV5:
         assert "maintenance" in index
         assert any("sqx-kb" in key for key in index["kb_parameters"])
         assert any("sqx-version" in key for key in index["version_events"])
-        assert "agent-memory/research-director/campaign-7/memory.yaml" in index["agent_memory"]
-        assert index.get("campaigns", {}).get("campaign-7", {}).get("metrics", {}).get("sharpe_ratio") == 1.5
+        assert (
+            "agent-memory/research-director/campaign-7/memory.yaml"
+            in index["agent_memory"]
+        )
+        assert (
+            index.get("campaigns", {})
+            .get("campaign-7", {})
+            .get("metrics", {})
+            .get("sharpe_ratio")
+            == 1.5
+        )
 
     def test_v1_index_readable_with_defaults(self, tmp_path: Path) -> None:
         """GIVEN an index.yaml of version 1
@@ -447,4 +463,3 @@ class TestIndexerReconciledRead:
         idx = Indexer(root).build_index()
 
         assert idx["dup"]["metrics"]["sharpe_ratio"] == 3.0
-

@@ -1,6 +1,5 @@
 """Tests for SEG MCP tools."""
 
-
 import pytest
 
 from quantlab.mcp.bridge import QuantLabMCPServer
@@ -23,14 +22,16 @@ def test_seg_tool_registered():
 @pytest.mark.asyncio
 async def test_generate_strategy_with_minimal_intent():
     gen = get_generator()
-    candidates = await gen.generate({
-        "market": "forex",
-        "timeframe": "H1",
-        "risk_profile": "moderate",
-        "objective": "trend_following",
-        "count": 3,
-        "mode": "generative_only",
-    })
+    candidates = await gen.generate(
+        {
+            "market": "forex",
+            "timeframe": "H1",
+            "risk_profile": "moderate",
+            "objective": "trend_following",
+            "count": 3,
+            "mode": "generative_only",
+        }
+    )
     # May be empty if NoveltyGenerator has no real implementation to run
     # but should not raise exceptions
     assert isinstance(candidates, list)

@@ -48,6 +48,7 @@ FIXTURE_TPL = Path(__file__).parent / "fixtures" / "tpl_build_mini.xml"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _full_doc(tmp_path: Path) -> Path:
     """Generate a doc that documents every SEED_SPEC doc_key (all 77 seeded).
 
@@ -143,7 +144,11 @@ class TestSchemaViolationFails:
     def test_missing_what_it_does_fails_naming_param_and_field(
         self, tmp_path: Path
     ) -> None:
-        store = _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        store = _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         param = store.get("Ranking", "Ranking Criterium")
         data = param.model_dump()
         del data["what_it_does"]
@@ -161,7 +166,11 @@ class TestSchemaViolationFails:
         assert report.ok is False
 
     def test_corrupt_yaml_fails(self, tmp_path: Path) -> None:
-        store = _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        store = _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         bad_path = (
             tmp_path
             / "structured/sqx-kb/144.2953/parameters/Ranking/Ranking Criterium.yaml"
@@ -182,7 +191,11 @@ class TestSchemaViolationFails:
 
 class TestStaleIndexFails:
     def test_index_without_kb_parameters_fails(self, tmp_path: Path) -> None:
-        _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         # Simulate the pre-rebuild v3 index (current repo state).
         (tmp_path / "index.yaml").write_text(
             "_version: '3'\ndirectories: {}\n", encoding="utf-8"
@@ -196,15 +209,17 @@ class TestStaleIndexFails:
         assert report.ok is False
 
     def test_partial_index_coverage_fails(self, tmp_path: Path) -> None:
-        store = _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        store = _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         index = store.store.read_index()
         coverage = index["kb_parameters"]
         assert len(coverage) == SEED_TOTAL  # sanity: rebuilt index covers all
         # Keep only half the entries -> coverage must fail the gate.
         index["kb_parameters"] = dict(list(coverage.items())[: SEED_TOTAL // 2])
-        (tmp_path / "index.yaml").write_text(
-            yaml.safe_dump(index), encoding="utf-8"
-        )
+        (tmp_path / "index.yaml").write_text(yaml.safe_dump(index), encoding="utf-8")
 
         report = validate_seed(tmp_path)
 
@@ -219,7 +234,11 @@ class TestStaleIndexFails:
 
 class TestDanglingEvidenceFails:
     def test_verified_param_dangling_evidence_fails(self, tmp_path: Path) -> None:
-        store = _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        store = _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         param = store.list(status="verified")[0]
         dangling = param.model_copy(
             update={"evidence_ref": str(tmp_path / "does-not-exist.cfx")}
@@ -234,7 +253,11 @@ class TestDanglingEvidenceFails:
         assert report.ok is False
 
     def test_empty_evidence_ref_fails(self, tmp_path: Path) -> None:
-        store = _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        store = _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         param = store.list(status="needs_review")[0]
         store.seed([param.model_copy(update={"evidence_ref": None})])
 
@@ -245,7 +268,11 @@ class TestDanglingEvidenceFails:
         assert report.ok is False
 
     def test_valid_evidence_passes(self, tmp_path: Path) -> None:
-        _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         report = validate_seed(tmp_path)
         assert report.checks["evidence"] is True
 
@@ -257,7 +284,11 @@ class TestDanglingEvidenceFails:
 
 class TestDistributionBand:
     def test_expected_distribution_passes(self, tmp_path: Path) -> None:
-        _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         report = validate_seed(tmp_path)
         assert report.checks["distribution"] is True
         assert report.checks["schema"] is True
@@ -268,7 +299,11 @@ class TestDistributionBand:
 
     def test_needs_review_within_quota_is_success(self, tmp_path: Path) -> None:
         # needs_review is an accepted terminal state; gate must not raise on it.
-        store = _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        store = _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         report = validate_seed(tmp_path)
         assert report.counts["needs_review"] > 0
         assert report.checks["distribution"] is True
@@ -276,7 +311,11 @@ class TestDistributionBand:
         assert report.ok is True
 
     def test_total_mismatch_fails(self, tmp_path: Path) -> None:
-        store = _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        store = _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         # Drop one YAML so total != SEED_TOTAL.
         target = store.list()[0]
         (
@@ -293,13 +332,21 @@ class TestDistributionBand:
         assert report.ok is False
 
     def test_verified_outside_band_fails(self, tmp_path: Path) -> None:
-        _make_lake(tmp_path, verified=VERIFIED_MIN - 10, needs_review=SEED_TOTAL - VERIFIED_MIN + 10)
+        _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN - 10,
+            needs_review=SEED_TOTAL - VERIFIED_MIN + 10,
+        )
         report = validate_seed(tmp_path)
         assert report.checks["distribution"] is False
         assert report.ok is False
 
     def test_needs_review_outside_band_fails(self, tmp_path: Path) -> None:
-        _make_lake(tmp_path, verified=VERIFIED_MAX + 2, needs_review=SEED_TOTAL - VERIFIED_MAX - 2)
+        _make_lake(
+            tmp_path,
+            verified=VERIFIED_MAX + 2,
+            needs_review=SEED_TOTAL - VERIFIED_MAX - 2,
+        )
         report = validate_seed(tmp_path)
         assert report.checks["distribution"] is False
         assert report.ok is False
@@ -325,7 +372,11 @@ class TestDistributionBand:
 
 class TestSeedValidationReport:
     def test_report_carries_checks_counts_and_errors(self, tmp_path: Path) -> None:
-        _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         report = validate_seed(tmp_path)
         assert isinstance(report, SeedValidationReport)
         assert set(report.checks) == {
@@ -350,7 +401,11 @@ class TestCfxEvidenceMap:
         assert len(CFX_EVIDENCE_MAP) == 74
 
     def test_every_key_matches_a_seed_spec_entry(self) -> None:
-        spec_names = {(str(e["tab"]), str(e["name"])) for e in iter_seed_entries() if "doc_keys" in e}
+        spec_names = {
+            (str(e["tab"]), str(e["name"]))
+            for e in iter_seed_entries()
+            if "doc_keys" in e
+        }
         for key in CFX_EVIDENCE_MAP:
             assert key in spec_names, f"map key {key} is not a SEED_SPEC entry"
 
@@ -472,9 +527,7 @@ class TestKbSeedCliExitCodes:
         assert code == 0
 
     @pytest.mark.asyncio
-    async def test_seed_exits_one_when_doc_missing(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_seed_exits_one_when_doc_missing(self, tmp_path: Path) -> None:
         from quantlab.cli.sq_commands import cmd_kb_seed
 
         args = _kb_args(tmp_path, doc=str(tmp_path / "missing.md"))
@@ -482,9 +535,7 @@ class TestKbSeedCliExitCodes:
         assert code == 1
 
     @pytest.mark.asyncio
-    async def test_seed_exits_one_on_distribution_failure(
-        self, tmp_path: Path
-    ) -> None:
+    async def test_seed_exits_one_on_distribution_failure(self, tmp_path: Path) -> None:
         from quantlab.cli.sq_commands import cmd_kb_seed
 
         doc = _full_doc(tmp_path)
@@ -498,7 +549,11 @@ class TestKbValidateCliExitCodes:
     async def test_validate_exits_zero_on_healthy_lake(self, tmp_path: Path) -> None:
         from quantlab.cli.sq_commands import cmd_kb_validate
 
-        _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         code = await cmd_kb_validate(_kb_args(tmp_path))
         assert code == 0
 
@@ -506,7 +561,11 @@ class TestKbValidateCliExitCodes:
     async def test_validate_exits_one_on_stale_index(self, tmp_path: Path) -> None:
         from quantlab.cli.sq_commands import cmd_kb_validate
 
-        _make_lake(tmp_path, verified=VERIFIED_MIN + 1, needs_review=SEED_TOTAL - VERIFIED_MIN - 1)
+        _make_lake(
+            tmp_path,
+            verified=VERIFIED_MIN + 1,
+            needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
+        )
         (tmp_path / "index.yaml").write_text(
             "_version: '3'\ndirectories: {}\n", encoding="utf-8"
         )
@@ -520,9 +579,7 @@ class TestKbValidateCliExitCodes:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _write_synthetic_cfx_tree(
-    tmp_path: Path, make_cfx: object
-) -> None:
+def _write_synthetic_cfx_tree(tmp_path: Path, make_cfx: object) -> None:
     """Place a real ``.cfx`` ZIP at every CFX_EVIDENCE_MAP path (T-3.1).
 
     ``make_cfx`` wraps the committed ``config_mini.xml`` into a real ZIP
@@ -574,22 +631,13 @@ class TestCfxIntegration:
         assert rec.status == "verified"
         assert rec.evidence_ref and rec.evidence_ref.endswith(".cfx")
 
-        edu = (
-            tmp_path
-            / "lake"
-            / "structured"
-            / "sqx-kb"
-            / "144.2953"
-            / "educational"
-        )
+        edu = tmp_path / "lake" / "structured" / "sqx-kb" / "144.2953" / "educational"
         edu.mkdir(parents=True)
         (edu / "educational-dataset.yaml").write_text(
             yaml.safe_dump([r.model_dump() for r in records], sort_keys=False),
             encoding="utf-8",
         )
-        loaded = load_educational_dataset(
-            tmp_path / "lake", sqx_version="144.2953"
-        )
+        loaded = load_educational_dataset(tmp_path / "lake", sqx_version="144.2953")
         assert len(loaded) == SEED_TOTAL
         loaded_rec = next(
             r
@@ -664,6 +712,4 @@ class TestCfxIntegration:
         defaults = [e for e in entries if e["source"] == "default"]
         assert defaults  # non-overridden fields still classified default
         assert all(e["rationale"] == DEFAULT_RATIONALE for e in defaults)
-        assert not any(
-            "controls a trading behavior" in e["rationale"] for e in entries
-        )
+        assert not any("controls a trading behavior" in e["rationale"] for e in entries)

@@ -1,6 +1,5 @@
 """Tests for QuantLabMCPServer bridge."""
 
-
 from quantlab.mcp.bridge import QuantLabMCPServer
 
 

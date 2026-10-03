@@ -111,17 +111,25 @@ class TestTableGeneration:
         table = build_educational_table([])
         assert "No KB parameters to teach." in table
 
-    def test_template_values_drive_chosen_config_cell(self, tpl: Path, params: list[KbParameter]) -> None:
+    def test_template_values_drive_chosen_config_cell(
+        self, tpl: Path, params: list[KbParameter]
+    ) -> None:
         tpl_data = parse_tpl_build(tpl)
-        records = build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP)
+        records = build_educational_dataset(
+            params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP
+        )
         record = next(r for r in records if r.name == "Maximum Trades Per Day")
         # Real template key is MaxTradesPerDay; chosen config must reflect it.
         assert "3" in (record.chosen_config or "")
         assert record.template_status == "matched"
 
-    def test_absent_parameter_flagged_template_missing(self, tpl: Path, params: list[KbParameter]) -> None:
+    def test_absent_parameter_flagged_template_missing(
+        self, tpl: Path, params: list[KbParameter]
+    ) -> None:
         tpl_data = parse_tpl_build(tpl)
-        records = build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP)
+        records = build_educational_dataset(
+            params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP
+        )
         record = next(r for r in records if r.name == "Custom Doc Only")
         assert record.template_status == "template-missing"
         assert record.status == "verified"  # KB status retained
@@ -151,14 +159,22 @@ class TestSharedDataset:
         "evidence_ref",
     }
 
-    def test_dataset_emitted_per_parameter(self, tpl: Path, params: list[KbParameter]) -> None:
+    def test_dataset_emitted_per_parameter(
+        self, tpl: Path, params: list[KbParameter]
+    ) -> None:
         tpl_data = parse_tpl_build(tpl)
-        records = build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP)
+        records = build_educational_dataset(
+            params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP
+        )
         assert len(records) == len(params)
 
-    def test_dataset_is_schema_loadable(self, tpl: Path, params: list[KbParameter]) -> None:
+    def test_dataset_is_schema_loadable(
+        self, tpl: Path, params: list[KbParameter]
+    ) -> None:
         tpl_data = parse_tpl_build(tpl)
-        records = build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP)
+        records = build_educational_dataset(
+            params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP
+        )
         for record in records:
             dumped = record.model_dump()
             for field in self.REQUIRED_FIELDS:
@@ -167,13 +183,19 @@ class TestSharedDataset:
         reparsed = EducationalRecord.model_validate(records[0].model_dump())
         assert reparsed.name == records[0].name
 
-    def test_no_required_field_empty_for_verified(self, tpl: Path, params: list[KbParameter]) -> None:
+    def test_no_required_field_empty_for_verified(
+        self, tpl: Path, params: list[KbParameter]
+    ) -> None:
         tpl_data = parse_tpl_build(tpl)
-        records = build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP)
+        records = build_educational_dataset(
+            params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP
+        )
         for record in records:
             dumped = record.model_dump()
             for field in ("name", "sqx_name", "tab", "section", "what_it_does"):
-                assert dumped.get(field), f"empty required field {field} in {record.name}"
+                assert dumped.get(field), (
+                    f"empty required field {field} in {record.name}"
+                )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -182,10 +204,16 @@ class TestSharedDataset:
 
 
 class TestDeterministicRegeneration:
-    def test_rerun_produces_identical_output(self, tpl: Path, params: list[KbParameter]) -> None:
+    def test_rerun_produces_identical_output(
+        self, tpl: Path, params: list[KbParameter]
+    ) -> None:
         tpl_data = parse_tpl_build(tpl)
-        first = build_educational_table(build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP))
-        second = build_educational_table(build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP))
+        first = build_educational_table(
+            build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP)
+        )
+        second = build_educational_table(
+            build_educational_dataset(params, tpl=tpl_data, tpl_key_map=TPL_KEY_MAP)
+        )
         assert first == second
 
     def test_parse_tpl_deterministic(self, tpl: Path) -> None:
@@ -303,16 +331,13 @@ class TestEducationalDatasetLoader:
 
         from quantlab.knowledge.kb.educational import load_educational_dataset
 
-        edu = (
-            tmp_path
-            / "structured"
-            / "sqx-kb"
-            / "144.2953"
-            / "educational"
-        )
+        edu = tmp_path / "structured" / "sqx-kb" / "144.2953" / "educational"
         edu.mkdir(parents=True)
         (edu / "educational-dataset.yaml").write_text(
-            yaml.safe_dump([_dataset_record("Maximum Trades Per Day", "Trading options")], sort_keys=False),
+            yaml.safe_dump(
+                [_dataset_record("Maximum Trades Per Day", "Trading options")],
+                sort_keys=False,
+            ),
             encoding="utf-8",
         )
         loaded = load_educational_dataset(tmp_path, sqx_version="144.2953")
@@ -378,9 +403,7 @@ class TestRunMatrixDatasetRationale:
     def test_dataset_match_requires_name_and_tab(self) -> None:
         """Same name, different tab → no match → generic default rationale."""
         config = _retest_config()
-        dataset = [
-            _dataset_record("monte_carlo_runs", "Trading options")
-        ]
+        dataset = [_dataset_record("monte_carlo_runs", "Trading options")]
         entries = generate_run_matrix(config, run_type="retest", dataset=dataset)
         entry = next(e for e in entries if e["parameter"] == "monte_carlo_runs")
         assert entry["source"] == "default"
@@ -447,7 +470,10 @@ class TestRunMatrixDatasetRationale:
         from quantlab.phase4.optimizer import OptimizerConfig
 
         config = OptimizerConfig(
-            strategy_id="S1", method="Genetic", objective="SharpeRatio", databanks=["EURUSD_H1"]
+            strategy_id="S1",
+            method="Genetic",
+            objective="SharpeRatio",
+            databanks=["EURUSD_H1"],
         )
         dataset = [_dataset_record("databanks", "Optimization")]
         entries = generate_run_matrix(config, run_type="optimize", dataset=dataset)
@@ -494,8 +520,7 @@ class TestRealTemplateCrossReference:
         records = build_educational_dataset(params, tpl=tpl)
         record = next(r for r in records if r.name == "Maximum Trades Per Day")
         assert record.template_status == "matched", (
-            "'Maximum Trades Per Day' must resolve to the real "
-            "MaxTradesPerDay key"
+            "'Maximum Trades Per Day' must resolve to the real MaxTradesPerDay key"
         )
         assert record.chosen_config  # non-empty "Chosen config" cell
 
