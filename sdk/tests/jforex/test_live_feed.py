@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -38,7 +38,7 @@ class TestJForexLiveFeed:
         assert len(points) == 2
         assert points[0].equity == 10000.0
         assert points[1].equity == 10050.0
-        assert points[0].timestamp == datetime(2026, 8, 12, 10, 0, tzinfo=timezone.utc)
+        assert points[0].timestamp == datetime(2026, 8, 12, 10, 0, tzinfo=UTC)
 
     def test_read_equity_missing_file_returns_empty(self, tmp_path: Path):
         """Test read_equity returns empty list when equity.json is missing."""

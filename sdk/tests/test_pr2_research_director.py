@@ -265,8 +265,8 @@ class TestConvergence:
         WHEN check_convergence() is called
         THEN True is returned after patience is exceeded.
         """
-        from quantlab.pipeline.base import PipelineContext
         from quantlab.agents.research_director import CampaignRecord
+        from quantlab.pipeline.base import PipelineContext
 
         director = ResearchDirector()
         config = ResearchConfig(

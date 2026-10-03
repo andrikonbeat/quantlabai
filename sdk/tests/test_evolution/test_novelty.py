@@ -6,6 +6,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from quantlab.dsl.models import Market, Timeframe
+from quantlab.evolution.config import EvolutionConfig
+from quantlab.evolution.fitness import FitnessFunction
+from quantlab.evolution.models import EvolutionMode
 from quantlab.evolution.novelty import (
     NoveltyGenerator,
     _build_research_config,
@@ -13,10 +17,6 @@ from quantlab.evolution.novelty import (
     _select_building_blocks,
     _timeframe_enum_from_str,
 )
-from quantlab.evolution.config import EvolutionConfig
-from quantlab.evolution.fitness import FitnessFunction
-from quantlab.evolution.models import EvolutionMode
-from quantlab.dsl.models import Market, Timeframe
 
 
 class TestMarketTimeframeResolution:

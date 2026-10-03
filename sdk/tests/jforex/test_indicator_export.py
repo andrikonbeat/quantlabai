@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -30,17 +30,17 @@ def _sample_export() -> IndicatorExport:
     """Build a representative IndicatorExport with two indicators."""
     return IndicatorExport(
         strategy="BullEyes_M15",
-        exported_at=datetime(2026, 8, 13, 12, 0, 0, tzinfo=timezone.utc),
+        exported_at=datetime(2026, 8, 13, 12, 0, 0, tzinfo=UTC),
         indicators=[
             IndicatorSnapshot(
                 name="RSI",
                 value=41.7,
-                timestamp=datetime(2026, 8, 13, 12, 0, 0, tzinfo=timezone.utc),
+                timestamp=datetime(2026, 8, 13, 12, 0, 0, tzinfo=UTC),
             ),
             IndicatorSnapshot(
                 name="EMA20",
                 value=1.0802,
-                timestamp=datetime(2026, 8, 13, 12, 1, 0, tzinfo=timezone.utc),
+                timestamp=datetime(2026, 8, 13, 12, 1, 0, tzinfo=UTC),
             ),
         ],
     )

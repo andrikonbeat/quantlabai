@@ -229,8 +229,8 @@ class TestCliWrapperVersionPreflight:
     def test_drift_from_license_info_writes_checklist(
         self, seeded_kb: Path
     ) -> None:
-        from quantlab.sqx.cli_wrapper import version_preflight
         from quantlab.pipeline.license import LicenseInfo
+        from quantlab.sqx.cli_wrapper import version_preflight
 
         info = LicenseInfo(build_number="145.0")
         assert version_preflight(info, knowledge_root=seeded_kb) == "drift"
@@ -244,8 +244,8 @@ class TestCliWrapperVersionPreflight:
         assert checklist.is_file()
 
     def test_unknown_build_skips_quietly(self) -> None:
-        from quantlab.sqx.cli_wrapper import version_preflight
         from quantlab.pipeline.license import LicenseInfo
+        from quantlab.sqx.cli_wrapper import version_preflight
 
         assert version_preflight(LicenseInfo()) == "unknown"
 

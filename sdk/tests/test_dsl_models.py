@@ -5,8 +5,6 @@ import dataclasses
 import pytest
 import yaml
 
-from quantlab.tools.exceptions import ValidationError
-
 from quantlab.dsl.models import (
     AcceptanceCriterion,
     BuildingBlock,
@@ -23,6 +21,7 @@ from quantlab.dsl.models import (
 )
 from quantlab.dsl.parser import parse_yaml_string, serialize
 from quantlab.sqx.project_builder import BuildConfig
+from quantlab.tools.exceptions import ValidationError
 
 
 class TestMarket:

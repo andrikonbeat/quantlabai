@@ -45,8 +45,8 @@ class TestWebSearchProvider:
         WHEN search_web('AAPL earnings Q2 2026') called
         THEN a list of WebResult is returned with title, url, snippet, source.
         """
-        from quantlab.data.news.web_search import WebSearchProvider
         from quantlab.data.news.models import WebResult
+        from quantlab.data.news.web_search import WebSearchProvider
 
         provider = WebSearchProvider()
 
@@ -107,8 +107,8 @@ class TestWebSearchProvider:
         WHEN search_web() called again
         THEN the cached response is returned AND no external request is made.
         """
-        from quantlab.data.news.web_search import WebSearchProvider
         from quantlab.data.news.models import WebResult
+        from quantlab.data.news.web_search import WebSearchProvider
 
         provider = WebSearchProvider()
 

@@ -1,8 +1,9 @@
 """Tests for SqliteCache."""
 
-import pytest
 import time
 from pathlib import Path
+
+import pytest
 
 from quantlab.data.fundamental.cache import SqliteCache
 

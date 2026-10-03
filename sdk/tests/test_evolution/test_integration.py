@@ -20,8 +20,8 @@ import tempfile
 from unittest.mock import AsyncMock
 
 import pytest
-from pytest import approx
 import pytest_asyncio
+from pytest import approx
 
 from quantlab.evolution.config import (
     ConcurrencyConfig,
@@ -36,7 +36,6 @@ from quantlab.evolution.models import (
 )
 from quantlab.evolution.orchestrator import EvolutionOrchestrator
 from quantlab.evolution.pool import CandidatePool
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

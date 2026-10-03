@@ -7,10 +7,10 @@ WRITE-side canonical layout so pipeline writes can never silently drift
 off-layout again.
 """
 
-import yaml
-import pytest
-
 from pathlib import Path
+
+import pytest
+import yaml
 
 from quantlab.knowledge.conformance import ConformanceError
 from quantlab.phase4.stages import SQXKnowledgeStoreStage

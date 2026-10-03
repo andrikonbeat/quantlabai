@@ -32,7 +32,6 @@ from quantlab.knowledge.kb.models import KbParameter
 from quantlab.knowledge.kb.store import KbStore
 from quantlab.knowledge.kb.teaching import build_teaching_table
 
-
 # ── Fixtures / helpers ────────────────────────────────────────────────────────
 
 

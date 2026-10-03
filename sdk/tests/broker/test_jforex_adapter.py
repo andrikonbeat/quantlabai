@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from quantlab.broker.protocol import BrokerAdapter
 from quantlab.broker.jforex_adapter import JForexBrokerAdapter
+from quantlab.broker.protocol import BrokerAdapter
 from quantlab.jforex.config import JForexCredentials
 
 

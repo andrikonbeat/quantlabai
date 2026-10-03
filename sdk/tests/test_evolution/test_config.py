@@ -4,9 +4,9 @@ import pytest
 from pydantic import ValidationError
 
 from quantlab.evolution.config import (
+    ConcurrencyConfig,
     EvolutionConfig,
     EvolutionMode,
-    ConcurrencyConfig,
     ScheduleConfig,
     WeightProfile,
 )

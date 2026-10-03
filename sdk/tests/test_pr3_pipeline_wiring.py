@@ -30,7 +30,6 @@ from quantlab.pipeline.stages.agent_stages import (
     ResearchStage,
 )
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _make_minimal_config() -> ResearchConfig:
@@ -353,7 +352,10 @@ class TestPipelineIntegration:
         runner = PipelineRunner()
         runner.set_registry(StageRegistry())
 
-        from quantlab.pipeline.config.models import MultiAgentPipelineConfig, StageConfig
+        from quantlab.pipeline.config.models import (
+            MultiAgentPipelineConfig,
+            StageConfig,
+        )
 
         # Build via runner to get proper pipeline context
         stages = [

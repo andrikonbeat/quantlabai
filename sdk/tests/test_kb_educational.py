@@ -12,20 +12,20 @@ from pathlib import Path
 
 import pytest
 
+from quantlab.agents.parameter_matrix import (
+    DEFAULT_RATIONALE,
+    ParameterMatrixError,
+    generate_run_matrix,
+)
 from quantlab.knowledge.kb.educational import (
-    EducationalRecord,
     TPL_KEY_MAP,
+    EducationalRecord,
     build_educational_dataset,
     build_educational_table,
     parse_tpl_build,
 )
 from quantlab.knowledge.kb.models import KbParameter
 from quantlab.knowledge.kb.teaching import TABLE_HEADERS
-from quantlab.agents.parameter_matrix import (
-    DEFAULT_RATIONALE,
-    ParameterMatrixError,
-    generate_run_matrix,
-)
 
 FIXTURE_TPL = Path(__file__).parent / "fixtures" / "tpl_build_mini.xml"
 
@@ -251,8 +251,8 @@ class TestCommittedFixtures:
     def test_make_cfx_builds_parseable_zip(
         self, tmp_path: Path, make_cfx: object
     ) -> None:
-        import zipfile
         import xml.etree.ElementTree as ET
+        import zipfile
 
         cfx_path = make_cfx(tmp_path, name="config_mini.cfx")
         assert cfx_path.suffix == ".cfx"
@@ -300,9 +300,9 @@ class TestEducationalDatasetLoader:
     """T-2.7: load_educational_dataset reads the lake YAML at runtime."""
 
     def test_loads_dataset_yaml_from_lake(self, tmp_path: Path) -> None:
-        from quantlab.knowledge.kb.educational import load_educational_dataset
-
         import yaml
+
+        from quantlab.knowledge.kb.educational import load_educational_dataset
 
         edu = (
             tmp_path

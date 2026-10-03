@@ -77,7 +77,6 @@ class _SpyBuilder:
 
     async def _dispatch_single(self, *args, **kwargs):
         self.dispatch_calls.append((args, kwargs))
-        return None
 
 
 # ── Stage wiring ──────────────────────────────────────────────────────────────

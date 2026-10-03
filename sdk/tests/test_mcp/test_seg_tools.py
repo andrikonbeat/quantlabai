@@ -1,6 +1,7 @@
 """Tests for SEG MCP tools."""
 
 import json
+
 import pytest
 
 from quantlab.mcp.bridge import QuantLabMCPServer

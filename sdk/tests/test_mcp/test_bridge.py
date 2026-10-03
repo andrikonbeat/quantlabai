@@ -1,6 +1,7 @@
 """Tests for QuantLabMCPServer bridge."""
 
 import pytest
+
 from quantlab.mcp.bridge import QuantLabMCPServer
 
 

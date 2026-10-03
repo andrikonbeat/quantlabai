@@ -8,10 +8,10 @@ import yaml
 
 from quantlab.knowledge.indexer import Indexer
 from quantlab.knowledge.store import (
-    STRUCTURED_SUB_LAYOUTS,
     KNOWLEDGE_DIRS,
-    KnowledgeStore,
+    STRUCTURED_SUB_LAYOUTS,
     FormatWarning,
+    KnowledgeStore,
 )
 
 

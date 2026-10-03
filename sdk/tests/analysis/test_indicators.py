@@ -8,20 +8,19 @@ Strict TDD: written first — FAIL (RED) until `IndicatorEngine` exists.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from quantlab.data.market import Bar
 from quantlab.analysis.indicators import IndicatorEngine, IndicatorResult
-
+from quantlab.data.market import Bar
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _make_bar(close: float, high: float, low: float, volume: float = 1000.0) -> Bar:
     """Create a Bar with a fixed UTC timestamp, varying OHLCV fields."""
     return Bar(
-        timestamp=datetime(2024, 1, 2, 0, 0, tzinfo=timezone.utc),
+        timestamp=datetime(2024, 1, 2, 0, 0, tzinfo=UTC),
         open=close - 0.01,
         high=high,
         low=low,
@@ -35,7 +34,7 @@ def _bars_from_closes(closes: list[float]) -> list[Bar]:
     from datetime import timedelta
 
     result: list[Bar] = []
-    base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+    base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
     for i, c in enumerate(closes):
         high = c + 0.01
         low = c - 0.01
@@ -147,7 +146,7 @@ class TestIndicatorResultZones:
         """
         from datetime import timedelta
 
-        base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
         bars: list[Bar] = []
         for i in range(40):
             if i < 37:
@@ -182,7 +181,7 @@ class TestIndicatorResultZones:
         """
         from datetime import timedelta
 
-        base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
         bars: list[Bar] = []
         for i in range(60):
             # First 40 bars have wide range; last 20 compress.
@@ -243,7 +242,7 @@ class TestIndicatorResultZones:
         WHEN IndicatorEngine.compute is called with ['Bollinger']
         THEN the result zone is 'overbought'.
         """
-        base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
         bars: list[Bar] = []
         for i in range(19):
             bars.append(
@@ -279,7 +278,7 @@ class TestIndicatorResultZones:
         WHEN IndicatorEngine.compute is called with ['Bollinger']
         THEN the result zone is 'oversold'.
         """
-        base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
         bars: list[Bar] = []
         for i in range(19):
             bars.append(
@@ -428,7 +427,7 @@ class TestInsufficientData:
         WHEN IndicatorEngine.compute is called
         THEN returns IndicatorResult with zone='insufficient_data' and no exception.
         """
-        base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+        base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
         bars: list[Bar] = []
         for i in range(40):
             bars.append(

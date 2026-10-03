@@ -15,7 +15,6 @@ import pytest
 
 from quantlab.pipeline.base import PipelineContext
 
-
 # ---------------------------------------------------------------------------
 # T5.1 — JForexDeployStage
 # ---------------------------------------------------------------------------
@@ -169,7 +168,9 @@ class TestJForexProgressFn:
 
     def test_stage_routes_jforex_progress_into_monitor(self) -> None:
         """GIVEN ExecutionMonitorStage with progress_fn THEN monitor receives it."""
-        from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
+        from quantlab.pipeline.stages.execution_monitor_stage import (
+            ExecutionMonitorStage,
+        )
 
         captured: dict[str, object] = {}
 
@@ -199,7 +200,9 @@ class TestJForexPipelineE2E:
         """GIVEN compile output WHEN deploy + monitor run THEN artifacts chain."""
         from quantlab.pipeline.base import Pipeline
         from quantlab.pipeline.stages.compile_stage import CompileStage
-        from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
+        from quantlab.pipeline.stages.execution_monitor_stage import (
+            ExecutionMonitorStage,
+        )
         from quantlab.pipeline.stages.jforex_deploy_stage import JForexDeployStage
 
         jfx = tmp_path / "E2E_M5.jfx"
@@ -240,7 +243,9 @@ class TestJForexPipelineE2E:
         """GIVEN deploy fails WHEN chained THEN monitor still runs (fail-closed)."""
         from quantlab.pipeline.base import Pipeline
         from quantlab.pipeline.stages.compile_stage import CompileStage
-        from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
+        from quantlab.pipeline.stages.execution_monitor_stage import (
+            ExecutionMonitorStage,
+        )
         from quantlab.pipeline.stages.jforex_deploy_stage import JForexDeployStage
 
         jfx = tmp_path / "Fail_M15.jfx"

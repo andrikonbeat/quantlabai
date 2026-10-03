@@ -15,12 +15,12 @@ import pytest
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.errors import GateTimeoutError
 from quantlab.pipeline.stages.gate_interceptor import (
+    HUMAN_GATE_IDS,
     FallbackPolicy,
     GateAction,
     GateContext,
     GateDecision,
     GateInterceptorStage,
-    HUMAN_GATE_IDS,
 )
 
 

@@ -25,6 +25,7 @@ from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 from quantlab.sqx.campaign_monitor import (
     BaselineConfig,
     CampaignMonitor,
+    extract_results_count,
     parse_databank_counts,
 )
 from quantlab.sqx.cli_wrapper import dispatch_campaign
@@ -36,7 +37,6 @@ from quantlab.sqx.llm_generation_monitor import (
     build_prompt,
     parse_verdict,
 )
-from quantlab.sqx.campaign_monitor import extract_results_count
 
 
 def make_snapshot(**overrides: object) -> MonitorSnapshot:

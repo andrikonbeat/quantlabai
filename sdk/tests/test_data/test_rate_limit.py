@@ -1,7 +1,9 @@
 """Tests for TokenBucket rate limiter."""
 
 import asyncio
+
 import pytest
+
 from quantlab.data.fundamental.rate_limit import TokenBucket
 
 

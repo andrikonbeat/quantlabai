@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from quantlab.guardian.live import evaluate_live, LiveEvaluation, max_drawdown
+from quantlab.guardian.live import LiveEvaluation, evaluate_live, max_drawdown
 from quantlab.jforex.live_feed import JForexLiveFeed
 from quantlab.jforex.models import OrderEvent
 from quantlab.jforex.strategy_bridge import JForexStrategyBridge

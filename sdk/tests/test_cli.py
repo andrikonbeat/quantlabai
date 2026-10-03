@@ -113,16 +113,14 @@ class TestRealExecutor:
         """
         with patch(
             "quantlab.cli.runner.resolve_sqcli_path", return_value=None
-        ):
-            with pytest.raises(SQXNotFoundError, match="not found"):
-                RealExecutor()
+        ), pytest.raises(SQXNotFoundError, match="not found"):
+            RealExecutor()
 
     def test_custom_path_not_found_raises(self) -> None:
         with patch(
             "quantlab.cli.runner.resolve_sqcli_path", return_value=None
-        ):
-            with pytest.raises(SQXNotFoundError):
-                RealExecutor(sqcli_path="/bad/path/sqcli")
+        ), pytest.raises(SQXNotFoundError):
+            RealExecutor(sqcli_path="/bad/path/sqcli")
 
     def test_binary_resolved_on_init(self) -> None:
         """The executor resolves the binary path at construction."""
@@ -240,7 +238,7 @@ class TestDaemonStartTimeout:
     ) -> None:
         import types
 
-        import quantlab.sqx.cli_wrapper as cli_wrapper
+        from quantlab.sqx import cli_wrapper
 
         monkeypatch.setenv("QUANTLAB_SQCLI_TIMEOUT", "0.5")
 

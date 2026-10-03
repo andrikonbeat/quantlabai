@@ -33,9 +33,7 @@ from quantlab.pipeline.stages.agent_stages import (
     StatisticsStage,
 )
 from quantlab.pipeline.stages.gate_interceptor import GateAction, GateInterceptorStage
-from quantlab.gates.models import GateDecision, GateDecisionAction
-from quantlab.pipeline.stages.gate_interceptor import GateDecision as _GateStageDecision, GateAction
-
+from quantlab.pipeline.stages.gate_interceptor import GateDecision as _GateStageDecision
 
 # ── Minimal concrete agent stages for integration tests ────────────────────────
 

@@ -57,8 +57,8 @@ class TestRSSNewsProvider:
         WHEN fetch_news("AAPL") called
         THEN articles matching the query are returned as NewsItems.
         """
-        from quantlab.data.news.rss import RSSNewsProvider
         from quantlab.data.news.models import NewsItem
+        from quantlab.data.news.rss import RSSNewsProvider
 
         # Mock httpx.AsyncClient.get + feedparser to avoid external deps
         mock_response = AsyncMock()

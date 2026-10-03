@@ -2,8 +2,8 @@
 
 import pytest
 
-from quantlab.data.fundamental.yahoo import YahooFinanceProvider
 from quantlab.data.fundamental.fred import FredProvider
+from quantlab.data.fundamental.yahoo import YahooFinanceProvider
 
 
 @pytest.mark.asyncio

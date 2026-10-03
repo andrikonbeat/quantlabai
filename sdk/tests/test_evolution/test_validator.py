@@ -7,11 +7,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from quantlab.evolution.validator import CandidateValidator
 from quantlab.evolution.config import EvolutionConfig
 from quantlab.evolution.fitness import FitnessFunction
 from quantlab.evolution.models import CandidateStatus, EvolutionCandidate, EvolutionMode
 from quantlab.evolution.pool import CandidatePool
+from quantlab.evolution.validator import CandidateValidator
 from quantlab.pipeline.models import PipelineResult, StageResult, StageStatus
 
 

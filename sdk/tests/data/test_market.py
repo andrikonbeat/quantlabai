@@ -8,12 +8,16 @@ Strict TDD: written first — FAIL (RED) until market models/providers exist.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 
-from quantlab.data.market import Bar, MarketDataProvider, YahooProvider, DukascopyProvider
-
+from quantlab.data.market import (
+    Bar,
+    DukascopyProvider,
+    MarketDataProvider,
+    YahooProvider,
+)
 
 # ── Bar model ────────────────────────────────────────────────────────────────
 
@@ -25,7 +29,7 @@ class TestBarModel:
         THEN every field is preserved exactly.
         """
         bar = Bar(
-            timestamp=datetime(2024, 1, 2, 0, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2024, 1, 2, 0, 0, tzinfo=UTC),
             open=1.10,
             high=1.12,
             low=1.09,

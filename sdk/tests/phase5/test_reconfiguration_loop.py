@@ -26,7 +26,6 @@ from quantlab.dsl.models import (
 )
 from quantlab.sqx.project_builder import BuildConfig
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _make_config(**overrides) -> ResearchConfig:

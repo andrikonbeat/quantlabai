@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from quantlab.readers.databank import DatabankCSVReader, DatabankXLSXReader, read_strategies
+from quantlab.readers.databank import (
+    DatabankCSVReader,
+    DatabankXLSXReader,
+    read_strategies,
+)
 from quantlab.readers.models import (
     EquityPoint,
     StrategySummary,

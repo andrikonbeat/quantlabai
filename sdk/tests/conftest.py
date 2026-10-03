@@ -6,8 +6,8 @@ works when running tests from the ``sdk/`` directory or project root.
 
 import sys
 import zipfile
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import pytest
 

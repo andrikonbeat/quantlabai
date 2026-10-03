@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from quantlab.analysis.engine import AnalysisEngine, AnalysisThresholds
-from quantlab.analysis.models import StrategyAnalysis, SelectionResult
+from quantlab.analysis.models import SelectionResult, StrategyAnalysis
 from quantlab.analysis.selection import SelectionEngine
 from quantlab.readers.models import StrategySummary
 

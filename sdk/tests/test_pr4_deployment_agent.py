@@ -19,7 +19,6 @@ import pytest
 from quantlab.agents.deployment_agent import DeploymentAgent, DeploymentResult
 from quantlab.pipeline.base import PipelineContext
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 # _validate_cfx accepts bytes >= 100, so make sure test CFX passes that bar.

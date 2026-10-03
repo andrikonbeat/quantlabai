@@ -19,7 +19,6 @@ import yaml
 
 from quantlab.knowledge.store import KnowledgeStore
 
-
 # ── Fixtures / helpers ────────────────────────────────────────────────────────
 
 

@@ -14,7 +14,6 @@ import pytest
 
 from quantlab.data import NotSupportedError
 
-
 # ── resolve_symbol / u_symbol naming ────────────────────────────────────────
 
 
@@ -39,7 +38,7 @@ class TestNaming:
         assert resolve_symbol("XAUUSD", "H1", "dukascopy") == "XAUUSD_H1_dukas"
 
     def test_resolve_symbol_with_suffix(self) -> None:
-        """GIVEN a symbol with an uppercase suffix (regex allows _[A-Z]+\d*)
+        r"""GIVEN a symbol with an uppercase suffix (regex allows _[A-Z]+\d*)
         WHEN resolve_symbol is called
         THEN the SQX name preserves the suffix.
         """

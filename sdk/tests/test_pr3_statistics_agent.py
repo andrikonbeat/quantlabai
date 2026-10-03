@@ -23,7 +23,6 @@ from quantlab.stats.models import (
     StatsResult,
 )
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _make_trade(profit: float) -> Trade:

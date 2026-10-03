@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 
@@ -16,7 +16,7 @@ class TestOrderEvent:
         """Test that OrderEvent can be created with required fields."""
         event = OrderEvent(
             order_id="ORD-001",
-            timestamp=datetime(2026, 8, 12, 10, 30, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2026, 8, 12, 10, 30, 0, tzinfo=UTC),
             side="BUY",
             lots=0.1,
             price=1.1234,
@@ -31,7 +31,7 @@ class TestOrderEvent:
 
     def test_order_event_defaults(self):
         """Test that OrderEvent works with minimal valid data."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         event = OrderEvent(
             order_id="ORD-002",
             timestamp=now,
@@ -49,7 +49,7 @@ class TestOrderEvent:
         with pytest.raises(ValueError):
             OrderEvent(
                 order_id="ORD-003",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 side="BUY",
                 lots=-0.1,
                 price=1.1234,
@@ -61,7 +61,7 @@ class TestOrderEvent:
         with pytest.raises(ValueError):
             OrderEvent(
                 order_id="ORD-004",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 side="SELL",
                 lots=0.1,
                 price=-1.0,
@@ -72,7 +72,7 @@ class TestOrderEvent:
         """Test that OrderEvent can be serialized."""
         event = OrderEvent(
             order_id="ORD-005",
-            timestamp=datetime(2026, 8, 12, 10, 30, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2026, 8, 12, 10, 30, 0, tzinfo=UTC),
             side="BUY",
             lots=0.5,
             price=1.5678,

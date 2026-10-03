@@ -57,8 +57,8 @@ class TestGenerateConfig:
         assert len(config.hypotheses) >= 1
         for h in config.hypotheses:
             assert 0.0 <= h.confidence <= 1.0, f"Confidence {h.confidence} out of range"
-            assert h.name, f"Hypothesis missing name"
-            assert h.description, f"Hypothesis missing description"
+            assert h.name, "Hypothesis missing name"
+            assert h.description, "Hypothesis missing description"
 
     def test_generate_config_has_iteration_config(self) -> None:
         """GIVEN objectives

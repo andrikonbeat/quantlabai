@@ -13,8 +13,8 @@ Covers:
 """
 
 import asyncio
-import json
 import io
+import json
 
 import pytest
 

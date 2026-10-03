@@ -13,12 +13,11 @@ JForexProvider exist.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 
 from quantlab.data.datasource_registry import DatasourceHandler, DatasourceRegistry
-
 
 # ── Recording handler doubles (no mocks — real registry, real handler) ──────
 
@@ -185,8 +184,8 @@ class TestJForexProvider:
 
     @pytest.mark.asyncio
     async def test_ensure_fail_closed_when_history_missing(self, tmp_path) -> None:
-        from quantlab.jforex.provider import JForexProvider
         from quantlab.data import DataManagerError
+        from quantlab.jforex.provider import JForexProvider
 
         provider = JForexProvider(state_dir=tmp_path)
         with pytest.raises(DataManagerError, match="no local history"):
@@ -207,7 +206,7 @@ class TestJForexProvider:
         assert len(bars) == 1
         assert bars[0].close == 1.15
         assert bars[0].volume == 1000.0
-        assert bars[0].timestamp == datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+        assert bars[0].timestamp == datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)
 
     def test_fetch_history_skips_malformed_rows(self, tmp_path) -> None:
         from quantlab.jforex.provider import JForexProvider

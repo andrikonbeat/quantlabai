@@ -17,7 +17,6 @@ from quantlab.pipeline.stages.dispatch_stage import DispatchStage
 from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
 from quantlab.pipeline.stages.retester_stage import RetesterStage
 
-
 # ── Fakes ─────────────────────────────────────────────────────────────────────
 
 class _FakeRetester:

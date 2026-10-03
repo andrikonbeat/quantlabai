@@ -130,7 +130,7 @@ class TestCorrelationAnalysis:
 
         # With random data and high threshold, likely no clusters
         # This is probabilistic but very likely
-        pass  # Not asserting specific cluster count — depends on randomness
+        # Not asserting specific cluster count — depends on randomness
 
     def test_single_strategy_correlation(self) -> None:
         """GIVEN a single strategy

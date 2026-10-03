@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
+from quantlab.evolution.config import EvolutionConfig, EvolutionMode
+from quantlab.evolution.fitness import FitnessFunction
 from quantlab.evolution.genetic import (
     GeneticOptimizer,
     apply_params_to_cfx,
@@ -18,8 +20,6 @@ from quantlab.evolution.genetic import (
     single_point_crossover,
     tournament_select,
 )
-from quantlab.evolution.config import EvolutionConfig, EvolutionMode
-from quantlab.evolution.fitness import FitnessFunction
 from quantlab.evolution.models import EvolutionCandidate
 
 # ── Mutation operator tests ──────────────────────────────────────────

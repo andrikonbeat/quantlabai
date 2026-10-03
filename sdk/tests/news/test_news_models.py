@@ -6,8 +6,9 @@ Covers spec scenarios from:
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime
+
+import pytest
 
 from quantlab.data.fundamental.base import ProviderError
 
@@ -92,6 +93,7 @@ class TestWebResult:
     def test_web_result_frozen(self):
         """WebResult should be immutable (frozen dataclass)."""
         from dataclasses import FrozenInstanceError
+
         from quantlab.data.news.models import WebResult
 
         result = WebResult(
@@ -131,8 +133,8 @@ class TestNewsProviderABC:
 
     def test_extends_abstract_data_provider(self):
         """NewsProvider should extend AbstractDataProvider."""
-        from quantlab.data.news.base import NewsProvider
         from quantlab.data.fundamental.base import AbstractDataProvider
+        from quantlab.data.news.base import NewsProvider
 
         assert issubclass(NewsProvider, AbstractDataProvider)
 

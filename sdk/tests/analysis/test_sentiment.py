@@ -11,7 +11,6 @@ import pytest
 
 from quantlab.data.news.models import NewsItem
 
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 

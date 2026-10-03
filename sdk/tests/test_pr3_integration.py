@@ -15,9 +15,9 @@ import tempfile
 
 import pytest
 
-from quantlab.agents.statistics_agent import StatisticsAgent
-from quantlab.agents.reviewer_agent import ReviewerAgent
 from quantlab.agents.portfolio_agent import PortfolioAgent
+from quantlab.agents.reviewer_agent import ReviewerAgent
+from quantlab.agents.statistics_agent import StatisticsAgent
 from quantlab.pipeline.base import PipelineContext
 
 

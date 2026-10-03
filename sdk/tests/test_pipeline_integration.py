@@ -18,16 +18,15 @@ from quantlab.pipeline.config.models import (
     StageConfig,
 )
 from quantlab.pipeline.errors import ContractValidationError
-from quantlab.pipeline.runner import PipelineRunner
 from quantlab.pipeline.registry import StageRegistry
+from quantlab.pipeline.runner import PipelineRunner
 from quantlab.pipeline.stages.gate_interceptor import (
     FallbackPolicy,
+    GateAction,
     GateContext,
     GateDecision,
-    GateAction,
     GateInterceptorStage,
 )
-
 
 # ─── Task 1.16: Integration test ───────────────────────────────────────────────
 

@@ -6,10 +6,10 @@ fail-closed policy (fallback HOLD) and webhook+console notifications.
 
 from quantlab.gates.models import (
     DEFAULT_GATE_POLICIES,
+    HUMAN_GATE_IDS,
     FallbackPolicy,
     GateDecision,
     GateDecisionAction,
-    HUMAN_GATE_IDS,
 )
 
 HUMAN_APPROVE_CONFIG = "HUMAN_APPROVE_CONFIG"

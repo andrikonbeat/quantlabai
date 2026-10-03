@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from quantlab.translate.translator import generate_cfx_archive, generate_cfx_xml
 from quantlab.cfx import CfxWriter
 from quantlab.dsl.models import (
     AcceptanceCriterion,
@@ -19,6 +18,7 @@ from quantlab.dsl.models import (
     Strategy,
 )
 from quantlab.tools.exceptions import TranslationError, ValidationError
+from quantlab.translate.translator import generate_cfx_archive, generate_cfx_xml
 
 
 class TestGenerateCfxArchive:

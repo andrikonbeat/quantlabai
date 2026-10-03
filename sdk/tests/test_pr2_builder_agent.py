@@ -250,9 +250,10 @@ class TestKbConsult:
         WHEN run() is called
         THEN KbStore.consult is called and kb_warnings is absent.
         """
+        from unittest.mock import AsyncMock, patch
+
         from quantlab.dsl.models import Strategy
         from quantlab.pipeline.base import PipelineContext
-        from unittest.mock import AsyncMock, patch
 
         agent = BuilderAgent()
         config = ResearchConfig(
@@ -286,10 +287,11 @@ class TestKbConsult:
         WHEN run() is called
         THEN ConfigurationError is raised.
         """
+        from unittest.mock import AsyncMock, patch
+
         from quantlab.dsl.models import Strategy
         from quantlab.pipeline.base import PipelineContext
         from quantlab.pipeline.errors import ConfigurationError
-        from unittest.mock import AsyncMock, patch
 
         agent = BuilderAgent(strict_kb=True)
         config = ResearchConfig(
@@ -308,9 +310,8 @@ class TestKbConsult:
             "quantlab.knowledge.kb.store.KbStore.consult", return_value=[]
         ), patch.object(
             BuilderAgent, "_dispatch_with_retry", new_callable=AsyncMock
-        ):
-            with pytest.raises(ConfigurationError, match="Missing or unverified KB entries"):
-                await agent.run(ctx)
+        ), pytest.raises(ConfigurationError, match="Missing or unverified KB entries"):
+            await agent.run(ctx)
 
     @pytest.mark.asyncio
     async def test_builder_consult_empty_kb_halts_with_warning(self) -> None:
@@ -318,9 +319,10 @@ class TestKbConsult:
         WHEN run() is called
         THEN kb_warnings contains all tab names.
         """
+        from unittest.mock import AsyncMock, patch
+
         from quantlab.dsl.models import Strategy
         from quantlab.pipeline.base import PipelineContext
-        from unittest.mock import AsyncMock, patch
 
         agent = BuilderAgent()
         config = ResearchConfig(
@@ -357,9 +359,10 @@ class TestKbConsult:
         WHEN run() is called
         THEN warning is logged and translation proceeds.
         """
+        from unittest.mock import AsyncMock, patch
+
         from quantlab.dsl.models import Strategy
         from quantlab.pipeline.base import PipelineContext
-        from unittest.mock import AsyncMock, patch
 
         agent = BuilderAgent()
         config = ResearchConfig(

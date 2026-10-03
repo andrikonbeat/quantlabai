@@ -13,16 +13,16 @@ to ``CONTINUE`` — the one fallback that resolves to
 
 from __future__ import annotations
 
+import pytest
+
 from quantlab.gates.models import (
     DEFAULT_GATE_POLICIES,
+    HUMAN_GATE_IDS,
     FallbackPolicy,
     GateDecisionAction,
-    HUMAN_GATE_IDS,
     GatePolicyConfig,
 )
 from quantlab.gates.orchestrator import HumanGateOrchestrator
-
-import pytest
 
 HUMAN_APPROVE_REPLACEMENT = "HUMAN_APPROVE_REPLACEMENT"
 

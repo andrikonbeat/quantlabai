@@ -138,7 +138,7 @@ class TestEnsureDataPreFlight:
         THEN the data pre-flight is skipped and dispatch proceeds
         (REQ-13 scenario).
         """
-        import quantlab.sqx.cli_wrapper as cli_wrapper
+        from quantlab.sqx import cli_wrapper
 
         agent = BuilderAgent()
 

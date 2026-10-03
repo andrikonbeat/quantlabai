@@ -8,12 +8,11 @@ Strict TDD: written first — FAIL (RED) until `RegimeClassifier` exists.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
 from quantlab.data.market import Bar
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -38,7 +37,7 @@ def _make_bar(
 
 def _trending_bars(count: int = 40) -> list[Bar]:
     """Smooth upward trend with small, stable ranges."""
-    base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+    base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
     bars: list[Bar] = []
     for i in range(count):
         close = 1.10 + i * 0.01
@@ -56,7 +55,7 @@ def _trending_bars(count: int = 40) -> list[Bar]:
 
 def _range_bars(count: int = 48) -> list[Bar]:
     """Oscillating range with moderate ranges and gentle upward drift."""
-    base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+    base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
     bars: list[Bar] = []
     for i in range(count):
         drift = i * 0.006
@@ -76,7 +75,7 @@ def _range_bars(count: int = 48) -> list[Bar]:
 
 def _volatile_bars(count: int = 100) -> list[Bar]:
     """Starts stable, then expands dramatically."""
-    base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+    base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
     bars: list[Bar] = []
     for i in range(count):
         if i < 80:
@@ -103,7 +102,7 @@ def _volatile_bars(count: int = 100) -> list[Bar]:
 
 def _quiet_bars(count: int = 40) -> list[Bar]:
     """Very low volatility, almost no movement."""
-    base = datetime(2024, 1, 1, 0, 0, tzinfo=timezone.utc)
+    base = datetime(2024, 1, 1, 0, 0, tzinfo=UTC)
     bars: list[Bar] = []
     for i in range(count):
         close = 1.10 + (0.0001 if i % 2 == 0 else -0.0001)
