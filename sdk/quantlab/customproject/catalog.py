@@ -71,9 +71,7 @@ def _build_catalog() -> dict[str, CatalogEntry]:
     missing = CATALOG_TYPES - frozenset(RENDERERS)
     if missing:
         raise RuntimeError(f"catalog types missing renderers: {sorted(missing)}")
-    return {
-        t: CatalogEntry(task_type=t, renderer=RENDERERS[t]) for t in CATALOG_TYPES
-    }
+    return {t: CatalogEntry(task_type=t, renderer=RENDERERS[t]) for t in CATALOG_TYPES}
 
 
 CATALOG: dict[str, CatalogEntry] = _build_catalog()

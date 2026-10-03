@@ -45,7 +45,9 @@ class ValidationError(ValueError):
     """
 
 
-def resolve_sqcli(sqx_root: str | Path | None = None, env: dict[str, str] | None = None) -> Path:
+def resolve_sqcli(
+    sqx_root: str | Path | None = None, env: dict[str, str] | None = None
+) -> Path:
     """Resolve the sqcli binary: ``SQCLI_PATH`` env → ``<sqx_root>/sqcli`` →
     ``/usr/local/bin/sqcli``.
 
@@ -108,8 +110,10 @@ def validate_golden(
         probe_timeout: Seconds allowed for the real probe.
     """
     sqcli = resolve_sqcli(sqx_root)
-    probe = probe_runner if probe_runner is not None else (
-        lambda: sqcli_ready(sqcli, probe_timeout)
+    probe = (
+        probe_runner
+        if probe_runner is not None
+        else (lambda: sqcli_ready(sqcli, probe_timeout))
     )
     if not probe():
         raise ValidationError(
@@ -139,8 +143,9 @@ def _validate_structure(archive: CfxArchive) -> None:
 
     tasks = config.tasks
     if not tasks:
-        raise ValidationError("<Tasks>: no tasks declared (golden samples always "
-                              "declare at least one)")
+        raise ValidationError(
+            "<Tasks>: no tasks declared (golden samples always declare at least one)"
+        )
 
     task_xml = config.task_meta if config.task_meta else {}
     for filename in tasks:
@@ -154,8 +159,10 @@ def _validate_structure(archive: CfxArchive) -> None:
 
     databanks = config.databanks
     if not databanks:
-        raise ValidationError("<Databanks>: registry missing or empty (golden "
-                              "samples always declare at least one databank)")
+        raise ValidationError(
+            "<Databanks>: registry missing or empty (golden "
+            "samples always declare at least one databank)"
+        )
     for db in databanks:
         if not db.name:
             raise ValidationError(
@@ -183,7 +190,9 @@ def _validate_packaged_xml(archive: CfxArchive) -> None:
         try:
             ElementTree.fromstring(zf.read("config.xml"))
         except ElementTree.ParseError as exc:
-            raise ValidationError("<Project>: config.xml is not well-formed XML") from exc
+            raise ValidationError(
+                "<Project>: config.xml is not well-formed XML"
+            ) from exc
 
         task_files = [n for n in names if n.endswith(".xml") and n != "config.xml"]
         for filename in task_files:

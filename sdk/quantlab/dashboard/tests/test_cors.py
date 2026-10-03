@@ -1,4 +1,5 @@
 """Tests for Flask CORS enablement on mobile dev endpoints."""
+
 from __future__ import annotations
 
 import pytest

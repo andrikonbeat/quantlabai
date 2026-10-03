@@ -24,14 +24,30 @@ def add_report_subparser(subparsers: argparse._SubParsersAction) -> None:
     # report generate
     gen_parser = report_sub.add_parser("generate", help="Generate a campaign report")
     gen_parser.add_argument("campaign_id", help="Campaign identifier or name")
-    gen_parser.add_argument("--output-dir", default="reports", help="Output directory for reports")
-    gen_parser.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root directory")
-    gen_parser.add_argument("--html", action="store_true", default=True, help="Generate HTML report")
-    gen_parser.add_argument("--no-html", action="store_false", dest="html", help="Skip HTML report")
-    gen_parser.add_argument("--json", action="store_true", default=True, help="Generate JSON report")
-    gen_parser.add_argument("--no-json", action="store_false", dest="json", help="Skip JSON report")
-    gen_parser.add_argument("--theme", choices=["light", "dark"], default="light", help="Report theme")
-    gen_parser.add_argument("--no-charts", action="store_true", help="Disable chart generation")
+    gen_parser.add_argument(
+        "--output-dir", default="reports", help="Output directory for reports"
+    )
+    gen_parser.add_argument(
+        "--knowledge-root", default="knowledge", help="Knowledge Lake root directory"
+    )
+    gen_parser.add_argument(
+        "--html", action="store_true", default=True, help="Generate HTML report"
+    )
+    gen_parser.add_argument(
+        "--no-html", action="store_false", dest="html", help="Skip HTML report"
+    )
+    gen_parser.add_argument(
+        "--json", action="store_true", default=True, help="Generate JSON report"
+    )
+    gen_parser.add_argument(
+        "--no-json", action="store_false", dest="json", help="Skip JSON report"
+    )
+    gen_parser.add_argument(
+        "--theme", choices=["light", "dark"], default="light", help="Report theme"
+    )
+    gen_parser.add_argument(
+        "--no-charts", action="store_true", help="Disable chart generation"
+    )
     gen_parser.add_argument("--title", help="Report title (defaults to campaign name)")
     gen_parser.add_argument("--template", help="Path to custom Jinja2 template")
     gen_parser.add_argument("--benchmark", help="Benchmark campaign ID for comparison")
@@ -63,7 +79,9 @@ def report_generate_command(args: argparse.Namespace) -> int:
             include_charts=not getattr(args, "no_charts", False),
             theme=ReportTheme(getattr(args, "theme", "light")),
             title=getattr(args, "title", None),
-            template_path=Path(args.template) if getattr(args, "template", None) else None,
+            template_path=Path(args.template)
+            if getattr(args, "template", None)
+            else None,
         )
 
         # Load campaign data from Knowledge Lake
@@ -147,8 +165,12 @@ def _load_campaign_data(
 
             trades.append(
                 Trade(
-                    entry_time=datetime.fromisoformat(t["entry_time"]) if "entry_time" in t else datetime.now(),
-                    exit_time=datetime.fromisoformat(t["exit_time"]) if "exit_time" in t else datetime.now(),
+                    entry_time=datetime.fromisoformat(t["entry_time"])
+                    if "entry_time" in t
+                    else datetime.now(),
+                    exit_time=datetime.fromisoformat(t["exit_time"])
+                    if "exit_time" in t
+                    else datetime.now(),
                     direction=t.get("direction", "long"),
                     lots=float(t.get("lots", 1.0)),
                     profit=float(t.get("profit", 0.0)),
@@ -166,7 +188,9 @@ def _load_campaign_data(
 
             equity.append(
                 EquityPoint(
-                    timestamp=datetime.fromisoformat(e["timestamp"]) if "timestamp" in e else datetime.now(),
+                    timestamp=datetime.fromisoformat(e["timestamp"])
+                    if "timestamp" in e
+                    else datetime.now(),
                     equity=float(e.get("equity", 0.0)),
                 )
             )

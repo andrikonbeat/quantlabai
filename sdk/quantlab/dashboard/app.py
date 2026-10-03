@@ -30,6 +30,7 @@ DEFAULT_SQX_INSTALL_PATH = "assets/SQX_144_2953_linux_20260601"
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
+
 class ServerConfig:
     """Configuration for the dashboard server."""
 
@@ -96,7 +97,11 @@ def _load_campaign_export_data(
     # structured/{campaign_id}/{trades,equity,statistics}.json
     campaign_dir = structured_dir / campaign_id
     if campaign_dir.is_dir():
-        for name, target in (("trades", trades), ("equity", equity), ("statistics", statistics)):
+        for name, target in (
+            ("trades", trades),
+            ("equity", equity),
+            ("statistics", statistics),
+        ):
             f = campaign_dir / f"{name}.json"
             if f.is_file():
                 try:
@@ -177,7 +182,9 @@ def _campaign_exists(store: KnowledgeStore, campaign_id: str) -> bool:
     if result.campaigns:
         return True
     structured = store.root / "structured"
-    return (structured / campaign_id).is_dir() or (structured / f"{campaign_id}.json").is_file()
+    return (structured / campaign_id).is_dir() or (
+        structured / f"{campaign_id}.json"
+    ).is_file()
 
 
 def _as_typed_export(trades: list, equity: list, statistics: dict):
@@ -220,9 +227,12 @@ def _as_typed_export(trades: list, equity: list, statistics: dict):
 
 # ─── Helper: JSON error envelope ──────────────────────────────────────────────
 
+
 def error_response(code: str, message: str, status: int = 500):
     """Return a standardized error JSON response."""
-    return jsonify({"success": False, "error": {"code": code, "message": message}}), status
+    return jsonify(
+        {"success": False, "error": {"code": code, "message": message}}
+    ), status
 
 
 def success_response(data: Any, status: int = 200):
@@ -231,6 +241,7 @@ def success_response(data: Any, status: int = 200):
 
 
 # ─── Flask App Factory ────────────────────────────────────────────────────────
+
 
 def create_app(config: ServerConfig | None = None) -> Flask:
     """Create and configure the Flask application."""
@@ -283,7 +294,9 @@ def create_app(config: ServerConfig | None = None) -> Flask:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             result = store.query().filter_by_campaign(campaign_id).execute()
             if not result.campaigns:
-                return error_response("CAMPAIGN_NOT_FOUND", f"Campaign '{campaign_id}' not found", 404)
+                return error_response(
+                    "CAMPAIGN_NOT_FOUND", f"Campaign '{campaign_id}' not found", 404
+                )
 
             c = result.campaigns[0]
             # Real export data from the lake, empty-safe when absent.
@@ -314,7 +327,9 @@ def create_app(config: ServerConfig | None = None) -> Flask:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             run = store.get_pipeline_run(run_id)
             if run is None:
-                return error_response("PIPELINE_NOT_FOUND", f"Pipeline run '{run_id}' not found", 404)
+                return error_response(
+                    "PIPELINE_NOT_FOUND", f"Pipeline run '{run_id}' not found", 404
+                )
             return success_response(run.to_dict())
         except Exception as e:
             return error_response("INTERNAL_ERROR", str(e))
@@ -441,6 +456,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
 
 
 # ─── Dashboard Server ────────────────────────────────────────────────────────
+
 
 class DashboardServer:
     """Manages the dashboard server lifecycle."""

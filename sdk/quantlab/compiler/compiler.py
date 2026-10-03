@@ -170,9 +170,7 @@ class CompilerPipeline:
 
         src = Path(src)
         classes = (
-            Path(classes_dir)
-            if classes_dir is not None
-            else src.parent / ".classes"
+            Path(classes_dir) if classes_dir is not None else src.parent / ".classes"
         )
 
         # SQX-generated strategies import com.strategyquant.datalib /

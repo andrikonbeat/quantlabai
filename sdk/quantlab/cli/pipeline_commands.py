@@ -24,9 +24,11 @@ from quantlab.pipeline.runner import PipelineRunner
 # Output formatting
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def print_json(data: dict | list, pretty: bool = True) -> None:
     """Print JSON to stdout."""
     import json
+
     if pretty:
         print(json.dumps(data, indent=2, default=str))
     else:
@@ -71,6 +73,7 @@ def print_table(headers: list[str], rows: list[list[str]]) -> None:
 # Pipeline Run Command
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 async def cmd_pipeline_run(args: argparse.Namespace) -> int:
     """Run a pipeline from registry or config file.
 
@@ -91,6 +94,7 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
         # Load pipeline config
         if args.config:
             from quantlab.pipeline.config import PipelineConfig
+
             pipeline_config = PipelineConfig.from_yaml(args.config)
         else:
             pipeline_config = registry.get(args.name)
@@ -145,7 +149,9 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
             result = await runner.run(pipeline, ctx)
             run.duration = time.monotonic() - start_time
 
-            run.status = StageStatus.COMPLETED if result.is_successful else StageStatus.FAILED
+            run.status = (
+                StageStatus.COMPLETED if result.is_successful else StageStatus.FAILED
+            )
             run.error = result.error
             run.started_at = min(
                 (s.started_at for s in result.stages if s.started_at),
@@ -180,9 +186,14 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
                 print_json(run.to_dict())
             else:
                 if result.is_successful:
-                    print_human(f"✓ Pipeline '{pipeline_config.name}' completed successfully in {run.duration:.1f}s")
+                    print_human(
+                        f"✓ Pipeline '{pipeline_config.name}' completed successfully in {run.duration:.1f}s"
+                    )
                 else:
-                    print_human(f"✗ Pipeline '{pipeline_config.name}' failed: {result.error}", error=True)
+                    print_human(
+                        f"✗ Pipeline '{pipeline_config.name}' failed: {result.error}",
+                        error=True,
+                    )
                     return 1
 
         except Exception as e:
@@ -193,7 +204,9 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
             if args.json:
                 print_json(run.to_dict())
             else:
-                print_human(f"✗ Pipeline '{pipeline_config.name}' failed: {e}", error=True)
+                print_human(
+                    f"✗ Pipeline '{pipeline_config.name}' failed: {e}", error=True
+                )
             return 1
         finally:
             if knowledge_store:
@@ -214,6 +227,7 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
         print_error(f"Pipeline run failed: {e}")
         if args.json:
             import traceback
+
             print_json({"error": str(e), "traceback": traceback.format_exc()})
         return 1
 
@@ -234,7 +248,9 @@ async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) 
         if args.dry_run:
             print_human(f"Dry-run: Multi-agent campaign '{research_config.campaign}'")
             print_human(f"  Hypotheses: {len(research_config.hypotheses)}")
-            print_human(f"  Max iterations: {research_config.iteration_config.max_iterations}")
+            print_human(
+                f"  Max iterations: {research_config.iteration_config.max_iterations}"
+            )
             print_human(f"  Gate policies: {len(research_config.gate_policies)}")
             print_human(f"  Agents: {len(research_config.agents)}")
             return 0
@@ -253,16 +269,26 @@ async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) 
 
         if args.json:
             import json as _json
-            print(_json.dumps({
-                "campaign_id": result.campaign_id,
-                "state": result.state.value,
-                "iterations": result.current_iteration,
-                "duration_seconds": duration,
-                "error": result.error,
-            }, indent=2))
+
+            print(
+                _json.dumps(
+                    {
+                        "campaign_id": result.campaign_id,
+                        "state": result.state.value,
+                        "iterations": result.current_iteration,
+                        "duration_seconds": duration,
+                        "error": result.error,
+                    },
+                    indent=2,
+                )
+            )
         else:
-            status_icon = "✓" if result.state.value in ("completed", "converged") else "✗"
-            print_human(f"{status_icon} Campaign '{result.campaign_id}' — {result.state.value}")
+            status_icon = (
+                "✓" if result.state.value in ("completed", "converged") else "✗"
+            )
+            print_human(
+                f"{status_icon} Campaign '{result.campaign_id}' — {result.state.value}"
+            )
             print_human(f"  Iterations: {result.current_iteration}")
             print_human(f"  Duration: {duration:.1f}s")
             if result.error:
@@ -275,6 +301,7 @@ async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) 
         if getattr(args, "json", False):
             import json as _json
             import traceback
+
             _sys.stderr.flush()
             print(_json.dumps({"error": str(e), "traceback": traceback.format_exc()}))
         return 1
@@ -283,6 +310,7 @@ async def _run_multi_agent_pipeline(args: argparse.Namespace, config_path: str) 
 # ──────────────────────────────────────────────────────────────────────────────
 # Pipeline List Command
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 async def cmd_pipeline_list(args: argparse.Namespace) -> int:
     """List available pipelines from registry."""
@@ -318,6 +346,7 @@ async def cmd_pipeline_list(args: argparse.Namespace) -> int:
 # ──────────────────────────────────────────────────────────────────────────────
 # Pipeline History Command
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 async def cmd_pipeline_history(args: argparse.Namespace) -> int:
     """Show pipeline run history from Knowledge Lake."""
@@ -355,16 +384,24 @@ async def cmd_pipeline_history(args: argparse.Namespace) -> int:
                     StageStatus.SKIPPED: "⊘",
                 }.get(r.status, "?")
                 duration = f"{r.duration:.1f}s" if r.duration else "-"
-                started = r.started_at.strftime("%Y-%m-%d %H:%M:%S") if r.started_at else "-"
-                rows.append([
-                    r.run_id[:8],
-                    r.pipeline_name,
-                    f"{status_icon} {r.status.value}",
-                    started,
-                    duration,
-                    r.error[:40] + "..." if r.error and len(r.error) > 40 else (r.error or "-"),
-                ])
-            print_table(["Run ID", "Pipeline", "Status", "Started", "Duration", "Error"], rows)
+                started = (
+                    r.started_at.strftime("%Y-%m-%d %H:%M:%S") if r.started_at else "-"
+                )
+                rows.append(
+                    [
+                        r.run_id[:8],
+                        r.pipeline_name,
+                        f"{status_icon} {r.status.value}",
+                        started,
+                        duration,
+                        r.error[:40] + "..."
+                        if r.error and len(r.error) > 40
+                        else (r.error or "-"),
+                    ]
+                )
+            print_table(
+                ["Run ID", "Pipeline", "Status", "Started", "Duration", "Error"], rows
+            )
 
         return 0
 
@@ -377,14 +414,21 @@ async def cmd_pipeline_history(args: argparse.Namespace) -> int:
 # Subparser Registration & Dispatch
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def add_pipeline_subparser(subparsers: argparse._SubParsersAction) -> None:
     """Add pipeline subcommands to main parser."""
-    p_pipeline = subparsers.add_parser("pipeline", help="Pipeline execution and management")
+    p_pipeline = subparsers.add_parser(
+        "pipeline", help="Pipeline execution and management"
+    )
     pipeline_sub = p_pipeline.add_subparsers(dest="pipeline_cmd", required=True)
 
     def _add_common_args(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("--sqx-path", default="/opt/StrategyQuantX", help="Path to SQX installation")
-        parser.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root")
+        parser.add_argument(
+            "--sqx-path", default="/opt/StrategyQuantX", help="Path to SQX installation"
+        )
+        parser.add_argument(
+            "--knowledge-root", default="knowledge", help="Knowledge Lake root"
+        )
         parser.add_argument("--port", type=int, default=8888, help="SQX -gui port")
         parser.add_argument("--output-dir", default="output", help="Output directory")
         parser.add_argument("--config", help="Path to pipeline YAML config file")
@@ -393,13 +437,31 @@ def add_pipeline_subparser(subparsers: argparse._SubParsersAction) -> None:
     # pipeline run
     p_run = pipeline_sub.add_parser("run", help="Run a pipeline")
     _add_common_args(p_run)
-    p_run.add_argument("name", nargs="?", default="default", help="Pipeline name (from registry)")
-    p_run.add_argument("--dry-run", action="store_true", help="Show what would run without executing")
+    p_run.add_argument(
+        "name", nargs="?", default="default", help="Pipeline name (from registry)"
+    )
+    p_run.add_argument(
+        "--dry-run", action="store_true", help="Show what would run without executing"
+    )
     p_run.add_argument("--research-config", help="Path to research config YAML")
-    p_run.add_argument("--poll-interval", type=float, default=30.0, help="SQX polling interval (seconds)")
-    p_run.add_argument("--poll-timeout", type=float, default=3600.0, help="SQX polling timeout")
-    p_run.add_argument("--export-formats", nargs="+", default=["csv"], help="Export formats")
-    p_run.add_argument("--no-export-databanks", action="store_false", dest="export_databanks", help="Skip databank export")
+    p_run.add_argument(
+        "--poll-interval",
+        type=float,
+        default=30.0,
+        help="SQX polling interval (seconds)",
+    )
+    p_run.add_argument(
+        "--poll-timeout", type=float, default=3600.0, help="SQX polling timeout"
+    )
+    p_run.add_argument(
+        "--export-formats", nargs="+", default=["csv"], help="Export formats"
+    )
+    p_run.add_argument(
+        "--no-export-databanks",
+        action="store_false",
+        dest="export_databanks",
+        help="Skip databank export",
+    )
     p_run.set_defaults(func=cmd_pipeline_run)
 
     # pipeline list
@@ -411,11 +473,15 @@ def add_pipeline_subparser(subparsers: argparse._SubParsersAction) -> None:
     p_history = pipeline_sub.add_parser("history", help="Show pipeline run history")
     _add_common_args(p_history)
     p_history.add_argument("--limit", type=int, default=50, help="Max history entries")
-    p_history.add_argument("--status", choices=["running", "completed", "failed"], help="Filter by status")
+    p_history.add_argument(
+        "--status", choices=["running", "completed", "failed"], help="Filter by status"
+    )
     p_history.set_defaults(func=cmd_pipeline_history)
 
     # pipeline validate - PR 6
-    p_validate = pipeline_sub.add_parser("validate", help="Validate pipeline configuration")
+    p_validate = pipeline_sub.add_parser(
+        "validate", help="Validate pipeline configuration"
+    )
     _add_common_args(p_validate)
     p_validate.add_argument("config", help="Path to pipeline YAML config file")
     p_validate.set_defaults(func=cmd_pipeline_validate)
@@ -427,37 +493,39 @@ async def cmd_pipeline_validate(args: argparse.Namespace) -> int:
         MultiAgentPipelineConfigLoader as MultiAgentPipelineConfigLoader,
     )
     from quantlab.pipeline.config.models import MultiAgentPipelineConfig
-    
+
     try:
         # Load and validate the configuration
         config = MultiAgentPipelineConfig.load(args.config)
-        
+
         # Additional validation - run contract validation
         from quantlab.pipeline.registry import PipelineRegistry
         from quantlab.pipeline.runner import PipelineRunner
-        
+
         # Create a runner to validate contracts
         registry = PipelineRegistry()
         runner = PipelineRunner(registry=registry)
-        
+
         # Build pipeline from config to validate contracts
         pipeline = runner.build_from_config(config)
-        
+
         # Validate contracts
         try:
             runner.validate_contracts(pipeline)
             print_human(f"✓ Configuration '{args.config}' is valid")
-            print_human(f"  Pipeline: {config.pipeline.name if config.pipeline else 'unnamed'}")
+            print_human(
+                f"  Pipeline: {config.pipeline.name if config.pipeline else 'unnamed'}"
+            )
             print_human(f"  Stages: {len(pipeline)}")
             if config.agents:
                 print_human(f"  Agents: {len(config.agents)}")
-            if hasattr(config, 'gates') and config.gates:
+            if hasattr(config, "gates") and config.gates:
                 print_human(f"  Gates: {len(config.gates)}")
             return 0
         except Exception as e:
             print_error(f"Contract validation failed: {e}")
             return 1
-            
+
     except FileNotFoundError:
         print_error(f"Configuration file not found: {args.config}")
         return 1

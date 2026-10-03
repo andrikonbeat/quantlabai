@@ -22,9 +22,7 @@ def _resolve_profile(name: str) -> BrokerProfile:
     factory_name = _PROFILE_ALIASES.get(normalized)
     if factory_name is None:
         factories = sorted(set(_PROFILE_ALIASES.values()))
-        raise ValueError(
-            f"Unknown profile: {name!r}. Known: {factories}"
-        )
+        raise ValueError(f"Unknown profile: {name!r}. Known: {factories}")
     factory = getattr(BrokerProfile, factory_name)
     return factory()
 

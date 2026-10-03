@@ -114,8 +114,10 @@ class StandardResearchTemplate(CampaignTemplate):
     @classmethod
     def build(cls, params: TemplateParams | None = None) -> CustomProject:
         p = params or cls.params
-        filters = Filters(conditions=p.filters) if p.filters else Filters(
-            conditions=["NetProfit > 1000"]
+        filters = (
+            Filters(conditions=p.filters)
+            if p.filters
+            else Filters(conditions=["NetProfit > 1000"])
         )
         return CustomProject(
             name=p.name,
@@ -229,8 +231,10 @@ class QuickValidationTemplate(CampaignTemplate):
     @classmethod
     def build(cls, params: TemplateParams | None = None) -> CustomProject:
         p = params or cls.params
-        filters = Filters(conditions=p.filters) if p.filters else Filters(
-            conditions=["NetProfit > 1000"]
+        filters = (
+            Filters(conditions=p.filters)
+            if p.filters
+            else Filters(conditions=["NetProfit > 1000"])
         )
         return CustomProject(
             name=p.name,
@@ -314,8 +318,10 @@ class DeepRobustnessTemplate(CampaignTemplate):
     @classmethod
     def build(cls, params: TemplateParams | None = None) -> CustomProject:
         p = params or cls.params
-        filters = Filters(conditions=p.filters) if p.filters else Filters(
-            conditions=["NetProfit > 1000"]
+        filters = (
+            Filters(conditions=p.filters)
+            if p.filters
+            else Filters(conditions=["NetProfit > 1000"])
         )
         return CustomProject(
             name=p.name,
@@ -435,18 +441,20 @@ class DeepRobustnessTemplate(CampaignTemplate):
 # rules here describe what to build *if* a human override is granted, and the
 # most conservative template is chosen for exactly that case.
 
-STATE_TEMPLATE_MAP: Mapping[PortfolioState, type[CampaignTemplate]] = MappingProxyType({
-    # Baseline campaign: full standard research pipeline.
-    PortfolioState.NORMAL: StandardResearchTemplate,
-    # Watching capital: keep exposure small, run the trimmed pipeline.
-    PortfolioState.VIGILANCE: QuickValidationTemplate,
-    # Re-entry after a stress episode: full robustness before new capital.
-    PortfolioState.RECOVERY: DeepRobustnessTemplate,
-    # Blocked by BuilderStage until HUMAN_APPROVE_DEPLOY; if overridden, the
-    # most conservative template applies.
-    PortfolioState.DEFENSIVE: DeepRobustnessTemplate,
-    PortfolioState.QUARANTINE: DeepRobustnessTemplate,
-})
+STATE_TEMPLATE_MAP: Mapping[PortfolioState, type[CampaignTemplate]] = MappingProxyType(
+    {
+        # Baseline campaign: full standard research pipeline.
+        PortfolioState.NORMAL: StandardResearchTemplate,
+        # Watching capital: keep exposure small, run the trimmed pipeline.
+        PortfolioState.VIGILANCE: QuickValidationTemplate,
+        # Re-entry after a stress episode: full robustness before new capital.
+        PortfolioState.RECOVERY: DeepRobustnessTemplate,
+        # Blocked by BuilderStage until HUMAN_APPROVE_DEPLOY; if overridden, the
+        # most conservative template applies.
+        PortfolioState.DEFENSIVE: DeepRobustnessTemplate,
+        PortfolioState.QUARANTINE: DeepRobustnessTemplate,
+    }
+)
 
 
 class TemplateSelector:

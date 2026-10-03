@@ -131,7 +131,9 @@ def render_advanced_rankings(
     renderer the patcher uses — because this dialect is verified SQX evidence
     and a second implementation could drift from it unnoticed.
     """
-    body = "\n".join(part for part in (extra_elements, build_conditions_xml(conditions)) if part)
+    body = "\n".join(
+        part for part in (extra_elements, build_conditions_xml(conditions)) if part
+    )
     return RankingsConfig(raw_xml=f"<Rankings>\n{body}\n</Rankings>")
 
 
@@ -290,13 +292,13 @@ _AUTOMATIC_RETEST_CROSSCHECKS = (
     "<EvalUniformDistrCheck>true</EvalUniformDistrCheck>"
     "<EvalTopProfitCheck>true</EvalTopProfitCheck>"
     "<Conditions>"
-    "<Condition use=\"true\">"
-    "<Left-Side valueType=\"column\">"
+    '<Condition use="true">'
+    '<Left-Side valueType="column">'
     '<Column-Value column="NetProfit" columnType="0" format="Decimal2PL" resultType="OptProfileSysParamPermutation" direction="0" sampleType="127" plType="10" confidenceLevel="50" market="1" subresult="30" pctRatio="0" class="NetProfit" />'
     "</Left-Side>"
-    "<Comparator value=\"&gt;\" />"
-    "<Right-Side valueType=\"numeric\">"
-    "<Numeric-Value value=\"0\" />"
+    '<Comparator value="&gt;" />'
+    '<Right-Side valueType="numeric">'
+    '<Numeric-Value value="0" />'
     "</Right-Side>"
     "</Condition>"
     "</Conditions>"
@@ -369,7 +371,9 @@ def render_filtering(task: CustomProjectTask) -> BuildTask:
     conditions = task.filters.conditions if task.filters else []
     inner = "\n".join(f'  <Condition value="{escape(c)}" />' for c in conditions)
     bt.unknown_sections.append(
-        RawXmlSection(name="Conditions", raw_xml=f"<Conditions>\n{inner}\n</Conditions>")
+        RawXmlSection(
+            name="Conditions", raw_xml=f"<Conditions>\n{inner}\n</Conditions>"
+        )
     )
     return bt
 

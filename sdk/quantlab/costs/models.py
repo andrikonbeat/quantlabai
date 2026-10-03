@@ -92,7 +92,9 @@ class SwapRule(BaseModel):
 
     long_rate: float = Field(..., description="Swap rate for LONG positions in pips")
     short_rate: float = Field(..., description="Swap rate for SHORT positions in pips")
-    triple_day: str = Field(default="Wednesday", description="Day when triple swap applies")
+    triple_day: str = Field(
+        default="Wednesday", description="Day when triple swap applies"
+    )
     currency: str = Field(default="USD", description="Swap currency")
 
     def compute(self, direction: str, weekday: str | None = None) -> float:
@@ -137,7 +139,11 @@ class SlippageProfile(BaseModel):
 
     def get_slippage(self, session: str | None = None) -> float:
         """Return slippage in pips for an optional trading session."""
-        if self.mode == SlippageMode.SESSION and session and session in self.session_pips:
+        if (
+            self.mode == SlippageMode.SESSION
+            and session
+            and session in self.session_pips
+        ):
             return self.session_pips[session]
         return self.fixed_pips
 
@@ -195,7 +201,9 @@ class CostBreakdown(BaseModel):
     symbol: str = Field(..., description="Traded symbol")
     volume: float = Field(..., description="Trade volume in lots")
     direction: str = Field(..., description="Trade direction (``LONG`` / ``SHORT``)")
-    commission: float = Field(default=0.0, description="Commission cost in account currency")
+    commission: float = Field(
+        default=0.0, description="Commission cost in account currency"
+    )
     swap: float = Field(default=0.0, description="Swap cost in pips")
     slippage: float = Field(default=0.0, description="Slippage cost in pips")
     spread: float = Field(default=0.0, description="Spread cost in pips")

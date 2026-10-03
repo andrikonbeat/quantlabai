@@ -143,17 +143,16 @@ async def cmd_kb_list(args: argparse.Namespace) -> int:
     """List KB parameters with optional tab/status filters."""
     try:
         store = _kb_store(args)
-        params = store.list(tab=args.tab, status=args.status, sqx_version=args.sqx_version)
+        params = store.list(
+            tab=args.tab, status=args.status, sqx_version=args.sqx_version
+        )
         scope = f"sqx-kb/{args.sqx_version}"
         if args.tab:
             scope += f" tab={args.tab}"
         if args.status:
             scope += f" status={args.status}"
         print_human(f"{len(params)} parameter(s) in {scope}")
-        rows = [
-            [p.name, p.tab, p.status, p.evidence_ref or ""]
-            for p in params
-        ]
+        rows = [[p.name, p.tab, p.status, p.evidence_ref or ""] for p in params]
         print_table(["Parameter", "Tab", "Status", "Evidence"], rows)
         return 0
     except Exception as e:  # pragma: no cover - defensive
@@ -314,7 +313,9 @@ async def cmd_kb_verify(args: argparse.Namespace) -> int:
         entry = store.verify(
             tab, param, evidence_ref=args.evidence_ref, sqx_version=args.sqx_version
         )
-        print_human(f"Verified {entry.name} ({entry.tab}) — evidence: {entry.evidence_ref}")
+        print_human(
+            f"Verified {entry.name} ({entry.tab}) — evidence: {entry.evidence_ref}"
+        )
         return 0
     except KbParamNotFoundError as e:
         print_error(str(e))
@@ -348,9 +349,16 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
 # ── builder template path: real install templates dir, on the lake root's
 # project. CLI default: repo `assets/SQX_*/.../tpl_build.xml`; tests
 # monkeypatch this factory.
-_DEFAULT_TPL_PATH_FACTORY = lambda knowledge_root: Path(
-    knowledge_root
-).parent / "assets" / "SQX_144_2953_linux_20260601" / "internal" / "web" / "BUILDER" / "templates" / "tpl_build.xml"
+_DEFAULT_TPL_PATH_FACTORY = lambda knowledge_root: (
+    Path(knowledge_root).parent
+    / "assets"
+    / "SQX_144_2953_linux_20260601"
+    / "internal"
+    / "web"
+    / "BUILDER"
+    / "templates"
+    / "tpl_build.xml"
+)
 
 
 async def cmd_kb_table(args: argparse.Namespace) -> int:
@@ -379,11 +387,7 @@ async def cmd_kb_table(args: argparse.Namespace) -> int:
         import yaml
 
         edu_dir = (
-            store.root
-            / "structured"
-            / "sqx-kb"
-            / args.sqx_version
-            / "educational"
+            store.root / "structured" / "sqx-kb" / args.sqx_version / "educational"
         )
         edu_dir.mkdir(parents=True, exist_ok=True)
         dataset_path = edu_dir / "educational-dataset.yaml"

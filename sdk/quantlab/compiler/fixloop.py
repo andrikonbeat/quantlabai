@@ -91,6 +91,4 @@ def run_fix_loop(
                 success=True, iterations=iterations, final_report=report
             )
 
-    return FixLoopResult(
-        success=False, iterations=iterations, final_report=report
-    )
+    return FixLoopResult(success=False, iterations=iterations, final_report=report)
