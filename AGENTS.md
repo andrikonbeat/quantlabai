@@ -12,7 +12,9 @@
 - **Runner**: `pytest` (root `pytest.ini`, testpaths `tests` + `sdk/tests`, `asyncio_mode=auto`)
 - **Full suite**: `SQX_FORCE_MOCK=1 python3 -m pytest -q`
   - `SQX_FORCE_MOCK=1` is required to avoid binding the real SQX daemon on port 5050.
-  - Local `.venv` does not install `ruff` or `mypy`; they run in CI only.
+  - `ruff` and `mypy` come from the `dev` extra (`pip install -e "sdk[dev]"`), so
+    they are available locally as well as in CI. `pytest-asyncio` is required
+    too — root `pytest.ini` sets `asyncio_mode = auto`.
 - **Focused tests**: prefer the smallest meaningful path, e.g. `SQX_FORCE_MOCK=1 python3 -m pytest -q tests/campaign/` or `sdk/tests/<path>`.
 - **TDD**: Strict TDD is active. RED-first cycle enforced in apply phases: write failing test → make it pass → refactor. Do not skip the RED step.
 

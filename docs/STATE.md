@@ -26,11 +26,12 @@ gh run view --log-failed
 | What is the code contract? | `openspec/specs/`, asserted by `tests/` |
 | What do the agents actually do? | `ai/opencode/` (repo-canonical) |
 
-> **Scope difference worth knowing:** CI (`.github/workflows/ci.yml`) runs
-> `pytest` with `working-directory: ./sdk`, so it covers the **`sdk/tests`
-> tree only**, on Python 3.11. The root **`tests/` tree** is not run by CI and
-> is only exercised locally. A green CI badge therefore does **not** mean the
-> full local suite is green. Run both when you change shared SDK code.
+> **Scope note:** CI (`.github/workflows/ci.yml`) runs `pytest` from the
+> repository root with no `working-directory`, so it collects the same
+> canonical suite as `pytest.ini` — `tests/` **and** `sdk/tests/` — on Python
+> 3.11. A green CI badge therefore does mean the full suite is green. Run it
+> locally with `SQX_FORCE_MOCK=1` regardless, since that is the only mode the
+> suite supports.
 
 ## Verified snapshot
 
@@ -38,17 +39,22 @@ A point-in-time observation, recorded once. It is **not** the live status.
 
 | Field | Value |
 |-------|-------|
-| Observed on | 2026-09-30 |
+| Observed on | 2026-10-03 |
 | Branch | `wip/migration-checkpoint` |
-| Commit | `486da48` |
-| Full suite | **4111 passed, 9 skipped, 0 failed** in 406s |
+| Commit | `9189fbb` |
+| Full suite | **4135 passed, 18 skipped, 0 failed** in 336s |
 | Command | `SQX_FORCE_MOCK=1 python3 -m pytest -q` from the repo root |
+| Go installer | `go build ./...` clean; `go test ./... -short` all packages pass |
 | Active SDD changes | 14 |
-| Archived SDD entries | 37 |
-| Docs under `docs/` | 26 |
+| Archived SDD entries | 39 |
+| Docs under `docs/` | 27 |
 
 `SQX_FORCE_MOCK=1` is required: without it the tests try to bind the real
 StrategyQuant X daemon on port 5050.
+
+> The previous snapshot (2026-09-30, `486da48`) recorded 4111 passed / 9 skipped.
+> Both the suite and the skip count moved between them; read the numbers above as
+> one observation, not a trend.
 
 ## What this project is
 
@@ -121,7 +127,7 @@ introduced this shape is archived at
 `openspec/changes/archive/2026-08-06-full-campaign-flow/`.
 
 Human gates are **fail-closed** (REQ-11) — no auto-approval, and an unanswered
-gate stops the run. The three gates that always block a dispatch are:
+gate stops the run. The four gates that always block a dispatch are:
 
 | Gate | Blocks |
 |------|--------|
@@ -168,7 +174,9 @@ That filename is load-bearing: it is pinned in the seeder and cited by ~15
 `evidence_ref` entries under `knowledge/structured/sqx-kb/**`.
 
 CI additionally runs `ruff check`, `ruff format --check`, and
-`mypy quantlab --strict` — none of which are installed in the local `.venv`.
+`mypy quantlab --strict`. All three, plus `pytest-asyncio`, are declared in
+`sdk/pyproject.toml` under the `dev` extra — install with `pip install -e "sdk[dev]"`
+and they are available locally too.
 
 ## Known debt
 
@@ -188,8 +196,8 @@ Verified present as of the snapshot above:
 ## Useful commands
 
 ```bash
-# SQX installation (outside the repo)
-export SQX_INSTALL_PATH="$HOME/Proyectos/SQX_144_2953_linux_20260601"
+# SQX installation (outside the repo, machine-local, never committed)
+export SQX_INSTALL_PATH="/path/to/your/SQX_install_root"
 export SQX_PORT=5050
 
 # Prompt/skill parity
@@ -199,9 +207,11 @@ python3 ai/opencode/sync_skills.py --check
 # KB seeder default path
 python3 -c "from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH; print(DEFAULT_DOC_PATH)"
 
-# CLI
-sdk/.venv/bin/python -m quantlab.cli campaign run-flow --help
+# CLI (the venv lives at the repo root, not in sdk/)
+.venv/bin/python -m quantlab.cli campaign run-flow --help
 ```
+
+Full new-machine procedure: [HANDOFF.md](HANDOFF.md).
 
 ## Next step
 
