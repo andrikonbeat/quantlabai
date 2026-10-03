@@ -20,11 +20,13 @@ _TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 _DEFAULT_TEMPLATE = _TEMPLATE_DIR / "default-project.sqx-template"
 
 # Default JForex Dukascopy broker settings
-_JFOREX_COMMISSION = 3.5       # USD per lot (standard Dukascopy)
-_JFOREX_SLIPPAGE = 1           # pips
-_JFOREX_SPREAD = 3             # pips base
-_JFOREX_ENGINE = "MetaTrader4"  # Engine handles backtesting/generation, NOT data source.
-                                  # Dukascopy data works fine with MetaTrader4 engine.
+_JFOREX_COMMISSION = 3.5  # USD per lot (standard Dukascopy)
+_JFOREX_SLIPPAGE = 1  # pips
+_JFOREX_SPREAD = 3  # pips base
+_JFOREX_ENGINE = (
+    "MetaTrader4"  # Engine handles backtesting/generation, NOT data source.
+)
+# Dukascopy data works fine with MetaTrader4 engine.
 
 # Known max dates per symbol (from Dukascopy data availability as of 2024-10).
 # date_to values beyond these cause silent generator failure.
@@ -466,7 +468,9 @@ class BuildConfig:
     rc_pf_min: float | None = None
     rc_min_conditions: int | None = None
     rc_min_markets: int | None = None
-    main_test_values: dict[str, bool] | None = None  # which cross-check validations to run
+    main_test_values: dict[str, bool] | None = (
+        None  # which cross-check validations to run
+    )
 
     # ── Blocks bridge (REQ-18 / REQ-03) ──
     enabled_blocks: list[str] | None = None  # DSL building-block names to enable in SQX
@@ -535,49 +539,47 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         r'<Param key="StoreChartData" className="StoreChartData">{value}</Param>',
         "boolean",
     ),
-
     # ── Rules Complexity ──
     "min_conditions": (
         r'(minConditions=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "max_conditions": (
         r'(maxConditions=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "min_exit_conditions": (
         r'(minExitConditions=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "max_exit_conditions": (
         r'(maxExitConditions=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "min_period": (
         r'(minPeriod=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "max_period": (
         r'(maxPeriod=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "min_shift": (
         r'(minShift=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "max_shift": (
         r'(maxShift=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
-
     # ── Market Sides ──
     "market_sides": (
         r'<MarketSides type="[^"]*">',
@@ -585,227 +587,225 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "string",
     ),
     "entry_symmetry": (
-        r'<EntrySymmetry>[^<]*</EntrySymmetry>',
-        r'<EntrySymmetry>{value}</EntrySymmetry>',
+        r"<EntrySymmetry>[^<]*</EntrySymmetry>",
+        r"<EntrySymmetry>{value}</EntrySymmetry>",
         "boolean",
     ),
     "exit_symmetry": (
-        r'<ExitSymmetry>[^<]*</ExitSymmetry>',
-        r'<ExitSymmetry>{value}</ExitSymmetry>',
+        r"<ExitSymmetry>[^<]*</ExitSymmetry>",
+        r"<ExitSymmetry>{value}</ExitSymmetry>",
         "boolean",
     ),
-
     # ── SL/PT Options ──
     "sl_required": (
-        r'<SLRequired>[^<]*</SLRequired>',
-        r'<SLRequired>{value}</SLRequired>',
+        r"<SLRequired>[^<]*</SLRequired>",
+        r"<SLRequired>{value}</SLRequired>",
         "boolean",
     ),
     "sl_fixed_pips": (
-        r'<SLFixedPips>[^<]*</SLFixedPips>',
-        r'<SLFixedPips>{value}</SLFixedPips>',
+        r"<SLFixedPips>[^<]*</SLFixedPips>",
+        r"<SLFixedPips>{value}</SLFixedPips>",
         "boolean",
     ),
     "min_sl_pips": (
-        r'<MinSLInPips>[^<]*</MinSLInPips>',
-        r'<MinSLInPips>{value}</MinSLInPips>',
+        r"<MinSLInPips>[^<]*</MinSLInPips>",
+        r"<MinSLInPips>{value}</MinSLInPips>",
         "int",
     ),
     "max_sl_pips": (
-        r'<MaxSLInPips>[^<]*</MaxSLInPips>',
-        r'<MaxSLInPips>{value}</MaxSLInPips>',
+        r"<MaxSLInPips>[^<]*</MaxSLInPips>",
+        r"<MaxSLInPips>{value}</MaxSLInPips>",
         "int",
     ),
     "min_sl_money": (
-        r'<MinSLInMoney>[^<]*</MinSLInMoney>',
-        r'<MinSLInMoney>{value}</MinSLInMoney>',
+        r"<MinSLInMoney>[^<]*</MinSLInMoney>",
+        r"<MinSLInMoney>{value}</MinSLInMoney>",
         "int",
     ),
     "max_sl_money": (
-        r'<MaxSLInMoney>[^<]*</MaxSLInMoney>',
-        r'<MaxSLInMoney>{value}</MaxSLInMoney>',
+        r"<MaxSLInMoney>[^<]*</MaxSLInMoney>",
+        r"<MaxSLInMoney>{value}</MaxSLInMoney>",
         "int",
     ),
     "sl_atr": (
-        r'<SLATR>[^<]*</SLATR>',
-        r'<SLATR>{value}</SLATR>',
+        r"<SLATR>[^<]*</SLATR>",
+        r"<SLATR>{value}</SLATR>",
         "boolean",
     ),
     "min_sl_atr_multiple": (
-        r'<MinSLATRMultiple>[^<]*</MinSLATRMultiple>',
-        r'<MinSLATRMultiple>{value}</MinSLATRMultiple>',
+        r"<MinSLATRMultiple>[^<]*</MinSLATRMultiple>",
+        r"<MinSLATRMultiple>{value}</MinSLATRMultiple>",
         "float",
     ),
     "max_sl_atr_multiple": (
-        r'<MaxSLATRMultiple>[^<]*</MaxSLATRMultiple>',
-        r'<MaxSLATRMultiple>{value}</MaxSLATRMultiple>',
+        r"<MaxSLATRMultiple>[^<]*</MaxSLATRMultiple>",
+        r"<MaxSLATRMultiple>{value}</MaxSLATRMultiple>",
         "float",
     ),
     "min_sl_atr_period": (
-        r'<MinSLATRPeriod>[^<]*</MinSLATRPeriod>',
-        r'<MinSLATRPeriod>{value}</MinSLATRPeriod>',
+        r"<MinSLATRPeriod>[^<]*</MinSLATRPeriod>",
+        r"<MinSLATRPeriod>{value}</MinSLATRPeriod>",
         "int",
     ),
     "max_sl_atr_period": (
-        r'<MaxSLATRPeriod>[^<]*</MaxSLATRPeriod>',
-        r'<MaxSLATRPeriod>{value}</MaxSLATRPeriod>',
+        r"<MaxSLATRPeriod>[^<]*</MaxSLATRPeriod>",
+        r"<MaxSLATRPeriod>{value}</MaxSLATRPeriod>",
         "int",
     ),
     "pt_required": (
-        r'<PTRequired>[^<]*</PTRequired>',
-        r'<PTRequired>{value}</PTRequired>',
+        r"<PTRequired>[^<]*</PTRequired>",
+        r"<PTRequired>{value}</PTRequired>",
         "boolean",
     ),
     "pt_fixed_pips": (
-        r'<PTFixedPips>[^<]*</PTFixedPips>',
-        r'<PTFixedPips>{value}</PTFixedPips>',
+        r"<PTFixedPips>[^<]*</PTFixedPips>",
+        r"<PTFixedPips>{value}</PTFixedPips>",
         "boolean",
     ),
     "min_pt_pips": (
-        r'<MinPTInPips>[^<]*</MinPTInPips>',
-        r'<MinPTInPips>{value}</MinPTInPips>',
+        r"<MinPTInPips>[^<]*</MinPTInPips>",
+        r"<MinPTInPips>{value}</MinPTInPips>",
         "int",
     ),
     "max_pt_pips": (
-        r'<MaxPTInPips>[^<]*</MaxPTInPips>',
-        r'<MaxPTInPips>{value}</MaxPTInPips>',
+        r"<MaxPTInPips>[^<]*</MaxPTInPips>",
+        r"<MaxPTInPips>{value}</MaxPTInPips>",
         "int",
     ),
     "min_pt_money": (
-        r'<MinPTInMoney>[^<]*</MinPTInMoney>',
-        r'<MinPTInMoney>{value}</MinPTInMoney>',
+        r"<MinPTInMoney>[^<]*</MinPTInMoney>",
+        r"<MinPTInMoney>{value}</MinPTInMoney>",
         "int",
     ),
     "max_pt_money": (
-        r'<MaxPTInMoney>[^<]*</MaxPTInMoney>',
-        r'<MaxPTInMoney>{value}</MaxPTInMoney>',
+        r"<MaxPTInMoney>[^<]*</MaxPTInMoney>",
+        r"<MaxPTInMoney>{value}</MaxPTInMoney>",
         "int",
     ),
     "pt_atr": (
-        r'<PTATR>[^<]*</PTATR>',
-        r'<PTATR>{value}</PTATR>',
+        r"<PTATR>[^<]*</PTATR>",
+        r"<PTATR>{value}</PTATR>",
         "boolean",
     ),
     "min_pt_atr_multiple": (
-        r'<MinPTATRMultiple>[^<]*</MinPTATRMultiple>',
-        r'<MinPTATRMultiple>{value}</MinPTATRMultiple>',
+        r"<MinPTATRMultiple>[^<]*</MinPTATRMultiple>",
+        r"<MinPTATRMultiple>{value}</MinPTATRMultiple>",
         "float",
     ),
     "max_pt_atr_multiple": (
-        r'<MaxPTATRMultiple>[^<]*</MaxPTATRMultiple>',
-        r'<MaxPTATRMultiple>{value}</MaxPTATRMultiple>',
+        r"<MaxPTATRMultiple>[^<]*</MaxPTATRMultiple>",
+        r"<MaxPTATRMultiple>{value}</MaxPTATRMultiple>",
         "float",
     ),
     "min_pt_atr_period": (
-        r'<MinPTATRPeriod>[^<]*</MinPTATRPeriod>',
-        r'<MinPTATRPeriod>{value}</MinPTATRPeriod>',
+        r"<MinPTATRPeriod>[^<]*</MinPTATRPeriod>",
+        r"<MinPTATRPeriod>{value}</MinPTATRPeriod>",
         "int",
     ),
     "max_pt_atr_period": (
-        r'<MaxPTATRPeriod>[^<]*</MaxPTATRPeriod>',
-        r'<MaxPTATRPeriod>{value}</MaxPTATRPeriod>',
+        r"<MaxPTATRPeriod>[^<]*</MaxPTATRPeriod>",
+        r"<MaxPTATRPeriod>{value}</MaxPTATRPeriod>",
         "int",
     ),
     "limit_slpt_rrr": (
-        r'<LimitSLPTRRR>[^<]*</LimitSLPTRRR>',
-        r'<LimitSLPTRRR>{value}</LimitSLPTRRR>',
+        r"<LimitSLPTRRR>[^<]*</LimitSLPTRRR>",
+        r"<LimitSLPTRRR>{value}</LimitSLPTRRR>",
         "boolean",
     ),
     "limit_slpt_rrr_from": (
-        r'<LimitSLPTRRRFrom>[^<]*</LimitSLPTRRRFrom>',
-        r'<LimitSLPTRRRFrom>{value}</LimitSLPTRRRFrom>',
+        r"<LimitSLPTRRRFrom>[^<]*</LimitSLPTRRRFrom>",
+        r"<LimitSLPTRRRFrom>{value}</LimitSLPTRRRFrom>",
         "int",
     ),
     "limit_slpt_rrr_to": (
-        r'<LimitSLPTRRRTo>[^<]*</LimitSLPTRRRTo>',
-        r'<LimitSLPTRRRTo>{value}</LimitSLPTRRRTo>',
+        r"<LimitSLPTRRRTo>[^<]*</LimitSLPTRRRTo>",
+        r"<LimitSLPTRRRTo>{value}</LimitSLPTRRRTo>",
         "int",
     ),
     "sl_value_type": (
-        r'<SLValueType>[^<]*</SLValueType>',
-        r'<SLValueType>{value}</SLValueType>',
+        r"<SLValueType>[^<]*</SLValueType>",
+        r"<SLValueType>{value}</SLValueType>",
         "string",
     ),
     "pt_value_type": (
-        r'<PTValueType>[^<]*</PTValueType>',
-        r'<PTValueType>{value}</PTValueType>',
+        r"<PTValueType>[^<]*</PTValueType>",
+        r"<PTValueType>{value}</PTValueType>",
         "string",
     ),
     "sl_indicator_based": (
-        r'<SLIndicatorBased>[^<]*</SLIndicatorBased>',
-        r'<SLIndicatorBased>{value}</SLIndicatorBased>',
+        r"<SLIndicatorBased>[^<]*</SLIndicatorBased>",
+        r"<SLIndicatorBased>{value}</SLIndicatorBased>",
         "boolean",
     ),
     "pt_indicator_based": (
-        r'<PTIndicatorBased>[^<]*</PTIndicatorBased>',
-        r'<PTIndicatorBased>{value}</PTIndicatorBased>',
+        r"<PTIndicatorBased>[^<]*</PTIndicatorBased>",
+        r"<PTIndicatorBased>{value}</PTIndicatorBased>",
         "boolean",
     ),
     "sl_percent": (
-        r'<SLPercent>[^<]*</SLPercent>',
-        r'<SLPercent>{value}</SLPercent>',
+        r"<SLPercent>[^<]*</SLPercent>",
+        r"<SLPercent>{value}</SLPercent>",
         "boolean",
     ),
     "min_sl_percent": (
-        r'<MinSLInPercent>[^<]*</MinSLInPercent>',
-        r'<MinSLInPercent>{value}</MinSLInPercent>',
+        r"<MinSLInPercent>[^<]*</MinSLInPercent>",
+        r"<MinSLInPercent>{value}</MinSLInPercent>",
         "float",
     ),
     "max_sl_percent": (
-        r'<MaxSLInPercent>[^<]*</MaxSLInPercent>',
-        r'<MaxSLInPercent>{value}</MaxSLInPercent>',
+        r"<MaxSLInPercent>[^<]*</MaxSLInPercent>",
+        r"<MaxSLInPercent>{value}</MaxSLInPercent>",
         "float",
     ),
     "pt_percent": (
-        r'<PTPercent>[^<]*</PTPercent>',
-        r'<PTPercent>{value}</PTPercent>',
+        r"<PTPercent>[^<]*</PTPercent>",
+        r"<PTPercent>{value}</PTPercent>",
         "boolean",
     ),
     "min_pt_percent": (
-        r'<MinPTInPercent>[^<]*</MinPTInPercent>',
-        r'<MinPTInPercent>{value}</MinPTInPercent>',
+        r"<MinPTInPercent>[^<]*</MinPTInPercent>",
+        r"<MinPTInPercent>{value}</MinPTInPercent>",
         "float",
     ),
     "max_pt_percent": (
-        r'<MaxPTInPercent>[^<]*</MaxPTInPercent>',
-        r'<MaxPTInPercent>{value}</MaxPTInPercent>',
+        r"<MaxPTInPercent>[^<]*</MaxPTInPercent>",
+        r"<MaxPTInPercent>{value}</MaxPTInPercent>",
         "float",
     ),
-
     # ── BuildMode (Genetic) ──
     "generations": (
-        r'<MaxGenerations>\d+</MaxGenerations>',
-        r'<MaxGenerations>{value}</MaxGenerations>',
+        r"<MaxGenerations>\d+</MaxGenerations>",
+        r"<MaxGenerations>{value}</MaxGenerations>",
         "int",
     ),
     "population": (
-        r'<PopulationSize>\d+</PopulationSize>',
-        r'<PopulationSize>{value}</PopulationSize>',
+        r"<PopulationSize>\d+</PopulationSize>",
+        r"<PopulationSize>{value}</PopulationSize>",
         "int",
     ),
     "islands": (
-        r'<Islands>\d+</Islands>',
-        r'<Islands>{value}</Islands>',
+        r"<Islands>\d+</Islands>",
+        r"<Islands>{value}</Islands>",
         "int",
     ),
     "migration_modulo": (
-        r'<MigrationModulo>\d+</MigrationModulo>',
-        r'<MigrationModulo>{value}</MigrationModulo>',
+        r"<MigrationModulo>\d+</MigrationModulo>",
+        r"<MigrationModulo>{value}</MigrationModulo>",
         "int",
     ),
     "migration_rate": (
-        r'<MigrationRate>\d+</MigrationRate>',
-        r'<MigrationRate>{value}</MigrationRate>',
+        r"<MigrationRate>\d+</MigrationRate>",
+        r"<MigrationRate>{value}</MigrationRate>",
         "int",
     ),
     "init_generation_type": (
-        r'<InitGenerationType>\d+</InitGenerationType>',
-        r'<InitGenerationType>{value}</InitGenerationType>',
+        r"<InitGenerationType>\d+</InitGenerationType>",
+        r"<InitGenerationType>{value}</InitGenerationType>",
         "int",
     ),
     "decimation_coef": (
-        r'<DecimationCoef>\d+</DecimationCoef>',
-        r'<DecimationCoef>{value}</DecimationCoef>',
+        r"<DecimationCoef>\d+</DecimationCoef>",
+        r"<DecimationCoef>{value}</DecimationCoef>",
         "int",
     ),
     "evo_restart_on_finish": (
@@ -834,45 +834,44 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "int",
     ),
     "fresh_blood_replace_similar": (
-        r'<FreshBloodReplaceSimilar>[^<]*</FreshBloodReplaceSimilar>',
-        r'<FreshBloodReplaceSimilar>{value}</FreshBloodReplaceSimilar>',
+        r"<FreshBloodReplaceSimilar>[^<]*</FreshBloodReplaceSimilar>",
+        r"<FreshBloodReplaceSimilar>{value}</FreshBloodReplaceSimilar>",
         "boolean",
     ),
     "fresh_blood_replace_weakest": (
-        r'<FreshBloodReplaceWeakest>[^<]*</FreshBloodReplaceWeakest>',
-        r'<FreshBloodReplaceWeakest>{value}</FreshBloodReplaceWeakest>',
+        r"<FreshBloodReplaceWeakest>[^<]*</FreshBloodReplaceWeakest>",
+        r"<FreshBloodReplaceWeakest>{value}</FreshBloodReplaceWeakest>",
         "boolean",
     ),
     "fresh_blood_weakest_pct": (
-        r'<FreshBloodWeakestPct>\d+</FreshBloodWeakestPct>',
-        r'<FreshBloodWeakestPct>{value}</FreshBloodWeakestPct>',
+        r"<FreshBloodWeakestPct>\d+</FreshBloodWeakestPct>",
+        r"<FreshBloodWeakestPct>{value}</FreshBloodWeakestPct>",
         "int",
     ),
     "fresh_blood_weakest_generations": (
-        r'<FreshBloodWeakestGenerations>\d+</FreshBloodWeakestGenerations>',
-        r'<FreshBloodWeakestGenerations>{value}</FreshBloodWeakestGenerations>',
+        r"<FreshBloodWeakestGenerations>\d+</FreshBloodWeakestGenerations>",
+        r"<FreshBloodWeakestGenerations>{value}</FreshBloodWeakestGenerations>",
         "int",
     ),
     "filter_initial_population": (
-        r'<FilterInitialPopulation>[^<]*</FilterInitialPopulation>',
-        r'<FilterInitialPopulation>{value}</FilterInitialPopulation>',
+        r"<FilterInitialPopulation>[^<]*</FilterInitialPopulation>",
+        r"<FilterInitialPopulation>{value}</FilterInitialPopulation>",
         "boolean",
     ),
     "evo_fitness_restart_type": (
-        r'<EvoFitnessRestartType>\d+</EvoFitnessRestartType>',
-        r'<EvoFitnessRestartType>{value}</EvoFitnessRestartType>',
+        r"<EvoFitnessRestartType>\d+</EvoFitnessRestartType>",
+        r"<EvoFitnessRestartType>{value}</EvoFitnessRestartType>",
         "int",
     ),
     "evo_stagnation_restart_generations": (
-        r'<EvoStagnationRestartGenerations>\d+</EvoStagnationRestartGenerations>',
-        r'<EvoStagnationRestartGenerations>{value}</EvoStagnationRestartGenerations>',
+        r"<EvoStagnationRestartGenerations>\d+</EvoStagnationRestartGenerations>",
+        r"<EvoStagnationRestartGenerations>{value}</EvoStagnationRestartGenerations>",
         "int",
     ),
-
     # ── Rankings ──
     "max_strategies": (
-        r'<MaxStrategies>\d+</MaxStrategies>',
-        r'<MaxStrategies>{value}</MaxStrategies>',
+        r"<MaxStrategies>\d+</MaxStrategies>",
+        r"<MaxStrategies>{value}</MaxStrategies>",
         "int",
     ),
     "ranking_type": (
@@ -882,25 +881,24 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
     ),
     "ranking_avg_trades_min": (
         r'(<Column-Value column="AvgTradesPerMonth"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "ranking_pf_min": (
         r'(<Column-Value column="ProfitFactor"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "float",
     ),
     "ranking_return_dd_min": (
         r'(<Column-Value column="ReturnDDRatio"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "float",
     ),
     "ranking_conditions_type": (
-        r'<ConditionsType>\d+</ConditionsType>',
-        r'<ConditionsType>{value}</ConditionsType>',
+        r"<ConditionsType>\d+</ConditionsType>",
+        r"<ConditionsType>{value}</ConditionsType>",
         "int",
     ),
-
     # ── MoneyManagement ──
     "mm_method": (
         r'<Method type="[^"]*" use="[^"]*"',
@@ -913,8 +911,8 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "float",
     ),
     "initial_capital": (
-        r'<InitialCapital>\d+</InitialCapital>',
-        r'<InitialCapital>{value}</InitialCapital>',
+        r"<InitialCapital>\d+</InitialCapital>",
+        r"<InitialCapital>{value}</InitialCapital>",
         "int",
     ),
     "mm_risk_pct": (
@@ -927,140 +925,137 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         r'<RiskManagement maxDrawdown="{value}">',
         "int",
     ),
-
     # ── ATMs ──
     "atms_enable": (
         r'(<ATMs enable=")[^"]*(")',
-        r'\g<1>{value}\g<2>',
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
     "atms_scale_out_type": (
         r'(<ATMs[^>]*scaleOutType=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "atms_size_decimals": (
         r'(<ATMs[^>]*sizeDecimals=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "atms_min_size": (
         r'(<ATMs[^>]*minSize=")[^"]*(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "float",
     ),
-
     # ── PartsToImprove ──
     "entry_rules_symmetry": (
         r'(<EntryRules symmetry=")[^"]*(")',
-        r'\g<1>{value}\g<2>',
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
     "entry_long_improvement": (
         r'(<LongImprovement use=")[^"]*(")',
-        r'\g<1>{value}\g<2>',
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
     "entry_short_improvement": (
         r'(<ShortImprovement use=")[^"]*(")',
-        r'\g<1>{value}\g<2>',
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
     "exit_rules_symmetry": (
         r'(<ExitRules symmetry=")[^"]*(")',
-        r'\g<1>{value}\g<2>',
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
     "exit_long_improvement": (
         r'(<LongImprovement use=")[^"]*(")',
-        r'\g<1>{value}\g<2>',
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
     "exit_short_improvement": (
         r'(<ShortImprovement use=")[^"]*(")',
-        r'\g<1>{value}\g<2>',
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
-
     # ── CrossChecks internals ──
     "wf_period": (
         r'(<WalkForward type="1" period=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "wf_optimization": (
         r'(<WalkForward type="1" period="\d+" optimization=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "wf_param1": (
         r'(<Param1 value=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "wf_param2": (
         r'(<Param2 value=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "wf_optimize_periods": (
-        r'(<OptimizePeriods>)[^<]*(</OptimizePeriods>)',
-        r'\g<1>{value}\g<2>',
+        r"(<OptimizePeriods>)[^<]*(</OptimizePeriods>)",
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
     "wf_optimize_exit_types": (
-        r'(<OptimizeExitTypes>)[^<]*(</OptimizeExitTypes>)',
-        r'\g<1>{value}\g<2>',
+        r"(<OptimizeExitTypes>)[^<]*(</OptimizeExitTypes>)",
+        r"\g<1>{value}\g<2>",
         "boolean",
     ),
     "wf_max_tests": (
-        r'(<MaxTests>)\d+(</MaxTests>)',
-        r'\g<1>{value}\g<2>',
+        r"(<MaxTests>)\d+(</MaxTests>)",
+        r"\g<1>{value}\g<2>",
         "int",
     ),
     "wf_acceptance_threshold_pct": (
         r'(<Conditions thresholdPct=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "wf_acceptance_min_conditions": (
-        r'(<MinConditions>)\d+(</MinConditions>)',
-        r'\g<1>{value}\g<2>',
+        r"(<MinConditions>)\d+(</MinConditions>)",
+        r"\g<1>{value}\g<2>",
         "int",
     ),
     "wf_acceptance_min_markets": (
-        r'(<MinMarkets>)\d+(</MinMarkets>)',
-        r'\g<1>{value}\g<2>',
+        r"(<MinMarkets>)\d+(</MinMarkets>)",
+        r"\g<1>{value}\g<2>",
         "int",
     ),
     "wf_acceptance_pf_min": (
         r'(<Column-Value column="NetProfit"[^>]*resultType="WalkForwardOptimization"[^>]*minValue=")[^"]*(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "float",
     ),
     "rc_spread": (
         r'(<Chart symbol="[^"]*" timeframe="[^"]*" spread=")\d+(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "int",
     ),
     "rc_pf_min": (
         r'(<Column-Value column="ProfitFactor"[^>]*resultType="RetestOnAdditionalMarkets"[^>]*minValue=")[^"]*(")',
-        r'\g<1>{value}\2',
+        r"\g<1>{value}\2",
         "float",
     ),
     "rc_min_conditions": (
-        r'(<MinConditions>)\d+(</MinConditions>)',
-        r'\g<1>{value}\g<2>',
+        r"(<MinConditions>)\d+(</MinConditions>)",
+        r"\g<1>{value}\g<2>",
         "int",
     ),
     "rc_min_markets": (
-        r'(<MinMarkets>)\d+(</MinMarkets>)',
-        r'\g<1>{value}\g<2>',
+        r"(<MinMarkets>)\d+(</MinMarkets>)",
+        r"\g<1>{value}\g<2>",
         "int",
     ),
     "main_test_values": (
-        r'<MainTestValues[^>]*/>',
-        r'<MainTestValues {main_test_values_xml} />',
+        r"<MainTestValues[^>]*/>",
+        r"<MainTestValues {main_test_values_xml} />",
         "dict",
     ),
     # ── Blocks bridge (REQ-18 / REQ-03) ──
@@ -1081,7 +1076,6 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "blocks",
     ),
 }
-
 
 
 def get_tab_for_field(field_name: str) -> str:
@@ -1260,7 +1254,7 @@ def _apply_block_entries(
     for name in enabled:
         if not re.search(rf'<Block key="{re.escape(name)}"', template_xml):
             logger.warning(
-                "Blocks bridge: template has no <Block key=\"%s\"> — leaving XML unchanged",
+                'Blocks bridge: template has no <Block key="%s"> — leaving XML unchanged',
                 name,
             )
             return template_xml
@@ -1270,13 +1264,13 @@ def _apply_block_entries(
         weight = weights.get(name, 1.0)
         xml = re.sub(
             rf'(<Block key="{re.escape(name)}"[^>]*?weight=")[^"]*(")',
-            rf'\g<1>{weight:g}\g<2>',
+            rf"\g<1>{weight:g}\g<2>",
             xml,
             count=1,
         )
         xml = re.sub(
             rf'(<Block key="{re.escape(name)}"[^>]*?use=")false(")',
-            r'\g<1>true\g<2>',
+            r"\g<1>true\g<2>",
             xml,
             count=1,
         )
@@ -1311,7 +1305,7 @@ def _apply_build_config(template_xml: str, config: BuildConfig) -> str:
         if format_type == "dict" and field_name == "main_test_values":
             # Special handling for MainTestValues dict
             values_xml = _build_main_test_values_xml(value)
-            xml = re.sub(pattern, f'<MainTestValues {values_xml} />', xml)
+            xml = re.sub(pattern, f"<MainTestValues {values_xml} />", xml)
             continue
 
         if format_type == "blocks":
@@ -1371,14 +1365,24 @@ def create_project(
     dest_cfx = project_dir / "project.cfx"
 
     # Clamp date_to to available data for the symbol
-    effective_date_to = _clamp_date_to(symbol, date_to) if date_to else _MAX_DATE_DEFAULT
+    effective_date_to = (
+        _clamp_date_to(symbol, date_to) if date_to else _MAX_DATE_DEFAULT
+    )
 
     # Use broker_profile to override slippage/spread/commission defaults
     if broker_profile is not None:
         slippage = max(1, int(broker_profile.slippage.fixed_pips))
         spread = max(1, int(broker_profile.spread_config.base_spread))
-        comm_type = broker_profile.commission.type.value if hasattr(broker_profile.commission.type, 'value') else broker_profile.commission.type
-        commission = float(broker_profile.commission.value) if comm_type in ("fixed", "percent") else 0.0
+        comm_type = (
+            broker_profile.commission.type.value
+            if hasattr(broker_profile.commission.type, "value")
+            else broker_profile.commission.type
+        )
+        commission = (
+            float(broker_profile.commission.value)
+            if comm_type in ("fixed", "percent")
+            else 0.0
+        )
 
     # Remove if exists
     if project_dir.exists():
@@ -1386,8 +1390,11 @@ def create_project(
 
     # Create databank directories (SQX expects these)
     databanks = [
-        "Results", "Last generation", "Initial population",
-        "Strategies to improve", "Existing portfolio",
+        "Results",
+        "Last generation",
+        "Initial population",
+        "Strategies to improve",
+        "Existing portfolio",
     ]
     for db in databanks:
         (project_dir / "databanks" / db).mkdir(parents=True, exist_ok=True)
@@ -1462,23 +1469,23 @@ def create_project(
 
     # 4. Genetic settings
     task_xml = re.sub(
-        r'<PopulationSize>\d+</PopulationSize>',
-        f'<PopulationSize>{population}</PopulationSize>',
+        r"<PopulationSize>\d+</PopulationSize>",
+        f"<PopulationSize>{population}</PopulationSize>",
         task_xml,
     )
     task_xml = re.sub(
-        r'<MaxGenerations>\d+</MaxGenerations>',
-        f'<MaxGenerations>{generations}</MaxGenerations>',
+        r"<MaxGenerations>\d+</MaxGenerations>",
+        f"<MaxGenerations>{generations}</MaxGenerations>",
         task_xml,
     )
     task_xml = re.sub(
-        r'<CrossoverProbability>[0-9.]+</CrossoverProbability>',
-        f'<CrossoverProbability>{crossover}</CrossoverProbability>',
+        r"<CrossoverProbability>[0-9.]+</CrossoverProbability>",
+        f"<CrossoverProbability>{crossover}</CrossoverProbability>",
         task_xml,
     )
     task_xml = re.sub(
-        r'<MutationProbability>[0-9.]+</MutationProbability>',
-        f'<MutationProbability>{mutation}</MutationProbability>',
+        r"<MutationProbability>[0-9.]+</MutationProbability>",
+        f"<MutationProbability>{mutation}</MutationProbability>",
         task_xml,
     )
 
@@ -1495,17 +1502,17 @@ def create_project(
         # Find ProfitFactor condition and set threshold
         task_xml = re.sub(
             r'(<Column-Value column="ProfitFactor"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-            f'\\g<1>{rankings_min_profit_factor}\\2',
+            f"\\g<1>{rankings_min_profit_factor}\\2",
             task_xml,
         )
         task_xml = re.sub(
             r'(<Column-Value column="AvgTradesPerMonth"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-            f'\\g<1>{rankings_min_avg_trades}\\2',
+            f"\\g<1>{rankings_min_avg_trades}\\2",
             task_xml,
         )
         task_xml = re.sub(
             r'(<Column-Value column="ReturnDDRatio"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-            f'\\g<1>{rankings_min_return_dd}\\2',
+            f"\\g<1>{rankings_min_return_dd}\\2",
             task_xml,
         )
     else:
@@ -1546,8 +1553,14 @@ def create_project(
 
     logger.info(
         "Created project '%s' at %s (%s %s, %d gen, %d pop, date %s..%s)",
-        campaign_id, dest_cfx, symbol, timeframe,
-        generations, population, date_from, effective_date_to,
+        campaign_id,
+        dest_cfx,
+        symbol,
+        timeframe,
+        generations,
+        population,
+        date_from,
+        effective_date_to,
     )
     return str(dest_cfx)
 
