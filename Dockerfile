@@ -101,7 +101,16 @@ RUN pip install --no-cache-dir -e .
 # Copy source data
 COPY pipelines ./pipelines
 COPY knowledge ./knowledge
-COPY reports ./reports
+
+# Create the generated-output directory the container writes to at runtime.
+# It is deliberately NOT copied: `reports/` is git-ignored (see .gitignore) and
+# holds zero tracked files, so it does not exist in a fresh checkout and the
+# build died on `failed to calculate checksum ... "/reports": not found`.
+# QUANTLAB_REPORTS_DIR points here, and docker-compose.yml bind-mounts
+# ./reports over it — so anything baked in here would be shadowed at runtime
+# anyway. Creating the directory keeps the mount target and the default output
+# path intact without depending on ignored local state.
+RUN mkdir -p reports
 
 # Create non-root user
 RUN groupadd -r quantlab && useradd -r -g quantlab -d /app -s /bin/bash quantlab
