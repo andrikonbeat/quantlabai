@@ -34,12 +34,14 @@ MATPLOTLIB_AVAILABLE: bool = False
 
 try:
     import plotly  # noqa: F401
+
     PLOTLY_AVAILABLE = True
 except ImportError:
     pass
 
 try:
     import matplotlib  # noqa: F401
+
     MATPLOTLIB_AVAILABLE = True
 except ImportError:
     pass
@@ -68,7 +70,10 @@ class ReportGenerator:
             loader = FileSystemLoader(self.config.template_path.parent)
         else:
             # Use embedded template
-            from quantlab.reporting.templates import DEFAULT_TEMPLATE as DEFAULT_TEMPLATE
+            from quantlab.reporting.templates import (
+                DEFAULT_TEMPLATE as DEFAULT_TEMPLATE,
+            )
+
             loader = None  # We'll render manually
 
         env = Environment(
@@ -166,7 +171,9 @@ class ReportGenerator:
         if self.config.benchmark_equity:
             benchmark_equity_json = [
                 {
-                    "timestamp": e.timestamp.isoformat() if hasattr(e.timestamp, "isoformat") else str(e.timestamp),
+                    "timestamp": e.timestamp.isoformat()
+                    if hasattr(e.timestamp, "isoformat")
+                    else str(e.timestamp),
                     "equity": e.equity,
                 }
                 for e in self.config.benchmark_equity
@@ -175,13 +182,19 @@ class ReportGenerator:
         json_data = {
             "campaign_id": campaign_id,
             "generated_at": time.time(),
-            "statistics": statistics.model_dump() if hasattr(statistics, "model_dump") else statistics.__dict__,
+            "statistics": statistics.model_dump()
+            if hasattr(statistics, "model_dump")
+            else statistics.__dict__,
             "trade_count": len(trades),
             "equity_points": len(equity),
             "trades": [
                 {
-                    "entry_time": t.entry_time.isoformat() if hasattr(t.entry_time, "isoformat") else str(t.entry_time),
-                    "exit_time": t.exit_time.isoformat() if hasattr(t.exit_time, "isoformat") else str(t.exit_time),
+                    "entry_time": t.entry_time.isoformat()
+                    if hasattr(t.entry_time, "isoformat")
+                    else str(t.entry_time),
+                    "exit_time": t.exit_time.isoformat()
+                    if hasattr(t.exit_time, "isoformat")
+                    else str(t.exit_time),
                     "direction": getattr(t, "direction", "long"),
                     "lots": getattr(t, "lots", 1.0),
                     "profit": getattr(t, "profit", 0.0),
@@ -190,7 +203,9 @@ class ReportGenerator:
             ],
             "equity_curve": [
                 {
-                    "timestamp": e.timestamp.isoformat() if hasattr(e.timestamp, "isoformat") else str(e.timestamp),
+                    "timestamp": e.timestamp.isoformat()
+                    if hasattr(e.timestamp, "isoformat")
+                    else str(e.timestamp),
                     "equity": e.equity,
                 }
                 for e in equity
@@ -268,7 +283,9 @@ class ReportGenerator:
 
     def _get_plotly_template(self) -> str:
         """Get Plotly template name based on theme."""
-        return "plotly_dark" if self.config.theme == ReportTheme.DARK else "plotly_white"
+        return (
+            "plotly_dark" if self.config.theme == ReportTheme.DARK else "plotly_white"
+        )
 
     def _get_chart_colors(self) -> ChartColors:
         """Get chart colors from config or use defaults."""
@@ -295,6 +312,7 @@ class ReportGenerator:
         import io
 
         import matplotlib
+
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
@@ -315,14 +333,26 @@ class ReportGenerator:
         if chart_type == "equity_curve":
             timestamps = data.get("timestamps", [])
             equities = data.get("equities", [])
-            ax.plot(timestamps, equities, color=colors.equity_line, linewidth=1.5, label="Strategy")
+            ax.plot(
+                timestamps,
+                equities,
+                color=colors.equity_line,
+                linewidth=1.5,
+                label="Strategy",
+            )
             if self.config.benchmark_equity:
                 bench_e = self.config.benchmark_equity
                 bench_ts = [e.timestamp for e in bench_e]
                 bench_eq = [e.equity for e in bench_e]
                 if bench_ts and bench_eq:
-                    ax.plot(bench_ts, bench_eq, color=colors.benchmark_line,
-                            linewidth=1.5, linestyle="--", label="Benchmark")
+                    ax.plot(
+                        bench_ts,
+                        bench_eq,
+                        color=colors.benchmark_line,
+                        linewidth=1.5,
+                        linestyle="--",
+                        label="Benchmark",
+                    )
             ax.legend()
             ax.set_title("Equity Curve")
             ax.set_ylabel("Equity")
@@ -335,20 +365,25 @@ class ReportGenerator:
             for eq in equities:
                 current_max = max(current_max, eq)
                 running_max.append(current_max)
-            drawdown = [(eq - mx) / mx * 100 if mx != 0 else 0
-                        for eq, mx in zip(equities, running_max)]
-            ax.fill_between(timestamps, drawdown, 0,
-                            color=colors.drawdown_fill, alpha=0.5)
+            drawdown = [
+                (eq - mx) / mx * 100 if mx != 0 else 0
+                for eq, mx in zip(equities, running_max)
+            ]
+            ax.fill_between(
+                timestamps, drawdown, 0, color=colors.drawdown_fill, alpha=0.5
+            )
             ax.plot(timestamps, drawdown, color=colors.drawdown_line, linewidth=1)
             ax.set_title("Drawdown Underwater")
             ax.set_ylabel("Drawdown %")
 
         elif chart_type == "trade_scatter":
             profits = data.get("profits", [])
-            ax.scatter(range(len(profits)), profits, c=[
-                colors.trade_win if p >= 0 else colors.trade_loss
-                for p in profits
-            ], s=20)
+            ax.scatter(
+                range(len(profits)),
+                profits,
+                c=[colors.trade_win if p >= 0 else colors.trade_loss for p in profits],
+                s=20,
+            )
             ax.axhline(y=0, color=colors.grid, linestyle="--", linewidth=0.5)
             ax.set_title("Trade P&L Distribution")
             ax.set_ylabel("Profit/Loss")
@@ -357,8 +392,12 @@ class ReportGenerator:
             ax.axis("off")
             metrics = data.get("metrics", {})
             table_data = [[k, str(v)] for k, v in metrics.items()]
-            ax.table(cellText=table_data, colLabels=["Metric", "Value"],
-                     loc="center", cellLoc="left")
+            ax.table(
+                cellText=table_data,
+                colLabels=["Metric", "Value"],
+                loc="center",
+                cellLoc="left",
+            )
             ax.set_title("Key Metrics")
 
         fig.tight_layout()
@@ -386,7 +425,9 @@ class ReportGenerator:
                     "timestamps": [e.timestamp for e in equity],
                     "equities": [e.equity for e in equity],
                 }
-                charts["equity_curve"] = self._render_chart_matplotlib("equity_curve", data)
+                charts["equity_curve"] = self._render_chart_matplotlib(
+                    "equity_curve", data
+                )
             except Exception:
                 pass
 
@@ -397,7 +438,9 @@ class ReportGenerator:
                     "timestamps": [e.timestamp for e in equity],
                     "equities": [e.equity for e in equity],
                 }
-                charts["drawdown_underwater"] = self._render_chart_matplotlib("drawdown_underwater", data)
+                charts["drawdown_underwater"] = self._render_chart_matplotlib(
+                    "drawdown_underwater", data
+                )
             except Exception:
                 pass
 
@@ -406,14 +449,18 @@ class ReportGenerator:
             try:
                 profits = [getattr(t, "profit", 0.0) for t in trades]
                 data = {"profits": profits}
-                charts["trade_scatter"] = self._render_chart_matplotlib("trade_scatter", data)
+                charts["trade_scatter"] = self._render_chart_matplotlib(
+                    "trade_scatter", data
+                )
             except Exception:
                 pass
 
         # 4. Metrics Table
         try:
             data = {"metrics": metrics}
-            charts["metrics_table"] = self._render_chart_matplotlib("metrics_table", data)
+            charts["metrics_table"] = self._render_chart_matplotlib(
+                "metrics_table", data
+            )
         except Exception:
             pass
 
@@ -439,26 +486,32 @@ class ReportGenerator:
             timestamps = [e.timestamp for e in equity]
             equities = [e.equity for e in equity]
 
-            fig.add_trace(go.Scatter(
-                x=timestamps,
-                y=equities,
-                mode="lines",
-                name="Equity",
-                line=dict(color=colors.equity_line, width=2),
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=timestamps,
+                    y=equities,
+                    mode="lines",
+                    name="Equity",
+                    line=dict(color=colors.equity_line, width=2),
+                )
+            )
 
             # Add benchmark overlay if provided
             if self.config.benchmark_equity:
                 bench_timestamps = [e.timestamp for e in self.config.benchmark_equity]
                 bench_equities = [e.equity for e in self.config.benchmark_equity]
                 if bench_timestamps and bench_equities:
-                    fig.add_trace(go.Scatter(
-                        x=bench_timestamps,
-                        y=bench_equities,
-                        mode="lines",
-                        name="Benchmark",
-                        line=dict(color=colors.benchmark_line, width=2, dash="dash"),
-                    ))
+                    fig.add_trace(
+                        go.Scatter(
+                            x=bench_timestamps,
+                            y=bench_equities,
+                            mode="lines",
+                            name="Benchmark",
+                            line=dict(
+                                color=colors.benchmark_line, width=2, dash="dash"
+                            ),
+                        )
+                    )
 
             fig.update_layout(
                 title="Equity Curve",
@@ -468,11 +521,7 @@ class ReportGenerator:
                 height=350,
                 margin=dict(l=50, r=20, t=50, b=50),
                 legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
+                    orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
                 ),
             )
 
@@ -504,15 +553,17 @@ class ReportGenerator:
 
             drawdown = [(eq - mx) / mx * 100 for eq, mx in zip(equities, running_max)]
 
-            fig.add_trace(go.Scatter(
-                x=timestamps,
-                y=drawdown,
-                mode="lines",
-                name="Drawdown %",
-                fill="tozeroy",
-                line=dict(color=colors.drawdown_line, width=1),
-                fillcolor=colors.drawdown_fill,
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=timestamps,
+                    y=drawdown,
+                    mode="lines",
+                    name="Drawdown %",
+                    fill="tozeroy",
+                    line=dict(color=colors.drawdown_line, width=1),
+                    fillcolor=colors.drawdown_fill,
+                )
+            )
 
             fig.update_layout(
                 title="Drawdown Underwater",
@@ -532,15 +583,19 @@ class ReportGenerator:
             profits = [getattr(t, "profit", 0) for t in trades]
             entry_times = [getattr(t, "entry_time", i) for i, t in enumerate(trades)]
 
-            point_colors = [colors.trade_win if p >= 0 else colors.trade_loss for p in profits]
+            point_colors = [
+                colors.trade_win if p >= 0 else colors.trade_loss for p in profits
+            ]
 
-            fig.add_trace(go.Scatter(
-                x=list(range(len(trades))),
-                y=profits,
-                mode="markers",
-                name="Trade P&L",
-                marker=dict(color=point_colors, size=8),
-            ))
+            fig.add_trace(
+                go.Scatter(
+                    x=list(range(len(trades))),
+                    y=profits,
+                    mode="markers",
+                    name="Trade P&L",
+                    marker=dict(color=point_colors, size=8),
+                )
+            )
 
             fig.add_hline(y=0, line_dash="dash", line_color=colors.grid)
 
@@ -557,18 +612,22 @@ class ReportGenerator:
 
         # 4. Metrics Table (as interactive table)
         metrics_data = self._get_metrics_table(statistics)
-        fig = go.Figure(data=[go.Table(
-            header=dict(
-                values=["Metric", "Value"],
-                fill_color=colors.equity_line,
-                font=dict(color=colors.background, size=12)
-            ),
-            cells=dict(
-                values=[list(metrics_data.keys()), list(metrics_data.values())],
-                fill_color=colors.background,
-                font=dict(color=colors.text),
-            ),
-        )])
+        fig = go.Figure(
+            data=[
+                go.Table(
+                    header=dict(
+                        values=["Metric", "Value"],
+                        fill_color=colors.equity_line,
+                        font=dict(color=colors.background, size=12),
+                    ),
+                    cells=dict(
+                        values=[list(metrics_data.keys()), list(metrics_data.values())],
+                        fill_color=colors.background,
+                        font=dict(color=colors.text),
+                    ),
+                )
+            ]
+        )
 
         fig.update_layout(
             title="Key Metrics",
@@ -655,7 +714,8 @@ class ReportGenerator:
         # Strategy metrics
         strategy_return = (
             (equity[-1].equity - equity[0].equity) / equity[0].equity * 100
-            if len(equity) >= 2 else 0.0
+            if len(equity) >= 2
+            else 0.0
         )
         strategy_sharpe = getattr(statistics, "sharpe_ratio", None) or 0.0
         strategy_max_dd = getattr(statistics, "max_drawdown", None) or 0.0
@@ -664,15 +724,28 @@ class ReportGenerator:
         bench = self.config.benchmark_equity
         bench_return = (
             (bench[-1].equity - bench[0].equity) / bench[0].equity * 100
-            if len(bench) >= 2 else 0.0
+            if len(bench) >= 2
+            else 0.0
         )
         bench_sharpe = 0.0  # Not available from equity alone
         bench_max_dd = 0.0
 
         return [
-            {"metric": "Total Return", "strategy": f"{strategy_return:.2f}%", "benchmark": f"{bench_return:.2f}%"},
-            {"metric": "Sharpe Ratio", "strategy": f"{strategy_sharpe:.2f}", "benchmark": f"{bench_sharpe:.2f} (N/A)"},
-            {"metric": "Max Drawdown", "strategy": f"{strategy_max_dd:.2f}%", "benchmark": f"{bench_max_dd:.2f}% (N/A)"},
+            {
+                "metric": "Total Return",
+                "strategy": f"{strategy_return:.2f}%",
+                "benchmark": f"{bench_return:.2f}%",
+            },
+            {
+                "metric": "Sharpe Ratio",
+                "strategy": f"{strategy_sharpe:.2f}",
+                "benchmark": f"{bench_sharpe:.2f} (N/A)",
+            },
+            {
+                "metric": "Max Drawdown",
+                "strategy": f"{strategy_max_dd:.2f}%",
+                "benchmark": f"{bench_max_dd:.2f}% (N/A)",
+            },
         ]
 
     def _render_agent_audit_section(self, agent_decisions: list[dict]) -> str:
@@ -856,7 +929,9 @@ class ReportGenerator:
         # Prepare template context
         theme_class = f"theme-{theme_value}"
 
-        matplotlib_available = not plotly_available and self._matplotlib_available and charts
+        matplotlib_available = (
+            not plotly_available and self._matplotlib_available and charts
+        )
         charts_html = ""
         if plotly_available and charts:
             for chart_id, chart_json in charts.items():
@@ -875,8 +950,7 @@ class ReportGenerator:
 
         metrics = self._get_metrics_table(statistics)
         metrics_rows = "".join(
-            f"<tr><td>{k}</td><td>{v}</td></tr>"
-            for k, v in metrics.items()
+            f"<tr><td>{k}</td><td>{v}</td></tr>" for k, v in metrics.items()
         )
 
         phase_rows = ""
@@ -884,31 +958,35 @@ class ReportGenerator:
             for p in phase_results:
                 phase_rows += f"""
                 <tr>
-                    <td>{p.get('phase', '')}</td>
-                    <td>{p.get('status', '')}</td>
-                    <td>{p.get('detail', '')}</td>
-                    <td>{p.get('duration', '')}s</td>
+                    <td>{p.get("phase", "")}</td>
+                    <td>{p.get("status", "")}</td>
+                    <td>{p.get("detail", "")}</td>
+                    <td>{p.get("duration", "")}s</td>
                 </tr>"""
 
         # Executive summary section
         executive_summary_section = ""
         if executive_summary:
             indicator = executive_summary.get("indicator", "amber")
-            indicator_colors = {"green": "#2A9D8F", "amber": "#F4A261", "red": "#E63946"}
+            indicator_colors = {
+                "green": "#2A9D8F",
+                "amber": "#F4A261",
+                "red": "#E63946",
+            }
             indicator_color = indicator_colors.get(indicator, "#F4A261")
             executive_summary_section = f"""
             <section class="section" id="executive-summary">
                 <h2>Executive Summary</h2>
                 <div class="card">
                     <div class="indicator-bar" style="background:{indicator_color};padding:4px 16px;border-radius:4px;color:white;font-weight:bold;text-align:center;">
-                        {executive_summary.get('assessment', '')}
+                        {executive_summary.get("assessment", "")}
                     </div>
                     <table class="metrics-table">
-                        <tr><td>Net Profit</td><td>{executive_summary.get('net_profit', 0):.2f}</td></tr>
-                        <tr><td>Sharpe Ratio</td><td>{executive_summary.get('sharpe', 0):.2f}</td></tr>
-                        <tr><td>Max Drawdown</td><td>{executive_summary.get('max_drawdown', 0):.2f}%</td></tr>
-                        <tr><td>Win Rate</td><td>{executive_summary.get('win_rate', 0):.2%}</td></tr>
-                        <tr><td>Profit Factor</td><td>{executive_summary.get('profit_factor', 0):.2f}</td></tr>
+                        <tr><td>Net Profit</td><td>{executive_summary.get("net_profit", 0):.2f}</td></tr>
+                        <tr><td>Sharpe Ratio</td><td>{executive_summary.get("sharpe", 0):.2f}</td></tr>
+                        <tr><td>Max Drawdown</td><td>{executive_summary.get("max_drawdown", 0):.2f}%</td></tr>
+                        <tr><td>Win Rate</td><td>{executive_summary.get("win_rate", 0):.2%}</td></tr>
+                        <tr><td>Profit Factor</td><td>{executive_summary.get("profit_factor", 0):.2f}</td></tr>
                     </table>
                 </div>
             </section>"""
@@ -962,7 +1040,7 @@ class ReportGenerator:
                 executive_summary_section=executive_summary_section,
                 benchmark_comparison=benchmark_comparison or [],
                 benchmark_section=benchmark_section,
-                generation_time=time.strftime('%Y-%m-%d %H:%M:%S'),
+                generation_time=time.strftime("%Y-%m-%d %H:%M:%S"),
             )
 
         # Embedded template
@@ -980,14 +1058,16 @@ class ReportGenerator:
             phase_rows=phase_rows,
             phase_results=phase_results,
             phase_results_section=phase_rows if phase_results else "",
-            summary_section=f"<section class='section'><h2>Summary</h2><div class='card'><table class='metrics-table'>{summary_rows}</table></div></section>" if summary else "",
+            summary_section=f"<section class='section'><h2>Summary</h2><div class='card'><table class='metrics-table'>{summary_rows}</table></div></section>"
+            if summary
+            else "",
             executive_summary_section=executive_summary_section,
             benchmark_section=benchmark_section,
             charts_json=json.dumps(charts),
             plotly_available=plotly_available,
             plotly_status="Available" if plotly_available else "Not installed",
-            generation_time=time.strftime('%Y-%m-%d %H:%M:%S'),
-            generated_at=time.strftime('%Y-%m-%d %H:%M:%S'),
+            generation_time=time.strftime("%Y-%m-%d %H:%M:%S"),
+            generated_at=time.strftime("%Y-%m-%d %H:%M:%S"),
             agent_audit_section=agent_audit_section,
             comparison_section=comparison_section,
         )

@@ -64,7 +64,9 @@ class RetryPolicy:
             The last exception raised by the coroutine after all retries
             are exhausted.
         """
-        effective_max_retries = max_retries if max_retries is not None else self.max_retries
+        effective_max_retries = (
+            max_retries if max_retries is not None else self.max_retries
+        )
         last_exception: Exception | None = None
 
         for attempt in range(effective_max_retries + 1):

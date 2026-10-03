@@ -63,8 +63,11 @@ class WatcherEvent:
     timestamp: str
     campaign_id: str
     event_type: Literal[
-        "startup_stall", "config_error", "zero_growth_stall",
-        "campaign_complete", "excessive_rejection",
+        "startup_stall",
+        "config_error",
+        "zero_growth_stall",
+        "campaign_complete",
+        "excessive_rejection",
     ]
     severity: Literal["INFO", "WARNING", "CRITICAL"]
     details: dict
@@ -237,14 +240,11 @@ def parse_databank_counts(text: str | None) -> dict[str, int] | None:
         try:
             counts[m.group("name").strip()] = int(m.group("count"))
         except (ValueError, IndexError):
-            logger.warning(
-                "Databank line unparseable (%r) — skipped", line.strip()
-            )
+            logger.warning("Databank line unparseable (%r) — skipped", line.strip())
 
     if not counts:
         logger.warning(
-            "No databank record counts found in output — "
-            "counts treated as unknown"
+            "No databank record counts found in output — counts treated as unknown"
         )
         return None
     return counts
@@ -278,9 +278,7 @@ def parse_strategy_counts_csv(text: str | None) -> dict[str, int]:
         return {}
 
     if reader.fieldnames is None or "Name" not in reader.fieldnames:
-        logger.warning(
-            "Strategies CSV has no 'Name' column — artifact counts unknown"
-        )
+        logger.warning("Strategies CSV has no 'Name' column — artifact counts unknown")
         return {}
 
     counts: dict[str, int] = {}
@@ -538,7 +536,8 @@ class CampaignMonitor:
                 )
             except Exception:
                 logger.exception(
-                    "CampaignMonitor('%s') failed", self._campaign_id,
+                    "CampaignMonitor('%s') failed",
+                    self._campaign_id,
                 )
                 raise
             finally:
@@ -626,9 +625,7 @@ class CampaignMonitor:
                         "WARNING",
                         {
                             "errors": ["3 consecutive HTTP failures"],
-                            "elapsed_s": round(
-                                time.monotonic() - self._start_time, 1
-                            ),
+                            "elapsed_s": round(time.monotonic() - self._start_time, 1),
                         },
                     )
                     await self._dispatch_event(ev)
@@ -651,9 +648,7 @@ class CampaignMonitor:
                     "campaign_complete",
                     "INFO",
                     {
-                        "elapsed_s": round(
-                            time.monotonic() - self._start_time, 1
-                        ),
+                        "elapsed_s": round(time.monotonic() - self._start_time, 1),
                     },
                 )
                 await self._dispatch_event(ev)
@@ -677,9 +672,7 @@ class CampaignMonitor:
 
     # ── Internal: Status Fetching ───────────────────────────────────────
 
-    async def _fetch_status(
-        self, client: httpx.AsyncClient
-    ) -> str | None:
+    async def _fetch_status(self, client: httpx.AsyncClient) -> str | None:
         """Fetch the campaign status from the SQX daemon.
 
         Returns the response text on success, or ``None`` on HTTP/connection
@@ -696,7 +689,8 @@ class CampaignMonitor:
             return resp.text
         except httpx.TimeoutException:
             logger.debug(
-                "CampaignMonitor('%s') status timeout", self._campaign_id,
+                "CampaignMonitor('%s') status timeout",
+                self._campaign_id,
             )
             return None
         except httpx.RequestError as exc:
@@ -714,9 +708,7 @@ class CampaignMonitor:
             )
             return None
 
-    async def _fetch_databank(
-        self, client: httpx.AsyncClient
-    ) -> str | None:
+    async def _fetch_databank(self, client: httpx.AsyncClient) -> str | None:
         """Fetch the databank record counts from the SQX daemon.
 
         Returns the response text on success, or ``None`` on HTTP/connection
@@ -737,7 +729,8 @@ class CampaignMonitor:
             return resp.text
         except httpx.TimeoutException:
             logger.debug(
-                "CampaignMonitor('%s') databank timeout", self._campaign_id,
+                "CampaignMonitor('%s') databank timeout",
+                self._campaign_id,
             )
             return None
         except httpx.RequestError as exc:
@@ -821,7 +814,10 @@ class CampaignMonitor:
 
         # 2. Startup phase (0 strategies so far) — no errors
         if count == 0 and not errors:
-            if elapsed > self._baseline.startup_grace_s + self._baseline.expected_gen_time_s:
+            if (
+                elapsed
+                > self._baseline.startup_grace_s + self._baseline.expected_gen_time_s
+            ):
                 events.append(
                     self._make_event(
                         "startup_stall",
@@ -1093,10 +1089,7 @@ class CampaignMonitor:
     def _is_campaign_done(status_text: str) -> bool:
         """Check if the status text indicates campaign completion or failure."""
         text = status_text.lower()
-        return (
-            "Project execution stopped" in status_text
-            or any(
-                term in text
-                for term in ("completed", "finished", "done", "success", "failed")
-            )
+        return "Project execution stopped" in status_text or any(
+            term in text
+            for term in ("completed", "finished", "done", "success", "failed")
         )

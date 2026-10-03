@@ -69,7 +69,9 @@ class ResilientNotifier:
                     if line:
                         self._queue.append(json.loads(line))
         except (OSError, json.JSONDecodeError):
-            logger.warning("Failed to load queue from %s, starting empty", self._queue_file)
+            logger.warning(
+                "Failed to load queue from %s, starting empty", self._queue_file
+            )
             self._queue = []
 
     async def _persist_queue(self) -> None:

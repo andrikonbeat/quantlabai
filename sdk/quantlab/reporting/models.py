@@ -89,15 +89,23 @@ class ReportConfig(BaseModel):
 
     campaign_id: str
     output_dir: Path = Path("reports")
-    formats: list[ReportFormat] = Field(default_factory=lambda: [ReportFormat.HTML, ReportFormat.JSON])
+    formats: list[ReportFormat] = Field(
+        default_factory=lambda: [ReportFormat.HTML, ReportFormat.JSON]
+    )
     include_charts: bool = True
     theme: ReportTheme = ReportTheme.LIGHT
     template_path: Path | None = None
     title: str | None = None
     benchmark_equity: list | None = None
-    include_agent_decisions: bool = Field(default=False, description="Include agent audit sections")
-    include_comparison_view: bool = Field(default=False, description="Include multi-campaign comparison")
-    comparison_campaign_ids: list[str] = Field(default_factory=list, description="Campaign IDs for comparison")
+    include_agent_decisions: bool = Field(
+        default=False, description="Include agent audit sections"
+    )
+    include_comparison_view: bool = Field(
+        default=False, description="Include multi-campaign comparison"
+    )
+    comparison_campaign_ids: list[str] = Field(
+        default_factory=list, description="Campaign IDs for comparison"
+    )
 
     @property
     def effective_title(self) -> str:
