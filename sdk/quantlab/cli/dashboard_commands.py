@@ -38,12 +38,13 @@ def _pid_alive(pid: int) -> bool:
     return True
 
 
-def write_pid_file(pid_file: Path, pid: int | None = None, started_at: str | None = None) -> Path:
+def write_pid_file(
+    pid_file: Path, pid: int | None = None, started_at: str | None = None
+) -> Path:
     """Persist the running dashboard PID and start time to the PID file."""
     payload = {
         "pid": pid if pid is not None else os.getpid(),
-        "started_at": started_at
-        or datetime.now(UTC).isoformat(timespec="seconds"),
+        "started_at": started_at or datetime.now(UTC).isoformat(timespec="seconds"),
     }
     pid_file.parent.mkdir(parents=True, exist_ok=True)
     pid_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -217,6 +218,7 @@ def _cmd_dashboard_start(args: argparse.Namespace) -> int:
 
         if not args.no_browser:
             import webbrowser
+
             try:
                 webbrowser.open(server.url)
             except Exception:
@@ -229,6 +231,7 @@ def _cmd_dashboard_start(args: argparse.Namespace) -> int:
         try:
             while server.is_running:
                 import time
+
                 time.sleep(1)
         except KeyboardInterrupt:
             print("\nShutting down...")

@@ -19,6 +19,7 @@ from typing import Any
 def print_json(data: dict | list, pretty: bool = True) -> None:
     """Print JSON to stdout."""
     import json
+
     if pretty:
         print(json.dumps(data, indent=2, default=str))
     else:
@@ -63,7 +64,9 @@ async def cmd_campaign_rollback(args: argparse.Namespace) -> int:
         # Check if Knowledge Lake directory exists
         campaign_dir = Path(knowledge_root) / campaign_id
         if not campaign_dir.exists():
-            print_human(f"No Knowledge Lake artifacts found for campaign '{campaign_id}'")
+            print_human(
+                f"No Knowledge Lake artifacts found for campaign '{campaign_id}'"
+            )
             return 0
 
         # Attempt rollback.  If the campaign is not in the in-memory registry,
@@ -73,8 +76,11 @@ async def cmd_campaign_rollback(args: argparse.Namespace) -> int:
         except ValueError:
             # Campaign not in memory — delete artifacts directly
             import shutil
+
             shutil.rmtree(campaign_dir)
-            print_human(f"Deleted Knowledge Lake artifacts for campaign '{campaign_id}'")
+            print_human(
+                f"Deleted Knowledge Lake artifacts for campaign '{campaign_id}'"
+            )
 
         if args.json:
             print_json({"campaign_id": campaign_id, "status": "rolled_back"})
@@ -119,11 +125,13 @@ async def cmd_campaign_status(args: argparse.Namespace) -> int:
         if args.json:
             from dataclasses import asdict
 
-            print_json({
-                "campaign_id": campaign_id,
-                "current_snapshot": asdict(snapshot),
-                "recommendation": recommendation,
-            })
+            print_json(
+                {
+                    "campaign_id": campaign_id,
+                    "current_snapshot": asdict(snapshot),
+                    "recommendation": recommendation,
+                }
+            )
         else:
             print_human(f"Campaign: {campaign_id} (live)")
             status = snapshot.status_text.strip() or "no status text yet"
@@ -148,12 +156,14 @@ async def cmd_campaign_status(args: argparse.Namespace) -> int:
             if campaign_dir.exists():
                 artifacts = list(campaign_dir.iterdir())
                 if args.json:
-                    print_json({
-                        "campaign_id": campaign_id,
-                        "status": "exists",
-                        "artifact_count": len(artifacts),
-                        "artifacts": [str(a.name) for a in artifacts],
-                    })
+                    print_json(
+                        {
+                            "campaign_id": campaign_id,
+                            "status": "exists",
+                            "artifact_count": len(artifacts),
+                            "artifacts": [str(a.name) for a in artifacts],
+                        }
+                    )
                 else:
                     print_human(f"Campaign: {campaign_id}")
                     print_human(f"Status: exists ({len(artifacts)} artifacts)")
@@ -279,14 +289,16 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
     gate_timeout = getattr(args, "gate_timeout", None)
     decisions_file = getattr(args, "gate_decisions_file", None)
 
-    ctx = PipelineContext(config={
-        "campaign_id": campaign_id,
-        # The archive stage (WU-4) wires its internal HUMAN_APPROVE_ARCHIVE
-        # gate_fn from these keys — same channel as the pipeline gates.
-        "gate_event_dir": gate_event_dir,
-        "gate_decisions_file": decisions_file,
-        "gate_timeout": gate_timeout,
-    })
+    ctx = PipelineContext(
+        config={
+            "campaign_id": campaign_id,
+            # The archive stage (WU-4) wires its internal HUMAN_APPROVE_ARCHIVE
+            # gate_fn from these keys — same channel as the pipeline gates.
+            "gate_event_dir": gate_event_dir,
+            "gate_decisions_file": decisions_file,
+            "gate_timeout": gate_timeout,
+        }
+    )
 
     # Run-Flow Gate Execution (REQ) + Headless Gate Decisions (REQ): register
     # a callback per HUMAN_* gate — the interactive decision-file channel
@@ -306,7 +318,9 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
         """
         if isinstance(gate_ctx, dict):
             return gate_ctx
-        return dict(gate_ctx.__dict__) if hasattr(gate_ctx, "__dict__") else dict(gate_ctx)
+        return (
+            dict(gate_ctx.__dict__) if hasattr(gate_ctx, "__dict__") else dict(gate_ctx)
+        )
 
     def _make_callback(gate_id: str) -> Any:
         if decisions_file:
@@ -345,9 +359,7 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
             # non-zero exit — the system never auto-approves (REQ-11) and a
             # blocked run never returns a false success.
             decision = ctx.artifacts.get(f"gate_decision_{gate_id}")
-            action = (
-                decision.get("action") if isinstance(decision, dict) else None
-            )
+            action = decision.get("action") if isinstance(decision, dict) else None
             if (action or "").lower() not in _GATE_APPROVED_ACTIONS:
                 failed = name
                 outcome = action or "missing"
@@ -371,20 +383,24 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
 
     if failed is not None:
         if args.json:
-            print_json({
-                "campaign": config.campaign,
-                "completed": completed,
-                "failed": failed,
-            })
+            print_json(
+                {
+                    "campaign": config.campaign,
+                    "completed": completed,
+                    "failed": failed,
+                }
+            )
         return 1
 
     if args.json:
-        print_json({
-            "campaign": config.campaign,
-            "phases": list(PHASES),
-            "stages": completed,
-            "status": "completed",
-        })
+        print_json(
+            {
+                "campaign": config.campaign,
+                "phases": list(PHASES),
+                "stages": completed,
+                "status": "completed",
+            }
+        )
     else:
         print_human(f"Campaign '{config.campaign}' completed the full flow")
         print_human("✓ " + " → ".join(completed))
@@ -397,21 +413,27 @@ def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
     campaign_sub = p_campaign.add_subparsers(dest="campaign_cmd", required=True)
 
     # campaign rollback
-    p_rollback = campaign_sub.add_parser("rollback", help="Rollback a campaign (delete Knowledge Lake artifacts)")
+    p_rollback = campaign_sub.add_parser(
+        "rollback", help="Rollback a campaign (delete Knowledge Lake artifacts)"
+    )
     p_rollback.add_argument("campaign_id", help="Campaign ID to rollback")
-    p_rollback.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
+    p_rollback.add_argument(
+        "--knowledge-root", default="knowledge", help="Knowledge Lake root path"
+    )
     p_rollback.add_argument("--json", action="store_true", help="Output JSON")
     p_rollback.set_defaults(func=cmd_campaign_rollback)
 
     # campaign status
     p_status = campaign_sub.add_parser("status", help="Show campaign status")
     p_status.add_argument("campaign_id", help="Campaign ID")
-    p_status.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
+    p_status.add_argument(
+        "--knowledge-root", default="knowledge", help="Knowledge Lake root path"
+    )
     p_status.add_argument(
         "--live",
         action="store_true",
         help="Read the persisted live snapshot (REQ-38) instead of Knowledge Lake "
-             "— returns current_snapshot + continue/stop/reconfigure recommendation",
+        "— returns current_snapshot + continue/stop/reconfigure recommendation",
     )
     p_status.add_argument("--json", action="store_true", help="Output JSON")
     p_status.set_defaults(func=cmd_campaign_status)
@@ -421,31 +443,41 @@ def add_campaign_subparser(subparsers: argparse._SubParsersAction) -> None:
         "run-flow",
         help="Run the full 14-phase orchestrated campaign flow (research → live-ops)",
     )
-    p_run.add_argument("--config", default=None, help="Path to ResearchConfig YAML/JSON file")
-    p_run.add_argument("--campaign", default=None, help="Campaign name (when --config is absent)")
-    p_run.add_argument("--market", default="EURUSD", help="Market symbol (when --config is absent)")
-    p_run.add_argument("--timeframe", default="H1", help="Timeframe (when --config is absent)")
-    p_run.add_argument("--knowledge-root", default="knowledge", help="Knowledge Lake root path")
+    p_run.add_argument(
+        "--config", default=None, help="Path to ResearchConfig YAML/JSON file"
+    )
+    p_run.add_argument(
+        "--campaign", default=None, help="Campaign name (when --config is absent)"
+    )
+    p_run.add_argument(
+        "--market", default="EURUSD", help="Market symbol (when --config is absent)"
+    )
+    p_run.add_argument(
+        "--timeframe", default="H1", help="Timeframe (when --config is absent)"
+    )
+    p_run.add_argument(
+        "--knowledge-root", default="knowledge", help="Knowledge Lake root path"
+    )
     p_run.add_argument("--json", action="store_true", help="Output JSON")
     p_run.add_argument(
         "--gate-decisions-file",
         default=None,
         help="Path to a JSON decisions file for headless gate approval "
-             "(maps gate_id to {action, reason, decided_by}); gates without "
-             "a decision fail closed and stop the flow",
+        "(maps gate_id to {action, reason, decided_by}); gates without "
+        "a decision fail closed and stop the flow",
     )
     p_run.add_argument(
         "--gate-event-dir",
         default=_DEFAULT_GATE_EVENT_DIR,
         help="Base directory for the decision-file channel "
-             "(pending.json / decision.json); default /tmp/sqx-gates",
+        "(pending.json / decision.json); default /tmp/sqx-gates",
     )
     p_run.add_argument(
         "--gate-timeout",
         default=None,
         type=float,
         help="Seconds to wait for an interactive gate decision before "
-             "failing closed (default: wait indefinitely)",
+        "failing closed (default: wait indefinitely)",
     )
     p_run.set_defaults(func=cmd_campaign_run_flow)
 
@@ -481,11 +513,13 @@ async def cmd_generation_status(args: argparse.Namespace) -> int:
 
     recommendation = heuristic_recommendation(snapshot)
     if args.json:
-        print_json({
-            "campaign_id": campaign_id,
-            "current_snapshot": asdict(snapshot),
-            "recommendation": recommendation,
-        })
+        print_json(
+            {
+                "campaign_id": campaign_id,
+                "current_snapshot": asdict(snapshot),
+                "recommendation": recommendation,
+            }
+        )
     else:
         print_human(f"Campaign: {campaign_id}")
         print_human(f"Strategies generated: {snapshot.generated_count}")

@@ -30,4 +30,5 @@ def cli_entry() -> int:
     import sys
 
     from quantlab.cli.main import main
+
     return main(sys.argv[1:])

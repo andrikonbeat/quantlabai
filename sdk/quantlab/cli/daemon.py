@@ -142,7 +142,9 @@ async def daemon_context(
             dispatcher = ctx.dispatcher
             ...
     """
-    ctx = DaemonContext(sqx_install_path=sqx_install_path, port=port, startup_timeout=startup_timeout)
+    ctx = DaemonContext(
+        sqx_install_path=sqx_install_path, port=port, startup_timeout=startup_timeout
+    )
     await ctx.__aenter__()
     try:
         yield ctx

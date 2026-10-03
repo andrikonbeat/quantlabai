@@ -151,7 +151,7 @@ class CfxWriter:
   <Population value="{population}"/>
   <Fitness value="{fitness}"/>
   <MinStrategies value="{min_strategies}"/>
-  {f'<MaxStrategies value="{max_strategies}"/>' if max_strategies else ''}
+  {f'<MaxStrategies value="{max_strategies}"/>' if max_strategies else ""}
   <Rebalancing value="{rebalancing}"/>
 </AutomaticPortfolioBuilder>"""
         task.automatic_portfolio_builder = AutomaticPortfolioBuilderConfig(raw_xml=xml)
@@ -224,7 +224,7 @@ class CfxWriter:
         """
         xml = "<OptimizationParameters>"
         for name, rng in parameters.items():
-            xml += f"""<Parameter name="{name}" min="{rng['min']}" max="{rng['max']}" step="{rng['step']}"/>"""
+            xml += f"""<Parameter name="{name}" min="{rng["min"]}" max="{rng["max"]}" step="{rng["step"]}"/>"""
         xml += "</OptimizationParameters>"
         task.optimization_parameters = OptimizationParametersConfig(raw_xml=xml)
         return task
@@ -444,11 +444,7 @@ def _write_project_archive(zf: zipfile.ZipFile, project: CfxProject) -> None:
         task_type = meta.task_type if meta else "Build"
         task_name = meta.name if meta and meta.name else filename.replace(".xml", "")
         active = "true" if meta is None or meta.active else "false"
-        overview = (
-            str(meta.show_settings_overview).lower()
-            if meta
-            else "false"
-        )
+        overview = str(meta.show_settings_overview).lower() if meta else "false"
         sample = meta.sample_name if meta else "Custom"
         lines.append(
             "    <Task"
@@ -465,7 +461,11 @@ def _write_project_archive(zf: zipfile.ZipFile, project: CfxProject) -> None:
     if project.databanks:
         lines.append("  <Databanks>")
         for db in project.databanks:
-            position = f" position={quoteattr(str(db.position))}" if db.position is not None else ""
+            position = (
+                f" position={quoteattr(str(db.position))}"
+                if db.position is not None
+                else ""
+            )
             lines.append(
                 "    <Databank"
                 f" name={quoteattr(db.name)}"
@@ -522,9 +522,13 @@ def _serialise_task(task: BuildTask) -> bytes:
     _append_complex_section(root, "ATMs", task.atms)
     _append_complex_section(root, "DataBanks", task.databanks)
     _append_complex_section(root, "Resources", task.resources)
-    _append_complex_section(root, "AutomaticPortfolioBuilder", task.automatic_portfolio_builder)
+    _append_complex_section(
+        root, "AutomaticPortfolioBuilder", task.automatic_portfolio_builder
+    )
     _append_complex_section(root, "Optimization", task.optimization)
-    _append_complex_section(root, "OptimizationParameters", task.optimization_parameters)
+    _append_complex_section(
+        root, "OptimizationParameters", task.optimization_parameters
+    )
     _append_complex_section(root, "WalkForward", task.walk_forward)
     _append_complex_section(root, "Databanks", task.databanks_section)
     _append_complex_section(root, "PortfolioSettings", task.portfolio_settings)
@@ -630,7 +634,9 @@ def _append_merged_complex_section(
         return
     xml_source = config.raw_xml
     if isinstance(config, CrossChecksConfig) and (
-        config.dialect or config.generic is not None or config.automatic_retest is not None
+        config.dialect
+        or config.generic is not None
+        or config.automatic_retest is not None
     ):
         # Typed CrossChecks: serialise through to_xml() so the typed fields are
         # emitted and raw_xml extras are merged at the end. Without this branch a
@@ -714,7 +720,9 @@ def _append_complex_section(
         return
     xml_source = config.raw_xml
     if isinstance(config, CrossChecksConfig) and (
-        config.dialect or config.generic is not None or config.automatic_retest is not None
+        config.dialect
+        or config.generic is not None
+        or config.automatic_retest is not None
     ):
         # Typed CrossChecks: serialize through to_xml() so typed fields are
         # emitted and raw_xml extras are merged at the end.
