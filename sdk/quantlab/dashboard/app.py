@@ -214,38 +214,6 @@ def _as_typed_export(trades: list, equity: list, statistics: dict):
 
     return typed_trades, typed_equity, typed_stats
 
-    # structured/{campaign_id}/{trades,equity,statistics}.json
-    campaign_dir = structured_dir / campaign_id
-    if campaign_dir.is_dir():
-        for name, target in (("trades", trades), ("equity", equity), ("statistics", statistics)):
-            f = campaign_dir / f"{name}.json"
-            if f.is_file():
-                try:
-                    payload = json.loads(f.read_text(encoding="utf-8"))
-                except (json.JSONDecodeError, OSError):
-                    continue
-                if name == "statistics" and isinstance(payload, dict):
-                    statistics = payload
-                elif isinstance(payload, list):
-                    target.extend(payload)
-
-    # structured/{campaign_id}.json (single-file fallback)
-    single = structured_dir / f"{campaign_id}.json"
-    if single.is_file():
-        try:
-            payload = json.loads(single.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            payload = None
-        if isinstance(payload, dict):
-            if isinstance(payload.get("trades"), list):
-                trades = payload["trades"]
-            if isinstance(payload.get("equity"), list):
-                equity = payload["equity"]
-            if isinstance(payload.get("statistics"), dict):
-                statistics = payload["statistics"]
-
-    return trades, equity, statistics
-
 
 # ─── Helper: JSON error envelope ──────────────────────────────────────────────
 
