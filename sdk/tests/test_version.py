@@ -96,9 +96,7 @@ class TestVersionPreflight:
             status = preflight.run()
         assert status == "in-sync"
         assert preflight.installed_build == PINNED_SQX_VERSION
-        assert not any(
-            "drift" in r.getMessage().lower() for r in caplog.records
-        )
+        assert not any("drift" in r.getMessage().lower() for r in caplog.records)
 
     def test_in_sync_major_only_matches_pinned(self) -> None:
         # Real sqcli Build line carries no point version (REQ-301) — "144"
@@ -226,9 +224,7 @@ class TestCliWrapperVersionPreflight:
         assert info.build_number == PINNED_SQX_VERSION
         assert version_preflight(info) == "in-sync"
 
-    def test_drift_from_license_info_writes_checklist(
-        self, seeded_kb: Path
-    ) -> None:
+    def test_drift_from_license_info_writes_checklist(self, seeded_kb: Path) -> None:
         from quantlab.pipeline.license import LicenseInfo
         from quantlab.sqx.cli_wrapper import version_preflight
 
@@ -276,12 +272,13 @@ class TestCheckVersionCli:
         return fake
 
     def test_in_sync_prints_and_exits_0(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         self._monkeypatch_sqcli(monkeypatch, "144.2953")
-        code = self._main(
-            ["sqx", "check-version", "--knowledge-root", str(tmp_path)]
-        )
+        code = self._main(["sqx", "check-version", "--knowledge-root", str(tmp_path)])
         out = capsys.readouterr().out
         assert code == 0
         assert "in-sync" in out.lower()
@@ -289,12 +286,13 @@ class TestCheckVersionCli:
         assert "pinned" in out.lower()
 
     def test_drift_prints_and_exits_1(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         self._monkeypatch_sqcli(monkeypatch, "145.0")
-        code = self._main(
-            ["sqx", "check-version", "--knowledge-root", str(tmp_path)]
-        )
+        code = self._main(["sqx", "check-version", "--knowledge-root", str(tmp_path)])
         out = capsys.readouterr().out
         assert code == 1
         assert "drift" in out.lower()
@@ -316,9 +314,12 @@ class TestCheckVersionCli:
         # → prints unknown and exits 0 (fail-open).
         code = self._main(
             [
-                "sqx", "check-version",
-                "--sqx-path", str(tmp_path / "no-sqcli-here"),
-                "--knowledge-root", str(tmp_path),
+                "sqx",
+                "check-version",
+                "--sqx-path",
+                str(tmp_path / "no-sqcli-here"),
+                "--knowledge-root",
+                str(tmp_path),
             ]
         )
         out = capsys.readouterr().out
