@@ -64,24 +64,30 @@ def register(srv: QuantLabMCPServer) -> None:
             candidates = await generator.generate(intent)
             results = []
             for c in candidates:
-                results.append({
-                    "candidate_id": c.candidate_id,
-                    "strategy_id": c.strategy_id,
-                    "mode": c.mode.value,
-                    "status": c.status.value,
-                    "fitness_score": c.fitness_score,
-                    "parent_candidate_id": c.parent_candidate_id,
-                })
-            return json.dumps({
-                "success": True,
-                "count": len(results),
-                "candidates": results,
-            })
+                results.append(
+                    {
+                        "candidate_id": c.candidate_id,
+                        "strategy_id": c.strategy_id,
+                        "mode": c.mode.value,
+                        "status": c.status.value,
+                        "fitness_score": c.fitness_score,
+                        "parent_candidate_id": c.parent_candidate_id,
+                    }
+                )
+            return json.dumps(
+                {
+                    "success": True,
+                    "count": len(results),
+                    "candidates": results,
+                }
+            )
         except Exception as exc:
             logger.exception("Strategy generation failed")
-            return json.dumps({
-                "success": False,
-                "error": str(exc),
-                "count": 0,
-                "candidates": [],
-            })
+            return json.dumps(
+                {
+                    "success": False,
+                    "error": str(exc),
+                    "count": 0,
+                    "candidates": [],
+                }
+            )

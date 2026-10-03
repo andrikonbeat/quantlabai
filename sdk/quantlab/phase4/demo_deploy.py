@@ -211,7 +211,9 @@ class DemoDeployer:
         agent = DeploymentAgent(dry_run=is_demo_dry_run())
         return await agent.package_jfx(artifact, account, campaign_id=self._campaign_id)
 
-    def _dispatch_renewal_reminder(self, window: DemoWindow, today: date) -> RenewalReminder:
+    def _dispatch_renewal_reminder(
+        self, window: DemoWindow, today: date
+    ) -> RenewalReminder:
         """Dispatch the semi-manual renewal reminder (REQ-31)."""
         reminder = RenewalReminder(
             campaign_id=self._campaign_id,
@@ -235,8 +237,5 @@ class DemoDeployer:
         return DeploymentResult(
             status="BLOCKED_EXPIRED",
             pending_gate="HUMAN_APPROVE_DEMO",
-            errors=[
-                "Demo window expired — renewal blocked pending "
-                "HUMAN_APPROVE_DEMO"
-            ],
+            errors=["Demo window expired — renewal blocked pending HUMAN_APPROVE_DEMO"],
         )

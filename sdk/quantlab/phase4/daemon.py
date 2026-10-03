@@ -84,6 +84,7 @@ class SQXDaemonManager:
         try:
             text = settings_path.read_text()
             import re
+
             m = re.search(
                 r"<AppWebServerPortSQUANT>\s*(\d+)\s*</AppWebServerPortSQUANT>",
                 text,

@@ -65,7 +65,13 @@ class CampaignStatus:
 
     @property
     def is_complete(self) -> bool:
-        return self.status.lower() in ("completed", "finished", "done", "success", "finished")
+        return self.status.lower() in (
+            "completed",
+            "finished",
+            "done",
+            "success",
+            "finished",
+        )
 
     @property
     def is_running(self) -> bool:
@@ -96,7 +102,9 @@ class CampaignStatus:
         elif any(w in text_lower for w in ("failed", "error", "exception", "aborted")):
             status = "failed"
             m = _RE_ERROR.search(text)
-        elif any(w in text_lower for w in ("running", "in progress", "working", "started")):
+        elif any(
+            w in text_lower for w in ("running", "in progress", "working", "started")
+        ):
             status = "running"
         elif any(w in text_lower for w in ("stopped", "paused", "cancelled")):
             status = "stopped"
@@ -175,7 +183,9 @@ class CommandDispatcher:
         lock_timeout: float | None = None,
     ):
         self._client = client
-        self._sqx_install_path = Path(sqx_install_path).resolve() if sqx_install_path else None
+        self._sqx_install_path = (
+            Path(sqx_install_path).resolve() if sqx_install_path else None
+        )
         self._project_output_dir = (
             Path(project_output_dir).resolve() if project_output_dir else None
         )
@@ -230,9 +240,7 @@ class CommandDispatcher:
 
         if not acquired:
             coro.close()
-            raise SQXSessionLockError(
-                "SQX session lock could not be acquired"
-            )
+            raise SQXSessionLockError("SQX session lock could not be acquired")
 
         try:
             return await coro
@@ -265,9 +273,7 @@ class CommandDispatcher:
             raise FileNotFoundError(f"CFX file not found: {cfx_path}")
 
         async def _op() -> str:
-            return await self._send(
-                f'-project action=loadconfig file="{cfx_path}"'
-            )
+            return await self._send(f'-project action=loadconfig file="{cfx_path}"')
 
         return await self._run_with_lock(_op())
 
@@ -291,27 +297,30 @@ class CommandDispatcher:
            Project names with spaces are not supported via the HTTP API.
            Use :meth:`load_config` with the file path for such projects.
         """
+
         async def _op() -> str:
             return await self._send(
-                f'-project action=start {self._name_param(campaign_name)}'
+                f"-project action=start {self._name_param(campaign_name)}"
             )
 
         return await self._run_with_lock(_op())
 
     async def stop_project(self, campaign_name: str) -> str:
         """Stop a running campaign via ``-project action=stop``."""
+
         async def _op() -> str:
             return await self._send(
-                f'-project action=stop {self._name_param(campaign_name)}'
+                f"-project action=stop {self._name_param(campaign_name)}"
             )
 
         return await self._run_with_lock(_op())
 
     async def get_status(self, campaign_name: str) -> CampaignStatus:
         """Get campaign status via ``-project action=status``."""
+
         async def _op() -> CampaignStatus:
             text = await self._send(
-                f'-project action=status {self._name_param(campaign_name)}'
+                f"-project action=status {self._name_param(campaign_name)}"
             )
             return CampaignStatus.from_text(text, campaign_name)
 
@@ -324,6 +333,7 @@ class CommandDispatcher:
         defensively. Any unparseable line is skipped; if the entire
         output is unparseable the result is an empty dict (never raises).
         """
+
         async def _op() -> dict[str, int]:
             text = await self._send("-databank action=list")
             counts: dict[str, int] = {}
@@ -347,8 +357,10 @@ class CommandDispatcher:
         Filters out timestamp headers, separator lines, and empty output
         to return only actual project names.
         """
+
         async def _op() -> list[str]:
             import re
+
             text = await self._send("-project action=list")
             lines = []
             for line in text.splitlines():
@@ -390,9 +402,7 @@ class CommandDispatcher:
 
         return Path.cwd() / campaign_name
 
-    async def export_results(
-        self, campaign_name: str, output_dir: str | Path
-    ) -> str:
+    async def export_results(self, campaign_name: str, output_dir: str | Path) -> str:
         """Export campaign results by reading project output files.
 
         Searches the project output directory for CSV/text result files.
@@ -412,6 +422,7 @@ class CommandDispatcher:
 
             if candidates:
                 import shutil
+
                 shutil.copy2(candidates[0], output_path)
             else:
                 output_path.write_text(
@@ -437,6 +448,7 @@ class CommandDispatcher:
                     html_files = sorted(search_dir.glob("*.html"))
                     if html_files:
                         import shutil
+
                         shutil.copy2(html_files[0], output_path)
                         return str(output_path)
 
@@ -452,10 +464,9 @@ class CommandDispatcher:
         self, campaign_name: str, output_path: str | Path
     ) -> str:
         """Export retester CSV results from project output files."""
+
         async def _op() -> str:
-            result = await self.export_results(
-                campaign_name, Path(output_path).parent
-            )
+            result = await self.export_results(campaign_name, Path(output_path).parent)
             return result
 
         return await self._run_with_lock(_op())
@@ -480,6 +491,7 @@ class CommandDispatcher:
                     for f in search_dir.iterdir():
                         if f.is_file():
                             import shutil
+
                             shutil.copy2(f, output_dir / f.name)
 
             return [str(p) for p in output_dir.iterdir() if p.is_file()]
@@ -488,6 +500,7 @@ class CommandDispatcher:
 
     async def get_results_xml(self, campaign_name: str) -> str:
         """Get raw results XML from project output files."""
+
         async def _op() -> str:
             if self._sqx_install_path:
                 search_dir = self._sqx_install_path / "user/strategies" / campaign_name
@@ -496,7 +509,7 @@ class CommandDispatcher:
                     if xml_files:
                         return xml_files[0].read_text()
 
-            return f"<?xml version=\"1.0\"?>\n<results campaign=\"{campaign_name}\">\n</results>\n"
+            return f'<?xml version="1.0"?>\n<results campaign="{campaign_name}">\n</results>\n'
 
         return await self._run_with_lock(_op())
 

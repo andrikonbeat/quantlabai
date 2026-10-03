@@ -96,7 +96,9 @@ class SQXSessionLock:
         self._lock_file = self._lock_dir / f"sqx-{path_hash}.lock"
         self._lock_dir.mkdir(parents=True, exist_ok=True)
 
-    async def acquire(self, blocking: bool = True, timeout: float | None = None) -> bool:
+    async def acquire(
+        self, blocking: bool = True, timeout: float | None = None
+    ) -> bool:
         """Acquire both async and file locks."""
         try:
             if timeout is not None:
@@ -111,11 +113,15 @@ class SQXSessionLock:
         if self.use_file_lock:
             try:
                 import portalocker
+
                 self._file_lock = open(self._lock_file, "w")
-                portalocker.lock(self._file_lock, portalocker.LOCK_EX | portalocker.LOCK_NB)
+                portalocker.lock(
+                    self._file_lock, portalocker.LOCK_EX | portalocker.LOCK_NB
+                )
             except ImportError:
                 try:
                     import fcntl
+
                     self._file_lock = open(self._lock_file, "w")
                     fcntl.flock(self._file_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 except Exception:
@@ -130,10 +136,12 @@ class SQXSessionLock:
             if self._file_lock:
                 try:
                     import portalocker
+
                     portalocker.unlock(self._file_lock)
                 except ImportError:
                     try:
                         import fcntl
+
                         fcntl.flock(self._file_lock, fcntl.LOCK_UN)
                     except Exception:
                         pass
@@ -220,7 +228,8 @@ class AsyncSQXClient:
         """
         if not await self._circuit_breaker.can_execute():
             raise JForexConnectionError(
-                self.bind_address, DEFAULT_PORT,
+                self.bind_address,
+                DEFAULT_PORT,
                 "Circuit breaker is open",
             )
 
@@ -245,7 +254,7 @@ class AsyncSQXClient:
                 if 500 <= resp.status_code < 600:
                     await self._circuit_breaker.record_failure(resp.status_code)
                     if attempt < self._max_retries:
-                        await asyncio.sleep(2 ** attempt)
+                        await asyncio.sleep(2**attempt)
                         continue
                     raise JForexServerError(resp.status_code, resp.text)
 
@@ -256,22 +265,25 @@ class AsyncSQXClient:
                 await self._circuit_breaker.record_failure()
                 last_exception = e
                 if attempt < self._max_retries:
-                    await asyncio.sleep(2 ** attempt)
+                    await asyncio.sleep(2**attempt)
                     continue
                 raise JForexConnectionError(
-                    self.bind_address, DEFAULT_PORT,
+                    self.bind_address,
+                    DEFAULT_PORT,
                     f"Timeout after {self._timeout_value}s: {e}",
                 )
             except httpx.ConnectError as e:
                 await self._circuit_breaker.record_failure()
                 last_exception = e
                 raise JForexConnectionError(
-                    self.bind_address, DEFAULT_PORT,
+                    self.bind_address,
+                    DEFAULT_PORT,
                     f"Connection failed: {e}",
                 )
 
         raise JForexConnectionError(
-            self.bind_address, DEFAULT_PORT,
+            self.bind_address,
+            DEFAULT_PORT,
             f"Max retries ({self._max_retries}) exceeded: {last_exception}",
         )
 
@@ -304,12 +316,14 @@ class AsyncSQXClient:
             resp = await client.get(url)
         except httpx.TimeoutException as exc:
             raise JForexConnectionError(
-                self.bind_address, DEFAULT_PORT,
+                self.bind_address,
+                DEFAULT_PORT,
                 f"Timeout exporting source for {strategy_id}: {exc}",
             ) from exc
         except httpx.ConnectError as exc:
             raise JForexConnectionError(
-                self.bind_address, DEFAULT_PORT,
+                self.bind_address,
+                DEFAULT_PORT,
                 f"Connection failed exporting source for {strategy_id}: {exc}",
             ) from exc
 

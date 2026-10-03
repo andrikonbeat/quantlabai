@@ -203,9 +203,7 @@ class ArchiveBundle:
             "status": self.status,
             "pending_gate": self.pending_gate,
             "decision_action": self.decision_action,
-            "archived_at": (
-                self.archived_at.isoformat() if self.archived_at else None
-            ),
+            "archived_at": (self.archived_at.isoformat() if self.archived_at else None),
             "plan": {
                 "deployed_strategy_id": self.plan.deployed_strategy_id,
                 "strategy_state": self.plan.strategy_state,
@@ -222,9 +220,7 @@ class ArchiveBundle:
                 "max_drawdown": self.stats.max_drawdown,
                 "pnl": self.stats.pnl,
             },
-            "feedback": (
-                self.feedback.next_cycle_inputs() if self.feedback else None
-            ),
+            "feedback": (self.feedback.next_cycle_inputs() if self.feedback else None),
             "artifacts": list(self.artifacts),
         }
 
@@ -242,7 +238,9 @@ class ArchivePhase:
             never auto-finalizes.
     """
 
-    def __init__(self, *, gate_fn: GateCallback | None = None, skip_gate: bool = False) -> None:
+    def __init__(
+        self, *, gate_fn: GateCallback | None = None, skip_gate: bool = False
+    ) -> None:
         self._gate_fn = gate_fn
         self._skip_gate = skip_gate
 

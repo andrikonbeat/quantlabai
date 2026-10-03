@@ -24,21 +24,29 @@ def _pipeline_result_to_dict(result: Any) -> dict[str, Any]:
     """Convert a ``PipelineResult`` (dataclass) to a JSON-safe dict."""
     stages: list[dict[str, Any]] = []
     for s in getattr(result, "stages", []):
-        stages.append({
-            "stage_name": s.stage_name,
-            "status": s.status.value if hasattr(s.status, "value") else str(s.status),
-            "duration": s.duration,
-            "error": s.error,
-            "output": str(s.output) if s.output is not None else None,
-            "started_at": (
-                s.started_at.isoformat() if hasattr(s.started_at, "isoformat") else str(s.started_at)
-            ),
-            "completed_at": (
-                s.completed_at.isoformat()
-                if s.completed_at and hasattr(s.completed_at, "isoformat")
-                else str(s.completed_at) if s.completed_at else None
-            ),
-        })
+        stages.append(
+            {
+                "stage_name": s.stage_name,
+                "status": s.status.value
+                if hasattr(s.status, "value")
+                else str(s.status),
+                "duration": s.duration,
+                "error": s.error,
+                "output": str(s.output) if s.output is not None else None,
+                "started_at": (
+                    s.started_at.isoformat()
+                    if hasattr(s.started_at, "isoformat")
+                    else str(s.started_at)
+                ),
+                "completed_at": (
+                    s.completed_at.isoformat()
+                    if s.completed_at and hasattr(s.completed_at, "isoformat")
+                    else str(s.completed_at)
+                    if s.completed_at
+                    else None
+                ),
+            }
+        )
 
     return {
         "pipeline_name": getattr(result, "pipeline_name", ""),
@@ -54,7 +62,10 @@ def register(srv: QuantLabMCPServer) -> None:
 
     mcp = srv.mcp
 
-    @mcp.tool(name="run_backtest", description="Run a backtest pipeline with the given configuration.")
+    @mcp.tool(
+        name="run_backtest",
+        description="Run a backtest pipeline with the given configuration.",
+    )
     async def run_backtest(
         pipeline_config: str,
         symbol: str,
@@ -98,7 +109,9 @@ def register(srv: QuantLabMCPServer) -> None:
             )
             return error.model_dump(mode="json")
 
-    @mcp.tool(name="list_pipelines", description="List all available pipeline configurations.")
+    @mcp.tool(
+        name="list_pipelines", description="List all available pipeline configurations."
+    )
     async def list_pipelines() -> str:
         """Return a list of all discovered pipeline configurations.
 
@@ -112,11 +125,13 @@ def register(srv: QuantLabMCPServer) -> None:
             summaries = registry.list()
             results: list[dict[str, Any]] = []
             for s in summaries:
-                results.append({
-                    "name": s.name,
-                    "stage_count": s.stage_count,
-                    "description": s.description,
-                })
+                results.append(
+                    {
+                        "name": s.name,
+                        "stage_count": s.stage_count,
+                        "description": s.description,
+                    }
+                )
             return json.dumps(results, default=str)
         except Exception as exc:
             logger.exception("list_pipelines failed")
@@ -126,7 +141,9 @@ def register(srv: QuantLabMCPServer) -> None:
             )
             return json.dumps(error.model_dump(mode="json"), default=str)
 
-    @mcp.tool(name="get_pipeline_run", description="Retrieve a previous pipeline run by ID.")
+    @mcp.tool(
+        name="get_pipeline_run", description="Retrieve a previous pipeline run by ID."
+    )
     async def get_pipeline_run(run_id: str) -> str:
         """Get a previously executed pipeline run.
 
@@ -142,10 +159,13 @@ def register(srv: QuantLabMCPServer) -> None:
             # In-memory runs are ephemeral — log the lookup for observability.
             # A production implementation would query the Knowledge Lake.
             logger.info("Pipeline run lookup requested: %s", run_id)
-            return json.dumps({
-                "run_id": run_id,
-                "message": "Run details are available in the Knowledge Lake (query not yet implemented).",
-            }, default=str)
+            return json.dumps(
+                {
+                    "run_id": run_id,
+                    "message": "Run details are available in the Knowledge Lake (query not yet implemented).",
+                },
+                default=str,
+            )
         except Exception as exc:
             logger.exception("get_pipeline_run failed")
             error = MCPError(

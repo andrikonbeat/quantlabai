@@ -6,7 +6,6 @@ All Phase 4 exceptions inherit from Phase4Error for easy catching.
 from __future__ import annotations
 
 
-
 class Phase4Error(Exception):
     """Base exception for all Phase 4 errors."""
 
@@ -22,6 +21,7 @@ class Phase4Error(Exception):
 
 
 # ── JForex Deploy ────────────────────────────────────────────────────────────
+
 
 class JForexError(Phase4Error):
     """Base for JForex deployment errors."""
@@ -57,6 +57,7 @@ class JForexServerError(JForexError):
 
 
 # ── Portfolio Composer / Master ──────────────────────────────────────────────
+
 
 class PortfolioError(Phase4Error):
     """Base for portfolio errors."""
@@ -105,6 +106,7 @@ class PortfolioMasterError(PortfolioError):
 
 # ── Optimizer ────────────────────────────────────────────────────────────────
 
+
 class OptimizerError(Phase4Error):
     """Base for optimizer errors."""
 
@@ -118,6 +120,7 @@ class OptimizerRunError(OptimizerError):
 
 
 # ── Retester ──────────────────────────────────────────────────────────────────
+
 
 class RetesterError(Phase4Error):
     """Base for retester errors."""
@@ -149,6 +152,7 @@ class DatabankPathError(RetesterError):
 
 
 # ── SQX Daemon / Session ─────────────────────────────────────────────────────
+
 
 class SQXError(Phase4Error):
     """Base for SQX daemon/session errors."""
@@ -182,6 +186,7 @@ class SQXDaemonStartError(SQXError):
 
 
 # ── SQX Session Lock ──────────────────────────────────────────────────────────
+
 
 class SQXSessionLockError(Phase4Error):
     """Raised when SQX session lock cannot be acquired."""

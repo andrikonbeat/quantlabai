@@ -1,7 +1,7 @@
 """Phase 4   Campaign Orchestrator for end-to-end SQX pipeline execution.
 
-Orchestrates the full campaign lifecycle: translate DSL → start SQX daemon  
-load CFX → run project → poll status → export results → read exports  
+Orchestrates the full campaign lifecycle: translate DSL → start SQX daemon
+load CFX → run project → poll status → export results → read exports
 compute statistics → store artifacts. Supports progress callbacks and
 dry-run mode.
 
@@ -98,7 +98,9 @@ class CampaignConfig:
 
     # Campaign
     campaign_name: str = "Campaign"
-    campaign_type: str = "backtest"  # backtest, optimizer, retester, portfolio_master, portfolio
+    campaign_type: str = (
+        "backtest"  # backtest, optimizer, retester, portfolio_master, portfolio
+    )
 
     # Polling
     poll_interval: float = 30.0
@@ -112,16 +114,18 @@ class CampaignConfig:
     knowledge_root: Path | None = None
 
     # Callbacks
-    progress_callback: Callable[[CampaignPhase, PhaseStatus, str | None], Any] | None = None
+    progress_callback: (
+        Callable[[CampaignPhase, PhaseStatus, str | None], Any] | None
+    ) = None
     on_watcher_event: Callable | None = None
 
 
 class CampaignOrchestrator:
     """Orchestrates end-to-end SQX campaign execution.
 
-    Coordinates the full pipeline: DSL translation → daemon management  
+    Coordinates the full pipeline: DSL translation → daemon management
     sqcli dispatch → status polling → result export → statistics → storage.
-    
+
     Internally uses the generic pipeline framework (quantlab.pipeline) while
     preserving 100% backward compatibility with the public API.
     """
@@ -142,7 +146,7 @@ class CampaignOrchestrator:
         """
         self._checkpoint_mgr = CheckpointManager(root)
 
-    #   Public API  
+    #   Public API
 
     async def run(self) -> CampaignResult:
         """Execute the full campaign pipeline.
@@ -187,7 +191,7 @@ class CampaignOrchestrator:
 
         return self._result
 
-    #   Pipeline Construction  
+    #   Pipeline Construction
 
     def _build_pipeline(self) -> Pipeline:
         """Build the SQX campaign pipeline from concrete stage implementations."""
@@ -227,7 +231,9 @@ class CampaignOrchestrator:
         }
         return PipelineContext(config=config_dict)
 
-    def _map_pipeline_result(self, pipeline_result: PipelineResult, ctx: PipelineContext) -> None:
+    def _map_pipeline_result(
+        self, pipeline_result: PipelineResult, ctx: PipelineContext
+    ) -> None:
         """Map PipelineResult and context artifacts to CampaignResult."""
         artifacts = ctx.artifacts
 
@@ -251,16 +257,24 @@ class CampaignOrchestrator:
             if campaign_phase:
                 phase_result = PhaseResult(
                     phase=campaign_phase,
-                    status=PhaseStatus(stage_result.status.value) if stage_result.status != StageStatus.SKIPPED else PhaseStatus.SKIPPED,
+                    status=PhaseStatus(stage_result.status.value)
+                    if stage_result.status != StageStatus.SKIPPED
+                    else PhaseStatus.SKIPPED,
                     detail=stage_result.error or f"{campaign_phase.value} completed",
-                    started_at=stage_result.started_at.timestamp() if stage_result.started_at else time.time(),
-                    completed_at=stage_result.completed_at.timestamp() if stage_result.completed_at else None,
+                    started_at=stage_result.started_at.timestamp()
+                    if stage_result.started_at
+                    else time.time(),
+                    completed_at=stage_result.completed_at.timestamp()
+                    if stage_result.completed_at
+                    else None,
                     error=stage_result.error,
                 )
                 self._result.phase_results.append(phase_result)
 
                 # Fire callbacks
-                self._fire_callback(campaign_phase, phase_result.status, phase_result.detail)
+                self._fire_callback(
+                    campaign_phase, phase_result.status, phase_result.detail
+                )
 
         # Map artifacts
         self._result.cfx_bytes = artifacts.get("cfx_bytes")
@@ -280,16 +294,24 @@ class CampaignOrchestrator:
     async def _run_dry_run(self) -> CampaignResult:
         """Handle dry-run mode by running VALIDATE+TRANSLATE, simulating rest."""
         # Fire RUNNING callbacks for VALIDATE and TRANSLATE before running pipeline
-        self._fire_callback(CampaignPhase.VALIDATE, PhaseStatus.RUNNING, "Dry-run validate started")
-        self._fire_callback(CampaignPhase.TRANSLATE, PhaseStatus.RUNNING, "Dry-run translate started")
-        
+        self._fire_callback(
+            CampaignPhase.VALIDATE, PhaseStatus.RUNNING, "Dry-run validate started"
+        )
+        self._fire_callback(
+            CampaignPhase.TRANSLATE, PhaseStatus.RUNNING, "Dry-run translate started"
+        )
+
         # Run VALIDATE and TRANSLATE through pipeline
-        pipeline = Pipeline("SQX Campaign Dry-Run").then(SQXValidateStage()).then(SQXTranslateStage())
+        pipeline = (
+            Pipeline("SQX Campaign Dry-Run")
+            .then(SQXValidateStage())
+            .then(SQXTranslateStage())
+        )
         ctx = self._create_pipeline_context()
         runner = PipelineRunner()
-        
+
         pipeline_result = await runner.run(pipeline, ctx)
-        
+
         # If pipeline failed, re-raise as CampaignError with phase info
         if pipeline_result.error:
             # Find the failed stage
@@ -306,7 +328,7 @@ class CampaignOrchestrator:
                         campaign_name=self.config.campaign_name,
                     )
             raise CampaignError(pipeline_result.error, phase="unknown")
-        
+
         self._result.cfx_bytes = ctx.artifacts.get("cfx_bytes", b"mock-cfx-content")
 
         # Map pipeline stages to CampaignPhase for VALIDATE and TRANSLATE
@@ -319,14 +341,22 @@ class CampaignOrchestrator:
             if campaign_phase:
                 phase_result = PhaseResult(
                     phase=campaign_phase,
-                    status=PhaseStatus(stage_result.status.value) if stage_result.status != StageStatus.SKIPPED else PhaseStatus.SKIPPED,
+                    status=PhaseStatus(stage_result.status.value)
+                    if stage_result.status != StageStatus.SKIPPED
+                    else PhaseStatus.SKIPPED,
                     detail=stage_result.error or f"{campaign_phase.value} completed",
-                    started_at=stage_result.started_at.timestamp() if stage_result.started_at else time.time(),
-                    completed_at=stage_result.completed_at.timestamp() if stage_result.completed_at else None,
+                    started_at=stage_result.started_at.timestamp()
+                    if stage_result.started_at
+                    else time.time(),
+                    completed_at=stage_result.completed_at.timestamp()
+                    if stage_result.completed_at
+                    else None,
                     error=stage_result.error,
                 )
                 self._result.phase_results.append(phase_result)
-                self._fire_callback(campaign_phase, phase_result.status, phase_result.detail)
+                self._fire_callback(
+                    campaign_phase, phase_result.status, phase_result.detail
+                )
 
         # Simulate remaining 9 phases
         dry_run_phases = [
@@ -341,7 +371,9 @@ class CampaignOrchestrator:
             CampaignPhase.COMPLETE,
         ]
         for phase in dry_run_phases:
-            self._fire_callback(phase, PhaseStatus.RUNNING, f"Dry-run {phase.value} started")
+            self._fire_callback(
+                phase, PhaseStatus.RUNNING, f"Dry-run {phase.value} started"
+            )
             result = PhaseResult(
                 phase=phase,
                 status=PhaseStatus.COMPLETED,
@@ -349,7 +381,9 @@ class CampaignOrchestrator:
             )
             result.completed_at = time.time()
             self._result.phase_results.append(result)
-            self._fire_callback(phase, PhaseStatus.COMPLETED, f"Dry-run {phase.value} simulated")
+            self._fire_callback(
+                phase, PhaseStatus.COMPLETED, f"Dry-run {phase.value} simulated"
+            )
 
         self._result.total_duration = 0.0
         return self._result
@@ -364,13 +398,16 @@ class CampaignOrchestrator:
     def _build_checkpoint(self) -> CampaignCheckpoint:
         """Build a CampaignCheckpoint from current results."""
         completed = [
-            r.phase for r in self._result.phase_results
+            r.phase
+            for r in self._result.phase_results
             if r.status == PhaseStatus.COMPLETED
         ]
         cfx_path = str(self._result.cfx_path) if self._result.cfx_path else None
-        export_paths = {
-            k: str(v) for k, v in self._result.export_paths.items()
-        } if self._result.export_paths else {}
+        export_paths = (
+            {k: str(v) for k, v in self._result.export_paths.items()}
+            if self._result.export_paths
+            else {}
+        )
         return CampaignCheckpoint(
             project_name=self._result.campaign_name,
             completed_phases=completed,
@@ -392,7 +429,7 @@ class CampaignOrchestrator:
             except Exception:
                 pass  # Callback errors should not break pipeline
 
-    #   Async Context Manager  
+    #   Async Context Manager
 
     async def __aenter__(self):
         """Async context manager entry."""
@@ -403,7 +440,7 @@ class CampaignOrchestrator:
         await self._cleanup()
 
 
-#   Convenience Function  
+#   Convenience Function
 
 
 async def run_campaign(

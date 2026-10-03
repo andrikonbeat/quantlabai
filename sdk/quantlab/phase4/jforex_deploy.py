@@ -177,6 +177,7 @@ class JForexDeployer:
             fixer=fixer,
             max_fix_iterations=max_fix_iterations,
         )
+
     async def deploy_indicators(
         self,
         jforex_strategies_dir: str | Path,

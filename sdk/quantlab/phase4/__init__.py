@@ -131,6 +131,7 @@ def __getattr__(name: str):
         return globals()[name]
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
+
 __all__ = [
     # Errors
     "Phase4Error",
