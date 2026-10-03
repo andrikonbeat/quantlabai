@@ -60,7 +60,7 @@ def _make_valid_llm_response() -> dict[str, Any]:
                 "expected_outcome": "Sharpe > 1.5, win rate > 45%",
                 "confidence": 0.75,
                 "llm_rationale": "Strong earnings beat with rising iPhone sales "
-                                 "and services revenue growth above 15%",
+                "and services revenue growth above 15%",
                 "source_urls": [
                     "https://finance.yahoo.com/quote/AAPL/",
                     "https://www.nasdaq.com/market-activity/stocks/aapl",
@@ -155,9 +155,13 @@ class TestCallLLM:
     ) -> None:
         """An unsupported provider raises ValueError."""
         with pytest.raises(ValueError, match="Anthropic provider"):
-            await agent.call_llm("test", LLMConfig(
-                provider="anthropic", model="claude-3",
-            ))
+            await agent.call_llm(
+                "test",
+                LLMConfig(
+                    provider="anthropic",
+                    model="claude-3",
+                ),
+            )
 
     @pytest.mark.asyncio
     async def test_opencode_calls_local_cli_not_zen_api(
@@ -228,6 +232,7 @@ class TestCallLLM:
         self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A failing opencode run surfaces stderr in the raised error."""
+
         def fake_run(cmd: list[str], **kwargs: Any) -> Any:
             return type(
                 "Completed",
@@ -255,6 +260,7 @@ class TestCallLLM:
         self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """opencode run that emits no text events raises a clear error."""
+
         def fake_run(cmd: list[str], **kwargs: Any) -> Any:
             return type(
                 "Completed",
@@ -282,6 +288,7 @@ class TestCallLLM:
         self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Multiple text events are joined into a single response string."""
+
         def fake_run(cmd: list[str], **kwargs: Any) -> Any:
             return type(
                 "Completed",
@@ -323,9 +330,7 @@ class TestCallLLM:
                 (),
                 {
                     "returncode": 0,
-                    "stdout": (
-                        '{"type":"text","part":{"type":"text","text":"OK"}}\n'
-                    ),
+                    "stdout": ('{"type":"text","part":{"type":"text","text":"OK"}}\n'),
                     "stderr": "",
                 },
             )()
@@ -413,9 +418,7 @@ class TestOutputValidation:
         with pytest.raises(ValueError, match="source_urls"):
             agent.validate_output(config)
 
-    def test_valid_config_passes_validation(
-        self, agent: LLMResearchAgent
-    ) -> None:
+    def test_valid_config_passes_validation(self, agent: LLMResearchAgent) -> None:
         """A config with all required fields should pass."""
         config = ResearchConfig(
             campaign="test",
@@ -457,9 +460,7 @@ class TestOutputValidation:
                 )
             )
 
-    def test_no_hypotheses_passes_validation(
-        self, agent: LLMResearchAgent
-    ) -> None:
+    def test_no_hypotheses_passes_validation(self, agent: LLMResearchAgent) -> None:
         """An empty hypotheses list should pass (no hypotheses = no source_urls needed)."""
         config = ResearchConfig(
             campaign="test",

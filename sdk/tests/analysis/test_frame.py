@@ -9,7 +9,6 @@ Strict TDD: written first — FAIL (RED) until `Frame` exists.
 from __future__ import annotations
 
 
-
 class TestFrameModel:
     def test_json_round_trip(self) -> None:
         """GIVEN a populated Frame model

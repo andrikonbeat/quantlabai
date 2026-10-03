@@ -11,10 +11,14 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 
-from quantlab.analysis.indicators import IndicatorEngine, IndicatorResult as IndicatorResult
+from quantlab.analysis.indicators import (
+    IndicatorEngine,
+    IndicatorResult as IndicatorResult,
+)
 from quantlab.data.market import Bar
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _make_bar(close: float, high: float, low: float, volume: float = 1000.0) -> Bar:
     """Create a Bar with a fixed UTC timestamp, varying OHLCV fields."""
@@ -227,9 +231,7 @@ class TestIndicatorResultZones:
         WHEN IndicatorEngine.compute is called with ['ADX']
         THEN the result zone is 'range'.
         """
-        bars = _bars_from_closes(
-            [1.10, 1.12, 1.10, 1.12, 1.10, 1.12, 1.10, 1.12] * 6
-        )
+        bars = _bars_from_closes([1.10, 1.12, 1.10, 1.12, 1.10, 1.12, 1.10, 1.12] * 6)
         engine = IndicatorEngine()
         results = engine.compute(bars, ["ADX"])
 
@@ -440,7 +442,9 @@ class TestInsufficientData:
                 )
             )
         engine = IndicatorEngine()
-        results = engine.compute(bars, ["RSI", "MACD", "ATR", "ADX", "Bollinger", "SMA", "EMA"])
+        results = engine.compute(
+            bars, ["RSI", "MACD", "ATR", "ADX", "Bollinger", "SMA", "EMA"]
+        )
 
         assert len(results) == 7
         for r in results:

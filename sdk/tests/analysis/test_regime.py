@@ -197,9 +197,7 @@ class TestRegimeClassifierSmoothing:
             regimes.append(result.regime)
 
         # Verify no rapid flip-flopping.
-        changes = sum(
-            1 for i in range(1, len(regimes)) if regimes[i] != regimes[i - 1]
-        )
+        changes = sum(1 for i in range(1, len(regimes)) if regimes[i] != regimes[i - 1])
         assert changes <= len(regimes) // 4
 
     def test_three_bar_persistence_confirms_transition(self) -> None:

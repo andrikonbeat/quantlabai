@@ -18,7 +18,10 @@ class TestPromptTemplateExists:
 
     def test_has_all_analysis_types(self) -> None:
         assert set(PROMPT_TEMPLATES.keys()) == {
-            "fundamental", "technical", "macro", "news",
+            "fundamental",
+            "technical",
+            "macro",
+            "news",
         }
 
     def test_each_template_is_non_empty_string(self) -> None:
@@ -137,9 +140,7 @@ class TestNewsTemplate:
     def test_has_required_placeholders(self) -> None:
         tmpl = PROMPT_TEMPLATES["news"]
         for ph in self.NEWS_PLACEHOLDERS:
-            assert "{" + ph + "}" in tmpl, (
-                f"News template missing placeholder {{{ph}}}"
-            )
+            assert "{" + ph + "}" in tmpl, f"News template missing placeholder {{{ph}}}"
 
     def test_format_with_real_values(self) -> None:
         tmpl = PROMPT_TEMPLATES["news"]

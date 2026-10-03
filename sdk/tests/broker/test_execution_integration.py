@@ -31,7 +31,11 @@ class TestJForexExecutionIntegration:
 
         assert isinstance(result, GuardianResult)
         assert result.guardian_type == GuardianType.EXECUTION
-        assert result.status in (GuardianStatus.GREEN, GuardianStatus.YELLOW, GuardianStatus.RED)
+        assert result.status in (
+            GuardianStatus.GREEN,
+            GuardianStatus.YELLOW,
+            GuardianStatus.RED,
+        )
         assert 0.0 <= result.score <= 1.0
         assert isinstance(result.message, str)
         assert result.timestamp is not None

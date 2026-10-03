@@ -47,9 +47,7 @@ class TestProviderLazyInit:
         provider = agent._get_web_search()
         assert hasattr(provider, "search_web")
 
-    def test_get_rss_news_returns_rss_provider(
-        self, agent: LLMResearchAgent
-    ) -> None:
+    def test_get_rss_news_returns_rss_provider(self, agent: LLMResearchAgent) -> None:
         """_get_rss_news() returns an RSSNewsProvider-like instance."""
         provider = agent._get_rss_news()
         assert hasattr(provider, "fetch_news")
@@ -170,9 +168,7 @@ class TestFetchDataNews:
         assert len(data["news"]) == 5
 
     @pytest.mark.asyncio
-    async def test_news_items_have_expected_keys(
-        self, agent: LLMResearchAgent
-    ) -> None:
+    async def test_news_items_have_expected_keys(self, agent: LLMResearchAgent) -> None:
         """Each news entry dict has title, url, summary, source keys."""
         web_results = _make_web_results(1)
         with patch.object(agent, "_get_web_search") as mock_get_web:
@@ -204,9 +200,7 @@ class TestFetchDataNews:
         """When search_web raises, fetch_data still succeeds and news may be from RSS only."""
         with patch.object(agent, "_get_web_search") as mock_get_web:
             mock_web = AsyncMock()
-            mock_web.search_web = AsyncMock(
-                side_effect=RuntimeError("Web search down")
-            )
+            mock_web.search_web = AsyncMock(side_effect=RuntimeError("Web search down"))
             mock_get_web.return_value = mock_web
 
             with patch.object(agent, "_get_rss_news") as mock_get_rss:
@@ -234,9 +228,7 @@ class TestFetchDataNews:
 
             with patch.object(agent, "_get_rss_news") as mock_get_rss:
                 mock_rss = AsyncMock()
-                mock_rss.fetch_news = AsyncMock(
-                    side_effect=RuntimeError("RSS down")
-                )
+                mock_rss.fetch_news = AsyncMock(side_effect=RuntimeError("RSS down"))
                 mock_get_rss.return_value = mock_rss
 
                 data = await agent.fetch_data(
@@ -246,9 +238,7 @@ class TestFetchDataNews:
                 assert len(data["news"]) == 2
 
     @pytest.mark.asyncio
-    async def test_no_ticker_skips_rss_news(
-        self, agent: LLMResearchAgent
-    ) -> None:
+    async def test_no_ticker_skips_rss_news(self, agent: LLMResearchAgent) -> None:
         """When ticker is empty, fetch_news is not called."""
         web_results = _make_web_results(1)
         with patch.object(agent, "_get_web_search") as mock_get_web:
@@ -268,9 +258,7 @@ class TestFetchDataNews:
                 mock_rss.fetch_news.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_empty_market_context_graceful(
-        self, agent: LLMResearchAgent
-    ) -> None:
+    async def test_empty_market_context_graceful(self, agent: LLMResearchAgent) -> None:
         """Empty market_context should not crash — fundamental/macro still fetched."""
         with patch.object(agent, "_get_web_search") as mock_get_web:
             mock_web = AsyncMock()

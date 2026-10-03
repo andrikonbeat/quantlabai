@@ -30,7 +30,9 @@ class FakeSqcli:
     def __init__(self) -> None:
         self.commands: list[list[str]] = []
 
-    async def __call__(self, sqcli_path: str, args: list[str], timeout: float = 60.0) -> str:
+    async def __call__(
+        self, sqcli_path: str, args: list[str], timeout: float = 60.0
+    ) -> str:
         self.commands.append([sqcli_path, *args])
         return "ok\n"
 
@@ -39,9 +41,7 @@ class FakeSqcli:
 def fake_sqcli(monkeypatch) -> FakeSqcli:
     """Patch the sqcli runner with a recording stub and return it."""
     fake = FakeSqcli()
-    monkeypatch.setattr(
-        "quantlab.data.data_manager._run_sqcli_command", fake
-    )
+    monkeypatch.setattr("quantlab.data.data_manager._run_sqcli_command", fake)
     return fake
 
 
@@ -77,14 +77,16 @@ class TestEnsureSymbol:
         assert result["status"] == "ok"
         assert result["sqx_name"] == "EURUSD_M1_dukas"
         assert result["cached"] is False
-        assert fake_sqcli.commands == [[
-            "/opt/sqx/sqcli",
-            "-symbol",
-            "action=add",
-            "name=EURUSD_M1_dukas",
-            "datasource=dukascopy",
-            "datatype=M1",
-        ]]
+        assert fake_sqcli.commands == [
+            [
+                "/opt/sqx/sqcli",
+                "-symbol",
+                "action=add",
+                "name=EURUSD_M1_dukas",
+                "datasource=dukascopy",
+                "datatype=M1",
+            ]
+        ]
 
     @pytest.mark.asyncio
     async def test_ensure_symbol_updates_registry(self, fake_sqcli, dm) -> None:
@@ -126,12 +128,16 @@ class TestEnsureSymbol:
 
         assert len(fake_sqcli.commands) == 2
         assert fake_sqcli.commands[0][2:] == [
-            "action=add", "name=EURUSD_M1_dukas",
-            "datasource=dukascopy", "datatype=M1",
+            "action=add",
+            "name=EURUSD_M1_dukas",
+            "datasource=dukascopy",
+            "datatype=M1",
         ]
         assert fake_sqcli.commands[1][2:] == [
-            "action=add", "name=EURUSD_H1_dukas",
-            "datasource=dukascopy", "datatype=H1",
+            "action=add",
+            "name=EURUSD_H1_dukas",
+            "datasource=dukascopy",
+            "datatype=H1",
         ]
 
 
@@ -149,12 +155,14 @@ class TestUpdateData:
 
         assert result["status"] == "ok"
         assert result["sqx_name"] == "EURUSD_M1_dukas"
-        assert fake_sqcli.commands == [[
-            "/opt/sqx/sqcli",
-            "-data",
-            "action=update",
-            "name=EURUSD_M1_dukas",
-        ]]
+        assert fake_sqcli.commands == [
+            [
+                "/opt/sqx/sqcli",
+                "-data",
+                "action=update",
+                "name=EURUSD_M1_dukas",
+            ]
+        ]
 
 
 # ── import_csv (D5: CSV deferred) ───────────────────────────────────────────
@@ -162,7 +170,9 @@ class TestUpdateData:
 
 class TestImportCsv:
     @pytest.mark.asyncio
-    async def test_import_csv_csv_datasource_deferred_raises(self, fake_sqcli, dm) -> None:
+    async def test_import_csv_csv_datasource_deferred_raises(
+        self, fake_sqcli, dm
+    ) -> None:
         """GIVEN the CSV datasource (deferred at launch, D5)
         WHEN import_csv is requested
         THEN a clear NotSupported error is raised (REQ-12 scenario).
@@ -200,7 +210,9 @@ class TestDeferredDatasources:
             await dm.update_data("EURUSD", datasource="yahoo")
 
     @pytest.mark.asyncio
-    async def test_deferred_datasource_never_touches_sqcli(self, fake_sqcli, dm) -> None:
+    async def test_deferred_datasource_never_touches_sqcli(
+        self, fake_sqcli, dm
+    ) -> None:
         """GIVEN a rejected datasource
         WHEN the call raises
         THEN sqcli is never invoked (fail before any subprocess).
@@ -271,7 +283,9 @@ class TestIntrospection:
         names = {r["sqx_name"] for r in rows}
         assert names == {"EURUSD_M1_dukas", "GBPJPY_M5_dukas"}
         for row in rows:
-            assert {"sqx_name", "symbol", "timeframe", "datasource", "status"} <= set(row)
+            assert {"sqx_name", "symbol", "timeframe", "datasource", "status"} <= set(
+                row
+            )
 
     @pytest.mark.asyncio
     async def test_get_symbol_info_known(self, fake_sqcli, dm) -> None:
@@ -328,7 +342,9 @@ class TestOrchestratedEnsureData:
         calls: list[tuple] = []
 
         class FakeManager:
-            async def ensure_symbol(self, symbol, datasource="dukascopy", datatype="M1"):
+            async def ensure_symbol(
+                self, symbol, datasource="dukascopy", datatype="M1"
+            ):
                 calls.append((symbol, datasource, datatype))
                 return {"status": "ok", "sqx_name": f"{symbol}_M1_dukas"}
 
@@ -353,7 +369,9 @@ class TestOrchestratedEnsureData:
         from quantlab.data import NotSupportedError
 
         class FailingManager:
-            async def ensure_symbol(self, symbol, datasource="dukascopy", datatype="M1"):
+            async def ensure_symbol(
+                self, symbol, datasource="dukascopy", datatype="M1"
+            ):
                 raise NotSupportedError(f"datasource '{datasource}' not supported")
 
         monkeypatch.setattr("quantlab.data.DataManager", FailingManager)
@@ -372,7 +390,9 @@ class TestOrchestratedEnsureData:
         from quantlab.data import NotSupportedError
 
         class FailingManager:
-            async def ensure_symbol(self, symbol, datasource="dukascopy", datatype="M1"):
+            async def ensure_symbol(
+                self, symbol, datasource="dukascopy", datatype="M1"
+            ):
                 raise NotSupportedError("nope")
 
         monkeypatch.setattr("quantlab.data.DataManager", FailingManager)

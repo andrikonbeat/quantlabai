@@ -37,16 +37,30 @@ class TestFrameSchemaStability:
             regime="trending",
             regime_confidence=0.8,
             sentiment=0.5,
-            technical_context=[{"indicator_name": "RSI", "value": 55.0, "zone": "neutral"}],
+            technical_context=[
+                {"indicator_name": "RSI", "value": 55.0, "zone": "neutral"}
+            ],
             risk={"level": "medium"},
             capital={"allocated": 10000},
             timeframe="H1",
             edge="trend-following",
             instruments=["EURUSD", "GBPUSD"],
             guardian_hints={
-                "regime_shift": {"detected": True, "confidence": 0.8, "recommended_action": "reduce_exposure"},
-                "sentiment_shift": {"detected": False, "confidence": 0.0, "recommended_action": "none"},
-                "volatility_expansion": {"detected": True, "confidence": 0.9, "recommended_action": "tighten_stops"},
+                "regime_shift": {
+                    "detected": True,
+                    "confidence": 0.8,
+                    "recommended_action": "reduce_exposure",
+                },
+                "sentiment_shift": {
+                    "detected": False,
+                    "confidence": 0.0,
+                    "recommended_action": "none",
+                },
+                "volatility_expansion": {
+                    "detected": True,
+                    "confidence": 0.9,
+                    "recommended_action": "tighten_stops",
+                },
             },
             data_quality="full",
         )
@@ -86,4 +100,7 @@ class TestFrameSchemaStability:
 
         assert restored.guardian_hints is not None
         assert restored.guardian_hints["regime_shift"]["detected"] is False
-        assert restored.guardian_hints["volatility_expansion"]["recommended_action"] == "none"
+        assert (
+            restored.guardian_hints["volatility_expansion"]["recommended_action"]
+            == "none"
+        )

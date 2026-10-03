@@ -500,11 +500,17 @@ class TestHistoricalCounterExampleStrategy:
         start_price = 1.12
         for i in range(35):
             price = round(start_price - i * 0.01, 2)
-            day = f"2020-01-{i+1:02d}"
-            prices.append({
-                "date": day, "open": price, "high": price + 0.01,
-                "low": price - 0.01, "close": price, "volume": 1000 + i * 100,
-            })
+            day = f"2020-01-{i + 1:02d}"
+            prices.append(
+                {
+                    "date": day,
+                    "open": price,
+                    "high": price + 0.01,
+                    "low": price - 0.01,
+                    "close": price,
+                    "volume": 1000 + i * 100,
+                }
+            )
         provider.fetch.return_value = {
             "ticker": "EURUSD",
             "prices": prices,
@@ -628,21 +634,126 @@ class TestHistoricalCounterExampleStrategy:
         provider.fetch.return_value = {
             "ticker": "EURUSD",
             "prices": [
-                {"date": "2020-01-01", "open": 1.00, "high": 1.02, "low": 0.99, "close": 1.01, "volume": 1000},
-                {"date": "2020-01-02", "open": 1.01, "high": 1.03, "low": 1.00, "close": 1.02, "volume": 1100},
-                {"date": "2020-01-03", "open": 1.02, "high": 1.04, "low": 1.01, "close": 1.03, "volume": 1200},
-                {"date": "2020-01-04", "open": 1.03, "high": 1.05, "low": 1.02, "close": 1.04, "volume": 1300},
-                {"date": "2020-01-05", "open": 1.04, "high": 1.06, "low": 1.03, "close": 1.05, "volume": 1400},
-                {"date": "2020-01-06", "open": 1.05, "high": 1.07, "low": 1.04, "close": 1.06, "volume": 1500},
-                {"date": "2020-01-07", "open": 1.06, "high": 1.08, "low": 1.05, "close": 1.07, "volume": 1600},
-                {"date": "2020-01-08", "open": 1.07, "high": 1.09, "low": 1.06, "close": 1.08, "volume": 1700},
-                {"date": "2020-01-09", "open": 1.08, "high": 1.10, "low": 1.07, "close": 1.09, "volume": 1800},
-                {"date": "2020-01-10", "open": 1.09, "high": 1.11, "low": 1.08, "close": 1.10, "volume": 1900},
-                {"date": "2020-01-11", "open": 1.10, "high": 1.12, "low": 1.09, "close": 1.11, "volume": 2000},
-                {"date": "2020-01-12", "open": 1.11, "high": 1.13, "low": 1.10, "close": 1.12, "volume": 2100},
-                {"date": "2020-01-13", "open": 1.12, "high": 1.14, "low": 1.11, "close": 1.13, "volume": 2200},
-                {"date": "2020-01-14", "open": 1.13, "high": 1.15, "low": 1.12, "close": 1.14, "volume": 2300},
-                {"date": "2020-01-15", "open": 1.14, "high": 1.16, "low": 1.13, "close": 1.15, "volume": 2400},
+                {
+                    "date": "2020-01-01",
+                    "open": 1.00,
+                    "high": 1.02,
+                    "low": 0.99,
+                    "close": 1.01,
+                    "volume": 1000,
+                },
+                {
+                    "date": "2020-01-02",
+                    "open": 1.01,
+                    "high": 1.03,
+                    "low": 1.00,
+                    "close": 1.02,
+                    "volume": 1100,
+                },
+                {
+                    "date": "2020-01-03",
+                    "open": 1.02,
+                    "high": 1.04,
+                    "low": 1.01,
+                    "close": 1.03,
+                    "volume": 1200,
+                },
+                {
+                    "date": "2020-01-04",
+                    "open": 1.03,
+                    "high": 1.05,
+                    "low": 1.02,
+                    "close": 1.04,
+                    "volume": 1300,
+                },
+                {
+                    "date": "2020-01-05",
+                    "open": 1.04,
+                    "high": 1.06,
+                    "low": 1.03,
+                    "close": 1.05,
+                    "volume": 1400,
+                },
+                {
+                    "date": "2020-01-06",
+                    "open": 1.05,
+                    "high": 1.07,
+                    "low": 1.04,
+                    "close": 1.06,
+                    "volume": 1500,
+                },
+                {
+                    "date": "2020-01-07",
+                    "open": 1.06,
+                    "high": 1.08,
+                    "low": 1.05,
+                    "close": 1.07,
+                    "volume": 1600,
+                },
+                {
+                    "date": "2020-01-08",
+                    "open": 1.07,
+                    "high": 1.09,
+                    "low": 1.06,
+                    "close": 1.08,
+                    "volume": 1700,
+                },
+                {
+                    "date": "2020-01-09",
+                    "open": 1.08,
+                    "high": 1.10,
+                    "low": 1.07,
+                    "close": 1.09,
+                    "volume": 1800,
+                },
+                {
+                    "date": "2020-01-10",
+                    "open": 1.09,
+                    "high": 1.11,
+                    "low": 1.08,
+                    "close": 1.10,
+                    "volume": 1900,
+                },
+                {
+                    "date": "2020-01-11",
+                    "open": 1.10,
+                    "high": 1.12,
+                    "low": 1.09,
+                    "close": 1.11,
+                    "volume": 2000,
+                },
+                {
+                    "date": "2020-01-12",
+                    "open": 1.11,
+                    "high": 1.13,
+                    "low": 1.10,
+                    "close": 1.12,
+                    "volume": 2100,
+                },
+                {
+                    "date": "2020-01-13",
+                    "open": 1.12,
+                    "high": 1.14,
+                    "low": 1.11,
+                    "close": 1.13,
+                    "volume": 2200,
+                },
+                {
+                    "date": "2020-01-14",
+                    "open": 1.13,
+                    "high": 1.15,
+                    "low": 1.12,
+                    "close": 1.14,
+                    "volume": 2300,
+                },
+                {
+                    "date": "2020-01-15",
+                    "open": 1.14,
+                    "high": 1.16,
+                    "low": 1.13,
+                    "close": 1.15,
+                    "volume": 2400,
+                },
             ],
             "fundamentals": {},
         }
@@ -688,13 +799,15 @@ class TestLLMAdversarialStrategy:
         )
 
         mock_agent = AsyncMock()
-        mock_agent.call_llm.return_value = json.dumps({
-            "score": 0.7,
-            "evidence": [
-                "CPI rising can also trigger stagflation, hurting USD",
-                "Market may have already priced in the CPI increase",
-            ],
-        })
+        mock_agent.call_llm.return_value = json.dumps(
+            {
+                "score": 0.7,
+                "evidence": [
+                    "CPI rising can also trigger stagflation, hurting USD",
+                    "Market may have already priced in the CPI increase",
+                ],
+            }
+        )
 
         strategy = LLMAdversarialStrategy(llm_agent=mock_agent)
         verdict = await strategy.refute(hypothesis=hyp_with_rationale)
@@ -726,13 +839,15 @@ class TestLLMAdversarialStrategy:
         )
 
         mock_agent = AsyncMock()
-        mock_agent.call_llm.return_value = json.dumps({
-            "score": 0.85,
-            "evidence": [
-                "Counter-argument: rising CPI may already be discounted",
-                "Historical regime changes reduce CPI predictive power",
-            ],
-        })
+        mock_agent.call_llm.return_value = json.dumps(
+            {
+                "score": 0.85,
+                "evidence": [
+                    "Counter-argument: rising CPI may already be discounted",
+                    "Historical regime changes reduce CPI predictive power",
+                ],
+            }
+        )
 
         strategy = LLMAdversarialStrategy(llm_agent=mock_agent)
         verdict = await strategy.refute(hypothesis=hyp_with_rationale)
