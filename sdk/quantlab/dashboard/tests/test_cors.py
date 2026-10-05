@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskClient
 
 from quantlab.dashboard.app import create_app
 
@@ -16,10 +17,12 @@ class TestFlaskCors:
         return create_app()
 
     @pytest.fixture()
-    def client(self, app: Flask):
+    def client(self, app: Flask) -> FlaskClient:
         return app.test_client()
 
-    def test_health_returns_cors_header_for_mobile_origin(self, client):
+    def test_health_returns_cors_header_for_mobile_origin(
+        self, client: FlaskClient
+    ) -> None:
         resp = client.get(
             "/api/health",
             headers={"Origin": "http://10.0.2.2:8080"},
@@ -28,7 +31,7 @@ class TestFlaskCors:
         assert "Access-Control-Allow-Origin" in resp.headers
         assert resp.headers["Access-Control-Allow-Origin"] == "http://10.0.2.2:8080"
 
-    def test_health_allows_get_method(self, client):
+    def test_health_allows_get_method(self, client: FlaskClient) -> None:
         resp = client.options(
             "/api/health",
             headers={
@@ -40,7 +43,9 @@ class TestFlaskCors:
         assert "Access-Control-Allow-Methods" in resp.headers
         assert "GET" in resp.headers["Access-Control-Allow-Methods"]
 
-    def test_campaigns_returns_cors_header_for_emulator_origin(self, client):
+    def test_campaigns_returns_cors_header_for_emulator_origin(
+        self, client: FlaskClient
+    ) -> None:
         resp = client.get(
             "/api/campaigns",
             headers={"Origin": "http://10.0.3.2:8080"},
@@ -48,7 +53,9 @@ class TestFlaskCors:
         assert resp.status_code == 200
         assert "Access-Control-Allow-Origin" in resp.headers
 
-    def test_stats_returns_cors_header_for_localhost_origin(self, client):
+    def test_stats_returns_cors_header_for_localhost_origin(
+        self, client: FlaskClient
+    ) -> None:
         resp = client.get(
             "/api/stats",
             headers={"Origin": "http://127.0.0.1:8080"},

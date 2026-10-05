@@ -11,7 +11,7 @@ from .models import GuardianResult, GuardianStatus, GuardianType
 class RiskGuardian(BaseGuardian):
     """Monitors risk metrics and produces a risk health score."""
 
-    def __init__(self, portfolio_data_provider):
+    def __init__(self, portfolio_data_provider: Any) -> None:
         """Initialize the RiskGuardian.
 
         Args:

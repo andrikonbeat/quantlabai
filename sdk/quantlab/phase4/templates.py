@@ -343,14 +343,14 @@ class CfxTemplateBuilder:
     # ── Convenience dry-run (returns JSON without writing file) ──────────────────
 
     @staticmethod
-    def dry_run_portfolio_cfx(**kwargs) -> str:
+    def dry_run_portfolio_cfx(**kwargs: Any) -> str:
         """Return JSON representation of Portfolio CFX without writing."""
         return '{"type": "portfolio", "config": {}}'
 
     @staticmethod
-    def dry_run_optimizer_cfx(**kwargs) -> str:
+    def dry_run_optimizer_cfx(**kwargs: Any) -> str:
         return '{"type": "optimizer", "config": {}}'
 
     @staticmethod
-    def dry_run_retester_cfx(**kwargs) -> str:
+    def dry_run_retester_cfx(**kwargs: Any) -> str:
         return '{"type": "retester", "config": {}}'

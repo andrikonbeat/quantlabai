@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from types import TracebackType
 from typing import AsyncContextManager
 from typing import Any
 
@@ -50,7 +51,7 @@ class DaemonContext:
         self._client: AsyncSQXClient | None = None
         self._dispatcher: CommandDispatcher | None = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> DaemonContext:
         """Start daemon, create client + dispatcher."""
         self._daemon = SQXDaemonManager(
             self.sqx_install_path,
@@ -64,7 +65,12 @@ class DaemonContext:
 
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Graceful stop → force kill if needed."""
         if self._client:
             await self._client.close()
@@ -96,9 +102,9 @@ async def run_with_daemon(
     port: int = 8888,
     startup_timeout: float = 60.0,
     func: Callable[..., Awaitable[Any]] | None = None,
-    *args,
-    **kwargs,
-):
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
     """Run a coroutine with automatic daemon lifecycle management.
 
     Usage:

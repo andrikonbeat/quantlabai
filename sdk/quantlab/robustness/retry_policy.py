@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import random
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 
 class RetryPolicy:
@@ -44,7 +46,12 @@ class RetryPolicy:
             delay = delay * (1.0 + random.random() * 0.3)
         return delay
 
-    async def retry(self, coro, *, max_retries: int | None = None) -> any:
+    async def retry(
+        self,
+        coro: Callable[[], Awaitable[Any]],
+        *,
+        max_retries: int | None = None,
+    ) -> Any:
         """Execute an async coroutine with retry logic.
 
         Parameters

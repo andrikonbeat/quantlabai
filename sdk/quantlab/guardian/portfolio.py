@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import statistics
+from typing import Any
 
 import numpy as np
 
@@ -13,7 +14,7 @@ from .models import GuardianResult, GuardianStatus, GuardianType
 class PortfolioGuardian(BaseGuardian):
     """Monitors portfolio diversification and correlation risks."""
 
-    def __init__(self, returns_data_provider):
+    def __init__(self, returns_data_provider: Any) -> None:
         """Initialize the PortfolioGuardian.
 
         Args:

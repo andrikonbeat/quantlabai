@@ -125,7 +125,7 @@ class ReportResult(BaseModel):
 
     @field_validator("html_path", "json_path", mode="before")
     @classmethod
-    def _ensure_path(cls, v):
+    def _ensure_path(cls, v: str | Path | None) -> str | Path | None:
         if isinstance(v, str):
             return Path(v)
         return v

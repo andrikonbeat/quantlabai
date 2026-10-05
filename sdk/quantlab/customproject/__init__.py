@@ -8,6 +8,7 @@ a partial-init cycle when ``quantlab.cfx.models`` is imported first.
 from __future__ import annotations
 
 import importlib
+from typing import Any
 
 from quantlab.customproject.models import (
     CustomProject,
@@ -45,7 +46,7 @@ _SUBMODULE_EXPORTS = {
 }
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     module_name = _SUBMODULE_EXPORTS.get(name)
     if module_name is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

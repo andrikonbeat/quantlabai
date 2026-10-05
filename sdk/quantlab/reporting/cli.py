@@ -15,6 +15,7 @@ from quantlab.reporting.generator import (
     generate_report,
 )
 from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
+from quantlab.stats.models import StatsResult
 
 
 def generate_report_command(args: argparse.Namespace) -> int:
@@ -122,7 +123,9 @@ def _load_benchmark_equity(path: str) -> list[dict[str, Any]]:
     return equity
 
 
-def _load_campaign_data(store: KnowledgeStore, campaign_id: str):
+def _load_campaign_data(
+    store: KnowledgeStore, campaign_id: str
+) -> tuple[list[Any], list[Any], StatsResult]:
     """Load campaign trades, equity, and statistics from Knowledge Lake."""
     import yaml
 

@@ -14,6 +14,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.daemon import SQXDaemonManager
@@ -105,7 +106,7 @@ class PortfolioMaster:
             await self._daemon.start()
         return self
 
-    async def __aexit__(self, *args) -> None:
+    async def __aexit__(self, *args: Any) -> None:
         if self._daemon:
             await self._daemon.stop()
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from .base import BaseGuardian
 from .models import GuardianResult, GuardianStatus, GuardianType
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 class ExecutionGuardian(BaseGuardian):
     """Monitors execution quality and broker health."""
 
-    def __init__(self, broker_interface, cost_collector=None):
+    def __init__(self, broker_interface: Any, cost_collector: Any = None) -> None:
         """Initialize the ExecutionGuardian.
 
         Args:

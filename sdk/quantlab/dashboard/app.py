@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 from quantlab.cli.runner import CliRunner, MockExecutor as MockExecutor
 from quantlab.knowledge.store import KnowledgeStore
@@ -187,7 +187,9 @@ def _campaign_exists(store: KnowledgeStore, campaign_id: str) -> bool:
     ).is_file()
 
 
-def _as_typed_export(trades: list[Any], equity: list[Any], statistics: dict[str, Any]):
+def _as_typed_export(
+    trades: list[Any], equity: list[Any], statistics: dict[str, Any]
+) -> tuple[list[Any], list[Any], Any]:
     """Convert raw lake JSON export data into the typed models the
     ReportGenerator expects, falling back to the raw dicts when a payload
     does not match the model shape (the generator is attribute-tolerant).
@@ -228,14 +230,14 @@ def _as_typed_export(trades: list[Any], equity: list[Any], statistics: dict[str,
 # ─── Helper: JSON error envelope ──────────────────────────────────────────────
 
 
-def error_response(code: str, message: str, status: int = 500):
+def error_response(code: str, message: str, status: int = 500) -> tuple[Response, int]:
     """Return a standardized error JSON response."""
     return jsonify(
         {"success": False, "error": {"code": code, "message": message}}
     ), status
 
 
-def success_response(data: Any, status: int = 200):
+def success_response(data: Any, status: int = 200) -> tuple[Response, int]:
     """Return a standardized success JSON response."""
     return jsonify({"success": True, "data": data}), status
 
@@ -274,12 +276,12 @@ def create_app(config: ServerConfig | None = None) -> Flask:
 
     # ─── Health endpoint ────────────────────────────────────────────────────
     @app.route("/api/health")
-    def health():
+    def health() -> tuple[Response, int]:
         return success_response({"status": "ok", "version": "0.1.0"})
 
     # ─── Campaign endpoints ─────────────────────────────────────────────────
     @app.route("/api/campaigns")
-    def list_campaigns():
+    def list_campaigns() -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             result = store.query().execute()
@@ -289,7 +291,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
             return error_response("INTERNAL_ERROR", str(e))
 
     @app.route("/api/campaigns/<campaign_id>")
-    def get_campaign(campaign_id: str):
+    def get_campaign(campaign_id: str) -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             result = store.query().filter_by_campaign(campaign_id).execute()
@@ -313,7 +315,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
 
     # ─── Pipeline endpoints ─────────────────────────────────────────────────
     @app.route("/api/pipeline")
-    def list_pipeline_runs():
+    def list_pipeline_runs() -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             runs = [r.to_dict() for r in store.load_pipeline_runs()]
@@ -322,7 +324,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
             return error_response("INTERNAL_ERROR", str(e))
 
     @app.route("/api/pipeline/<run_id>")
-    def get_pipeline_run(run_id: str):
+    def get_pipeline_run(run_id: str) -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             run = store.get_pipeline_run(run_id)
@@ -336,7 +338,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
 
     # ─── Statistics endpoint ────────────────────────────────────────────────
     @app.route("/api/stats")
-    def get_stats():
+    def get_stats() -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
             campaigns = store.query().execute()
@@ -376,7 +378,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
 
     # ─── Report generation endpoint ─────────────────────────────────────────
     @app.route("/api/reports/generate", methods=["POST"])
-    def generate_report():
+    def generate_report() -> tuple[Response, int]:
         try:
             data = request.get_json()
             if not data:
@@ -433,23 +435,23 @@ def create_app(config: ServerConfig | None = None) -> Flask:
 
     # ─── HTML Template Routes ──────────────────────────────────────────────
     @app.route("/")
-    def index():
+    def index() -> str:
         return render_template("campaign_list.html")
 
     @app.route("/campaigns")
-    def campaigns():
+    def campaigns() -> str:
         return render_template("campaign_list.html")
 
     @app.route("/campaigns/<campaign_id>")
-    def campaign_detail(campaign_id: str):
+    def campaign_detail(campaign_id: str) -> str:
         return render_template("campaign_detail.html", campaign_id=campaign_id)
 
     @app.route("/pipeline")
-    def pipeline():
+    def pipeline() -> str:
         return render_template("pipeline_monitor.html")
 
     @app.route("/stats")
-    def stats():
+    def stats() -> str:
         return render_template("stats_dashboard.html")
 
     return app

@@ -18,6 +18,8 @@ Modules (committed in PR 3 — Optimizer + Retester):
 - campaign_orchestrator: End-to-end Campaign Orchestrator (requires pipeline framework)
 """
 
+from typing import Any
+
 from quantlab.phase4.command_dispatcher import CampaignStatus, CommandDispatcher
 from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.errors import (
@@ -90,7 +92,7 @@ from quantlab.phase4.templates import CfxTemplateBuilder
 _ORCHESTRATOR_IMPORTED = False
 
 
-def __getattr__(name: str):
+def __getattr__(name: str) -> Any:
     global _ORCHESTRATOR_IMPORTED
     if name in {
         "CampaignOrchestrator",

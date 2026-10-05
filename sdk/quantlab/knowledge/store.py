@@ -37,6 +37,7 @@ from pathlib import Path
 import yaml
 
 from quantlab.data.market.models import Bar
+from quantlab.knowledge.query import QueryBuilder
 from quantlab.robustness.circuit_breaker import CircuitBreaker
 from quantlab.robustness.knowledge_health import (
     HealthCheckResult,
@@ -616,7 +617,7 @@ class KnowledgeStore:
 
     # ── Querying ────────────────────────────────────────────────────────────────
 
-    def query(self, filters: dict[str, Any] | None = None):
+    def query(self, filters: dict[str, Any] | None = None) -> QueryBuilder:
         """Create a query builder for campaigns."""
         from quantlab.knowledge.query import QueryBuilder
 

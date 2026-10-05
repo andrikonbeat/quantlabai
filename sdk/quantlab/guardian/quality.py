@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import statistics
+from typing import Any
 
 from .base import BaseGuardian
 from .models import GuardianResult, GuardianStatus, GuardianType
@@ -11,7 +12,7 @@ from .models import GuardianResult, GuardianStatus, GuardianType
 class QualityGuardian(BaseGuardian):
     """Monitors strategy quality using Health Score system from Change 1."""
 
-    def __init__(self, health_score_system):
+    def __init__(self, health_score_system: Any) -> None:
         """Initialize the QualityGuardian.
 
         Args:

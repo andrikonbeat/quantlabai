@@ -643,7 +643,7 @@ class ReportGenerator:
     def _get_metrics_table(self, statistics: StatsResult) -> dict[str, str]:
         """Extract metrics as formatted strings for table."""
 
-        def fmt(val):
+        def fmt(val: float | int | None) -> str:
             if val is None:
                 return "N/A"
             if isinstance(val, float):

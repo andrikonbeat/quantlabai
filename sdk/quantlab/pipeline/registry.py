@@ -6,6 +6,7 @@ supporting both SQX built-in stages and multi-agent stages (agent + gate types).
 
 from __future__ import annotations
 
+import builtins
 import logging
 from pathlib import Path
 from typing import Any
@@ -654,12 +655,12 @@ class PipelineRegistry:
             for config in self._pipelines.values()
         ]
 
-    def names(self) -> list[str]:
+    def names(self) -> builtins.list[str]:
         """Return list of discovered pipeline names."""
         self._ensure_discovered()
         return sorted(self._pipelines.keys())
 
-    def reload(self) -> list[PipelineSummary]:
+    def reload(self) -> builtins.list[PipelineSummary]:
         """Force re-discovery of pipelines."""
         self._discovered = False
         return self.discover()

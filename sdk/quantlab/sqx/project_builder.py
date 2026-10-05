@@ -104,7 +104,9 @@ def _extract_template_value(match: re.Match[str]) -> str:
     return text
 
 
-def _coerce_template_default(raw: str, format_type: str):
+def _coerce_template_default(
+    raw: str, format_type: str
+) -> bool | int | float | str | None:
     """Coerce the raw template text to the field's Python type."""
     if format_type in ("dict", "blocks"):
         # No scalar default: these fields are composite structures.
@@ -134,7 +136,7 @@ _TYPED_CROSSCHECKS_FIELDS = frozenset(
 )
 
 
-def _typed_crosschecks_default(field_name: str, template_xml: str):
+def _typed_crosschecks_default(field_name: str, template_xml: str) -> str | None:
     """Read a template CrossChecks default through the typed model.
 
     Returns ``None`` when the field is not typed, the template carries no
@@ -164,7 +166,9 @@ def _typed_crosschecks_default(field_name: str, template_xml: str):
     return "true" if wfo.optimize_periods else "false"
 
 
-def get_template_default(field_name: str):
+def get_template_default(
+    field_name: str,
+) -> bool | int | float | str | None:
     """Return the SQX template default for a BuildConfig field, or ``None``.
 
     CrossChecks fields covered by the typed models are read from

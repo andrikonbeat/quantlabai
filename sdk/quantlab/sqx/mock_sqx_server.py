@@ -36,10 +36,10 @@ class MockSQXHandler(BaseHTTPRequestHandler):
     _export_dir = Path("/tmp/sqx-mock-exports")
     _export_dir.mkdir(parents=True, exist_ok=True)
 
-    def log_message(self, format, *args):
+    def log_message(self, format: str, *args: Any) -> None:
         logger.debug(format, *args)
 
-    def _send_text(self, text: str, status: int = 200):
+    def _send_text(self, text: str, status: int = 200) -> None:
         try:
             self.send_response(status)
             self.send_header("Content-Type", "text/plain; charset=utf-8")
@@ -59,7 +59,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
             return urllib.parse.unquote(body[4:])
         return body
 
-    def do_GET(self):
+    def do_GET(self) -> None:
         try:
             cmd = ""
             if self.path.startswith("/call?"):
@@ -76,7 +76,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-    def do_POST(self):
+    def do_POST(self) -> None:
         try:
             cmd = self._parse_command()
             self._handle_command(cmd)
@@ -87,7 +87,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
             except Exception:
                 pass
 
-    def _handle_command(self, cmd: str):
+    def _handle_command(self, cmd: str) -> None:
         if not cmd:
             return self._send_text("Missing command.", status=400)
 
@@ -197,7 +197,7 @@ class MockSQXHandler(BaseHTTPRequestHandler):
 
         return self._send_text(f"Unrecognized command {cmd}.", status=400)
 
-    def _simulate_campaign(self, name: str):
+    def _simulate_campaign(self, name: str) -> None:
         """Simulate campaign progress and completion.
 
         In rejection mode the campaign never completes on its own: the thread
@@ -394,14 +394,14 @@ class MockSQXServer:
         return cls._instance
 
     @classmethod
-    def reset(cls):
+    def reset(cls) -> None:
         inst = cls._instance
         if inst is not None:
             inst.stop()
             cls._instance = None
         MockSQXHandler._mode = "normal"
 
-    def start(self):
+    def start(self) -> None:
         MockSQXHandler._mode = self.mode
         if self._server is not None:
             try:
@@ -427,7 +427,7 @@ class MockSQXServer:
         self._thread.start()
         logger.info("Mock SQX server started on http://%s:%d", self.host, self.port)
 
-    def stop(self):
+    def stop(self) -> None:
         if self._server is not None:
             try:
                 self._server.shutdown()

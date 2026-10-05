@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from quantlab.data import DataManager
@@ -349,7 +350,7 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
 # ── builder template path: real install templates dir, on the lake root's
 # project. CLI default: repo `assets/SQX_*/.../tpl_build.xml`; tests
 # monkeypatch this factory.
-_DEFAULT_TPL_PATH_FACTORY = lambda knowledge_root: (
+_DEFAULT_TPL_PATH_FACTORY: Callable[[Path], Path] = lambda knowledge_root: (
     Path(knowledge_root).parent
     / "assets"
     / "SQX_144_2953_linux_20260601"

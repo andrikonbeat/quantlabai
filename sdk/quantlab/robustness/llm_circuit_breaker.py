@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable
 from typing import Any
 
 from quantlab.robustness.circuit_breaker import (
@@ -42,7 +43,7 @@ class LLMCircuitBreaker:
             recovery_timeout=recovery_timeout,
         )
 
-    async def call(self, coro) -> Any:
+    async def call(self, coro: Awaitable[Any]) -> Any:
         """Execute an LLM call through the circuit breaker.
 
         When the circuit is ``OPEN``, :class:`CircuitOpenError` is raised

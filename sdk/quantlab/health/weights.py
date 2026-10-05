@@ -7,6 +7,7 @@ Each metric normalisation function maps a raw trading metric value to a
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from typing import Final
 
 from quantlab.health.models import HealthWeights
@@ -154,7 +155,7 @@ def normalize_expectancy_ratio(er: float | None) -> float:
 # ── Dispatcher ───────────────────────────────────────────────────────────────
 
 
-_NORMALIZERS: dict[str, callable] = {
+_NORMALIZERS: dict[str, Callable[[float | None], float]] = {
     "profit_factor": normalize_profit_factor,
     "sharpe_ratio": normalize_sharpe_ratio,
     "sortino_ratio": normalize_sortino_ratio,

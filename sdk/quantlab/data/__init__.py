@@ -5,12 +5,14 @@ WU-7 (REQ-12/REQ-13): exports the rebuilt Dukascopy-only ``DataManager``
 the ``SymbolRegistry`` + SQX naming helpers, and the data exceptions.
 """
 
+from typing import Any
+
 from quantlab.data.data_manager import DataManager
 from quantlab.data.exceptions import DataManagerError, NotSupportedError
 from quantlab.data.symbol_registry import SymbolRegistry, resolve_symbol, u_symbol
 
 
-def get_data_manager(**kwargs) -> DataManager:
+def get_data_manager(**kwargs: Any) -> DataManager:
     """Factory returning a configured :class:`DataManager`.
 
     Keyword arguments are forwarded to ``DataManager`` (e.g.

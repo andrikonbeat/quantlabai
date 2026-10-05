@@ -114,6 +114,7 @@ class ExecutionMonitor:
         now_fn: Callable[[], float] | None = None,
     ) -> None:
         self._client = client
+        self._progress_fn: Callable[[Any, str], Awaitable[tuple[bool, float | None]]]
         if progress_fn is not None:
             # Injected progress sources are zero-arg closures; the monitor
             # calls its internal source with (client, campaign_id).

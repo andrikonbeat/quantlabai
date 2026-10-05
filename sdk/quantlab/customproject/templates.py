@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from types import MappingProxyType
 from typing import ClassVar
 
@@ -70,7 +71,11 @@ class CampaignTemplate:
         raise NotImplementedError
 
     @classmethod
-    def serialize(cls, output_path, params: TemplateParams | None = None):
+    def serialize(
+        cls,
+        output_path: str | Path,
+        params: TemplateParams | None = None,
+    ) -> str | Path:
         """Serialize this template to a ``.cfx`` archive.
 
         Args:

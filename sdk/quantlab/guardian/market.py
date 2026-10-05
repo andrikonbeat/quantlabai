@@ -11,7 +11,7 @@ from .models import GuardianResult, GuardianStatus, GuardianType
 class MarketGuardian(BaseGuardian):
     """Monitors market conditions and produces a health score."""
 
-    def __init__(self, regime_collector, cost_collector):
+    def __init__(self, regime_collector: Any, cost_collector: Any) -> None:
         """Initialize the MarketGuardian.
 
         Args:

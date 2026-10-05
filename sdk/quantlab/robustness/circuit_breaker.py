@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable
+from typing import Any
 
 
 class CircuitOpenError(Exception):
@@ -53,7 +55,7 @@ class CircuitBreaker:
                 return "HALF_OPEN"
         return self._state
 
-    async def call(self, coro) -> any:
+    async def call(self, coro: Awaitable[Any]) -> Any:
         """Execute an async coroutine through the circuit breaker.
 
         Parameters

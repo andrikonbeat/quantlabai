@@ -600,7 +600,7 @@ class QueryBuilder:
         """Sort campaigns by specified field."""
         f = self._filter
 
-        def sort_key(c):
+        def sort_key(c: CampaignSummary) -> float | str:
             if f.sort_by == "sharpe":
                 return (
                     c.metrics.sharpe_ratio

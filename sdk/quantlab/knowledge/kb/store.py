@@ -17,6 +17,7 @@ needs_review, REQ-208).
 
 from __future__ import annotations
 
+import builtins
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -140,7 +141,7 @@ class KbStore:
         tab: str | None = None,
         status: str | None = None,
         sqx_version: str | None = None,
-    ) -> list[dict[str, object]]:
+    ) -> builtins.list[dict[str, object]]:
         """Look up parameters by exact-or-fuzzy name (REQ-502 consumption hook).
 
         Used by agents (REQ-204) to consult the KB before configuring the

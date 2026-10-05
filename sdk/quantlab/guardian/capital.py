@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 
+from typing import Any
+
 from .base import BaseGuardian
 from .models import GuardianResult, GuardianStatus, GuardianType
+from .portfolio import PortfolioGuardian
+from .risk import RiskGuardian
 
 
 class CapitalGuardian(BaseGuardian):
@@ -12,10 +16,10 @@ class CapitalGuardian(BaseGuardian):
 
     def __init__(
         self,
-        strategy_performance_provider,
-        risk_guardian=None,
-        portfolio_guardian=None,
-    ):
+        strategy_performance_provider: Any,
+        risk_guardian: RiskGuardian | None = None,
+        portfolio_guardian: PortfolioGuardian | None = None,
+    ) -> None:
         """Initialize the CapitalGuardian.
 
         Args:

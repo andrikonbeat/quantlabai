@@ -17,6 +17,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -263,5 +264,5 @@ class SQXDaemonManager:
         await self.start()
         return self
 
-    async def __aexit__(self, *args) -> None:
+    async def __aexit__(self, *args: Any) -> None:
         await self.stop()

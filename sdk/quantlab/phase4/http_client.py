@@ -155,7 +155,7 @@ class SQXSessionLock:
         await self.acquire()
         return self
 
-    async def __aexit__(self, *args) -> None:
+    async def __aexit__(self, *args: Any) -> None:
         self.release()
 
 
@@ -343,5 +343,5 @@ class AsyncSQXClient:
     async def __aenter__(self) -> AsyncSQXClient:
         return self
 
-    async def __aexit__(self, *args) -> None:
+    async def __aexit__(self, *args: Any) -> None:
         await self.close()
