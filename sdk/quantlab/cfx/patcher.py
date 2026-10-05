@@ -1041,64 +1041,13 @@ class CfxPatcher:
 
     @staticmethod
     def _parse_conditions_from_xml(xml: str) -> list[AdvancedRankingCondition]:
-        """Parse advanced ranking conditions from a ``<Rankings>`` raw_xml block.
-
-        Returns an empty list when the XML is unparseable or carries no
-        ``<Conditions>`` parent, so callers can distinguish "no advanced
-        conditions" from "an unrecognised block".
-        """
+        """Parse advanced ranking conditions from raw XML."""
         try:
             root = ET.fromstring(xml)
         except ET.ParseError:
             return []
 
         conditions_el = root if root.tag == "Conditions" else root.find("Conditions")
-        if conditions_el is None:
-            return []
-
-        conditions: list[AdvancedRankingCondition] = []
-        for cond_el in conditions_el.findall("Condition"):
-            column_values = [
-                ColumnValue(
-                    column=cv_el.get("column", ""),
-                    column_type=cv_el.get("columnType", "0"),
-                    format=cv_el.get("format", ""),
-                    result_type=cv_el.get("resultType", "main"),
-                    direction=cv_el.get("direction", "0"),
-                    sample_type=cv_el.get("sampleType", "127"),
-                    pl_type=cv_el.get("plType", "10"),
-                    confidence_level=cv_el.get("confidenceLevel", "50"),
-                    market=cv_el.get("market", "1"),
-                    subresult=cv_el.get("subresult", "30"),
-                    pct_ratio=cv_el.get("pctRatio", "0"),
-                    class_=cv_el.get("class", ""),
-                    name=cv_el.get("name"),
-                )
-                for cv_el in cond_el.findall("Column-Value")
-            ]
-            conditions.append(
-                AdvancedRankingCondition(
-                    use=cond_el.get("use", "true").lower() == "true",
-                    result_type=cond_el.get("resultType", "main"),
-                    sample_type=cond_el.get("sampleType", "127"),
-                    direction=cond_el.get("direction", "0"),
-                    pct_ratio=cond_el.get("pctRatio", "0"),
-                    confidence_level=cond_el.get("confidenceLevel", "50"),
-                    market=cond_el.get("market", "1"),
-                    pl_type=cond_el.get("plType", "10"),
-                    subresult=cond_el.get("subresult", "30"),
-                    class_=cond_el.get("class"),
-                    name=cond_el.get("name"),
-                    column_values=column_values,
-                )
-            )
-        return conditions
-
-    @staticmethod
-    def _parse_conditions_from_xml(xml: str) -> list[AdvancedRankingCondition]:
-        """Parse advanced ranking conditions from raw XML."""
-        root = ET.fromstring(xml)
-        conditions_el = root.find("Conditions")
         if conditions_el is None:
             return []
         conditions = []

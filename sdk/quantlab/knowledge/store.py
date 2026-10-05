@@ -391,51 +391,6 @@ class KnowledgeStore:
 
         return run.run_id
 
-    def load_pipeline_runs(
-        self, limit: int = 10, status: str | None = None
-    ) -> list[PipelineRun]:
-        """Load pipeline runs from the Knowledge Lake.
-
-        Args:
-            limit: Maximum number of runs to return (most recent first).
-            status: Optional filter by status (pending, running, completed, failed, skipped).
-
-        Returns:
-            List of PipelineRun objects, sorted by start time descending.
-        """
-        import yaml
-
-        from quantlab.pipeline.models import PipelineRun, StageStatus as StageStatus
-
-        runs_dir = self._pipeline_runs_dir()
-        if not runs_dir.exists():
-            return []
-
-        runs = []
-        for filepath in sorted(
-            runs_dir.glob("*.yaml"), key=lambda p: p.stat().st_mtime, reverse=True
-        ):
-            try:
-                raw = filepath.read_text(encoding="utf-8")
-                data = yaml.safe_load(raw)
-                if not isinstance(data, dict):
-                    continue
-
-                # Filter by status if specified
-                if status and data.get("status") != status:
-                    continue
-
-                run = PipelineRun.from_dict(data)
-                runs.append(run)
-
-                if len(runs) >= limit:
-                    break
-            except (yaml.YAMLError, OSError, KeyError, ValueError):
-                # Skip corrupted files
-                continue
-
-        return runs
-
     def get_pipeline_run(self, run_id: str) -> PipelineRun | None:
         """Load a single pipeline run by ID.
 
@@ -563,66 +518,6 @@ class KnowledgeStore:
             return data
         except (yaml.YAMLError, OSError):
             return self.rebuild_index()
-
-    # ── Tagging and Linking ─────────────────────────────────────────────────────
-
-    def tag(self, campaign_id: str, tags: dict[str, str] | list[str]) -> bool:
-        """Add tags to a campaign.
-
-        Args:
-            campaign_id: Campaign identifier (directory name)
-            tags: Dict of key:value tags or list of tag names
-
-        Returns:
-            True if campaign was found and tagged.
-        """
-        indexer = Indexer(self)
-        if isinstance(tags, list):
-            tag_list = tags
-        else:
-            tag_list = [f"{k}={v}" for k, v in tags.items()]
-
-        return indexer.tag_campaign(campaign_id, tag_list)
-
-    def get_tags(self, campaign_id: str) -> list[str]:
-        """Get all tags for a campaign."""
-        index = self.read_index()
-        for dir_name in ["results", "campaigns"]:
-            if dir_name not in index.get("directories", {}):
-                continue
-            for rel_path, info in index["directories"][dir_name].items():
-                if (
-                    info.get("path", "").endswith(campaign_id)
-                    or Path(info.get("path", "")).stem == campaign_id
-                ):
-                    return info.get("tags", [])
-        return []
-
-    def link(self, parent_id: str, child_ids: list[str]) -> bool:
-        """Create parent-child relationships between campaigns."""
-        indexer = Indexer(self)
-        return indexer.link_campaigns(parent_id, child_ids)
-
-    def get_links(self, campaign_id: str) -> dict[str, list[str]]:
-        """Get parent and child links for a campaign."""
-        index = self.read_index()
-        for dir_name in ["results", "campaigns"]:
-            if dir_name not in index.get("directories", {}):
-                continue
-            for rel_path, info in index["directories"][dir_name].items():
-                if Path(info.get("path", "")).stem == campaign_id:
-                    linked = info.get("linked_campaigns", [])
-                    return {"children": linked, "parents": []}
-        return {"children": [], "parents": []}
-
-    # ── Querying ────────────────────────────────────────────────────────────────
-
-    def query(self, filters: dict[str, Any] | None = None) -> QueryBuilder:
-        """Create a query builder for campaigns."""
-        from quantlab.knowledge.query import QueryBuilder
-
-        index = self.read_index()
-        return QueryBuilder(index, self.root)
 
     # ── Format Validation ──────────────────────────────────────────────────────
 
@@ -1503,7 +1398,9 @@ class TimeSeriesStore:
 
     # ── Query ───────────────────────────────────────────────────────────────────
 
-    def query_metrics(self, strategy_id: str, since: float, until: float) -> list[dict[str, Any]]:
+    def query_metrics(
+        self, strategy_id: str, since: float, until: float
+    ) -> list[dict[str, Any]]:
         """Query metric rows for a strategy within a time range.
 
         Args:

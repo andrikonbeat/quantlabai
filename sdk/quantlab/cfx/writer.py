@@ -38,38 +38,6 @@ from quantlab.cfx.models import (
 )
 
 
-def _append_complex_section(
-    parent: ElementTree.Element,
-    tag: str,
-    config: (
-        BlockConfig
-        | AtmConfig
-        | DataBankConfig
-        | ResourceConfig
-        | AutomaticPortfolioBuilderConfig
-        | OptimizationConfig
-        | OptimizationParametersConfig
-        | WalkForwardConfig
-        | DatabanksConfig
-        | RankingsConfig
-        | CrossChecksConfig
-        | RetesterDataConfig
-        | None
-    ),
-) -> None:
-    """Append a complex section via raw XML passthrough."""
-    if config is None or not config.raw_xml:
-        return
-    try:
-        el = ElementTree.fromstring(config.raw_xml)
-        parent.append(el)
-    except ElementTree.ParseError:
-        pass
-
-
-# ── Phase 4: Builder-style setter methods ─────────────────────────────
-
-
 class CfxWriter:
     """Writes CfxArchive models to .cfx ZIP archives."""
 
