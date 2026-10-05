@@ -7,7 +7,6 @@ import time
 from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING
-from typing import Any
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from quantlab.knowledge.guardian_store import GuardianFeedbackStore

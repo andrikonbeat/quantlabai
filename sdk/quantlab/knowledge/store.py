@@ -37,7 +37,6 @@ from pathlib import Path
 import yaml
 
 from quantlab.data.market.models import Bar
-from quantlab.knowledge.query import QueryBuilder
 from quantlab.robustness.circuit_breaker import CircuitBreaker
 from quantlab.robustness.knowledge_health import (
     HealthCheckResult,
