@@ -169,7 +169,7 @@ class PortfolioGuardian(BaseGuardian):
             returns_matrix.append(returns_dict[strategy][-min_length:])
 
         # Calculate correlation matrix
-        return np.corrcoef(returns_matrix)
+        return np.corrcoef(returns_matrix)  # type: ignore[return-value]
 
     def _score_correlation(self, corr_matrix: np.ndarray) -> float:
         """Score based on average correlation (lower is better).
@@ -201,7 +201,7 @@ class PortfolioGuardian(BaseGuardian):
 
         avg_correlation = sum(correlations) / len(correlations)
         # 0 correlation = 1.0 score, 1.0 correlation = 0.0 score
-        return max(0.0, min(1.0, 1.0 - avg_correlation))
+        return max(0.0, min(1.0, 1.0 - avg_correlation))  # type: ignore[no-any-return]
 
     def _score_diversification(self, returns_dict: dict[str, list[float]]) -> float:
         """Score based on effective number of strategies.

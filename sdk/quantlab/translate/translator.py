@@ -101,7 +101,7 @@ def _validate_dsl_config(config: ResearchConfig) -> None:
 
 def _to_cfx_column_value(filter_: ColumnValueFilter) -> ColumnValue:
     """Map one DSL column filter to its CFX ``<Column-Value>`` model."""
-    return ColumnValue(
+    return ColumnValue(  # type: ignore[call-arg]
         column=filter_.column,
         column_type=filter_.column_type,
         format=filter_.format,
@@ -122,7 +122,7 @@ def _to_cfx_ranking_condition(
     ranking_filter: AdvancedRankingFilter,
 ) -> AdvancedRankingCondition:
     """Map one DSL advanced ranking filter to its CFX ``<Condition>`` model."""
-    return AdvancedRankingCondition(
+    return AdvancedRankingCondition(  # type: ignore[call-arg]
         use=ranking_filter.use,
         result_type=ranking_filter.result_type,
         sample_type=ranking_filter.sample_type,

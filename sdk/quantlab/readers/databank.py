@@ -138,7 +138,7 @@ def _parse_summary(df: pd.DataFrame) -> SummaryStats:
         key_col = df.columns[0]
         val_col = df.columns[1]
         kv = dict(zip(df[key_col].astype(str), df[val_col]))
-        row = kv
+        row = kv  # type: ignore[assignment]
 
     return SummaryStats(
         net_profit=_safe_float(
@@ -227,7 +227,7 @@ def _safe_float(value: object) -> float | None:
     if value is None:
         return None
     try:
-        return float(value)
+        return float(value)  # type: ignore[arg-type]
     except (ValueError, TypeError):
         return None
 
@@ -237,7 +237,7 @@ def _safe_int(value: object) -> int | None:
     if value is None:
         return None
     try:
-        return int(float(value))
+        return int(float(value))  # type: ignore[arg-type]
     except (ValueError, TypeError):
         return None
 

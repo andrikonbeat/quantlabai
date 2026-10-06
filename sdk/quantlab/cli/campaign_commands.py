@@ -149,7 +149,7 @@ async def cmd_campaign_status(args: argparse.Namespace) -> int:
 
         # Try to load campaign record from Knowledge Lake
         try:
-            record = store.load_campaign(campaign_id)
+            record = store.load_campaign(campaign_id)  # type: ignore[attr-defined]
         except Exception:
             # Fall back to checking directory existence
             campaign_dir = Path(knowledge_root) / "structured" / campaign_id
@@ -173,7 +173,7 @@ async def cmd_campaign_status(args: argparse.Namespace) -> int:
                 return 1
 
         if args.json:
-            print_json(record.to_dict() if hasattr(record, "to_dict") else str(record))
+            print_json(record.to_dict() if hasattr(record, "to_dict") else str(record))  # type: ignore[arg-type]
         else:
             print_human(f"Campaign: {campaign_id}")
             state = getattr(record, "state", "unknown")
@@ -228,8 +228,8 @@ def _load_run_flow_config(args: argparse.Namespace) -> Any:
 
     return ResearchConfig(
         campaign=getattr(args, "campaign", None) or "full-flow",
-        market=getattr(args, "market", "EURUSD"),
-        timeframe=getattr(args, "timeframe", "H1"),
+        market=getattr(args, "market", "EURUSD"),  # type: ignore[arg-type]
+        timeframe=getattr(args, "timeframe", "H1"),  # type: ignore[arg-type]
         iteration_config=IterationConfig(max_iterations=1),
     )
 
@@ -326,7 +326,7 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
         if decisions_file:
             raw = DecisionsFileGateCallback(decisions_file)
         else:
-            raw = QuestionToolGateCallback(
+            raw = QuestionToolGateCallback(  # type: ignore[assignment]
                 gate_event_dir=gate_event_dir,
                 campaign_id=campaign_id,
                 timeout=gate_timeout,
@@ -555,4 +555,4 @@ def dispatch_campaign(args: argparse.Namespace) -> int:
         )
         return 1
 
-    return asyncio.run(func(args))
+    return asyncio.run(func(args))  # type: ignore[no-any-return]

@@ -224,7 +224,7 @@ class IndicatorEngine:
         return IndicatorResult(
             indicator_name="RSI",
             value=round(value, 4),
-            zone=_rsi_zone(value),
+            zone=_rsi_zone(value),  # type: ignore[typeddict-item]
             metadata={"window": 14},
         )
 
@@ -277,7 +277,7 @@ class IndicatorEngine:
         return IndicatorResult(
             indicator_name="ATR",
             value=round(value, 6),
-            zone=zone,
+            zone=zone,  # type: ignore[typeddict-item]
             metadata={"window": 14, "atr_median": round(float(series.median()), 6)},
         )
 
@@ -305,7 +305,7 @@ class IndicatorEngine:
         return IndicatorResult(
             indicator_name="ADX",
             value=round(value, 4),
-            zone=_adx_zone(value),
+            zone=_adx_zone(value),  # type: ignore[typeddict-item]
             metadata={"window": 14},
         )
 
@@ -343,7 +343,7 @@ class IndicatorEngine:
         return IndicatorResult(
             indicator_name="Bollinger",
             value=round(close, 4),
-            zone=zone,
+            zone=zone,  # type: ignore[typeddict-item]
             metadata={
                 "upper": round(upper, 4),
                 "lower": round(lower, 4),
@@ -381,7 +381,7 @@ class IndicatorEngine:
         return IndicatorResult(
             indicator_name="SMA",
             value=round(value, 4),
-            zone=zone,
+            zone=zone,  # type: ignore[typeddict-item]
             metadata={"window": 20, "close": round(close, 4)},
         )
 
@@ -414,6 +414,6 @@ class IndicatorEngine:
         return IndicatorResult(
             indicator_name="EMA",
             value=round(value, 4),
-            zone=zone,
+            zone=zone,  # type: ignore[typeddict-item]
             metadata={"window": 20, "close": round(close, 4)},
         )

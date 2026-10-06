@@ -168,7 +168,7 @@ class PortfolioMaster:
             # 3. Wait for completion (poll status)
             await self._wait_for_completion(campaign_name)
             # 4. Export results
-            results = await self.dispatcher.export_results(campaign_name)
+            results = await self.dispatcher.export_results(campaign_name)  # type: ignore[call-arg]
             # 5. Extract selected strategies
             return self._extract_selected_strategies(results)
         finally:
@@ -216,10 +216,10 @@ class PortfolioMaster:
             raise PortfolioMasterError("CSV has no headers")
 
         headers = reader.fieldnames
-        strategy_col = _resolve_col(headers, _CSV_STRATEGY_ALIASES)
-        weight_col = _resolve_col(headers, _CSV_WEIGHT_ALIASES)
-        rank_col = _resolve_col(headers, _CSV_RANK_ALIASES)
-        fitness_col = _resolve_col(headers, _CSV_FITNESS_ALIASES)
+        strategy_col = _resolve_col(headers, _CSV_STRATEGY_ALIASES)  # type: ignore[arg-type]
+        weight_col = _resolve_col(headers, _CSV_WEIGHT_ALIASES)  # type: ignore[arg-type]
+        rank_col = _resolve_col(headers, _CSV_RANK_ALIASES)  # type: ignore[arg-type]
+        fitness_col = _resolve_col(headers, _CSV_FITNESS_ALIASES)  # type: ignore[arg-type]
 
         if not strategy_col:
             raise PortfolioMasterError(

@@ -44,7 +44,7 @@ class RetryPolicy:
         delay = min(self.base_delay * (2**attempt), self.max_delay)
         if self.jitter:
             delay = delay * (1.0 + random.random() * 0.3)
-        return delay
+        return delay  # type: ignore[no-any-return]
 
     async def retry(
         self,
@@ -85,4 +85,4 @@ class RetryPolicy:
                     delay = self._compute_delay(attempt)
                     await asyncio.sleep(delay)
 
-        raise last_exception
+        raise last_exception  # type: ignore[misc]

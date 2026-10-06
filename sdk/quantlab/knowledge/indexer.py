@@ -182,7 +182,7 @@ class Indexer:
         try:
             data = yaml.safe_load(tag_file.read_text(encoding="utf-8"))
             if isinstance(data, dict) and "tags" in data:
-                return data["tags"]
+                return data["tags"]  # type: ignore[no-any-return]
         except Exception:
             pass
         return []
@@ -363,7 +363,7 @@ class Indexer:
         try:
             data = yaml.safe_load(tag_file.read_text(encoding="utf-8"))
             if isinstance(data, dict) and "tags" in data:
-                return data["tags"]
+                return data["tags"]  # type: ignore[no-any-return]
         except Exception:
             pass
         return []

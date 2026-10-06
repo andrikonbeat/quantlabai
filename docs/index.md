@@ -19,6 +19,7 @@ shortest path from a campaign idea to a running 14-phase flow.
 | [PRD.md](PRD.md) | Product requirements: the research engine as a trading-domain port of the Gentle-AI architecture, who it serves, and scope. Status: Draft v0.1.0. |
 | [CHANGELOG.md](CHANGELOG.md) | Reverse-chronological record of notable changes, including the repository reorganization for GitHub readiness. |
 | [STATE.md](STATE.md) | Point-in-time project status snapshot. Points at `git log` and CI for live state rather than restating counts. |
+| [LINT-CLEANUP-HANDOFF.md](LINT-CLEANUP-HANDOFF.md) | Handoff for the mypy/Ruff lint-cleanup campaign: what was fixed, verified state, and the follow-ups it left behind. |
 
 ## Architecture
 

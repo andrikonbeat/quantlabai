@@ -475,9 +475,9 @@ class ResearchDirector:
                         ctx_dict: dict[str, Any] = (
                             gate_ctx.__dict__
                             if hasattr(gate_ctx, "__dict__")
-                            else dict(gate_ctx)
+                            else dict(gate_ctx)  # type: ignore[call-overload]
                         )
-                        return await _fc(ctx_dict)
+                        return await _fc(ctx_dict)  # type: ignore[no-any-return]
 
                     stage_obj.set_callback(_fail_closed)
 
@@ -988,10 +988,10 @@ class ResearchDirector:
 
                 if improvement < threshold:
                     # Increment consecutive count
-                    record._consecutive_below = (
+                    record._consecutive_below = (  # type: ignore[attr-defined]
                         getattr(record, "_consecutive_below", 0) + 1
                     )
-                    if record._consecutive_below >= patience:
+                    if record._consecutive_below >= patience:  # type: ignore[attr-defined]
                         logger.info(
                             "Convergence detected: Sharpe improvement < %.4f "
                             "for %d consecutive iterations",
@@ -1001,10 +1001,10 @@ class ResearchDirector:
                         return True
                 else:
                     # Reset counter on improvement above threshold
-                    record._consecutive_below = 0
+                    record._consecutive_below = 0  # type: ignore[attr-defined]
             else:
                 record.previous_sharpes.append(current_sharpe or 0.0)
-                record._consecutive_below = 0
+                record._consecutive_below = 0  # type: ignore[attr-defined]
 
         return False
 

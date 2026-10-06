@@ -90,7 +90,7 @@ def register(srv: QuantLabMCPServer) -> None:
             pipeline_name = config_dict.get("name", "backtest")
 
             pipeline = Pipeline(name=pipeline_name)
-            ctx = PipelineContext(
+            ctx = PipelineContext(  # type: ignore[call-arg]
                 symbol=symbol,
                 start_date=start,
                 end_date=end,
@@ -107,7 +107,7 @@ def register(srv: QuantLabMCPServer) -> None:
                 message=f"Backtest failed: {exc}",
                 details={"pipeline_config": pipeline_config, "symbol": symbol},
             )
-            return error.model_dump(mode="json")
+            return error.model_dump(mode="json")  # type: ignore[return-value]
 
     @mcp.tool(
         name="list_pipelines", description="List all available pipeline configurations."

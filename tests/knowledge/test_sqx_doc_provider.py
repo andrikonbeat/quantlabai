@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+from quantlab.knowledge.sqx_doc_provider import SQXDocProvider
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

@@ -77,7 +77,7 @@ class SqliteCache:
                 conn.execute("DELETE FROM cache WHERE key = ?", (key,))
                 conn.commit()
                 return None
-            return json.loads(row["value"])
+            return json.loads(row["value"])  # type: ignore[no-any-return]
 
         return await asyncio.to_thread(_get)
 

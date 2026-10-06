@@ -79,13 +79,13 @@ class OptimizerStage(Stage):
         if optimizer is None:  # pragma: no cover - exercised by integration
             from quantlab.phase4.optimizer import Optimizer
 
-            optimizer = Optimizer(sqx_install_path=self._sqx_install_path)
+            optimizer = Optimizer(sqx_install_path=self._sqx_install_path)  # type: ignore[arg-type]
 
         config = self._build_config(block)
         result = await optimizer.run(
             config,
             campaign_name=research_config.campaign,
-            output_dir=self._output_dir,
+            output_dir=self._output_dir,  # type: ignore[arg-type]
         )
         ctx.artifacts["optimization_result"] = result
         # REQ-1 (parameter-justification-matrix): the optimizer run produces a

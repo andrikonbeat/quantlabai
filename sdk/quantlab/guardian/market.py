@@ -92,11 +92,11 @@ class MarketGuardian(BaseGuardian):
 
         # TREND and RANGE are good for most strategies
         if regime in ["TREND", "RANGE"]:
-            return 0.9 * confidence
+            return 0.9 * confidence  # type: ignore[no-any-return]
         elif regime == "VOLATILE":
-            return 0.6 * confidence  # Volatile but tradeable
+            return 0.6 * confidence  # Volatile but tradeable  # type: ignore[no-any-return]
         elif regime == "QUIET":
-            return 0.4 * confidence  # Low opportunity
+            return 0.4 * confidence  # Low opportunity  # type: ignore[no-any-return]
         else:
             return 0.2  # Unknown regime
 

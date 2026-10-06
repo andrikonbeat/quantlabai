@@ -51,7 +51,7 @@ class TestLLMResearchAgentParseValidation:
     def test_parse_response_validates_against_sqx(
         self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+        from quantlab.knowledge.sqx_doc_provider import SQXDocProvider
 
         mock_provider = MagicMock(spec=SQXDocProvider)
         mock_provider.get_valid_range.return_value = (2, 200)
@@ -84,7 +84,7 @@ class TestLLMResearchAgentParseValidation:
     def test_parse_response_drops_invalid_params(
         self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+        from quantlab.knowledge.sqx_doc_provider import SQXDocProvider
 
         mock_provider = MagicMock(spec=SQXDocProvider)
         mock_provider.get_valid_range.return_value = (2, 200)
@@ -124,7 +124,7 @@ class TestF2KBRanges:
     def test_build_prompt_renders_kb_ranges(
         self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+        from quantlab.knowledge.sqx_doc_provider import SQXDocProvider
 
         mock_provider = MagicMock(spec=SQXDocProvider)
         mock_provider.get_indicator_range.return_value = {
@@ -143,7 +143,7 @@ class TestF2KBRanges:
     def test_build_prompt_omits_missing_indicator(
         self, agent: LLMResearchAgent, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ) -> None:
-        from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+        from quantlab.knowledge.sqx_doc_provider import SQXDocProvider
 
         mock_provider = MagicMock(spec=SQXDocProvider)
         mock_provider.get_indicator_range.return_value = None

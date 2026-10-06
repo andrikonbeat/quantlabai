@@ -67,6 +67,59 @@ All notable changes to QuantLab AI will be documented in this file.
 - `ReportingGenerator` extended with agent decision audit and multi-campaign comparison views (PR 5)
 - All PRs maintain backward compatibility: original 9-stage pipeline unchanged
 
+### Archived SDD changes (2026-08-15 → 2026-10-02)
+- `orchestrated-subagent-wiring` (2026-08-15) — replaced the legacy
+  `_run_campaign.py` path with the real orchestrated runner: `campaign run-flow`
+  drives the 14-phase flow through LLM subagents via `delegation.py` envelopes.
+- `flow-ecosystem-alignment` (2026-08-18) — durable artifact writing per phase,
+  Knowledge Lake wiring, campaign bash allowlist tightening, CFX dialect fixes.
+- `installer-ecosystem-onboarding` (2026-08-20) — the `installer/` TUI became a
+  full interactive guide: product/flow explanation, granular third-party
+  consent, SQX/JForex configuration, post-install onboarding.
+- `opencode-harness-elevation` (2026-08-20) — repo-managed versioned router
+  prompts, drift-checked skills, lossless-gate/4R documentation, model policy.
+- `skill-format-negative-test` (2026-08-20) — REQ-904 negative acceptance test:
+  invalid `SKILL.md` frontmatter is rejected.
+- `sqx-jforex-llm-knowledge` (2026-08-20) — agents grounded in the
+  version-pinned official corpus (docs.json, snippets, JForex templates)
+  without redistributing licensed material.
+- `guardian-control-loop` (2026-09-28) — guardian no longer degrades silently on
+  missing data providers; portfolio-state blocking, typed risk configs to CFX,
+  and a feedback path from guardian evaluation to generation.
+- `typed-crosschecks-models` (2026-09-29) — typed Pydantic models replace the
+  `raw_xml` passthrough and regex parsing of the CFX `CrossChecks` section.
+- `data-range-parts-and-ranking-filters` (2026-09-30) — typed models for
+  advanced nested ranking conditions and Data range parts matching the verified
+  SQX 144/2953 schema.
+- `kb-reverification-pipeline` (2026-10-02) — `quantlab sqx kb reverify`
+  subcommand; fixes `KbParameter` dropping `xml_path`/`element_name` on every
+  store write (live data loss on drift invalidation).
+- `fix-flat-lane-settings-projection` (2026-10-02) — see Fixed below.
+
+### Fixed (2026-10-02 — Flat-Lane CFX Codec, 5 commits)
+- Inverted the flat `SettingsSection` codec in `sdk/quantlab/cfx/`: reader and
+  writer now share one `_is_flat_lane_child` predicate, so a
+  reader→writer→reader cycle no longer mangles keys (`Setting@key`/`Setting@value`)
+  or collapses a multi-element section to its last element.
+- `adaptive_retest_agent` no longer destroys the `.cfx` it mutates in place on
+  every retest cycle (data-loss fix, REQ-FLAT-7).
+- **Breaking change for external consumers**: the emitted dialect for flat
+  settings changed. Keys once emitted as `<Setting key="Tag@attr" value="v"/>`
+  are now grouped per tag as `<Tag attr="v" .../>` (one element per tag); bare
+  keys still emit `<Setting key="K" value="v"/>`. Consumers that looked up
+  `Setting[@key='Tag@attr']` must switch to the grouped form. Legacy files with
+  the old form converge to the new stable dialect after one read/write cycle
+  rather than being repaired losslessly.
+
+### Lint and type hygiene (2026-10-03 → 2026-10-06)
+- Added `[tool.mypy]` config and real stubs for `yaml`/`pandas`; dropped 21
+  stale `# type: ignore` comments; parameterized bare generic annotations
+  (`type-arg` 145 → 0); completed function annotations across the tree.
+- Removed 3 unused imports (`F401` → 0) and deleted 8 shadowed duplicate
+  definitions (`no-redef` → 0); declared implicit re-exports.
+- Swept `ruff format` across 39 files; env normalization plus 4 product
+  decisions. Details in [LINT-CLEANUP-HANDOFF.md](LINT-CLEANUP-HANDOFF.md).
+
 ## [Phase 4] — 2026-07-18
 
 ### Added (PR 1 — Foundation, ≈1900 lines)
@@ -101,21 +154,6 @@ All notable changes to QuantLab AI will be documented in this file.
 - `CommandDispatcher` rewritten from subprocess-based to async HTTP API via `AsyncSQXClient` (PR 2)
 - Domain modules fully async with `httpx.AsyncClient` + `asyncio` (PR 1–3)
 - KnowledgeStore fixed: recursion in `read_index()`/`rebuild_index()` broken by implementing proper filesystem scanning in `rebuild_index()` (PR 3 cleanup)
-
-### Fixed (2026-10-02 — Flat-Lane CFX Codec, 5 commits)
-- Inverted the flat `SettingsSection` codec in `sdk/quantlab/cfx/`: reader and
-  writer now share one `_is_flat_lane_child` predicate, so a
-  reader→writer→reader cycle no longer mangles keys (`Setting@key`/`Setting@value`)
-  or collapses a multi-element section to its last element.
-- `adaptive_retest_agent` no longer destroys the `.cfx` it mutates in place on
-  every retest cycle (data-loss fix, REQ-FLAT-7).
-- **Breaking change for external consumers**: the emitted dialect for flat
-  settings changed. Keys once emitted as `<Setting key="Tag@attr" value="v"/>`
-  are now grouped per tag as `<Tag attr="v" .../>` (one element per tag); bare
-  keys still emit `<Setting key="K" value="v"/>`. Consumers that looked up
-  `Setting[@key='Tag@attr']` must switch to the grouped form. Legacy files with
-  the old form converge to the new stable dialect after one read/write cycle
-  rather than being repaired losslessly.
 
 ## [Phase 3] — 2026-07-15
 

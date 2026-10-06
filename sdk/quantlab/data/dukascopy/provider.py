@@ -37,7 +37,7 @@ class DukascopyProvider:
         jforex_state_dir: str | Path | None = None,
     ) -> None:
         self._data_manager = data_manager or DataManager(
-            jforex_state_dir=jforex_state_dir
+            jforex_state_dir=jforex_state_dir  # type: ignore[arg-type]
         )
 
     def fetch_bars(self, symbol: str, timeframe: str) -> list[Bar]:
@@ -57,7 +57,7 @@ class DukascopyProvider:
             handler = self._data_manager.datasources.get("jforex")
             if handler is None:
                 return []
-            return handler.fetch_history(symbol, timeframe)
+            return handler.fetch_history(symbol, timeframe)  # type: ignore[no-any-return, attr-defined]
         except Exception:
             return []
 

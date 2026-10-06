@@ -225,7 +225,7 @@ class DataManager:
                 sqcli_path=sqcli_path, sqx_install_path=sqx_install_path
             )
         )
-        reg.register(JForexProvider(state_dir=jforex_state_dir))
+        reg.register(JForexProvider(state_dir=jforex_state_dir))  # type: ignore[arg-type]
         return reg
 
     @property

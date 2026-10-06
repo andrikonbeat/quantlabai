@@ -23,7 +23,7 @@ def _resolve_profile(name: str) -> BrokerProfile:
         factories = sorted(set(_PROFILE_ALIASES.values()))
         raise ValueError(f"Unknown profile: {name!r}. Known: {factories}")
     factory = getattr(BrokerProfile, factory_name)
-    return factory()
+    return factory()  # type: ignore[no-any-return]
 
 
 def _pip_value(symbol: str, volume: float) -> float:

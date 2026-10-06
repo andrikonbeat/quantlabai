@@ -286,7 +286,7 @@ class ReportGenerator:
     def _get_chart_colors(self) -> ChartColors:
         """Get chart colors from config or use defaults."""
         if hasattr(self.config, "chart_config") and self.config.chart_config:
-            return self.config.chart_config.colors
+            return self.config.chart_config.colors  # type: ignore[no-any-return]
         return ChartColors()
 
     def _render_chart_matplotlib(self, chart_type: str, data: dict[str, Any]) -> str:

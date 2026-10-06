@@ -74,7 +74,7 @@ optional ones; `validate_phase_result()` (`delegation.py:684`) rejects an empty
 
 ### OpenSpec Workflow
 - SDD artifacts live under `openspec/changes/<change-name>/`. The convention is `proposal.md`, `design.md`, `tasks.md`, and one or more capability specs at `specs/<capability>/spec.md` — note there is no top-level `spec.md`.
-- **Not every active change carries the full set.** A change that stops at an earlier phase legitimately has only part of it. As of this writing, 1 of 14 active changes has no `proposal.md`, and 6 have no `specs/` directory yet. Do not treat a missing artifact as a bug; read `tasks.md` and `apply-progress.md` to learn how far the change actually got.
+- **Not every active change carries the full set.** A change that stops at an earlier phase legitimately has only part of it. As of this writing, 1 of 10 active changes has no `proposal.md`, and 2 have no `specs/` directory yet. Do not treat a missing artifact as a bug; read `tasks.md` and `apply-progress.md` to learn how far the change actually got.
 - A change is complete when it reports `archive-report.md` **and** `verify-report.md`; it then moves to `openspec/changes/archive/YYYY-MM-DD-<slug>/` via `git mv`. A `research-agent-enhancements`-style `archive-report.md` that is scoped to "planning artifacts only" is **not** completion — check its stated implementation count.
 - Progress is tracked in `apply-progress.md` and Engram topic `sdd/<change-name>/apply-progress`.
 - Work units are kept reviewable: ≤400 changed lines when possible; chained PRs use stacked-to-main by default.

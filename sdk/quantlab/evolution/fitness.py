@@ -24,7 +24,7 @@ class FitnessFunction:
             weights = weight_profile.as_dict()
         else:
             weights = None
-        self._calculator = HealthScoreCalculator(weights=weights)
+        self._calculator = HealthScoreCalculator(weights=weights)  # type: ignore[arg-type]
         self._profile = weight_profile or WeightProfile()
 
     @property
@@ -57,6 +57,6 @@ class FitnessFunction:
             Fitness score (0–100).
         """
         weights = profile.as_dict()
-        calc = HealthScoreCalculator(weights=weights)
+        calc = HealthScoreCalculator(weights=weights)  # type: ignore[arg-type]
         health = calc.compute(stats)
         return health.overall_score

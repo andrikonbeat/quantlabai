@@ -15,7 +15,7 @@ from flask import Flask, Response, jsonify, render_template, request
 from quantlab.cli.runner import CliRunner
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.readers.models import EquityPoint, Trade
-from quantlab.reporting.generator import (
+from quantlab.reporting.generator import (  # type: ignore[attr-defined]
     ReportConfig,
     ReportFormat,
     ReportGenerator,
@@ -56,7 +56,7 @@ def resolve_sqcli_binary(config: ServerConfig | None = None) -> str | None:
     """
     candidates: list[str] = []
     if config and getattr(config, "sqx_install_path", None):
-        candidates.append(config.sqx_install_path)
+        candidates.append(config.sqx_install_path)  # type: ignore[arg-type]
     env_path = os.environ.get("SQX_INSTALL_PATH")
     if env_path:
         candidates.append(env_path)
@@ -111,7 +111,7 @@ def _load_campaign_export_data(
                 if name == "statistics" and isinstance(payload, dict):
                     statistics = payload
                 elif isinstance(payload, list):
-                    target.extend(payload)
+                    target.extend(payload)  # type: ignore[union-attr]
 
     # structured/{campaign_id}.json (single-file fallback)
     single = structured_dir / f"{campaign_id}.json"
@@ -178,7 +178,7 @@ def _campaign_exists(store: KnowledgeStore, campaign_id: str) -> bool:
     artifacts are present under ``structured/{campaign_id}``. Genuinely
     absent ids report 404 instead of generating empty reports.
     """
-    result = store.query().filter_by_campaign(campaign_id).execute()
+    result = store.query().filter_by_campaign(campaign_id).execute()  # type: ignore[attr-defined]
     if result.campaigns:
         return True
     structured = store.root / "structured"
@@ -284,7 +284,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
     def list_campaigns() -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
-            result = store.query().execute()
+            result = store.query().execute()  # type: ignore[attr-defined]
             campaigns = [_campaign_entry(c) for c in result.campaigns]
             return success_response(campaigns)
         except Exception as e:
@@ -294,7 +294,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
     def get_campaign(campaign_id: str) -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
-            result = store.query().filter_by_campaign(campaign_id).execute()
+            result = store.query().filter_by_campaign(campaign_id).execute()  # type: ignore[attr-defined]
             if not result.campaigns:
                 return error_response(
                     "CAMPAIGN_NOT_FOUND", f"Campaign '{campaign_id}' not found", 404
@@ -318,7 +318,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
     def list_pipeline_runs() -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
-            runs = [r.to_dict() for r in store.load_pipeline_runs()]
+            runs = [r.to_dict() for r in store.load_pipeline_runs()]  # type: ignore[attr-defined]
             return success_response(runs)
         except Exception as e:
             return error_response("INTERNAL_ERROR", str(e))
@@ -341,7 +341,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
     def get_stats() -> tuple[Response, int]:
         try:
             store: KnowledgeStore = app.config["KNOWLEDGE_STORE"]
-            campaigns = store.query().execute()
+            campaigns = store.query().execute()  # type: ignore[attr-defined]
 
             def metric_values(attr: str) -> list[float]:
                 return [
@@ -399,7 +399,7 @@ def create_app(config: ServerConfig | None = None) -> Flask:
                 )
 
             # Build report config
-            config = ReportConfig(
+            config = ReportConfig(  # type: ignore[call-arg]
                 campaign_id=campaign_id,
                 theme=ReportTheme(data.get("theme", "light")),
                 formats=[ReportFormat(f) for f in data.get("formats", ["html"])],

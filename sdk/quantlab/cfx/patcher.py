@@ -329,7 +329,7 @@ class CfxPatcher:
                 f"Unknown instruction type: {instruction.instruction_type}"
             )
 
-        validator(instruction)
+        validator(instruction)  # type: ignore[operator]
 
     def _validate_set_market(self, instruction: SetMarketInstruction) -> None:
         if not instruction.symbol or not instruction.symbol.strip():
@@ -650,7 +650,7 @@ class CfxPatcher:
                 f"Unknown instruction type: {instruction.instruction_type}"
             )
 
-        applier(instruction)
+        applier(instruction)  # type: ignore[operator]
 
     def _apply_set_market(self, instruction: SetMarketInstruction) -> None:
         """Set market symbol in Data section and Resources/Symbols."""
@@ -1024,7 +1024,7 @@ class CfxPatcher:
             )
 
         conditions.append(cond)
-        section.raw_xml = self._build_advanced_rankings_xml(conditions)
+        section.raw_xml = self._build_advanced_rankings_xml(conditions)  # type: ignore[union-attr]
 
     def _apply_set_data_range_parts(
         self, instruction: SetDataRangePartsInstruction
@@ -1065,7 +1065,7 @@ class CfxPatcher:
             column_values = []
             for cv_el in cond_el.findall("Column-Value"):
                 column_values.append(
-                    ColumnValue(
+                    ColumnValue(  # type: ignore[call-arg]
                         column=cv_el.get("column", ""),
                         column_type=cv_el.get("columnType", "0"),
                         format=cv_el.get("format", ""),
@@ -1082,7 +1082,7 @@ class CfxPatcher:
                     )
                 )
             conditions.append(
-                AdvancedRankingCondition(
+                AdvancedRankingCondition(  # type: ignore[call-arg]
                     use=use,
                     result_type=result_type,
                     sample_type=sample_type,

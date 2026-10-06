@@ -167,11 +167,11 @@ class MonitorConfig:
                 if isinstance(current, bool):
                     parsed = raw.lower() in ("true", "1", "yes")
                 elif isinstance(current, int):
-                    parsed = int(raw)
+                    parsed = int(raw)  # type: ignore[assignment]
                 elif isinstance(current, float):
-                    parsed = float(raw)
+                    parsed = float(raw)  # type: ignore[assignment]
                 else:
-                    parsed = raw
+                    parsed = raw  # type: ignore[assignment]
                 setattr(self, attr, parsed)
             except (ValueError, TypeError):
                 logger.warning(
@@ -260,9 +260,9 @@ class NotifierDispatcher:
 # ── Auto-action executor ────────────────────────────────────────────────────
 
 _ALERT_ACTION_MAP: dict[str, str] = {
-    ("DRAWDOWN_BREACH", "CRITICAL"): "stop_strategy",
-    ("REGIME_SHIFT", "WARNING"): "reduce_position",
-    ("SHARPE_DEGRADATION", "WARNING"): "re_optimize",
+    ("DRAWDOWN_BREACH", "CRITICAL"): "stop_strategy",  # type: ignore[dict-item]
+    ("REGIME_SHIFT", "WARNING"): "reduce_position",  # type: ignore[dict-item]
+    ("SHARPE_DEGRADATION", "WARNING"): "re_optimize",  # type: ignore[dict-item]
 }
 
 
@@ -326,7 +326,7 @@ class AutoActionExecutor:
             is disabled.
         """
         alert_key = (alert.get("type", ""), alert.get("severity", ""))
-        action = _ALERT_ACTION_MAP.get(alert_key)
+        action = _ALERT_ACTION_MAP.get(alert_key)  # type: ignore[call-overload]
         if action is None or not self._enabled_actions.get(action, False):
             return []
 

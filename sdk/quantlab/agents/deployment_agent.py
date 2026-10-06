@@ -295,7 +295,9 @@ class DeploymentAgent(DeployStage):
         Performs a structural sanity check if the editor is unavailable.
         """
         try:
-            from quantlab.cfx.editor import validate_cfx
+            from quantlab.cfx.editor import (
+                validate_cfx,  # type: ignore[import-not-found]
+            )
 
             result = validate_cfx(portfolio_cfx)
             if isinstance(result, dict):
@@ -340,7 +342,9 @@ class DeploymentAgent(DeployStage):
         manifest — the placeholder ``PK\\x05\\x06`` stub is gone.
         """
         try:
-            from jforex_deploy import package as jforex_package
+            from jforex_deploy import (
+                package as jforex_package,  # type: ignore[import-not-found]
+            )
 
             jar_path = output_dir / "portfolio.jar"
             jforex_package(

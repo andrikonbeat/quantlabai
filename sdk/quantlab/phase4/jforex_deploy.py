@@ -134,11 +134,11 @@ class JForexDeployer:
             CompileError: javac failed with a structured error report, or the
                 fix loop exhausted its bound with full history (REQ-30).
         """
-        env = os.environ if env is None else env
+        env = os.environ if env is None else env  # type: ignore[assignment]
         if not is_compiler_enabled(env):
             logger.info("QUANTLAB_COMPILER=0 — keeping .java-only deploy path")
             return Path(java_path)
-        return CompilerPipeline.compile(
+        return CompilerPipeline.compile(  # type: ignore[return-value]
             java_path,
             jdk_home=jdk_home,
             env=env,

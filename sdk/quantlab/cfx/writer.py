@@ -498,7 +498,7 @@ def _serialise_task(task: BuildTask) -> bytes:
     )
     _append_complex_section(root, "WalkForward", task.walk_forward)
     _append_complex_section(root, "Databanks", task.databanks_section)
-    _append_complex_section(root, "PortfolioSettings", task.portfolio_settings)
+    _append_complex_section(root, "PortfolioSettings", task.portfolio_settings)  # type: ignore[arg-type]
     _append_merged_complex_section(root, "Rankings", task.rankings_section, rankings_el)
     _append_merged_complex_section(
         root, "CrossChecks", task.cross_checks_section, cross_checks_el

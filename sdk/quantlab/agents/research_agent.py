@@ -106,7 +106,7 @@ class ResearchAgent:
             strategies=strategies,
             criteria=criteria,
             hypotheses=hypotheses,
-            llm_config=self._build_llm_config(broker_profile)
+            llm_config=self._build_llm_config(broker_profile)  # type: ignore[arg-type]
             if broker_profile
             else None,
             iteration_config=IterationConfig(

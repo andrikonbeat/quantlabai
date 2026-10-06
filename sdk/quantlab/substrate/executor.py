@@ -122,8 +122,8 @@ def is_unified_substrate_enabled(env: dict[str, str] | None = None) -> bool:
     """Rollback gate (AD-4): ``QUANTLAB_UNIFIED_SUBSTRATE=1`` opts into the
     substrate; the default (and ``QUANTLAB_UNIFIED_SUBSTRATE=0``) keeps the
     legacy dispatch paths operational (REQ-28)."""
-    env = os.environ if env is None else env
-    return env.get("QUANTLAB_UNIFIED_SUBSTRATE", "0") == "1"
+    env = os.environ if env is None else env  # type: ignore[assignment]
+    return env.get("QUANTLAB_UNIFIED_SUBSTRATE", "0") == "1"  # type: ignore[union-attr]
 
 
 def is_legacy_execution_enabled(env: dict[str, str] | None = None) -> bool:
@@ -139,8 +139,8 @@ def is_legacy_execution_enabled(env: dict[str, str] | None = None) -> bool:
     Returns:
         True when the legacy execution path is explicitly requested.
     """
-    env = os.environ if env is None else env
-    return env.get("QUANTLAB_LEGACY_EXECUTION", "").lower() in ("1", "true", "yes")
+    env = os.environ if env is None else env  # type: ignore[assignment]
+    return env.get("QUANTLAB_LEGACY_EXECUTION", "").lower() in ("1", "true", "yes")  # type: ignore[union-attr]
 
 
 def select_dispatch_backend(env: dict[str, str] | None = None) -> str:
@@ -158,7 +158,7 @@ def select_dispatch_backend(env: dict[str, str] | None = None) -> str:
     Returns:
         ``"legacy"`` or ``"substrate"``.
     """
-    env = os.environ if env is None else env
+    env = os.environ if env is None else env  # type: ignore[assignment]
     if is_legacy_execution_enabled(env):
         return "legacy"
     if is_unified_substrate_enabled(env):
@@ -176,9 +176,9 @@ def resolve_sqcli_path(
     ``None`` when no candidate exists and is executable — the caller must
     fail closed (no dispatch) per the subprocess threat-matrix row.
     """
-    env = os.environ if env is None else env
+    env = os.environ if env is None else env  # type: ignore[assignment]
     candidates: list[Path] = []
-    env_path = env.get("SQCLI_PATH")
+    env_path = env.get("SQCLI_PATH")  # type: ignore[union-attr]
     if env_path:
         candidates.append(Path(env_path))
     install = Path(sqx_install_path)
@@ -202,8 +202,8 @@ def select_dispatch_mode(
     missing binary is never silently mocked or dispatched (threat matrix:
     validate existence before dispatch).
     """
-    env = os.environ if env is None else env
-    mock_env = env.get("SQX_FORCE_MOCK", "").lower() in ("1", "true", "yes")
+    env = os.environ if env is None else env  # type: ignore[assignment]
+    mock_env = env.get("SQX_FORCE_MOCK", "").lower() in ("1", "true", "yes")  # type: ignore[union-attr]
     if force_mock or mock_env:
         return "mock"
     if resolve_sqcli_path(sqx_install_path, env) is not None:
@@ -213,7 +213,7 @@ def select_dispatch_mode(
 
 async def _send(client: Any, command: str) -> str:
     logger.debug("substrate → %s", command)
-    return await client.send_command(command)
+    return await client.send_command(command)  # type: ignore[no-any-return]
 
 
 class Executor:

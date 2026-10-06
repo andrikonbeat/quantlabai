@@ -106,7 +106,7 @@ class MemoryCaptureService:
         decision = self._build_decision(envelope)
         try:
             manager = AgentMemoryManager(
-                knowledge_root=self._knowledge_root,
+                knowledge_root=self._knowledge_root,  # type: ignore[arg-type]
                 engram_save_fn=self._engram_save_fn,
             )
             # REQ-105: detection-and-report — compare this phase outcome

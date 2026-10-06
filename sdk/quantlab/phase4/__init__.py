@@ -116,12 +116,12 @@ def __getattr__(name: str) -> Any:
                     CheckpointManager,
                 )
             except ImportError:
-                CampaignOrchestrator = None  # type: ignore[assignment]
-                CampaignConfig = None
-                CampaignResult = None
-                run_campaign = None
-                CampaignCheckpoint = None
-                CheckpointManager = None
+                CampaignOrchestrator = None  # type: ignore[assignment, misc]
+                CampaignConfig = None  # type: ignore[misc, assignment]
+                CampaignResult = None  # type: ignore[misc, assignment]
+                run_campaign = None  # type: ignore[misc, assignment]
+                CampaignCheckpoint = None  # type: ignore[misc, assignment]
+                CheckpointManager = None  # type: ignore[misc, assignment]
             globals().update(
                 CampaignOrchestrator=CampaignOrchestrator,
                 CampaignConfig=CampaignConfig,

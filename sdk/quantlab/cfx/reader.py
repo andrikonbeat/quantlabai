@@ -384,22 +384,22 @@ def _parse_settings_element_tree(root: ElementTree.Element) -> BuildTask:
         parts_to_improve=sections.get("PartsToImprove"),
         cross_checks=sections.get("CrossChecks"),
         notes=sections.get("Notes"),
-        blocks=complex_sections.get("Blocks"),
-        atms=complex_sections.get("ATMs"),
-        databanks=complex_sections.get("DataBanks"),
-        resources=complex_sections.get("Resources"),
-        automatic_portfolio_builder=complex_sections.get("AutomaticPortfolioBuilder"),
-        portfolio_settings=complex_sections.get("PortfolioSettings"),
-        optimization=complex_sections.get("Optimization"),
-        optimization_parameters=complex_sections.get("OptimizationParameters"),
-        walk_forward=complex_sections.get("WalkForward"),
-        databanks_section=complex_sections.get("Databanks"),
-        rankings_section=complex_sections.get("Rankings"),
-        cross_checks_section=complex_sections.get("CrossChecks"),
-        retester_data=complex_sections.get("RetesterData"),
+        blocks=complex_sections.get("Blocks"),  # type: ignore[arg-type]
+        atms=complex_sections.get("ATMs"),  # type: ignore[arg-type]
+        databanks=complex_sections.get("DataBanks"),  # type: ignore[arg-type]
+        resources=complex_sections.get("Resources"),  # type: ignore[arg-type]
+        automatic_portfolio_builder=complex_sections.get("AutomaticPortfolioBuilder"),  # type: ignore[arg-type]
+        portfolio_settings=complex_sections.get("PortfolioSettings"),  # type: ignore[arg-type]
+        optimization=complex_sections.get("Optimization"),  # type: ignore[arg-type]
+        optimization_parameters=complex_sections.get("OptimizationParameters"),  # type: ignore[arg-type]
+        walk_forward=complex_sections.get("WalkForward"),  # type: ignore[arg-type]
+        databanks_section=complex_sections.get("Databanks"),  # type: ignore[arg-type]
+        rankings_section=complex_sections.get("Rankings"),  # type: ignore[arg-type]
+        cross_checks_section=complex_sections.get("CrossChecks"),  # type: ignore[arg-type]
+        retester_data=complex_sections.get("RetesterData"),  # type: ignore[arg-type]
         data_range_parts=_parse_data_range_parts(data_el),
         advanced_rankings=_parse_advanced_rankings(
-            rankings_el, complex_sections.get("Rankings")
+            rankings_el, complex_sections.get("Rankings")  # type: ignore[arg-type]
         ),
         unknown_sections=unknown,
     )
@@ -514,7 +514,7 @@ def _parse_advanced_condition(cond_el: ElementTree.Element) -> AdvancedRankingCo
     """Parse one ``<Condition>`` element, in either SQX dialect."""
     use_raw = cond_el.get("use", "true").strip().lower()
     columns = [_parse_column_value(cv) for cv in _column_value_elements(cond_el)]
-    return AdvancedRankingCondition(
+    return AdvancedRankingCondition(  # type: ignore[call-arg]
         use=use_raw in ("true", "1"),
         result_type=cond_el.get("resultType", "main"),
         sample_type=cond_el.get("sampleType", "127"),
@@ -549,7 +549,7 @@ def _column_value_elements(cond_el: ElementTree.Element) -> list[ElementTree.Ele
 
 def _parse_column_value(cv_el: ElementTree.Element) -> ColumnValue:
     """Parse one ``<Column-Value>`` element into its typed model."""
-    return ColumnValue(
+    return ColumnValue(  # type: ignore[call-arg]
         column=cv_el.get("column", ""),
         column_type=cv_el.get("columnType", "0"),
         format=cv_el.get("format", ""),
@@ -625,4 +625,4 @@ def _make_complex_section(
         # CrossChecks is a dual-dialect typed model: parse into dialect +
         # typed sections so consumers read fields instead of raw XML.
         return CrossChecksConfig.from_xml(raw_xml)
-    return cls(raw_xml=raw_xml)
+    return cls(raw_xml=raw_xml)  # type: ignore[return-value]

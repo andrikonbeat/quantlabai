@@ -95,13 +95,13 @@ class _DataManagerOhlcSource:
     """
 
     def __init__(self, jforex_state_dir: str | Path | None = None) -> None:
-        self._dm = DataManager(jforex_state_dir=jforex_state_dir)
+        self._dm = DataManager(jforex_state_dir=jforex_state_dir)  # type: ignore[arg-type]
 
     def fetch_bars(self, symbol: str, timeframe: str) -> list[Bar]:
         handler = self._dm.datasources.get("jforex")
         if handler is None:
             return []
-        return handler.fetch_history(symbol, timeframe)
+        return handler.fetch_history(symbol, timeframe)  # type: ignore[no-any-return, attr-defined]
 
     def gap_hint(self) -> str:
         return (
@@ -336,7 +336,7 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
             f"seeded {summary['seeded']}, verified {summary['verified']}, "
             f"needs_review {summary['needs_review']}"
         )
-        for tab, stats in summary["tabs"].items():
+        for tab, stats in summary["tabs"].items():  # type: ignore[attr-defined]
             print_human(
                 f"  {tab}: {stats['total']} (seeded {stats['seeded']}, "
                 f"verified {stats['verified']}, needs_review {stats['needs_review']})"
@@ -430,7 +430,7 @@ async def cmd_sqx_check_version(args: argparse.Namespace) -> int:
         sqx_path = args.sqx_path or DEFAULT_SQX_PATH
         binary = _find_sqcli(sqx_path)
         preflight = VersionPreflight(
-            executor=None if binary is None else RealExecutor(binary),
+            executor=None if binary is None else RealExecutor(binary),  # type: ignore[arg-type]
             knowledge_root=args.knowledge_root,
         )
         status = preflight.run()

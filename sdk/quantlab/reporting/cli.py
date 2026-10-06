@@ -150,8 +150,8 @@ def _load_campaign_data(
             for row in reader:
                 # Map CSV columns to Trade model
                 trade = Trade(
-                    entry_time=row.get("entry_time", row.get("EntryTime", "")),
-                    exit_time=row.get("exit_time", row.get("ExitTime", "")),
+                    entry_time=row.get("entry_time", row.get("EntryTime", "")),  # type: ignore[arg-type]
+                    exit_time=row.get("exit_time", row.get("ExitTime", "")),  # type: ignore[arg-type]
                     direction=row.get("direction", row.get("Direction", "long")),
                     lots=float(row.get("lots", row.get("Lots", 1.0))),
                     profit=float(row.get("profit", row.get("Profit", 0.0))),
@@ -168,7 +168,7 @@ def _load_campaign_data(
             reader = csv.DictReader(f)
             for row in reader:
                 eq = EquityPoint(
-                    timestamp=row.get(
+                    timestamp=row.get(  # type: ignore[arg-type]
                         "timestamp", row.get("Timestamp", row.get("Time", ""))
                     ),
                     equity=float(

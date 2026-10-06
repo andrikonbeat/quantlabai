@@ -226,7 +226,7 @@ class PortfolioAgent(PortfolioStage):
         for i in range(n):
             row = []
             for j in range(n):
-                val = corr_matrix[i][j]
+                val = corr_matrix[i][j]  # type: ignore[call-overload]
                 if isinstance(val, (np.floating, float)):
                     row.append(round(float(val), 4))
                 else:
@@ -244,7 +244,7 @@ class PortfolioAgent(PortfolioStage):
 
             cluster = [i]
             for j in range(i + 1, n):
-                if corr_matrix[i][j] > self._correlation_threshold:
+                if corr_matrix[i][j] > self._correlation_threshold:  # type: ignore[call-overload]
                     cluster.append(j)
 
             if len(cluster) >= 2:
@@ -256,7 +256,7 @@ class PortfolioAgent(PortfolioStage):
                         "strategies": cluster_ids,
                         "size": len(cluster_ids),
                         "max_correlation": round(
-                            float(np.max(corr_matrix[np.ix_(cluster, cluster)])), 4
+                            float(np.max(corr_matrix[np.ix_(cluster, cluster)])), 4  # type: ignore[index]
                         ),
                         "recommendation": "Select 1 from cluster, diversify across low-correlation assets",
                     }
@@ -685,7 +685,7 @@ class PortfolioAgent(PortfolioStage):
             logger.warning(
                 "No selected_strategies in context — portfolio will be empty"
             )
-            empty_result = {
+            empty_result = {  # type: ignore[var-annotated]
                 "portfolio_cfx": None,
                 "portfolio_result": {
                     "status": "skipped",
@@ -705,7 +705,7 @@ class PortfolioAgent(PortfolioStage):
                 "Review decision '%s' does not permit portfolio construction",
                 review_decision,
             )
-            blocked_result = {
+            blocked_result = {  # type: ignore[var-annotated]
                 "portfolio_cfx": None,
                 "portfolio_result": {
                     "status": "blocked",

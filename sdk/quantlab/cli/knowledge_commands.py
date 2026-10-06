@@ -193,12 +193,12 @@ async def cmd_knowledge_tag(args: argparse.Namespace) -> int:
             if not indexer:
                 from quantlab.knowledge.indexer import Indexer
 
-                indexer = Indexer(store)
+                indexer = Indexer(store)  # type: ignore[arg-type]
             # Clear all tags and re-add
             index = store.read_index()
             for dir_name in ["results", "campaigns"]:
                 for rel_path, info in (
-                    index.get("directories", {}).get(dir_name, {}).items()
+                    index.get("directories", {}).get(dir_name, {}).items()  # type: ignore[attr-defined]
                 ):
                     if Path(rel_path).stem == args.campaign_id:
                         info["tags"] = new_tags
@@ -212,7 +212,7 @@ async def cmd_knowledge_tag(args: argparse.Namespace) -> int:
             return 1
         else:
             # Add tags
-            success = store.tag(args.campaign_id, args.tags)
+            success = store.tag(args.campaign_id, args.tags)  # type: ignore[func-returns-value]
             if success:
                 print_human(
                     f"Added tags to campaign {args.campaign_id}: {', '.join(args.tags)}"
@@ -254,7 +254,7 @@ async def cmd_knowledge_link(args: argparse.Namespace) -> int:
             return 0
         elif args.parent and args.children:
             # Create parent-child links
-            success = store.link(args.parent, args.children)
+            success = store.link(args.parent, args.children)  # type: ignore[func-returns-value]
             if success:
                 print_human(
                     f"Linked parent '{args.parent}' to children: {', '.join(args.children)}"

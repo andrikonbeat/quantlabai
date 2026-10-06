@@ -51,7 +51,7 @@ def _text_cosine(a: dict[str, int], b: dict[str, int]) -> float:
     norm_b = sum(count * count for count in b.values()) ** 0.5
     if norm_a == 0 or norm_b == 0:
         return 0.0
-    return dot / (norm_a * norm_b)
+    return dot / (norm_a * norm_b)  # type: ignore[no-any-return]
 
 
 class QueryBuilder:

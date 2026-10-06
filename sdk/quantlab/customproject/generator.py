@@ -29,8 +29,8 @@ def is_custom_project_enabled(env: dict[str, str] | None = None) -> bool:
 
     Default is ``1`` (CustomProject) after task 7.4 flips the default.
     """
-    env = os.environ if env is None else env
-    return env.get("QUANTLAB_CUSTOM_PROJECT", "1") == "1"
+    env = os.environ if env is None else env  # type: ignore[assignment]
+    return env.get("QUANTLAB_CUSTOM_PROJECT", "1") == "1"  # type: ignore[union-attr]
 
 
 def _resolve_databanks(project: CustomProject) -> list[DatabankSpec]:

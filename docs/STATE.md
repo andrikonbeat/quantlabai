@@ -219,5 +219,5 @@ Full new-machine procedure: [HANDOFF.md](HANDOFF.md).
 
 ## Next step
 
-- [docs/index.md](index.md) — index of all 26 documents
+- [docs/index.md](index.md) — index of every document under `docs/`
 - [AGENTS.md](../AGENTS.md) — the contracts this repo enforces

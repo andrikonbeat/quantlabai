@@ -325,9 +325,9 @@ class DataRangeParts(BaseModel):
         for ratio_field in _RATIO_FIELDS:
             raw_value = values.pop(ratio_field, None)
             if raw_value is not None:
-                values[ratio_field] = float(raw_value)
+                values[ratio_field] = float(raw_value)  # type: ignore[assignment]
 
-        return cls(**values, raw_xml="\n".join(unknown))
+        return cls(**values, raw_xml="\n".join(unknown))  # type: ignore[arg-type]
 
 
 # ── CrossChecks Typed Models ───────────────────────────────────────────
@@ -570,7 +570,7 @@ class CrossChecksConfig(BaseModel):
                     )
 
             if ar.monte_carlo_manipulation is not None:
-                mc = ar.monte_carlo_manipulation
+                mc = ar.monte_carlo_manipulation  # type: ignore[assignment]
                 if mc.raw_xml:
                     parts.append(f"  {mc.raw_xml.strip()}")
                 else:
@@ -659,7 +659,7 @@ class CrossChecksConfig(BaseModel):
 
         for child in root:
             if child.tag == "MonteCarlo":
-                mc_enabled = _str_to_bool(child.get("enabled"), False)
+                mc_enabled = _str_to_bool(child.get("enabled"), False)  # type: ignore[arg-type]
                 # "runs" is canonical (writer, patcher, templates, translator all
                 # emit it); "simulations" is accepted because _crosschecks_section
                 # in customproject/renderers.py has historically emitted that
@@ -668,7 +668,7 @@ class CrossChecksConfig(BaseModel):
                 mc_percentile = int(child.get("percentile", "95"))
                 verbatim.append(ET.tostring(child, encoding="unicode").strip())
             elif child.tag == "WalkForward":
-                wf_enabled = _str_to_bool(child.get("enabled"), False)
+                wf_enabled = _str_to_bool(child.get("enabled"), False)  # type: ignore[arg-type]
                 wf_cycles = int(child.get("cycles", "5"))
                 verbatim.append(ET.tostring(child, encoding="unicode").strip())
             elif child.tag == "ConfidenceLevel":
@@ -697,7 +697,7 @@ class CrossChecksConfig(BaseModel):
     @staticmethod
     def _parse_automatic_retest(root: ET.Element) -> CrossChecksAutomaticRetest:
         """Parse AutomaticRetest dialect child elements into CrossChecksAutomaticRetest."""
-        use = _str_to_bool(root.get("use"), True)
+        use = _str_to_bool(root.get("use"), True)  # type: ignore[arg-type]
 
         retest_with_higher_precision = None
         monte_carlo_retest = None
@@ -712,7 +712,7 @@ class CrossChecksConfig(BaseModel):
             # re-emits it verbatim so unmodeled inner content is never lost.
             raw_xml = ET.tostring(child, encoding="unicode").strip()
             if child.tag == "RetestWithHigherPrecision":
-                rwp_use = _str_to_bool(child.get("use"), False)
+                rwp_use = _str_to_bool(child.get("use"), False)  # type: ignore[arg-type]
                 precision = None
                 spread = None
                 settings = child.find("Settings")
@@ -727,7 +727,7 @@ class CrossChecksConfig(BaseModel):
                     use=rwp_use, precision=precision, spread=spread, raw_xml=raw_xml
                 )
             elif child.tag == "MonteCarloRetest":
-                mc_use = _str_to_bool(child.get("use"), False)
+                mc_use = _str_to_bool(child.get("use"), False)  # type: ignore[arg-type]
                 num_sim = 100
                 settings = child.find("Settings")
                 if settings is not None:
@@ -738,12 +738,12 @@ class CrossChecksConfig(BaseModel):
                     use=mc_use, number_of_simulations=num_sim, raw_xml=raw_xml
                 )
             elif child.tag == "MonteCarloManipulation":
-                mc_use = _str_to_bool(child.get("use"), False)
+                mc_use = _str_to_bool(child.get("use"), False)  # type: ignore[arg-type]
                 monte_carlo_manipulation = MonteCarloManipulation(
                     use=mc_use, raw_xml=raw_xml
                 )
             elif child.tag == "RetestOnAdditionalMarkets":
-                rwp_use = _str_to_bool(child.get("use"), False)
+                rwp_use = _str_to_bool(child.get("use"), False)  # type: ignore[arg-type]
                 retest_on_additional_markets = RetestOnAdditionalMarkets(
                     use=rwp_use, raw_xml=raw_xml
                 )
@@ -772,13 +772,13 @@ class CrossChecksConfig(BaseModel):
                     raw_xml=raw_xml,
                 )
             elif child.tag == "WalkForwardMatrix":
-                wfm_use = _str_to_bool(child.get("use"), False)
+                wfm_use = _str_to_bool(child.get("use"), False)  # type: ignore[arg-type]
                 raw_xml = ET.tostring(child, encoding="unicode").strip()
-                walk_forward_matrix = WalkForwardMatrix(use=wfm_use, raw_xml=raw_xml)
+                walk_forward_matrix = WalkForwardMatrix(use=wfm_use, raw_xml=raw_xml)  # type: ignore[call-arg]
             elif child.tag == "OptProfileSysParamPermutation":
-                opsp_use = _str_to_bool(child.get("use"), False)
+                opsp_use = _str_to_bool(child.get("use"), False)  # type: ignore[arg-type]
                 raw_xml = ET.tostring(child, encoding="unicode").strip()
-                opt_profile_sys_param_permutation = OptProfileSysParamPermutation(
+                opt_profile_sys_param_permutation = OptProfileSysParamPermutation(  # type: ignore[call-arg]
                     use=opsp_use, raw_xml=raw_xml
                 )
 

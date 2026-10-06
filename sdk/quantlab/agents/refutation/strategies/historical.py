@@ -78,7 +78,7 @@ def _compute_rsi(
         entries are ``None`` (insufficient data).
     """
     if len(prices) < period + 1:
-        return [None] * len(prices)
+        return [None] * len(prices)  # type: ignore[list-item]
 
     closes = [p["close"] for p in prices]
     rsis: list[float | None] = [None] * period  # first N periods have no RSI
@@ -117,7 +117,7 @@ def _compute_rsi(
             rs = avg_gain / avg_loss
             rsis.append(100.0 - 100.0 / (1.0 + rs))
 
-    return rsis
+    return rsis  # type: ignore[return-value]
 
 
 def _find_counter_examples(
@@ -232,7 +232,7 @@ class HistoricalCounterExampleStrategy(RefutationStrategy):
             )
 
         rsis = _compute_rsi(prices)
-        score, evidence = _find_counter_examples(prices, rsis)
+        score, evidence = _find_counter_examples(prices, rsis)  # type: ignore[arg-type]
 
         return FalsationVerdict(
             hypothesis_name=hypothesis.name,

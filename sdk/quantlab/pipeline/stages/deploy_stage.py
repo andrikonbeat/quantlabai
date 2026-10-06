@@ -100,7 +100,7 @@ class DeployStage(_DeployStage):
                 continue
 
             try:
-                result = await client.deploy(jfx_path, sid, account)
+                result = await client.deploy(jfx_path, sid, account)  # type: ignore[arg-type]
                 results[sid] = (
                     result.__dict__ if hasattr(result, "__dict__") else result
                 )
@@ -133,7 +133,7 @@ class DeployStage(_DeployStage):
             ctx.artifacts["deployment_result"] = None
             return {"deployment_result": None}
 
-        result = await agent.package_jfx(jfx_path, account)
+        result = await agent.package_jfx(jfx_path, account)  # type: ignore[arg-type]
         ctx.artifacts["deployment_result"] = result
         return {"deployment_result": result}
 

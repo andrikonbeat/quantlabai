@@ -274,7 +274,7 @@ class CommandDispatcher:
         async def _op() -> str:
             return await self._send(f'-project action=loadconfig file="{cfx_path}"')
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     @staticmethod
     def _name_param(name: str) -> str:
@@ -302,7 +302,7 @@ class CommandDispatcher:
                 f"-project action=start {self._name_param(campaign_name)}"
             )
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     async def stop_project(self, campaign_name: str) -> str:
         """Stop a running campaign via ``-project action=stop``."""
@@ -312,7 +312,7 @@ class CommandDispatcher:
                 f"-project action=stop {self._name_param(campaign_name)}"
             )
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     async def get_status(self, campaign_name: str) -> CampaignStatus:
         """Get campaign status via ``-project action=status``."""
@@ -323,7 +323,7 @@ class CommandDispatcher:
             )
             return CampaignStatus.from_text(text, campaign_name)
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     async def list_databanks(self) -> dict[str, int]:
         """List per-databank record counts via ``-databank action=list``.
@@ -348,7 +348,7 @@ class CommandDispatcher:
                     counts[m.group(1).strip()] = int(m.group(2))
             return counts
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     async def list_projects(self) -> list[str]:
         """List all available projects via ``-project action=list``.
@@ -379,7 +379,7 @@ class CommandDispatcher:
                 lines.append(line)
             return lines
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     # ── Export methods ────────────────────────────────────────────────────────
 
@@ -431,7 +431,7 @@ class CommandDispatcher:
 
             return str(output_path)
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     async def export_retest_report(
         self, campaign_name: str, output_path: str | Path
@@ -457,7 +457,7 @@ class CommandDispatcher:
             )
             return str(output_path)
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     async def export_retest_csv(
         self, campaign_name: str, output_path: str | Path
@@ -468,7 +468,7 @@ class CommandDispatcher:
             result = await self.export_results(campaign_name, Path(output_path).parent)
             return result
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     async def export_optimization_results(
         self, campaign_name: str, output_dir: str | Path
@@ -495,7 +495,7 @@ class CommandDispatcher:
 
             return [str(p) for p in output_dir.iterdir() if p.is_file()]
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     async def get_results_xml(self, campaign_name: str) -> str:
         """Get raw results XML from project output files."""
@@ -510,7 +510,7 @@ class CommandDispatcher:
 
             return f'<?xml version="1.0"?>\n<results campaign="{campaign_name}">\n</results>\n'
 
-        return await self._run_with_lock(_op())
+        return await self._run_with_lock(_op())  # type: ignore[no-any-return]
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 

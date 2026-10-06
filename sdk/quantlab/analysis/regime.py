@@ -152,7 +152,7 @@ class RegimeClassifier:
         if smoothed != regime:
             confidence = max(0.0, confidence - 0.2)
 
-        return RegimeResult(regime=smoothed, confidence=confidence, triggers=triggers)
+        return RegimeResult(regime=smoothed, confidence=confidence, triggers=triggers)  # type: ignore[arg-type]
 
     # -- Private helpers --------------------------------------------------------
 

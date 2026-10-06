@@ -91,8 +91,8 @@ def _count_index_coverage(lake_root: Path, sqx_version: str) -> int:
     index = KnowledgeStore(lake_root).read_index()
     coverage = index.get("kb_parameters", {})
     return sum(
-        1
-        for info in coverage.values()
+        1  # type: ignore[misc]
+        for info in coverage.values()  # type: ignore[attr-defined]
         if isinstance(info, dict) and info.get("sqx_version") == sqx_version
     )
 

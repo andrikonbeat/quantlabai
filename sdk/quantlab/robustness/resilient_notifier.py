@@ -132,7 +132,7 @@ class ResilientNotifier:
         for entry in queue:
             try:
                 await self._retry_policy.retry(
-                    lambda _entry=entry: self._notifier.send(
+                    lambda _entry=entry: self._notifier.send(  # type: ignore[misc]
                         _entry["message"], **(_entry.get("kwargs") or {})
                     )
                 )

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 try:
     from duckduckgo_search import DDGS
 except ImportError:  # pragma: no cover
-    DDGS = None  # type: ignore[assignment]
+    DDGS = None  # type: ignore[assignment, misc]
 
 
 class WebSearchProvider(NewsProvider):
@@ -74,7 +74,7 @@ class WebSearchProvider(NewsProvider):
         cache_key = f"web:{query}"
         cached = await self.cache.get(cache_key)
         if cached is not None:
-            return [WebResult(**r) for r in cached]
+            return [WebResult(**r) for r in cached]  # type: ignore[arg-type]
 
         await self.rate_limiter.acquire()
 
@@ -82,7 +82,7 @@ class WebSearchProvider(NewsProvider):
         # Cache as serialisable dicts
         await self.cache.set(
             cache_key,
-            [
+            [  # type: ignore[arg-type]
                 {
                     "title": r.title,
                     "url": r.url,

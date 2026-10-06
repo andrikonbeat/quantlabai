@@ -15,7 +15,7 @@ import logging
 from pathlib import Path
 
 import pytest
-from quantlab.knowledge.sqX_doc_provider import DocRef, SQXDocProvider
+from quantlab.knowledge.sqx_doc_provider import DocRef, SQXDocProvider
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ class TestGetDocBlockLookup:
         self, provider: SQXDocProvider, caplog: pytest.LogCaptureFixture
     ) -> None:
         with caplog.at_level(
-            logging.WARNING, logger="quantlab.knowledge.sqX_doc_provider"
+            logging.WARNING, logger="quantlab.knowledge.sqx_doc_provider"
         ):
             doc = provider.get_doc("block", "NoSuchBlock", "144.2953")
         assert doc is None
@@ -94,7 +94,7 @@ class TestGetDocBlockLookup:
         self, provider: SQXDocProvider, caplog: pytest.LogCaptureFixture
     ) -> None:
         with caplog.at_level(
-            logging.WARNING, logger="quantlab.knowledge.sqX_doc_provider"
+            logging.WARNING, logger="quantlab.knowledge.sqx_doc_provider"
         ):
             doc = provider.get_doc("manual", "RSI", "144.2953")
         assert doc is None

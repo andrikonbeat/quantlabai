@@ -196,7 +196,7 @@ class CorrectionBus:
         self._ensure_drain_scheduled()
         if self._drain_task is None:
             return 0
-        return await asyncio.gather(self._drain_task)
+        return await asyncio.gather(self._drain_task)  # type: ignore[return-value]
 
     def _ensure_drain_scheduled(self) -> None:
         """Schedule the drain task on the running loop, if not already running.
@@ -210,7 +210,7 @@ class CorrectionBus:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
-        self._drain_task = loop.create_task(self._drain())
+        self._drain_task = loop.create_task(self._drain())  # type: ignore[arg-type]
 
     async def _drain(self) -> int:
         """Dispatch queued envelopes until the queue is empty.

@@ -40,12 +40,12 @@ from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 try:
     from quantlab.data.news.web_search import WebSearchProvider
 except ImportError:  # pragma: no cover
-    WebSearchProvider = None  # type: ignore[assignment]
+    WebSearchProvider = None  # type: ignore[assignment, misc]
 
 try:
     from quantlab.data.news.rss import RSSNewsProvider
 except ImportError:  # pragma: no cover
-    RSSNewsProvider = None  # type: ignore[assignment]
+    RSSNewsProvider = None  # type: ignore[assignment, misc]
 
 logger = logging.getLogger(__name__)
 
@@ -213,7 +213,7 @@ class LLMResearchAgent:
             return None
         engine = IndicatorEngine()
         zones = engine.compute(bars, list(DEFAULT_MARKET_INDICATORS))
-        block = self._render_market_block(symbol, timeframe, zones)
+        block = self._render_market_block(symbol, timeframe, zones)  # type: ignore[arg-type]
         return _MarketContext(bars=bars, block=block)
 
     async def cache_market_bars(
@@ -419,7 +419,7 @@ class LLMResearchAgent:
                         "F2 range missing for %s (version %s)", indicator, ver
                     )
                     continue
-            for param, (lo, hi) in ranges.items():
+            for param, (lo, hi) in ranges.items():  # type: ignore[union-attr]
                 default = _F2_DEFAULT_VALUES.get(indicator.lower(), {}).get(param)
                 if default is not None:
                     lines.append(

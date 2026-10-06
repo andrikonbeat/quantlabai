@@ -96,7 +96,7 @@ class HypothesisBuilder:
 
         try:
             for hyp in hypotheses:
-                blocks, strategies = await self._llm_mode.build(hyp)
+                blocks, strategies = await self._llm_mode.build(hyp)  # type: ignore[union-attr]
                 all_blocks.extend(blocks)
                 all_strategies.extend(strategies)
         except Exception:

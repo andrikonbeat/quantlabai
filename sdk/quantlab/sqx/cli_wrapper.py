@@ -346,7 +346,7 @@ async def _dispatch_real(
 
     sqcli_binary = _find_sqcli(sqx_install_path)
     if sqcli_binary:
-        license_info = license_preflight(RealExecutor(sqcli_binary))
+        license_info = license_preflight(RealExecutor(sqcli_binary))  # type: ignore[arg-type]
         version_preflight(license_info)
     else:
         logger.warning(
@@ -474,7 +474,7 @@ async def _dispatch_real(
             population=population,
             rankings_min_profit_factor=pf,
             rankings_min_return_dd=return_dd,
-            rankings_min_avg_trades=avg_trades,
+            rankings_min_avg_trades=avg_trades,  # type: ignore[arg-type]
             walk_forward=walk_forward,
             monte_carlo=monte_carlo,
             build_config=build_config,

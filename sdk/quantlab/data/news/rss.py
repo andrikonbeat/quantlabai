@@ -130,7 +130,7 @@ class RSSNewsProvider(NewsProvider):
                     pub_date: datetime | None = None
                     if published:
                         try:
-                            pub_date = datetime(*published[:6], tzinfo=UTC)
+                            pub_date = datetime(*published[:6], tzinfo=UTC)  # type: ignore[misc]
                         except (TypeError, ValueError):
                             pub_date = datetime.now(tz=UTC)
                     src = (

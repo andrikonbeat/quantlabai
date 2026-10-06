@@ -79,7 +79,7 @@ class RetesterStage(Stage):
         if retester is None:  # pragma: no cover - exercised by integration
             from quantlab.phase4.retester import Retester
 
-            retester = Retester(sqx_install_path=self._sqx_install_path)
+            retester = Retester(sqx_install_path=self._sqx_install_path)  # type: ignore[arg-type]
 
         # DSL retest block takes precedence; a CFX path (no DSL block) sources
         # the config from the archive's RetesterData section.
@@ -88,7 +88,7 @@ class RetesterStage(Stage):
         else:
             from quantlab.phase4.retester import RetesterConfig
 
-            config = RetesterConfig.from_cfx(self._cfx_path)
+            config = RetesterConfig.from_cfx(self._cfx_path)  # type: ignore[arg-type]
         # REQ-1 (parameter-justification-matrix): the retest run produces a
         # matrix; a parameter deviating from its retest default without a
         # rationale raises ParameterMatrixError and blocks the run (spec:
@@ -108,7 +108,7 @@ class RetesterStage(Stage):
         result = await retester.run(
             config,
             campaign_name=research_config.campaign,
-            output_dir=self._output_dir,
+            output_dir=self._output_dir,  # type: ignore[arg-type]
         )
         ctx.artifacts["retest_result"] = result
         ctx.artifacts["parameter_matrix"] = parameter_matrix

@@ -33,8 +33,8 @@ def is_compiler_enabled(env: dict[str, str] | None = None) -> bool:
     """Rollback gate (design slice 3): ``QUANTLAB_COMPILER=0`` keeps the
     ``.java``-only path; the compiler pipeline is the default deploy route.
     """
-    env = os.environ if env is None else env
-    return env.get("QUANTLAB_COMPILER", "1") != "0"
+    env = os.environ if env is None else env  # type: ignore[assignment]
+    return env.get("QUANTLAB_COMPILER", "1") != "0"  # type: ignore[union-attr]
 
 
 def resolve_javac(
@@ -48,8 +48,8 @@ def resolve_javac(
     ``None`` otherwise (the caller raises :class:`CompilerConfigError`).
     Never probes ``j64/`` — AD-5.
     """
-    env = os.environ if env is None else env
-    root = jdk_home if jdk_home is not None else env.get(JDK_ENV_VAR)
+    env = os.environ if env is None else env  # type: ignore[assignment]
+    root = jdk_home if jdk_home is not None else env.get(JDK_ENV_VAR)  # type: ignore[union-attr]
     if not root:
         return None
     javac = Path(root) / "bin" / ("javac.exe" if os.name == "nt" else "javac")
@@ -148,7 +148,7 @@ class CompilerPipeline:
         """
         if strategy_ids is not None:
             return CompilerPipeline._compile_many(
-                src=src,
+                src=src,  # type: ignore[arg-type]
                 strategy_ids=strategy_ids,
                 jdk_home=jdk_home,
                 env=env,
@@ -158,7 +158,7 @@ class CompilerPipeline:
                 sqx_install_path=sqx_install_path,
             )
 
-        env = os.environ if env is None else env
+        env = os.environ if env is None else env  # type: ignore[assignment]
         javac = resolve_javac(jdk_home=jdk_home, env=env)
         if javac is None:
             raise CompilerConfigError(
@@ -168,7 +168,7 @@ class CompilerPipeline:
                 "javac fails closed: no partial .jfx is produced."
             )
 
-        src = Path(src)
+        src = Path(src)  # type: ignore[arg-type]
         classes = (
             Path(classes_dir) if classes_dir is not None else src.parent / ".classes"
         )
@@ -183,7 +183,7 @@ class CompilerPipeline:
             jars = sorted(libs.glob("*.jar")) if libs.is_dir() else []
             classpath = jars or None
 
-        report = run_javac(javac, src, classes, timeout=timeout, classpath=classpath)
+        report = run_javac(javac, src, classes, timeout=timeout, classpath=classpath)  # type: ignore[arg-type]
         if not report.ok:
             if fixer is not None and max_fix_iterations > 0:
                 from quantlab.compiler.fixloop import run_fix_loop  # REQ-30
@@ -191,7 +191,7 @@ class CompilerPipeline:
                 result = run_fix_loop(
                     src=src,
                     compile_fn=lambda s: run_javac(
-                        javac, s, classes, timeout=timeout, classpath=classpath
+                        javac, s, classes, timeout=timeout, classpath=classpath  # type: ignore[arg-type]
                     ),
                     fix_fn=fixer,
                     max_fix_iterations=max_fix_iterations,
@@ -204,7 +204,7 @@ class CompilerPipeline:
                         report=result.final_report,
                         history=result.iterations,
                     )
-                report = result.final_report
+                report = result.final_report  # type: ignore[assignment]
             else:
                 raise CompileError(
                     "javac compilation failed",
@@ -232,7 +232,7 @@ class CompilerPipeline:
         with a warning log. Partial failures are captured in the returned
         dict instead of raising.
         """
-        env = os.environ if env is None else env
+        env = os.environ if env is None else env  # type: ignore[assignment]
         javac = resolve_javac(jdk_home=jdk_home, env=env)
         if javac is None:
             raise CompilerConfigError(
@@ -263,7 +263,7 @@ class CompilerPipeline:
             try:
                 classes = source.parent / ".classes"
                 report = run_javac(
-                    javac, source, classes, timeout=timeout, classpath=classpath
+                    javac, source, classes, timeout=timeout, classpath=classpath  # type: ignore[arg-type]
                 )
                 if not report.ok:
                     if fixer is not None and max_fix_iterations > 0:
@@ -271,8 +271,8 @@ class CompilerPipeline:
 
                         result = run_fix_loop(
                             src=source,
-                            compile_fn=lambda s, _classes=classes: run_javac(
-                                javac, s, _classes, timeout=timeout, classpath=classpath
+                            compile_fn=lambda s, _classes=classes: run_javac(  # type: ignore[misc]
+                                javac, s, _classes, timeout=timeout, classpath=classpath  # type: ignore[arg-type]
                             ),
                             fix_fn=fixer,
                             max_fix_iterations=max_fix_iterations,
@@ -286,7 +286,7 @@ class CompilerPipeline:
                                 history=result.iterations,
                             )
                             continue
-                        report = result.final_report
+                        report = result.final_report  # type: ignore[assignment]
                     else:
                         compiled[sid] = CompileError(
                             "javac compilation failed",

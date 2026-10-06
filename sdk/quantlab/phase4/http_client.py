@@ -44,7 +44,7 @@ class CircuitBreaker:
     @property
     def state(self) -> str:
         if self._state == "open":
-            if time.time() - self._last_failure_time > self.recovery_timeout:
+            if time.time() - self._last_failure_time > self.recovery_timeout:  # type: ignore[operator]
                 return "half-open"
         return self._state
 
@@ -274,7 +274,7 @@ class AsyncSQXClient:
                 )
             except httpx.ConnectError as e:
                 await self._circuit_breaker.record_failure()
-                last_exception = e
+                last_exception = e  # type: ignore[assignment]
                 raise JForexConnectionError(
                     self.bind_address,
                     DEFAULT_PORT,
@@ -373,7 +373,7 @@ class AsyncSQXClient:
             raise JForexServerError(resp.status_code, resp.text)
 
         resp.raise_for_status()
-        return json.loads(resp.text)
+        return json.loads(resp.text)  # type: ignore[no-any-return]
 
     async def recompute_portfolio(self) -> dict[str, Any]:
         """Recompute portfolio weights via SQX HTTP API.
@@ -407,7 +407,7 @@ class AsyncSQXClient:
             raise JForexServerError(resp.status_code, resp.text)
 
         resp.raise_for_status()
-        return json.loads(resp.text)
+        return json.loads(resp.text)  # type: ignore[no-any-return]
 
     async def save_portfolio(self, name: str) -> dict[str, Any]:
         """Save portfolio via SQX HTTP API.
@@ -444,7 +444,7 @@ class AsyncSQXClient:
             raise JForexServerError(resp.status_code, resp.text)
 
         resp.raise_for_status()
-        return json.loads(resp.text)
+        return json.loads(resp.text)  # type: ignore[no-any-return]
 
     async def close(self) -> None:
         if self._client:

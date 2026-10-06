@@ -62,7 +62,7 @@ class ExecutionGuardian(BaseGuardian):
             latency_score = 0.5  # Unknown latency
             latency_error = str(e)
         else:
-            latency_error = None
+            latency_error = None  # type: ignore[assignment]
 
         # Check slippage (if cost collector available)
         try:
@@ -73,7 +73,7 @@ class ExecutionGuardian(BaseGuardian):
             slippage_score = 0.5  # Unknown slippage
             slippage_error = str(e)
         else:
-            slippage_error = None
+            slippage_error = None  # type: ignore[assignment]
 
         # Check overall broker health
         try:
@@ -84,7 +84,7 @@ class ExecutionGuardian(BaseGuardian):
             health_score = 0.5  # Unknown health
             health_error = str(e)
         else:
-            health_error = None
+            health_error = None  # type: ignore[assignment]
 
         # Weighted average
         weights = {

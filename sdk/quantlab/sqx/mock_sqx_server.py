@@ -247,19 +247,19 @@ class MockSQXHandler(BaseHTTPRequestHandler):
 
         equity_path = base / "equity.csv"
         with equity_path.open("w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(["timestamp", "equity"])
+            writer = csv.writer(f)  # type: ignore[assignment]
+            writer.writerow(["timestamp", "equity"])  # type: ignore[arg-type]
             eq = 10000.0
             for i in range(10):
                 eq += random.uniform(-100, 150)
-                writer.writerow([f"2024-01-{(i + 1):02d} 00:00:00", round(eq, 2)])
+                writer.writerow([f"2024-01-{(i + 1):02d} 00:00:00", round(eq, 2)])  # type: ignore[arg-type]
 
         stats = {
             "total_trades": len(trades),
-            "net_profit": round(sum(t["pnl"] for t in trades), 2),
+            "net_profit": round(sum(t["pnl"] for t in trades), 2),  # type: ignore[misc]
             "profit_factor": round(
-                abs(sum(t["pnl"] for t in trades if t["pnl"] > 0))
-                / max(abs(sum(t["pnl"] for t in trades if t["pnl"] < 0)), 0.01),
+                abs(sum(t["pnl"] for t in trades if t["pnl"] > 0))  # type: ignore[misc, operator]
+                / max(abs(sum(t["pnl"] for t in trades if t["pnl"] < 0)), 0.01),  # type: ignore[misc, operator]
                 2,
             ),
             "sharpe_ratio": round(random.uniform(0.5, 1.5), 2),

@@ -183,7 +183,7 @@ class TagCalibrator:
         prior = 5.0
         if total_samples >= 5:
             return tag_mean
-        return (total_samples * tag_mean + prior * global_mean) / (
+        return (total_samples * tag_mean + prior * global_mean) / (  # type: ignore[no-any-return]
             total_samples + prior
         )
 

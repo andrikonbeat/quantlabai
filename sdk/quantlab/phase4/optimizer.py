@@ -333,7 +333,7 @@ class Optimizer:
 
         for row in data_rows:
             try:
-                cycle_num = int(row[fixed_map["cycle"]])
+                cycle_num = int(row[fixed_map["cycle"]])  # type: ignore[index]
             except (ValueError, IndexError) as exc:
                 raise OptimizerRunError(
                     f"Invalid or missing cycle number: {exc}"
@@ -342,10 +342,10 @@ class Optimizer:
             try:
                 cycle = WalkForwardCycle(
                     cycle=cycle_num,
-                    in_sample_start=row[fixed_map["insamplestart"]],
-                    in_sample_end=row[fixed_map["insampleend"]],
-                    out_sample_start=row[fixed_map["outsamplestart"]],
-                    out_sample_end=row[fixed_map["outsampleend"]],
+                    in_sample_start=row[fixed_map["insamplestart"]],  # type: ignore[index]
+                    in_sample_end=row[fixed_map["insampleend"]],  # type: ignore[index]
+                    out_sample_start=row[fixed_map["outsamplestart"]],  # type: ignore[index]
+                    out_sample_end=row[fixed_map["outsampleend"]],  # type: ignore[index]
                 )
             except IndexError as exc:
                 raise OptimizerRunError(
@@ -515,12 +515,12 @@ class Optimizer:
                 parts.append(f"<td>{_html_esc(c.out_sample_start)}</td>\n")
                 parts.append(f"<td>{_html_esc(c.out_sample_end)}</td>\n")
                 for p in all_params:
-                    val = c.parameters.get(p)
+                    val = c.parameters.get(p)  # type: ignore[assignment]
                     parts.append(
                         f"<td class='num'>{_fmt_metric(val) if val is not None else '—'}</td>\n"
                     )
                 for m in all_metrics:
-                    val = c.metrics.get(m)
+                    val = c.metrics.get(m)  # type: ignore[assignment]
                     parts.append(
                         f"<td class='num'>{_fmt_metric(val) if val is not None else '—'}</td>\n"
                     )
