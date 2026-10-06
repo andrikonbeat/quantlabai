@@ -8,7 +8,7 @@ enriches the index with campaign metadata, tags, and link relationships.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -321,7 +321,7 @@ class Indexer:
         """Build an enriched index entry from stats data."""
         entry: dict[str, Any] = {
             "campaign_id": campaign_id,
-            "indexed_at": datetime.now().isoformat(),
+            "indexed_at": datetime.now(tz=UTC).isoformat(),
         }
 
         # Extract metrics

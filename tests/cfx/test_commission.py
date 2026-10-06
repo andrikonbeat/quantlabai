@@ -1,9 +1,8 @@
 """Tests for CFX commission/spread models and domain methods."""
 
-import pytest
 
 from quantlab.cfx import BuildTask, SettingsSection
-from quantlab.cfx.models import CfxConfig, CfxArchive
+from quantlab.cfx.models import CfxArchive, CfxConfig
 
 
 def _make_archive() -> CfxArchive:

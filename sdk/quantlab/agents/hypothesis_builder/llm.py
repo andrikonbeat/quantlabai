@@ -18,7 +18,7 @@ from typing import Any
 from quantlab.agents.llm_research_agent import LLMResearchAgent
 from quantlab.agents.parameter_validator import (
     ParameterValidator,
-    ValidationResult as ValidationResult,
+    ValidationResult,
 )
 from quantlab.dsl.models import (
     BuildingBlock,
@@ -26,6 +26,7 @@ from quantlab.dsl.models import (
     ExitRule,
     HypothesisConfig,
     IndicatorConfig,
+    LLMConfig,
     Strategy,
     StrategyDirection,
 )

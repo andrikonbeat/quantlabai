@@ -1,16 +1,11 @@
 """Tests for Reporting CLI."""
 
-import pytest
-import tempfile
-import os
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 import argparse
+from pathlib import Path
+from unittest.mock import Mock, patch
 
-from quantlab.reporting.cli import generate_report_command, add_report_subparser
-from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
-from quantlab.readers.models import Trade, EquityPoint
-from quantlab.stats.models import StatsResult
+import pytest
+from quantlab.reporting.cli import add_report_subparser, generate_report_command
 
 
 class TestReportCLI:
@@ -57,6 +52,37 @@ class TestReportCLI:
 
         assert result == 0
         mock_generate.assert_called_once()
+
+    @patch('quantlab.reporting.cli.KnowledgeStore')
+    @patch('quantlab.reporting.cli.generate_report')
+    def test_generate_report_forwards_benchmark_equity(self, mock_generate, mock_store_class, mock_args, tmp_path):
+        """Test --benchmark CSV is forwarded into ReportConfig.benchmark_equity."""
+        mock_store = Mock()
+        mock_store_class.return_value = mock_store
+
+        benchmark_csv = tmp_path / 'bench.csv'
+        benchmark_csv.write_text(
+            'timestamp,equity\n2024-01-01 10:00,10000\n2024-01-01 11:00,10100\n',
+            encoding='utf-8',
+        )
+        mock_args.benchmark = str(benchmark_csv)
+
+        mock_result = Mock()
+        mock_result.html_path = tmp_path / 'report.html'
+        mock_result.json_path = tmp_path / 'report.json'
+        mock_result.warnings = []
+        mock_result.is_successful.return_value = True
+        mock_generate.return_value = mock_result
+
+        with patch('quantlab.reporting.cli._load_campaign_data') as mock_load:
+            mock_load.return_value = ([], [], Mock())
+
+            result = generate_report_command(mock_args)
+
+        assert result == 0
+        config = mock_generate.call_args[1]['config']
+        assert config.benchmark_equity is not None
+        assert len(config.benchmark_equity) == 2
 
     @patch('quantlab.reporting.cli.KnowledgeStore')
     def test_generate_report_command_campaign_not_found(self, mock_store_class, mock_args):
@@ -127,8 +153,8 @@ class TestLoadCampaignData:
 
     def test_load_campaign_data_basic(self, tmp_path):
         """Test loading basic campaign data."""
-        from quantlab.reporting.cli import _load_campaign_data
         from quantlab.knowledge.store import KnowledgeStore
+        from quantlab.reporting.cli import _load_campaign_data
 
         # Create knowledge lake structure
         store = KnowledgeStore(tmp_path)
@@ -179,8 +205,8 @@ class TestLoadCampaignData:
 
     def test_load_campaign_data_missing_stats(self, tmp_path):
         """Test loading when stats file is missing."""
-        from quantlab.reporting.cli import _load_campaign_data
         from quantlab.knowledge.store import KnowledgeStore
+        from quantlab.reporting.cli import _load_campaign_data
 
         store = KnowledgeStore(tmp_path)
         store.initialize()

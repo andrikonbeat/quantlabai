@@ -594,7 +594,7 @@ class LLMGenerationMonitor:
                         recommended_action=verdict.recommended_action,
                     )
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "LLMGenerationMonitor('%s') notifier send failed: %s",
                     self.campaign_id,

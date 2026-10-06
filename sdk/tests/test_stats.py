@@ -317,7 +317,7 @@ class TestExpectancy:
         Avg loss: (150 + 80 + 200) / 3 = 430/3 ≈ 143.33
         Expectancy: 184.29 * 0.7 - 143.33 * 0.3 ≈ 86.0
         """
-        exp, exp_ratio = engine.expectancy(SAMPLE_TRADES)
+        exp, _exp_ratio = engine.expectancy(SAMPLE_TRADES)
         assert exp == pytest.approx(85.99, rel=0.01)
 
     def test_all_profitable_trades(self) -> None:

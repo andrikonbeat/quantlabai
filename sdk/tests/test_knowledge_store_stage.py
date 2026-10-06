@@ -66,7 +66,7 @@ class TestSQXKnowledgeStoreStage:
     async def test_results_written_under_structured_campaign_results(
         self, tmp_path: Path
     ) -> None:
-        ctx, lake, export_src = _make_context(tmp_path)
+        ctx, lake, _export_src = _make_context(tmp_path)
         await SQXKnowledgeStoreStage().execute(ctx)
 
         dest = lake / "structured" / "MyCampaign" / "results" / "backtest.csv"

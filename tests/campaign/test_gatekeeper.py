@@ -16,17 +16,13 @@ import asyncio
 from pathlib import Path
 
 import pytest
-
 from quantlab.campaign.delegation import (
-    PHASES,
     PhaseDirective,
     PhaseResult,
-    _next_phase_id,
-    validate_phase_result,
 )
 
 # The gatekeeper module does not exist yet — this import is the RED trigger.
-from quantlab.campaign.gatekeeper import (  # noqa: F401
+from quantlab.campaign.gatekeeper import (
     GatekeeperError,
     GatekeeperHalt,
     run_post_phase_gatekeeper,

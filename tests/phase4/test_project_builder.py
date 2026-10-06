@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-import re
-from xml.etree import ElementTree
-
 import pytest
-
 from quantlab.sqx.project_builder import (
+    _BUILD_CONFIG_MAP,
     BuildConfig,
     _apply_build_config,
-    _BUILD_CONFIG_MAP,
     _format_build_config_value,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Fixtures — minimal XML snippets mimicking template structure

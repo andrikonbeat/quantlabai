@@ -81,7 +81,7 @@ def _check_schema(
     for path in files:
         try:
             params.append(KbParameter.from_yaml(path.read_text(encoding="utf-8")))
-        except Exception as exc:  # noqa: BLE001 - report any schema failure
+        except Exception as exc:
             errors.append(f"Schema violation: {path.parent.name}/{path.stem}: {exc}")
     return params, len(files)
 

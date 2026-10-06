@@ -1,6 +1,5 @@
 """Tests for dashboard Jinja2 templates render correctly."""
 
-import pytest
 
 
 class TestTemplateRendering:

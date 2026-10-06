@@ -50,7 +50,6 @@ from quantlab.sqx.mock_sqx_server import MockSQXServer
 from quantlab.sqx.project_builder import (
     BuildConfig,
     create_project,
-    remove_project as remove_project,
 )
 
 logger = logging.getLogger(__name__)
@@ -380,7 +379,7 @@ async def _dispatch_real(
     cfg_dict = config if isinstance(config, dict) else vars(config)
     symbol = _get_config_value(cfg_dict, "market", "EURUSD")
     timeframe = _get_config_value(cfg_dict, "timeframe", "H1")
-    campaign_name = _get_config_value(cfg_dict, "campaign", campaign_id)
+    _campaign_name = _get_config_value(cfg_dict, "campaign", campaign_id)
 
     # Extract WF/MC flags for project builder and baseline computation
     walk_forward = bool(_get_config_value(cfg_dict, "walk_forward", True))
@@ -411,7 +410,7 @@ async def _dispatch_real(
     for c in criteria:
         c_dict = c if isinstance(c, dict) else vars(c) if hasattr(c, "__dict__") else {}
         metric = c_dict.get("metric", "")
-        op = c_dict.get("operator", ">=")
+        _op = c_dict.get("operator", ">=")
         val = float(c_dict.get("value", 0))
         if "profit" in metric.lower():
             pf = val
@@ -1019,7 +1018,7 @@ def _build_gate_writer(
                 f"campaign_{event.event_type}",
                 {"event": event.to_dict()},
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "Gate writer for '%s' failed (%s): %s",
                 campaign_id,

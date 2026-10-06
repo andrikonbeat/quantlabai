@@ -2,55 +2,60 @@
 
 ## Purpose
 
-Reads structured SQX parameter documentation from `structured/sqx-kb/` and exposes a programmatic interface for indicator descriptions, valid ranges, and enum values, replacing hardcoded config maps.
+Reads structured SQX parameter metadata and general official documentation from the Knowledge Lake, with transparent fallback when YAML is missing.
 
 ## Requirements
 
-### Requirement: REQ-F2-01 YAML Schema Loading
+### Requirement: Parameter YAML Lookup
 
-The system MUST read parameter metadata from `structured/sqx-kb/{sqx_version}/parameters/{tab}/{param}.yaml` and expose:
-- get_valid_range(param) → (min, max) | None
-- get_enum_values(param) → list[str] | None
-- get_description(param) → str
+The provider MUST read parameter metadata from `structured/sqx-kb/{ver}/parameters/{tab}/{param}.yaml` and return type, range, enum values, and description. When YAML is missing, it MUST probe `_BUILD_CONFIG_MAP` for type and range hints without crashing.
 
-YAML files MUST include fields: name, type, range, enum_values, description, default.
+#### Scenario: YAML-backed lookup returns metadata
 
-#### Scenario: Valid YAML loads
+- GIVEN a parameter YAML exists for `RSI/period` under `144.2953`
+- WHEN `get_valid_range("RSI", "period", "144.2953")` is called
+- THEN the declared `(min, max)` tuple is returned
 
-- GIVEN `structured/sqx-kb/144.2953/parameters/Trading options/Maximum Trades Per Day.yaml`
-- WHEN SQXDocProvider.load_parameter() runs
-- THEN get_valid_range(), get_enum_values(), and get_description() return the YAML values
+#### Scenario: Missing YAML falls back to template defaults
 
-#### Scenario: Missing YAML falls back
+- GIVEN no YAML exists for the requested parameter
+- WHEN the provider probes `_BUILD_CONFIG_MAP`
+- THEN a warning is emitted and inferred metadata is returned
 
-- GIVEN no YAML exists for a parameter
-- WHEN SQXDocProvider.load_parameter() runs
-- THEN it probes _BUILD_CONFIG_MAP for type and range hints
-- AND logs a warning that YAML is missing
+### Requirement: General Doc Lookup (ADDED)
 
-### Requirement: REQ-F2-02 Version Awareness
+The provider MUST expose doc lookup beyond parameter YAML — `get_doc(kind, name, sqx_version)` for `block`, `api`, and `cheat-sheet` kinds backed by ingested docs. Parameter YAML behavior (REQ-F2-01..03) is unchanged.
 
-The system MUST isolate documentation by SQX version. The provider SHALL accept sqx_version in all lookups and MUST NOT serve parameter data from a different version.
+#### Scenario: block doc resolves to Markdown file
 
-#### Scenario: Version isolation
+- GIVEN `structured/sqx-kb/144.2953/docs/blocks/rsi.md` exists
+- WHEN `get_doc("block", "RSI", "144.2953")` is called
+- THEN a `DocRef` is returned with `kind="block"`, `path` pointing to the file, and `content` containing the Markdown body
 
-- GIVEN docs exist for 144.2953 and 145.0
-- WHEN SQXDocProvider.get_description("RSI", sqx_version="144.2953") runs
-- THEN the 144.2953 description is returned
-- AND the 145.0 description is not returned
+#### Scenario: missing doc returns None with warning
 
-### Requirement: REQ-F2-03 Fallback Probing
+- GIVEN no doc exists for the requested kind/name/version
+- WHEN `get_doc("api", "Unknown", "144.2953")` is called
+- THEN `None` is returned and a warning is logged
 
-When YAML is missing, the system MUST probe _BUILD_CONFIG_MAP (if available) to infer:
-- type: int | float | bool | str
-- range: (min, max) from known config constraints
-- enum_values: from known option sets
+#### Scenario: version isolation applies
 
-Probing MUST be transparent and MUST NOT invent parameter semantics.
+- GIVEN docs exist for `144.2953` but not `144.4000`
+- WHEN `get_doc("block", "RSI", "144.4000")` is called
+- THEN `None` is returned (no cross-version leakage)
 
-#### Scenario: Fallback infers type
+### Requirement: KB-Driven Indicator Ranges (ADDED)
 
-- GIVEN _BUILD_CONFIG_MAP contains {"Maximum Trades Per Day": {"type": "int", "min": 0, "max": 100}}
-- WHEN YAML is missing for that parameter
-- THEN SQXDocProvider returns type=int, range=(0, 100)
-- AND a fallback warning is logged
+The provider MUST expose `get_indicator_range(indicator, sqx_version)` returning a mapping of parameter names to `(min, max)` tuples for known indicators, or `None` when the indicator is unknown.
+
+#### Scenario: known indicator returns ranges
+
+- GIVEN `RSI` is a known indicator with documented ranges
+- WHEN `get_indicator_range("RSI", "144.2953")` is called
+- THEN a dict like `{"period": (2.0, 200.0)}` is returned
+
+#### Scenario: unknown indicator returns None
+
+- GIVEN `FOOBAR` is not in the indicator registry
+- WHEN `get_indicator_range("FOOBAR", "144.2953")` is called
+- THEN `None` is returned

@@ -944,7 +944,7 @@ class CampaignMonitor:
                         event_type=event.event_type,
                     )
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "CampaignMonitor('%s') notifier send failed: %s",
                     self._campaign_id,

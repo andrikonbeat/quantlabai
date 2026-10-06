@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
-
+from quantlab.phase4.errors import OptimizerRunError
 from quantlab.phase4.optimizer import (
+    OptimizationResult,
     Optimizer,
     OptimizerConfig,
-    OptimizationResult,
     WalkForwardCycle,
 )
-from quantlab.phase4.errors import OptimizerRunError
-
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 

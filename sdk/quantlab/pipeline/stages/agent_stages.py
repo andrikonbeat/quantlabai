@@ -462,12 +462,12 @@ class GuardianEvaluationAgentStage(GuardianEvaluationStage):
     def _build_guardians(
         self, research_config: dict[str, Any], pipeline_config: dict[str, Any]
     ) -> list[BaseGuardian]:
-        market_context = (
+        _market_context = (
             research_config.get("market_context")
             if isinstance(research_config, dict)
             else {}
         )
-        capital_constraints = (
+        _capital_constraints = (
             research_config.get("capital_constraints")
             if isinstance(research_config, dict)
             else {}

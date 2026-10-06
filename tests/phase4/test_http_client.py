@@ -5,18 +5,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
-from quantlab.phase4.http_client import (
-    AsyncSQXClient,
-    CircuitBreaker,
-    SQXSessionLock,
-)
 from quantlab.phase4.errors import (
     JForexConnectionError,
     JForexServerError,
     JForexStrategyNotFoundError,
     SQXBindingError,
-    SQXSessionLockError,
+)
+from quantlab.phase4.http_client import (
+    AsyncSQXClient,
+    CircuitBreaker,
+    SQXSessionLock,
 )
 
 
@@ -387,6 +385,101 @@ class TestAsyncSQXClientExportSourcecode:
 
             with pytest.raises(httpx.HTTPStatusError):
                 await client.export_sourcecode("s1")
+
+
+class TestAsyncSQXClientPortfolioEndpoints:
+    """REQ-602: AsyncSQXClient portfolio methods used by PortfolioComposer.
+
+    These methods are part of the direct HTTP API path for portfolio weight
+    optimization, distinct from the command-based /call API.
+    """
+
+    @pytest.mark.asyncio
+    async def test_load_strategy_returns_json(self):
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = '{"status":"loaded","strategy_id":"s1"}'
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            result = await client.load_strategy("s1")
+
+        assert result == {"status": "loaded", "strategy_id": "s1"}
+        call_url = mock_get.call_args[0][0]
+        assert "/portfolio/load?id=s1" in call_url
+
+    @pytest.mark.asyncio
+    async def test_load_strategy_404_raises(self):
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.text = "Not found"
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            with pytest.raises(JForexStrategyNotFoundError, match="s1"):
+                await client.load_strategy("s1")
+
+    @pytest.mark.asyncio
+    async def test_recompute_portfolio_returns_weights(self):
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = '{"weights":{"a":0.3,"b":0.7}}'
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            result = await client.recompute_portfolio()
+
+        assert result == {"weights": {"a": 0.3, "b": 0.7}}
+        assert "/portfolio/recompute" in mock_get.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_recompute_portfolio_5xx_raises(self):
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_resp.text = "Server error"
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            with pytest.raises(JForexServerError, match="500"):
+                await client.recompute_portfolio()
+
+    @pytest.mark.asyncio
+    async def test_save_portfolio_returns_path(self):
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.text = '{"path":"/tmp/p.cfx"}'
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_resp
+
+            result = await client.save_portfolio("my-portfolio")
+
+        assert result == {"path": "/tmp/p.cfx"}
+        assert "/portfolio/save?name=my-portfolio" in mock_get.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_save_portfolio_network_failure_raises(self):
+        client = AsyncSQXClient("http://127.0.0.1:5050")
+
+        with patch.object(httpx.AsyncClient, "get", new_callable=AsyncMock) as mock_get:
+            mock_get.side_effect = httpx.ConnectError("connection refused")
+
+            with pytest.raises(JForexConnectionError, match="Connection failed"):
+                await client.save_portfolio("my-portfolio")
 
 
 class TestSQXSessionLockIntegration:

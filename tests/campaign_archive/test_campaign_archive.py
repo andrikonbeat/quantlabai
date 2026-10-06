@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 import pytest
-
 from quantlab.gates.models import GateDecision, GateDecisionAction
 from quantlab.guardian.feedback import FeedbackSignals, record
 from quantlab.guardian.models import StrategyState

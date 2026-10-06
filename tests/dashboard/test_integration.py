@@ -1,6 +1,5 @@
 """Integration tests for the dashboard — full request/response cycles."""
 
-import pytest
 
 from .seed import seed_campaign, seed_export_data
 

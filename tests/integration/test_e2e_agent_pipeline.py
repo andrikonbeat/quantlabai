@@ -12,20 +12,17 @@ arguments already present on the stage classes.
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-
 from quantlab.pipeline.base import Pipeline, PipelineContext
-from quantlab.pipeline.config import MultiAgentPipelineConfig, StageConfig
+from quantlab.pipeline.config import StageConfig
 from quantlab.pipeline.registry import StageRegistry
 from quantlab.pipeline.runner import PipelineRunner
 from quantlab.pipeline.stages.gate_interceptor import (
     FallbackPolicy,
     GateInterceptorStage,
 )
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

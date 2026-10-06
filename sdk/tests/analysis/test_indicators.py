@@ -10,10 +10,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-
 from quantlab.analysis.indicators import (
     IndicatorEngine,
-    IndicatorResult as IndicatorResult,
 )
 from quantlab.data.market import Bar
 

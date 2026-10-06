@@ -3,13 +3,10 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
-
 from quantlab.agents.llm_research_agent import LLMResearchAgent
-from quantlab.dsl.models import LLMConfig, HypothesisConfig
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

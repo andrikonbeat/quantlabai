@@ -485,7 +485,7 @@ class TestRunMethod:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
         assert (
             ctx.artifacts["benchmark_comparison"]["benchmark_verdict"] == "OUTPERFORMS"
         )

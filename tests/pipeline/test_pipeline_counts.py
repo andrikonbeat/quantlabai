@@ -16,7 +16,6 @@ Strict TDD: written first — RED until the registry lookup contract and
 from __future__ import annotations
 
 import pytest
-
 from quantlab.agents.research_director import ResearchDirector
 from quantlab.dsl.models import (
     IterationConfig,

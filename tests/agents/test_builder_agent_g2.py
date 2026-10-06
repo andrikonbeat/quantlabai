@@ -6,7 +6,6 @@ import zipfile
 from io import BytesIO
 
 import pytest
-
 from quantlab.agents.builder_agent import BuilderAgent
 from quantlab.dsl.models import ResearchConfig, Strategy
 

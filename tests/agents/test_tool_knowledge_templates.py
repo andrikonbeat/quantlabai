@@ -10,8 +10,6 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
-
 from quantlab.agents.prompts import PROMPT_TEMPLATES, TOOL_KNOWLEDGE_TEMPLATES
 
 

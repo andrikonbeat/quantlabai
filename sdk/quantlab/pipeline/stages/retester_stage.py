@@ -10,7 +10,10 @@ never triggers a dispatch or deploy.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from quantlab.phase4.retester import Retester, RetesterConfig
 
 from quantlab.dsl.models import ResearchConfig, RetestBlock
 from quantlab.pipeline.base import PipelineContext, Stage

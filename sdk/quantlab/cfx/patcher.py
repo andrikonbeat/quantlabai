@@ -9,7 +9,6 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING, Any
 
-
 from quantlab.cfx.errors import CfxParseError
 from quantlab.cfx.models import (
     AddAdvancedRankingConditionInstruction,
@@ -428,7 +427,7 @@ class CfxPatcher:
         self, instruction: SetPortfolioSettingsInstruction
     ) -> None:
         if instruction.weight_constraints is not None:
-            for sid, constraint in instruction.weight_constraints.items():
+            for sid, constraint in instruction.weight_constraints.items():  # noqa: PERF102
                 if not sid or not sid.strip():
                     raise ValidationError(
                         "SetPortfolioSettingsInstruction: strategy_id must not be empty"
@@ -682,7 +681,7 @@ class CfxPatcher:
         if self._task.data:
             # Find existing timeframe keys and add new one
             existing_keys = [
-                k for k in self._task.data.settings.keys() if k.startswith("Timeframe")
+                k for k in self._task.data.settings.keys() if k.startswith("Timeframe")  # noqa: SIM118
             ]
             next_idx = len(existing_keys) + 1
             self._task.data.settings[f"Timeframe{next_idx}@value"] = tf
@@ -691,7 +690,7 @@ class CfxPatcher:
         if self._task.what_to_build:
             existing_keys = [
                 k
-                for k in self._task.what_to_build.settings.keys()
+                for k in self._task.what_to_build.settings.keys()  # noqa: SIM118
                 if k.startswith("Timeframe")
             ]
             next_idx = len(existing_keys) + 1
@@ -787,7 +786,7 @@ class CfxPatcher:
             self._task.rankings = SettingsSection(name="Rankings", settings={})
         # Find next available criterion index - count unique criterion prefixes
         existing_prefixes = set()
-        for k in self._task.rankings.settings.keys():
+        for k in self._task.rankings.settings.keys():  # noqa: SIM118
             if k.startswith("Criterion"):
                 # Extract the prefix (e.g., "Criterion1" from "Criterion1@metric")
                 prefix = k.split("@")[0]

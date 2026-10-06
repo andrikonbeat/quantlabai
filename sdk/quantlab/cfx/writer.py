@@ -33,7 +33,6 @@ from quantlab.cfx.models import (
     ResourceConfig,
     RetesterDataConfig,
     SettingsSection,
-    TaskMeta as TaskMeta,
     WalkForwardConfig,
 )
 

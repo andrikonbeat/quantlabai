@@ -9,9 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
-from quantlab.data.demo.store import DemoWindowStore, StateCorruptionError
+from quantlab.data.demo.store import DemoWindowStore
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.demo_stage import DemoStage
 

@@ -41,19 +41,19 @@ from quantlab.sqx.llm_generation_monitor import (
 
 def make_snapshot(**overrides: object) -> MonitorSnapshot:
     """Build a realistic MonitorSnapshot for tests."""
-    base = dict(
-        status_text="Strategies generated  10\nGeneration: 3\nIn databank 1",
-        generated_count=10,
-        databank_counts={"Results": 2, "Strategies": 2},
-        elapsed_s=123.4,
-        baseline={
+    base = {
+        "status_text": "Strategies generated  10\nGeneration: 3\nIn databank 1",
+        "generated_count": 10,
+        "databank_counts": {"Results": 2, "Strategies": 2},
+        "elapsed_s": 123.4,
+        "baseline": {
             "generations": 80,
             "population": 200,
             "walk_forward": True,
             "monte_carlo": True,
             "criteria": [{"metric": "profit_factor", "operator": ">", "value": 1.3}],
         },
-    )
+    }
     base.update(overrides)
     return MonitorSnapshot(**base)
 

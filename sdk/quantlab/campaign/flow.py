@@ -15,6 +15,7 @@ pipeline: presence plus the post-deploy boundary and loop-tail order.
 
 from __future__ import annotations
 
+import itertools
 from collections.abc import Sequence
 
 __all__ = [
@@ -203,7 +204,7 @@ def assert_flow_segments(
     #    (the monitor phase resolves to its bound stage — ADR-3).
     boundary = ("deploy", "demo", "archive", "live_ops", "monitor")
     resolved_boundary = [_present_stage(s, names) for s in boundary]
-    for earlier, later in zip(resolved_boundary, resolved_boundary[1:]):
+    for earlier, later in itertools.pairwise(resolved_boundary):
         if names.index(earlier) >= names.index(later):
             raise FlowIntegrityError(
                 "flow-integrity error: boundary reorder — "
@@ -215,7 +216,7 @@ def assert_flow_segments(
     for stage in ("retester", "optimizer"):
         if stage in present:
             tail.append(stage)
-    for earlier, later in zip(tail, tail[1:]):
+    for earlier, later in itertools.pairwise(tail):
         if names.index(earlier) >= names.index(later):
             raise FlowIntegrityError(
                 "flow-integrity error: loop-tail reorder — "

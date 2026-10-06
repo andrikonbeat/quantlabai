@@ -8,14 +8,11 @@ The guard must make silent simulation impossible:
 
 from __future__ import annotations
 
-import asyncio
-import os
 import urllib.parse
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-
 from quantlab.dsl.models import LLMConfig
 from quantlab.gates.notifiers import ConsoleNotifier, WebhookNotifier
 from quantlab.sqx.cli_wrapper import dispatch_campaign, mock_mode_guard

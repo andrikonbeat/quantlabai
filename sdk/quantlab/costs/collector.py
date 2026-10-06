@@ -44,8 +44,11 @@ class CostCollector:
 
     # ── Slippage ─────────────────────────────────────────────────────────────────
 
-    def get_recent_slippage(self, symbol: str) -> float:
+    def get_recent_slippage(self, symbol: str | None = None) -> float:
         """Return current slippage in pips for a symbol.
+
+        Args:
+            symbol: Trading symbol. Currently unused; kept for forward compatibility.
 
         Delegates to the engine's profile if available; otherwise returns
         a conservative default.

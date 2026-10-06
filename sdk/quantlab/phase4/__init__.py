@@ -94,6 +94,7 @@ _ORCHESTRATOR_IMPORTED = False
 
 def __getattr__(name: str) -> Any:
     global _ORCHESTRATOR_IMPORTED
+    global _ORCHESTRATOR_IMPORTED  # noqa: PLW0602
     if name in {
         "CampaignOrchestrator",
         "CampaignConfig",

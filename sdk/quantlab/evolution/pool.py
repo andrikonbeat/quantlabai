@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from quantlab.evolution.models import CandidateStatus, EvolutionCandidate
@@ -144,7 +144,7 @@ class CandidatePool:
         updated = candidate.model_copy(
             update={
                 "status": CandidateStatus.PROMOTED,
-                "promoted_at": datetime.now(),
+                "promoted_at": datetime.now(tz=UTC),
             }
         )
         self.add(updated)
@@ -159,7 +159,7 @@ class CandidatePool:
         Returns:
             Number of removed candidates.
         """
-        now = datetime.now()
+        now = datetime.now(tz=UTC)
         removed = 0
         for candidate in self.load_all():
             age = (now - candidate.created_at).days

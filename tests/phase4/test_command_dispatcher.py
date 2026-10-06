@@ -7,7 +7,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from quantlab.phase4.command_dispatcher import CampaignStatus, CommandDispatcher
 from quantlab.phase4.errors import (
     JForexConnectionError,
@@ -17,7 +16,6 @@ from quantlab.phase4.http_client import (
     AsyncSQXClient,
     SQXSessionLock,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -3,7 +3,6 @@
 import pytest
 from pydantic import ValidationError
 
-
 # ── CommissionSchema tests ─────────────────────────────────────────
 
 

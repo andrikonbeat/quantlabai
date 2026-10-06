@@ -11,7 +11,6 @@ enum value.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.agents.deployment_agent import (
     DeploymentResult,
     DeploymentStatus,

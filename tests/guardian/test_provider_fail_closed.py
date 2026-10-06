@@ -14,7 +14,6 @@ Strict TDD: written first — RED until Slice A lands.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.guardian import (
     CapitalGuardian,
     ExecutionGuardian,

@@ -6,10 +6,7 @@ expected stage schema, artifact contracts, and gate positions.
 
 from __future__ import annotations
 
-import os
-
 import pytest
-
 from quantlab.agents.builder_agent import BuilderAgent
 
 

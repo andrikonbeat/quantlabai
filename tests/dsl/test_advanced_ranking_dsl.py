@@ -8,7 +8,6 @@ SQX CFX export while still accepting idiomatic Python field names.
 """
 
 import pytest
-
 from quantlab.cfx.models import AdvancedRankingCondition, ColumnValue, DataRangeParts
 from quantlab.dsl.models import (
     AdvancedRankingFilter,

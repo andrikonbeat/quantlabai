@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from quantlab.knowledge.models import CampaignSummary as CampaignSummary
 from quantlab.knowledge.query import QueryBuilder
 from quantlab.knowledge.store import KnowledgeStore
 

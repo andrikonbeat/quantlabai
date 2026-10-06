@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from quantlab.broker.protocol import BrokerAdapter as BrokerAdapter
 from quantlab.jforex.config import JForexCredentials
 
 

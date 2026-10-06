@@ -162,16 +162,16 @@ def _load_campaign_data(
     raw_trades = data.get("trades", [])
     for t in raw_trades:
         if isinstance(t, dict):
-            from datetime import datetime
+            from datetime import UTC, datetime
 
             trades.append(
                 Trade(
                     entry_time=datetime.fromisoformat(t["entry_time"])
                     if "entry_time" in t
-                    else datetime.now(),
+                    else datetime.now(tz=UTC),
                     exit_time=datetime.fromisoformat(t["exit_time"])
                     if "exit_time" in t
-                    else datetime.now(),
+                    else datetime.now(tz=UTC),
                     direction=t.get("direction", "long"),
                     lots=float(t.get("lots", 1.0)),
                     profit=float(t.get("profit", 0.0)),
@@ -185,13 +185,13 @@ def _load_campaign_data(
     raw_equity = data.get("equity", [])
     for e in raw_equity:
         if isinstance(e, dict):
-            from datetime import datetime
+            from datetime import UTC, datetime
 
             equity.append(
                 EquityPoint(
                     timestamp=datetime.fromisoformat(e["timestamp"])
                     if "timestamp" in e
-                    else datetime.now(),
+                    else datetime.now(tz=UTC),
                     equity=float(e.get("equity", 0.0)),
                 )
             )

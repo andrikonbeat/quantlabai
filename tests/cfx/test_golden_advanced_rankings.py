@@ -43,7 +43,6 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import pytest
-
 from quantlab.cfx.reader import CfxReader
 from quantlab.cfx.writer import CfxWriter
 
@@ -152,7 +151,7 @@ class TestFixtureIsRealSqxEvidence:
             "ReturnDDRatio"
         )
         assert [c.tag for c in rankings.find("AutomaticDismissal")] == [
-            f"Problem" for _ in range(10)
+            "Problem" for _ in range(10)
         ]
         assert rankings.find("StopCondition").get("restartCount") == "5"
 

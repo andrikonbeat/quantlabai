@@ -11,7 +11,10 @@ plus a human gate — never a re-dispatch (D4).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from quantlab.phase4.optimizer import Optimizer, OptimizerConfig
 
 from quantlab.dsl.models import OptimizeBlock, ResearchConfig
 from quantlab.pipeline.base import PipelineContext, Stage

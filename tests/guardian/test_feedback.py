@@ -9,13 +9,10 @@ the feedback path NEVER alters human gates or the flow order (REQ-34 scenario
 
 from __future__ import annotations
 
-import asyncio
-
-import pytest
-
 from dataclasses import fields
 
-from quantlab.gates.models import GateDecisionAction, HUMAN_GATE_IDS
+import pytest
+from quantlab.gates.models import HUMAN_GATE_IDS, GateDecisionAction
 from quantlab.gates.orchestrator import HumanGateOrchestrator
 from quantlab.guardian import feedback
 from quantlab.guardian.feedback import (

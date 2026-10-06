@@ -17,18 +17,34 @@ def test_guardian_submodule_imports():
     """Test that we can import the submodules."""
     from quantlab.guardian import (
         BaseGuardian as BaseGuardian,
+    )
+    from quantlab.guardian import (
         CapitalGuardian as CapitalGuardian,
+    )
+    from quantlab.guardian import (
         ExecutionGuardian as ExecutionGuardian,
+    )
+    from quantlab.guardian import (
         GuardianResult as GuardianResult,
+    )
+    from quantlab.guardian import (
         GuardianStatus,
         GuardianType,
-        MarketGuardian as MarketGuardian,
         MetaGuardianConfig,
-        MetaGuardianOrchestrator as MetaGuardianOrchestrator,
         PortfolioState,
-        QualityGuardian as QualityGuardian,
-        RiskGuardian as RiskGuardian,
         StrategyState,
+    )
+    from quantlab.guardian import (
+        MarketGuardian as MarketGuardian,
+    )
+    from quantlab.guardian import (
+        MetaGuardianOrchestrator as MetaGuardianOrchestrator,
+    )
+    from quantlab.guardian import (
+        QualityGuardian as QualityGuardian,
+    )
+    from quantlab.guardian import (
+        RiskGuardian as RiskGuardian,
     )
 
     # Verify they're the right types

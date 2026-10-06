@@ -18,7 +18,6 @@ import pytest
 
 from quantlab.agents.deployment_agent import (
     DeploymentAgent,
-    DeploymentResult as DeploymentResult,
 )
 from quantlab.pipeline.base import PipelineContext
 
@@ -130,7 +129,7 @@ class TestDeploymentAgentPackaging:
         WHEN run() is called
         THEN packaging proceeds and returns a JAR path.
         """
-        tmp = tempfile.NamedTemporaryFile(suffix=".cfx", delete=False)
+        tmp = tempfile.NamedTemporaryFile(suffix=".cfx", delete=False)  # noqa: SIM115
         tmp.write(_MINIMAL_CFX)
         tmp.close()
         try:

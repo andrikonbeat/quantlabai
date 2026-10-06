@@ -1,7 +1,7 @@
 """Pipeline result and history models."""
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
@@ -155,7 +155,7 @@ class PipelineRun:
         )
         run.started_at = min(
             (s.started_at for s in result.stages if s.started_at),
-            default=datetime.now(),
+            default=datetime.now(tz=UTC),
         )
         run.completed_at = max(
             (s.completed_at for s in result.stages if s.completed_at), default=None

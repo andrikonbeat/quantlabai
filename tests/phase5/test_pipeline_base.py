@@ -1,8 +1,8 @@
 """Tests for pipeline core: Stage ABC, Pipeline, PipelineContext."""
 
 import pytest
-from quantlab.pipeline.base import PipelineContext, Pipeline, Stage
-from quantlab.pipeline.models import StageStatus, StageResult, PipelineResult
+from quantlab.pipeline.base import Pipeline, PipelineContext, Stage
+from quantlab.pipeline.models import PipelineResult, StageResult, StageStatus
 from quantlab.pipeline.runner import PipelineRunner
 
 

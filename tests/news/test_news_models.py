@@ -38,7 +38,7 @@ class TestNewsItem:
             published_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
             summary="X",
         )
-        with pytest.raises(AttributeError):  # noqa: PT012
+        with pytest.raises(AttributeError):
             item.title = "Changed"  # type: ignore[misc]
 
 class TestWebResult:
@@ -56,9 +56,9 @@ class TestWebResult:
         r = WebResult(
             title="Frozen", url="https://example.com", snippet="X", source="S"
         )
-        with pytest.raises(AttributeError):  # noqa: PT012
+        with pytest.raises(AttributeError):
             r.title = "Changed"  # type: ignore[misc]
 
 
 # Need pytest for the frozen test
-import pytest  # noqa: E402 (import after usage OK for test helper)
+import pytest

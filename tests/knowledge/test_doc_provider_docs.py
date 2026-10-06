@@ -15,9 +15,7 @@ import logging
 from pathlib import Path
 
 import pytest
-
 from quantlab.knowledge.sqX_doc_provider import DocRef, SQXDocProvider
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

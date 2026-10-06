@@ -86,7 +86,7 @@ def _make_news_items(n: int = 2) -> list[NewsItem]:
             title=f"News {i}",
             url=f"https://news.example.com/{i}",
             source="Yahoo Finance",
-            published_date=datetime(2026, 7, 30),
+            published_date=datetime(2026, 7, 30),  # noqa: DTZ001
             summary=f"Summary for news {i}",
         )
         for i in range(n)
@@ -250,7 +250,7 @@ class TestFetchDataNews:
                 mock_rss = AsyncMock()
                 mock_get_rss.return_value = mock_rss
 
-                data = await agent.fetch_data(
+                _data = await agent.fetch_data(
                     objective="test",
                     market_context={},  # no market, no ticker → no RSS
                 )

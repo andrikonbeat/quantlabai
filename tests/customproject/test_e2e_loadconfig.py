@@ -15,7 +15,7 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import pytest
-
+from quantlab.cfx.writer import CfxWriter
 from quantlab.customproject.generator import generate_cfx_archive
 from quantlab.customproject.models import (
     CustomProject,
@@ -25,7 +25,6 @@ from quantlab.customproject.models import (
     GoToTask,
 )
 from quantlab.customproject.validator import ValidationError, validate_golden
-from quantlab.cfx.writer import CfxWriter
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SQX_ROOT = Path.home() / "Proyectos" / "SQX_144_2953_linux_20260601"

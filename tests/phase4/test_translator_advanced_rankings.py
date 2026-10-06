@@ -10,7 +10,6 @@ element carrying both lanes.
 from xml.etree import ElementTree
 
 import pytest
-
 from quantlab.cfx.writer import _serialise_task
 from quantlab.dsl.models import (
     AcceptanceCriterion,

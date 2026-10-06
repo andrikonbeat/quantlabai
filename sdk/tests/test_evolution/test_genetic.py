@@ -19,7 +19,6 @@ from quantlab.evolution.genetic import (
     single_point_crossover,
     tournament_select,
 )
-from quantlab.evolution.models import EvolutionCandidate as EvolutionCandidate
 
 # ── Mutation operator tests ──────────────────────────────────────────
 
@@ -222,7 +221,7 @@ class TestCfxParsing:
 
     def test_extract_param_ranges(self):
         params = extract_numeric_params(MINIMAL_CFX)
-        for key, (default, lo, hi) in params.items():
+        for key, (default, lo, hi) in params.items():  # noqa: PERF102
             assert lo <= default <= hi
             assert lo < hi
 
@@ -232,7 +231,7 @@ class TestCfxParsing:
         assert len(opt_keys) >= 2
         # MA_Period: default=step=0.5, min=5, max=50
         ma_key = next(k for k in opt_keys if "MA_Period" in k)
-        default, lo, hi = params[ma_key]
+        _default, lo, hi = params[ma_key]
         assert abs(lo - 5.0) < 1e-6
         assert abs(hi - 50.0) < 1e-6
 
@@ -241,7 +240,7 @@ class TestCfxParsing:
         params = extract_numeric_params(MINIMAL_CFX)
         # Modify one param and check output
         if params:
-            key = list(params.keys())[0]
+            key = next(iter(params.keys()))
             modified = {key: 99.0}
             xml_out = apply_params_to_cfx(MINIMAL_CFX, modified)
             assert "99" in xml_out

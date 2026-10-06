@@ -4,14 +4,12 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
-
+from quantlab.phase4.errors import PortfolioOptimizationError
 from quantlab.phase4.portfolio_composer import (
     PortfolioComposer,
     PortfolioWeightResult,
     WeightResult,
 )
-from quantlab.phase4.errors import PortfolioOptimizationError
-
 
 # ── Dataclass unit tests ──────────────────────────────────────────────────────
 

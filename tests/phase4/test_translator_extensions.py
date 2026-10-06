@@ -1,22 +1,20 @@
 """Tests for Phase 4 translator extensions — Portfolio/Optimizer/Retester CFX generation."""
 
+import tempfile
 import zipfile
 from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree
 
 import pytest
-import tempfile
-
 from quantlab.cfx import CfxReader, CfxWriter
+from quantlab.tools.exceptions import TranslationError
 from quantlab.translate import (
     CfxArchive,
-    generate_portfolio_cfx_archive,
     generate_optimizer_cfx_archive,
+    generate_portfolio_cfx_archive,
     generate_retester_cfx_archive,
 )
-from quantlab.tools.exceptions import TranslationError
-
 
 # ── Helpers ────────────────────────────────────────────────────────────
 

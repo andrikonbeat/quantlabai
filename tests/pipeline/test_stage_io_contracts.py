@@ -18,8 +18,8 @@ from __future__ import annotations
 from quantlab.pipeline.base import Stage
 from quantlab.pipeline.registry import StageRegistry
 from quantlab.pipeline.stages.agent_stages import GuardianEvaluationAgentStage
-from quantlab.pipeline.stages.archiver_stage import ArchiverStage
 from quantlab.pipeline.stages.archive_stage import ArchiveStage
+from quantlab.pipeline.stages.archiver_stage import ArchiverStage
 from quantlab.pipeline.stages.demo_stage import DemoStage
 from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
 from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage

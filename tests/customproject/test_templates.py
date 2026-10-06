@@ -14,31 +14,27 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import pytest
-
+from quantlab.cfx.reader import CfxReader
+from quantlab.cfx.writer import CfxWriter
 from quantlab.customproject.generator import generate_cfx_archive
 from quantlab.customproject.models import (
     CustomProject,
     CustomProjectTask,
     DatabankSpec,
-    Filters,
-    GoToTask,
 )
 from quantlab.customproject.templates import (
-    CampaignTemplate,
     DeepRobustnessTemplate,
     QuickValidationTemplate,
     StandardResearchTemplate,
     TemplateParams,
 )
+from quantlab.customproject.validator import ValidationError, validate_golden
 from quantlab.phase4.template_registry import (
     DuplicateTemplateError,
     TemplateDefinition,
     TemplateRegistry,
     registry,
 )
-from quantlab.customproject.validator import ValidationError, validate_golden
-from quantlab.cfx.reader import CfxReader
-from quantlab.cfx.writer import CfxWriter
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SQX_ROOT = Path.home() / "Proyectos" / "SQX_144_2953_linux_20260601"
@@ -57,7 +53,7 @@ def _probe_ok() -> bool:
 
 def _has_sqcli() -> bool:
     """True when the production resolver can find a sqcli binary for SQX_ROOT."""
-    from quantlab.customproject.validator import ValidationError, resolve_sqcli
+    from quantlab.customproject.validator import resolve_sqcli
 
     try:
         resolve_sqcli(SQX_ROOT)

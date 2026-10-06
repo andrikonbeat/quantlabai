@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 
 from quantlab.evolution.config import EvolutionConfig, EvolutionMode
 from quantlab.evolution.fitness import FitnessFunction
@@ -248,7 +248,7 @@ class EvolutionOrchestrator:
             logger.exception("Evolution cycle %s failed", cycle_id)
             result.errors.append("Cycle failed with exception")
 
-        result.completed_at = datetime.now()
+        result.completed_at = datetime.now(tz=UTC)
         self._active_cycles.pop(cycle_id, None)
         return result
 
@@ -356,6 +356,6 @@ class EvolutionOrchestrator:
             logger.exception("Scheduled cycle %s failed", cycle_id)
             result.errors.append("Scheduled cycle failed with exception")
 
-        result.completed_at = datetime.now()
+        result.completed_at = datetime.now(tz=UTC)
         self._active_cycles[cycle_id] = result
         return result

@@ -4,22 +4,18 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
-
-from quantlab.phase4.optimizer import WalkForwardCycle
 from quantlab.phase4.campaign_orchestrator import CampaignResult
-from quantlab.readers.models import Trade, EquityPoint
+from quantlab.phase4.optimizer import WalkForwardCycle
+from quantlab.readers.models import EquityPoint, Trade
 from quantlab.stats.aggregation import StatisticsAggregator
 from quantlab.stats.models import (
     AggregateStats,
-    RollingMetrics,
     BenchmarkComparison,
+    RollingMetrics,
 )
-
 
 # ── Fixtures ────────────────────────────────────────────────────────────────────
 

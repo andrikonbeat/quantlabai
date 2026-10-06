@@ -15,10 +15,9 @@ Covers the long-polling monitor contract:
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import pytest
-
 from quantlab.agents.execution_monitor import (
     ExecutionMonitor,
     MonitorResult,

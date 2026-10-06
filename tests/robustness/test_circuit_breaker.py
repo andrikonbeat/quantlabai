@@ -1,10 +1,8 @@
 """Tests for CircuitBreaker — state transitions, thresholds, async call()."""
 
 import asyncio
-import time
 
 import pytest
-
 from quantlab.robustness.circuit_breaker import (
     CircuitBreaker,
     CircuitOpenError,

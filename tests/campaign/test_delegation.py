@@ -24,7 +24,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from quantlab.campaign import delegation as delegation_module
 from quantlab.campaign.delegation import (
     PHASE_AGENTS,

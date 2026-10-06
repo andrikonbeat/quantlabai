@@ -18,8 +18,6 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-import pytest
-
 from quantlab.phase4.models import PhaseStatus
 from quantlab.substrate.executor import (
     ChainedTask,

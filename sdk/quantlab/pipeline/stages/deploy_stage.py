@@ -104,7 +104,7 @@ class DeployStage(_DeployStage):
                 results[sid] = (
                     result.__dict__ if hasattr(result, "__dict__") else result
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 results[sid] = {
                     "status": "FAILED",
                     "errors": [str(exc)],

@@ -1,7 +1,6 @@
 """Tests for MarketGuardian CostCollector wiring (Task 4.4)."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from quantlab.guardian.market import MarketGuardian
 from quantlab.guardian.models import GuardianStatus

@@ -1382,7 +1382,7 @@ def create_project(
             if hasattr(broker_profile.commission.type, "value")
             else broker_profile.commission.type
         )
-        commission = (
+        _commission = (
             float(broker_profile.commission.value)
             if comm_type in ("fixed", "percent")
             else 0.0

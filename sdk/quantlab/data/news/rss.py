@@ -7,12 +7,12 @@ rate limiting from ``quantlab.data.fundamental``.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
 
-from quantlab.data.news.base import NewsProvider, ProviderError as ProviderError
+from quantlab.data.news.base import NewsProvider
 from quantlab.data.news.models import NewsItem, WebResult
 
 logger = logging.getLogger(__name__)
@@ -130,9 +130,9 @@ class RSSNewsProvider(NewsProvider):
                     pub_date: datetime | None = None
                     if published:
                         try:
-                            pub_date = datetime(*published[:6])
+                            pub_date = datetime(*published[:6], tzinfo=UTC)
                         except (TypeError, ValueError):
-                            pub_date = datetime.now()
+                            pub_date = datetime.now(tz=UTC)
                     src = (
                         entry.source
                         if hasattr(entry, "source")
@@ -149,7 +149,7 @@ class RSSNewsProvider(NewsProvider):
                             title=title,
                             url=article_url,
                             source=source,
-                            published_date=pub_date or datetime.now(),
+                            published_date=pub_date or datetime.now(tz=UTC),
                             summary=summary,
                         )
                     )

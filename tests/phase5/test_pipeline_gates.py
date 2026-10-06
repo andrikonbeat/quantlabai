@@ -9,19 +9,18 @@ import pytest
 
 pytest.skip("Gate stages not yet implemented", allow_module_level=True)
 
+from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages import (
+    GateContext,
     GateDecision,
     GateFallback,
-    GateContext,
     GateInterceptorStage,
-    GateApprovalStage,
-    HumanReviewObjectivesStage,
+    HumanApproveDeployStage,
     HumanApproveIterationStage,
     HumanApprovePortfolioStage,
-    HumanApproveDeployStage,
+    HumanReviewObjectivesStage,
     HumanReviewPerformanceStage,
 )
-from quantlab.pipeline.base import PipelineContext
 
 
 class TestGateDecision:

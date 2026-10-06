@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from quantlab.cfx import BuildTask, CfxArchive, CfxWriter
-from quantlab.cfx.dom import set_spread_settings as set_spread_settings
 from quantlab.cfx.models import (
     AdvancedRankingCondition,
     AutomaticPortfolioBuilderConfig,

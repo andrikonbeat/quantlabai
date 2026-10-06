@@ -6,7 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
+from quantlab.cfx.models import CfxProject
 from quantlab.customproject.generator import generate_cfx_archive
 from quantlab.customproject.models import (
     CustomProject,
@@ -19,7 +19,6 @@ from quantlab.customproject.validator import (
     resolve_sqcli,
     validate_golden,
 )
-from quantlab.cfx.models import CfxProject
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SQX_ROOT = Path.home() / "Proyectos" / "SQX_144_2953_linux_20260601"

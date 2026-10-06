@@ -15,7 +15,7 @@ import re
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import yaml
 
@@ -26,6 +26,8 @@ from quantlab.knowledge.store import KnowledgeStore
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.models import (
     StageResult as StageResult,
+)
+from quantlab.pipeline.models import (
     StageStatus as StageStatus,
 )
 from quantlab.pipeline.stages import (
@@ -44,15 +46,20 @@ from quantlab.pipeline.stages import (
 )
 from quantlab.readers.databank import DatabankCSVReader
 from quantlab.stats.engine import StatisticsEngine
+from quantlab.tools.exceptions import CampaignError, LicenseError
 from quantlab.translate.cfx import CfxArchive
+
+if TYPE_CHECKING:
+    from quantlab.phase4.command_dispatcher import CommandDispatcher
+    from quantlab.phase4.daemon import SQXDaemonManager
 
 
 class SQXValidateStage(ValidateStage):
     """Validate SQX license and binary availability."""
 
-    name = "validate"
-    requires = []
-    provides = ["validated_config"]
+    name: ClassVar[str] = "validate"
+    requires: ClassVar[list[str]] = []
+    provides: ClassVar[list[str]] = ["validated_config"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
@@ -82,9 +89,9 @@ class SQXValidateStage(ValidateStage):
 class SQXTranslateStage(TranslateStage):
     """Translate ResearchConfig DSL to CFX archive."""
 
-    name = "translate"
-    requires = ["validated_config"]
-    provides = ["cfx_bytes", "cfx_path"]
+    name: ClassVar[str] = "translate"
+    requires: ClassVar[list[str]] = ["validated_config"]
+    provides: ClassVar[list[str]] = ["cfx_bytes", "cfx_path"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
@@ -127,9 +134,9 @@ class SQXTranslateStage(TranslateStage):
 class SQXDaemonStartStage(DaemonStartStage):
     """Start SQX -gui daemon and create HTTP client + dispatcher."""
 
-    name = "daemon_start"
-    requires = []
-    provides = ["daemon_url", "daemon_manager", "dispatcher", "http_client"]
+    name: ClassVar[str] = "daemon_start"
+    requires: ClassVar[list[str]] = []
+    provides: ClassVar[list[str]] = ["daemon_url", "daemon_manager", "dispatcher", "http_client"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         # Deferred imports: Phase 4 modules not guaranteed present at import time
@@ -141,24 +148,24 @@ class SQXDaemonStartStage(DaemonStartStage):
         sqx_install_path = config.get("sqx_install_path", "/opt/StrategyQuantX")
         sqx_port = config.get("sqx_port", 8888)
 
-        daemon = SQXDaemonManager(
+        _daemon = SQXDaemonManager(
             sqx_install_path,
             port=sqx_port,
             startup_timeout=60.0,
         )
-        base_url = await daemon.start()
+        base_url = await _daemon.start()
 
         client = AsyncSQXClient(base_url)
-        dispatcher = await CommandDispatcher.from_daemon(daemon)
+        dispatcher = await CommandDispatcher.from_daemon(_daemon)
 
         # Store in context for later stages
-        ctx.artifacts["daemon_manager"] = daemon
+        ctx.artifacts["daemon_manager"] = _daemon
         ctx.artifacts["http_client"] = client
         ctx.artifacts["dispatcher"] = dispatcher
 
         return {
             "daemon_url": base_url,
-            "daemon_manager": daemon,
+            "daemon_manager": _daemon,
             "dispatcher": dispatcher,
             "http_client": client,
         }
@@ -167,9 +174,9 @@ class SQXDaemonStartStage(DaemonStartStage):
 class SQXLoadConfigStage(LoadConfigStage):
     """Load CFX config into SQX."""
 
-    name = "load_config"
-    requires = ["dispatcher", "cfx_bytes"]
-    provides = []
+    name: ClassVar[str] = "load_config"
+    requires: ClassVar[list[str]] = ["dispatcher", "cfx_bytes"]
+    provides: ClassVar[list[str]] = []
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         cfx_bytes = ctx.artifacts.get("cfx_bytes")
@@ -193,9 +200,9 @@ class SQXLoadConfigStage(LoadConfigStage):
 class SQXRunCampaignStage(RunCampaignStage):
     """Start the SQX project/campaign."""
 
-    name = "run_campaign"
-    requires = ["dispatcher"]
-    provides = ["campaign_name"]
+    name: ClassVar[str] = "run_campaign"
+    requires: ClassVar[list[str]] = ["dispatcher"]
+    provides: ClassVar[list[str]] = ["campaign_name"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
@@ -210,9 +217,9 @@ class SQXRunCampaignStage(RunCampaignStage):
 class SQXPollCampaignStage(PollCampaignStage):
     """Poll campaign status until completion or timeout."""
 
-    name = "poll_campaign"
-    requires = ["dispatcher", "campaign_name"]
-    provides = ["campaign_status"]
+    name: ClassVar[str] = "poll_campaign"
+    requires: ClassVar[list[str]] = ["dispatcher", "campaign_name"]
+    provides: ClassVar[list[str]] = ["campaign_status"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
@@ -252,15 +259,15 @@ class SQXPollCampaignStage(PollCampaignStage):
 class SQXCampaignStage(CampaignStage):
     """Load CFX config, start campaign, and poll for completion."""
 
-    name = "campaign"
-    requires = ["daemon_manager", "dispatcher", "cfx_bytes"]
-    provides = ["campaign_name", "campaign_status"]
+    name: ClassVar[str] = "campaign"
+    requires: ClassVar[list[str]] = ["daemon_manager", "dispatcher", "cfx_bytes"]
+    provides: ClassVar[list[str]] = ["campaign_name", "campaign_status"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         cfx_bytes = ctx.artifacts.get("cfx_bytes")
         dispatcher: CommandDispatcher = ctx.artifacts.get("dispatcher")
-        daemon: SQXDaemonManager = ctx.artifacts.get("daemon_manager")
+        _daemon: SQXDaemonManager = ctx.artifacts.get("daemon_manager")
 
         if cfx_bytes is None:
             raise CampaignError("No CFX bytes available for campaign")
@@ -311,9 +318,9 @@ class SQXCampaignStage(CampaignStage):
 class SQXExportStage(ExportStage):
     """Export campaign results in configured formats."""
 
-    name = "export"
-    requires = ["campaign_name", "dispatcher"]
-    provides = ["export_paths"]
+    name: ClassVar[str] = "export"
+    requires: ClassVar[list[str]] = ["campaign_name", "dispatcher"]
+    provides: ClassVar[list[str]] = ["export_paths"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
@@ -347,9 +354,9 @@ class SQXExportStage(ExportStage):
 class SQXReadStage(ReadStage):
     """Read exported CSV/XLSX files into structured data."""
 
-    name = "read"
-    requires = ["export_paths"]
-    provides = ["parsed_results"]
+    name: ClassVar[str] = "read"
+    requires: ClassVar[list[str]] = ["export_paths"]
+    provides: ClassVar[list[str]] = ["parsed_results"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         export_paths = ctx.artifacts.get("export_paths", {})
@@ -378,9 +385,9 @@ class SQXReadStage(ReadStage):
 class SQXComputeStatsStage(ComputeStatsStage):
     """Compute trading statistics from trades and equity."""
 
-    name = "compute_stats"
-    requires = ["parsed_results"]
-    provides = ["statistics"]
+    name: ClassVar[str] = "compute_stats"
+    requires: ClassVar[list[str]] = ["parsed_results"]
+    provides: ClassVar[list[str]] = ["statistics"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         parsed = ctx.artifacts.get("parsed_results", {})
@@ -408,9 +415,9 @@ class SQXComputeStatsStage(ComputeStatsStage):
 class SQXKnowledgeStoreStage(KnowledgeStoreStage):
     """Store campaign artifacts in Knowledge Lake."""
 
-    name = "knowledge_store"
-    requires = ["parsed_results", "statistics", "cfx_bytes", "export_paths"]
-    provides = ["artifact_paths"]
+    name: ClassVar[str] = "knowledge_store"
+    requires: ClassVar[list[str]] = ["parsed_results", "statistics", "cfx_bytes", "export_paths"]
+    provides: ClassVar[list[str]] = ["artifact_paths"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
@@ -468,9 +475,9 @@ class SQXKnowledgeStoreStage(KnowledgeStoreStage):
 class SQXReportStage(ReportStage):
     """Generate campaign report delegating to ReportGenerator."""
 
-    name = "report"
-    requires = ["parsed_results", "statistics"]
-    provides = ["report_path", "report_html", "report_json", "report_charts"]
+    name: ClassVar[str] = "report"
+    requires: ClassVar[list[str]] = ["parsed_results", "statistics"]
+    provides: ClassVar[list[str]] = ["report_path", "report_html", "report_json", "report_charts"]
 
     async def execute(self, ctx: PipelineContext) -> dict[str, Any]:
         # Delegate to Phase 5b ReportGenerator

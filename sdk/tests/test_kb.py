@@ -19,7 +19,6 @@ from quantlab.knowledge.kb.models import (
     KB_TABS,
     SQX_VERSION,
     KbParameter,
-    SmallAccountRecommendation as SmallAccountRecommendation,
 )
 from quantlab.knowledge.kb.seeder import GAP_WHAT_IT_DOES, seed_from_doc
 from quantlab.knowledge.kb.store import KbParamNotFoundError, KbStore

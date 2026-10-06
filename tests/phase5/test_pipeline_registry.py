@@ -1,10 +1,9 @@
 """Tests for pipeline registry: StageRegistry and PipelineRegistry."""
 
+
 import pytest
-from pathlib import Path
-from quantlab.pipeline.base import Stage, Pipeline
-from quantlab.pipeline.registry import StageRegistry, PipelineRegistry
 from quantlab.pipeline.config import PipelineConfig, StageConfig
+from quantlab.pipeline.registry import PipelineRegistry, StageRegistry
 
 
 class TestStageRegistry:

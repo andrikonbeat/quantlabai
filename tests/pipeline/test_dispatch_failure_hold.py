@@ -11,7 +11,6 @@ Strict TDD: written first — RED until DispatchStage fails closed on error.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.dispatch_stage import (
     GATE_DECISION_ARTIFACT,

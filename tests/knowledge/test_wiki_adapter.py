@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from quantlab.knowledge.ingest.wiki import WikiAdapter
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

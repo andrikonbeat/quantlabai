@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from quantlab.agents.research_agent import ResearchAgent
-from quantlab.dsl.models import HypothesisConfig
 
 
 class TestCapitalConstraintsExtraction:

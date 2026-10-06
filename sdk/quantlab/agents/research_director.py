@@ -18,7 +18,6 @@ from typing import Any
 
 from quantlab.dsl.models import (
     HypothesisConfig,
-    IterationConfig as IterationConfig,
     ResearchConfig,
 )
 from quantlab.sqx.project_builder import BuildConfig
@@ -147,7 +146,7 @@ class ResearchDirector:
             await self._get_capture_service().capture_phase(
                 agent, campaign, phase, envelope, config=config
             )
-        except Exception as exc:  # noqa: BLE001 — non-blocking by contract
+        except Exception as exc:
             logger.warning(
                 "ResearchDirector capture failed for phase '%s' (non-blocking): %s",
                 phase,
@@ -275,7 +274,7 @@ class ResearchDirector:
             ContractValidationError: If stage contracts are incompatible.
         """
         runner = self._get_runner()
-        registry = self._get_registry()
+        _registry = self._get_registry()
 
         # Resolve research stage name based on AgentConfig.model
         research_stage = "research"
@@ -435,7 +434,7 @@ class ResearchDirector:
 
         # Register gate callbacks on GateInterceptorStage instances
         for stage_obj in pipeline.stages:
-            stage_name = getattr(stage_obj, "name", "")
+            _stage_name = getattr(stage_obj, "name", "")
             gate_id = getattr(stage_obj, "gate_id", "")
             if not gate_id or not gate_id.startswith("HUMAN_"):
                 continue

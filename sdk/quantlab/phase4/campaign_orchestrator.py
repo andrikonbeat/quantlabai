@@ -18,10 +18,6 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any
 
-
-from quantlab.dsl.models import ResearchConfig as ResearchConfig
-from quantlab.dsl.parser import parse_yaml as parse_yaml
-from quantlab.knowledge.store import KnowledgeStore as KnowledgeStore
 from quantlab.phase4.checkpoint import CampaignCheckpoint, CheckpointManager
 from quantlab.phase4.command_dispatcher import CampaignStatus, CommandDispatcher
 from quantlab.phase4.daemon import SQXDaemonManager
@@ -47,14 +43,10 @@ from quantlab.pipeline import (
     PipelineContext,
     PipelineResult,
     PipelineRunner,
-    StageResult as StageResult,
     StageStatus,
 )
-from quantlab.readers.databank import DatabankCSVReader as DatabankCSVReader
 from quantlab.sqx.campaign_monitor import WatcherEvent
-from quantlab.stats.engine import StatisticsEngine as StatisticsEngine
-from quantlab.tools.exceptions import CampaignError, LicenseError as LicenseError
-from quantlab.translate.cfx import CfxArchive as CfxArchive
+from quantlab.tools.exceptions import CampaignError
 
 
 @dataclass
@@ -432,7 +424,7 @@ class CampaignOrchestrator:
 
     #   Async Context Manager
 
-    async def __aenter__(self) -> CampaignOrchestrator:
+    async def __aenter__(self) -> CampaignOrchestrator:  # noqa: PYI034
         """Async context manager entry."""
         return self
 

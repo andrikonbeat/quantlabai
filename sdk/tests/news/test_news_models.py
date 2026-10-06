@@ -10,8 +10,6 @@ from datetime import datetime
 
 import pytest
 
-from quantlab.data.fundamental.base import ProviderError as ProviderError
-
 
 class TestNewsItem:
     """NewsItem dataclass — creation, sentiment optional."""
@@ -23,7 +21,7 @@ class TestNewsItem:
         """
         from quantlab.data.news.models import NewsItem
 
-        pub_date = datetime(2026, 7, 28, 10, 30, 0)
+        pub_date = datetime(2026, 7, 28, 10, 30, 0)  # noqa: DTZ001
         item = NewsItem(
             title="AAPL Stock Rises",
             url="https://example.com/aapl",
@@ -50,7 +48,7 @@ class TestNewsItem:
             title="No Sentiment",
             url="https://example.com/no-sent",
             source="Google News",
-            published_date=datetime(2026, 7, 28),
+            published_date=datetime(2026, 7, 28),  # noqa: DTZ001
             summary="No sentiment data available.",
         )
         assert item.sentiment is None
@@ -60,7 +58,7 @@ class TestNewsItem:
         """NewsItem dedup — same URL means same item for dedup purposes."""
         from quantlab.data.news.models import NewsItem
 
-        d = datetime(2026, 7, 28)
+        d = datetime(2026, 7, 28)  # noqa: DTZ001
         a = NewsItem(
             title="A",
             url="https://example.com/a",

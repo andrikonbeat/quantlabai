@@ -6,7 +6,6 @@ Covers spec scenarios from:
 """
 
 import pytest
-
 from quantlab.pipeline._stages import CostInjectionStage
 from quantlab.pipeline.base import PipelineContext
 
@@ -103,8 +102,10 @@ class TestCostInjectionStagePipelineOrder:
     def test_position_matches_design(self):
         """CostInjectionStage, GuardianEvaluationStage, and BuilderStage all exist."""
         from quantlab.pipeline._stages import CostInjectionStage
-        from quantlab.pipeline.stages.agent_stages import GuardianEvaluationStage
-        from quantlab.pipeline.stages.agent_stages import BuilderStage
+        from quantlab.pipeline.stages.agent_stages import (
+            BuilderStage,
+            GuardianEvaluationStage,
+        )
 
         assert CostInjectionStage is not None
         assert GuardianEvaluationStage is not None

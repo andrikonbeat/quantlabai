@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-
-
 from quantlab.costs.models import CostBreakdown
 from quantlab.costs.profiles import BrokerProfile
 

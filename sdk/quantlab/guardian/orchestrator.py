@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -171,7 +171,7 @@ class MetaGuardianOrchestrator:
         for result in results:
             record = GuardianMetricRecord(
                 campaign_id=self.campaign_id,
-                timestamp=datetime.fromtimestamp(result.timestamp.timestamp()),
+                timestamp=datetime.fromtimestamp(result.timestamp.timestamp(), tz=UTC),
                 guardian_name=result.guardian_type.value,
                 score=result.score,
                 portfolio_state=self.state,
@@ -340,7 +340,7 @@ class MetaGuardianOrchestrator:
             results: List of guardian results
         """
         # Extract quality guardian results for strategy-level assessment
-        quality_results = [
+        _quality_results = [
             r for r in results if r.guardian_type == GuardianType.QUALITY
         ]
 

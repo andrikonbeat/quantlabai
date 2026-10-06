@@ -46,6 +46,7 @@ class TestRegistryLookup:
 class TestPipelineInsertion:
     def test_stage_order_in_docstring(self) -> None:
         import re
+
         from quantlab.agents.research_director import ResearchDirector
         doc = ResearchDirector.build_pipeline.__doc__ or ""
         assert "refutation" in doc

@@ -14,12 +14,10 @@ import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.errors import (
-    PortfolioError as PortfolioError,
     PortfolioMasterError,
 )
 from quantlab.phase4.templates import CfxTemplateBuilder
@@ -100,13 +98,13 @@ class PortfolioMaster:
         self.dispatcher = dispatcher or CommandDispatcher()
         self._daemon: SQXDaemonManager | None = None
 
-    async def __aenter__(self) -> PortfolioMaster:
+    async def __aenter__(self) -> PortfolioMaster:  # noqa: PYI034
         if self.daemon_manager:
             self._daemon = self.daemon_manager
             await self._daemon.start()
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         if self._daemon:
             await self._daemon.stop()
 

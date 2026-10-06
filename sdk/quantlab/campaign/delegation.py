@@ -29,14 +29,10 @@ from pathlib import Path
 from typing import Any
 
 from quantlab.campaign.flow import PHASES, STAGE_FOR_PHASE
-from quantlab.phase4.models import PhaseResult as Phase4PhaseResult  # noqa: F401
 
 # Name-collision guard (AD-6): import the other PhaseResult definitions under
 # explicit aliases so the three distinct envelope types are visible in this
 # module's namespace without renaming the existing types.
-from quantlab.substrate.executor import (
-    PhaseResult as SubstratePhaseResult,  # noqa: F401
-)
 
 logger = logging.getLogger(__name__)
 

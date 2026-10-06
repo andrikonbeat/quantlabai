@@ -10,7 +10,6 @@ from __future__ import annotations
 from zipfile import ZipFile
 
 import pytest
-
 from quantlab.compiler.compiler import (
     CompileError,
     CompilerPipeline,
@@ -241,7 +240,6 @@ exit 0
         WHEN compile() completes
         THEN the pipeline does not halt silently.
         """
-        from quantlab.compiler.compiler import CompileError
 
         src1 = make_java_source("GoodStrategy")
         src2 = make_java_source("BadStrategy")

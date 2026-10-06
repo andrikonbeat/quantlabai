@@ -1,11 +1,11 @@
 """Tests for reporting module."""
 
-import pytest
 from datetime import datetime
-from pathlib import Path
-from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
+
+import pytest
+from quantlab.readers.models import EquityPoint, Trade
 from quantlab.reporting.generator import ReportGenerator, generate_report
-from quantlab.readers.models import Trade, EquityPoint
+from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
 from quantlab.stats.models import StatsResult
 
 

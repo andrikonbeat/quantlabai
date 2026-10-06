@@ -11,13 +11,9 @@ import os
 import tempfile
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import yaml
-
 from quantlab.agents.autonomous_monitor import (
     AutoActionExecutor,
     AutonomousMonitorDaemon,

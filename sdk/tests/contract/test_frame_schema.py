@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 
-
 from quantlab.analysis.frame import Frame
 
 
@@ -89,7 +88,7 @@ class TestFrameSchemaStability:
             "sentiment_shift",
             "volatility_expansion",
         }
-        for key, value in hints.items():
+        for key, value in hints.items():  # noqa: PERF102
             assert value["detected"] is False
             assert value["confidence"] == 0.0
             assert value["recommended_action"] == "none"

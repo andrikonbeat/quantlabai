@@ -15,7 +15,6 @@ import json
 from dataclasses import asdict
 
 import pytest
-
 from quantlab.customproject.templates import (
     STATE_TEMPLATE_MAP,
     CampaignTemplate,

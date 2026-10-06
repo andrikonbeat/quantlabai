@@ -9,7 +9,6 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 import pytest
-
 from quantlab.customproject.generator import generate_cfx_archive
 from quantlab.customproject.models import (
     CustomProject,
@@ -199,9 +198,9 @@ class TestSingleTaskByteIdentity:
             databanks=STANDARD_DATABANKS,
         )
 
-        from quantlab.cfx.writer import CfxWriter
-
         import tempfile
+
+        from quantlab.cfx.writer import CfxWriter
 
         raw = CfxWriter.to_bytes(generate_cfx_archive(project))
         with tempfile.NamedTemporaryFile(suffix=".cfx") as f:

@@ -10,7 +10,6 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.deploy_stage import DeployStage
 

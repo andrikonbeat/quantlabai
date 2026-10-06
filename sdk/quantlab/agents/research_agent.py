@@ -82,7 +82,7 @@ class ResearchAgent:
             raise ValueError("At least one objective is required")
 
         # Parse first objective to extract market and timeframe
-        market, timeframe, tags = self._parse_objective(objectives[0], market_context)
+        market, timeframe, _tags = self._parse_objective(objectives[0], market_context)
 
         # Generate building blocks from objectives
         building_blocks = self._generate_building_blocks(objectives)

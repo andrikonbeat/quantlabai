@@ -103,7 +103,7 @@ def run_javac(
         cmd += ["-cp", os.pathsep.join(str(p) for p in classpath)]
     cmd.append(str(src))
     logger.debug("javac %s", " ".join(cmd))
-    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
     return CompileReport(
         exit_code=proc.returncode, stdout=proc.stdout, stderr=proc.stderr
     )
@@ -271,8 +271,8 @@ class CompilerPipeline:
 
                         result = run_fix_loop(
                             src=source,
-                            compile_fn=lambda s: run_javac(
-                                javac, s, classes, timeout=timeout, classpath=classpath
+                            compile_fn=lambda s, _classes=classes: run_javac(
+                                javac, s, _classes, timeout=timeout, classpath=classpath
                             ),
                             fix_fn=fixer,
                             max_fix_iterations=max_fix_iterations,
@@ -300,7 +300,7 @@ class CompilerPipeline:
                 raise
             except CompileError as exc:
                 compiled[sid] = exc
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 compiled[sid] = CompileError(
                     f"unexpected compile error for {sid}: {exc}",
                     report=None,

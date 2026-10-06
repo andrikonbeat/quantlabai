@@ -9,7 +9,6 @@ Covers:
 
 from __future__ import annotations
 
-
 from quantlab.agents.prompts import PROMPT_TEMPLATES
 
 

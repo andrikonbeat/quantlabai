@@ -19,7 +19,6 @@ from quantlab.dsl.models import (
 )
 from quantlab.tools.exceptions import (
     TranslationError,
-    ValidationError as ValidationError,
 )
 from quantlab.translate.translator import generate_cfx_archive, generate_cfx_xml
 
@@ -199,7 +198,7 @@ class TestGenerateCfxXmlBackwardCompatibility:
         # Blocks section is a complex section (raw XML passthrough)
         # For now, building blocks are tracked via EnableBlockInstruction
         # The raw_xml for Blocks would contain the block definitions
-        blocks_section = root.find("Blocks")
+        _blocks_section = root.find("Blocks")
         # Blocks section may be empty initially - patcher would populate it
 
 
@@ -241,7 +240,7 @@ class TestTranslationValidation:
         from quantlab.translate.translator import SUPPORTED_TIMEFRAMES
 
         # M1 is supported; test with a truly unsupported value by bypassing enum
-        config = ResearchConfig(
+        _config = ResearchConfig(
             campaign="BadTF",
             market="EURUSD",
             timeframe="H1",  # This is supported

@@ -11,10 +11,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
-
 from quantlab.agents.autonomous_monitor import (
     AutoActionExecutor,
     AutonomousMonitorDaemon,

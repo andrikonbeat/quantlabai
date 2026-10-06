@@ -8,8 +8,6 @@ that refactor, so these tests assert the modular entry points.
 
 from pathlib import Path
 
-import pytest
-
 # Resolve paths relative to this test file:
 # tests/dashboard/test_static.py -> project_root/sdk/quantlab/dashboard/static
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent

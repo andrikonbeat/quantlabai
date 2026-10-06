@@ -9,7 +9,7 @@ window clock.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 
 from quantlab.data.demo.store import DemoWindowStore, StateCorruptionError
@@ -110,7 +110,7 @@ class DemoStage(Stage):
             except (TypeError, ValueError):
                 now = None
         if now is None:
-            now = date.today()
+            now = datetime.now(tz=UTC).date()
         return now <= expires
 
     def _persist_window_state(self, ctx: PipelineContext) -> None:

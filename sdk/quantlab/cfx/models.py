@@ -7,9 +7,8 @@ accommodate string-typed attribute values from XML parsing.
 
 from __future__ import annotations
 
-from typing import Any
 import xml.etree.ElementTree as ET
-from typing import Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -1075,30 +1074,30 @@ class SetDataRangePartsInstruction(BaseModel):
     instruction_type: str = "set_data_range_parts"
 
 
-PatchInstruction = Union[
+PatchInstruction = (
     # Original 8
-    SetMarketInstruction,
-    AddTimeframeInstruction,
-    EnableBlockInstruction,
-    DisableBlockInstruction,
-    SetGeneticInstruction,
-    SetDateRangeInstruction,
-    AddRankingConditionInstruction,
-    EnableCrosscheckInstruction,
+    SetMarketInstruction |
+    AddTimeframeInstruction |
+    EnableBlockInstruction |
+    DisableBlockInstruction |
+    SetGeneticInstruction |
+    SetDateRangeInstruction |
+    AddRankingConditionInstruction |
+    EnableCrosscheckInstruction |
     # Phase 4 (8 new)
-    SetAutomaticPortfolioBuilderInstruction,
-    SetPortfolioSettingsInstruction,
-    SetOptimizationInstruction,
-    SetOptimizationParametersInstruction,
-    SetWalkForwardInstruction,
-    SetDatabanksInstruction,
-    SetRankingsInstruction,
-    SetCrossChecksInstruction,
-    SetRetesterDataInstruction,
+    SetAutomaticPortfolioBuilderInstruction |
+    SetPortfolioSettingsInstruction |
+    SetOptimizationInstruction |
+    SetOptimizationParametersInstruction |
+    SetWalkForwardInstruction |
+    SetDatabanksInstruction |
+    SetRankingsInstruction |
+    SetCrossChecksInstruction |
+    SetRetesterDataInstruction |
     # Advanced ranking filters
-    AddAdvancedRankingConditionInstruction,
-    SetAdvancedRankingsInstruction,
+    AddAdvancedRankingConditionInstruction |
+    SetAdvancedRankingsInstruction |
     # Data range parts
-    SetDataRangePartsInstruction,
-]
+    SetDataRangePartsInstruction 
+)
 """Union of all 19 typed instruction models for CfxPatcher."""

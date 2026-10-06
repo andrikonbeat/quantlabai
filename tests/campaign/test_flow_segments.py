@@ -15,7 +15,6 @@ Strict TDD: RED — written before ``assert_flow_segments`` existed.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.campaign.flow import (
     PHASES,
     STAGE_FOR_PHASE,
@@ -265,7 +264,7 @@ class TestAgentRunFlowIntegrity:
         WHEN it is imported
         THEN it exposes no gate machinery — the flow cannot be reordered or
         auto-approved by the agent path (REQ-643)."""
-        import quantlab.campaign.flow as flow
+        from quantlab.campaign import flow
 
         assert not hasattr(flow, "HumanGateOrchestrator")
         assert not hasattr(flow, "GateDecision")

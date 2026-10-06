@@ -3,35 +3,34 @@
 import xml.etree.ElementTree as ET
 
 import pytest
-
 from quantlab.cfx import (
+    BuildTask,
     CfxArchive,
     CfxConfig,
-    BuildTask,
-    SettingsSection,
     CfxPatcher,
+    SettingsSection,
     ValidationError,
-    set_market,
-    add_timeframe,
-    enable_block,
-    disable_block,
-    set_genetic,
-    set_date_range,
     add_ranking_condition,
+    add_timeframe,
+    disable_block,
+    enable_block,
     enable_crosscheck,
+    set_date_range,
+    set_genetic,
+    set_market,
 )
 from quantlab.cfx.models import (
-    SetMarketInstruction,
-    AddTimeframeInstruction,
-    EnableBlockInstruction,
-    DisableBlockInstruction,
-    SetGeneticInstruction,
-    SetDateRangeInstruction,
     AddRankingConditionInstruction,
-    EnableCrosscheckInstruction,
-    SetCrossChecksInstruction,
+    AddTimeframeInstruction,
     CrossChecksConfig,
     CrossChecksGeneric,
+    DisableBlockInstruction,
+    EnableBlockInstruction,
+    EnableCrosscheckInstruction,
+    SetCrossChecksInstruction,
+    SetDateRangeInstruction,
+    SetGeneticInstruction,
+    SetMarketInstruction,
 )
 
 
@@ -694,7 +693,11 @@ class TestAdvancedRankingModels:
         WHEN model_dump and model_validate round-trip
         THEN conditions list is preserved.
         """
-        from quantlab.cfx.models import AdvancedRankingCondition, AdvancedRankingsConfig, ColumnValue
+        from quantlab.cfx.models import (
+            AdvancedRankingCondition,
+            AdvancedRankingsConfig,
+            ColumnValue,
+        )
 
         config = AdvancedRankingsConfig(
             conditions=[
@@ -730,7 +733,6 @@ class TestAdvancedRankingPatcher:
         """
         from quantlab.cfx.models import (
             AdvancedRankingCondition,
-            AdvancedRankingsConfig,
             ColumnValue,
             SetAdvancedRankingsInstruction,
         )
@@ -786,7 +788,6 @@ class TestAdvancedRankingPatcher:
         """
         from quantlab.cfx.models import (
             AdvancedRankingCondition,
-            AdvancedRankingsConfig,
             ColumnValue,
             SetAdvancedRankingsInstruction,
         )
@@ -821,10 +822,9 @@ class TestAdvancedRankingPatcher:
         THEN a second condition is appended to the same Conditions block.
         """
         from quantlab.cfx.models import (
-            AdvancedRankingCondition,
-            AdvancedRankingsConfig,
-            ColumnValue,
             AddAdvancedRankingConditionInstruction,
+            AdvancedRankingCondition,
+            ColumnValue,
             SetAdvancedRankingsInstruction,
         )
 

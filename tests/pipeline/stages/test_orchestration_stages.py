@@ -9,11 +9,8 @@ from __future__ import annotations
 
 from datetime import date
 
-import pytest
-
-from quantlab.pipeline.base import Pipeline, PipelineContext
 from quantlab.phase4.demo_deploy import DemoDeployer, DemoWindow
-
+from quantlab.pipeline.base import Pipeline, PipelineContext
 
 # ── Recording fakes (no AsyncMock — plain async functions) ──────────────────
 
@@ -68,7 +65,6 @@ class TestStageContracts:
 
     def test_portfolio_stage_contract(self) -> None:
         from quantlab.pipeline.stages.agent_stages import PortfolioStage as Abstract
-
         from quantlab.pipeline.stages.portfolio_stage import PortfolioStage
 
         assert PortfolioStage.name == "portfolio"
@@ -84,7 +80,6 @@ class TestStageContracts:
 
     def test_deploy_stage_contract(self) -> None:
         from quantlab.pipeline.stages.agent_stages import DeployStage as Abstract
-
         from quantlab.pipeline.stages.deploy_stage import DeployStage
 
         assert DeployStage.name == "deploy"

@@ -6,7 +6,6 @@ Covers spec scenarios from:
 """
 
 import pytest
-
 from quantlab.dsl.parser import parse_yaml_string
 from quantlab.tools.exceptions import ValidationError as QuantLabValError
 

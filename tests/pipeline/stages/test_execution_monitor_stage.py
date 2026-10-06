@@ -10,9 +10,11 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import pytest
-
-from quantlab.agents.execution_monitor import ExecutionMonitor, MonitorResult, MonitorStatus
+from quantlab.agents.execution_monitor import (
+    ExecutionMonitor,
+    MonitorResult,
+    MonitorStatus,
+)
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.execution_monitor_stage import ExecutionMonitorStage
 

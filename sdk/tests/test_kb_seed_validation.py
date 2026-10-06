@@ -166,7 +166,7 @@ class TestSchemaViolationFails:
         assert report.ok is False
 
     def test_corrupt_yaml_fails(self, tmp_path: Path) -> None:
-        store = _make_lake(
+        _store = _make_lake(
             tmp_path,
             verified=VERIFIED_MIN + 1,
             needs_review=SEED_TOTAL - VERIFIED_MIN - 1,
@@ -299,7 +299,7 @@ class TestDistributionBand:
 
     def test_needs_review_within_quota_is_success(self, tmp_path: Path) -> None:
         # needs_review is an accepted terminal state; gate must not raise on it.
-        store = _make_lake(
+        _store = _make_lake(
             tmp_path,
             verified=VERIFIED_MIN + 1,
             needs_review=SEED_TOTAL - VERIFIED_MIN - 1,

@@ -10,18 +10,18 @@ import pytest
 pytest.skip("Multi-agent stages not yet implemented", allow_module_level=True)
 
 from quantlab.pipeline.stages import (
-    ValidateStage,
-    TranslateStage,
-    DaemonStartStage,
-    LoadConfigStage,
-    RunCampaignStage,
-    PollCampaignStage,
     CampaignStage,
-    ExportStage,
-    ReadStage,
     ComputeStatsStage,
+    DaemonStartStage,
+    ExportStage,
     KnowledgeStoreStage,
+    LoadConfigStage,
+    PollCampaignStage,
+    ReadStage,
     ReportStage,
+    RunCampaignStage,
+    TranslateStage,
+    ValidateStage,
 )
 
 

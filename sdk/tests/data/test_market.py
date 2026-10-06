@@ -15,7 +15,6 @@ import pytest
 from quantlab.data.market import (
     Bar,
     DukascopyProvider,
-    MarketDataProvider as MarketDataProvider,
     YahooProvider,
 )
 
@@ -51,7 +50,7 @@ class TestBarModel:
         WHEN Bar is constructed
         THEN timestamp is stored in UTC (or accepted as UTC-aware).
         """
-        naive = datetime(2024, 1, 2, 0, 0)
+        naive = datetime(2024, 1, 2, 0, 0)  # noqa: DTZ001
         bar = Bar(
             timestamp=naive,
             open=1.10,

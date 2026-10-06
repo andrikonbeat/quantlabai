@@ -11,7 +11,6 @@ Strict TDD: written first — RED until the stage and its wiring exist.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.live_ops_stage import LiveOpsStage
 

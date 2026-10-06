@@ -1,11 +1,9 @@
 """Tests for CFX reader/writer/patcher round-trips for Portfolio/Optimizer/Retester."""
 
-import base64
 import tempfile
 from pathlib import Path
 
 import pytest
-
 from quantlab.cfx import CfxWriter
 from quantlab.cfx.models import (
     AutomaticPortfolioBuilderConfig,
@@ -588,8 +586,8 @@ class TestPatcherPhase4Instructions:
         patcher = CfxPatcher(archive)
 
         from quantlab.cfx.models import (
-            SetMarketInstruction,
             SetAutomaticPortfolioBuilderInstruction,
+            SetMarketInstruction,
         )
 
         instructions = [

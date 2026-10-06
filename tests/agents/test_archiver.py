@@ -19,9 +19,7 @@ from datetime import datetime, timezone
 
 import pytest
 import yaml
-
 from quantlab.agents.archiver import (
-    DEFAULT_NEXT_CYCLE_BUDGET,
     REPLACEMENT_DRAWDOWN_THRESHOLD,
     Archiver,
     ArchiveResult,

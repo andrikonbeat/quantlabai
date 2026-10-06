@@ -17,7 +17,6 @@ from quantlab.reporting.models import (
     ReportResult,
     ReportTheme,
 )
-from quantlab.stats.engine import StatisticsEngine as StatisticsEngine
 from quantlab.stats.models import StatsResult
 
 # Chart IDs for tracking
@@ -70,9 +69,6 @@ class ReportGenerator:
             loader = FileSystemLoader(self.config.template_path.parent)
         else:
             # Use embedded template
-            from quantlab.reporting.templates import (
-                DEFAULT_TEMPLATE as DEFAULT_TEMPLATE,
-            )
 
             loader = None  # We'll render manually
 
@@ -492,7 +488,7 @@ class ReportGenerator:
                     y=equities,
                     mode="lines",
                     name="Equity",
-                    line=dict(color=colors.equity_line, width=2),
+                    line={"color": colors.equity_line, "width": 2},
                 )
             )
 
@@ -507,9 +503,9 @@ class ReportGenerator:
                             y=bench_equities,
                             mode="lines",
                             name="Benchmark",
-                            line=dict(
-                                color=colors.benchmark_line, width=2, dash="dash"
-                            ),
+                            line={
+                                "color": colors.benchmark_line, "width": 2, "dash": "dash"
+                            },
                         )
                     )
 
@@ -519,10 +515,10 @@ class ReportGenerator:
                 yaxis_title="Equity",
                 template=template,
                 height=350,
-                margin=dict(l=50, r=20, t=50, b=50),
-                legend=dict(
-                    orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-                ),
+                margin={"l": 50, "r": 20, "t": 50, "b": 50},
+                legend={
+                    "orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1
+                },
             )
 
             charts["equity_curve"] = fig.to_json()
@@ -533,7 +529,7 @@ class ReportGenerator:
                 yaxis_title="Equity",
                 template=template,
                 height=350,
-                margin=dict(l=50, r=20, t=50, b=50),
+                margin={"l": 50, "r": 20, "t": 50, "b": 50},
             )
 
             charts["equity_curve"] = fig.to_json()
@@ -560,7 +556,7 @@ class ReportGenerator:
                     mode="lines",
                     name="Drawdown %",
                     fill="tozeroy",
-                    line=dict(color=colors.drawdown_line, width=1),
+                    line={"color": colors.drawdown_line, "width": 1},
                     fillcolor=colors.drawdown_fill,
                 )
             )
@@ -571,7 +567,7 @@ class ReportGenerator:
                 yaxis_title="Drawdown %",
                 template=template,
                 height=250,
-                margin=dict(l=50, r=20, t=50, b=50),
+                margin={"l": 50, "r": 20, "t": 50, "b": 50},
             )
 
             charts["drawdown_underwater"] = fig.to_json()
@@ -581,7 +577,7 @@ class ReportGenerator:
             fig = go.Figure()
 
             profits = [getattr(t, "profit", 0) for t in trades]
-            entry_times = [getattr(t, "entry_time", i) for i, t in enumerate(trades)]
+            _entry_times = [getattr(t, "entry_time", i) for i, t in enumerate(trades)]
 
             point_colors = [
                 colors.trade_win if p >= 0 else colors.trade_loss for p in profits
@@ -593,7 +589,7 @@ class ReportGenerator:
                     y=profits,
                     mode="markers",
                     name="Trade P&L",
-                    marker=dict(color=point_colors, size=8),
+                    marker={"color": point_colors, "size": 8},
                 )
             )
 
@@ -605,7 +601,7 @@ class ReportGenerator:
                 yaxis_title="Profit/Loss",
                 template=template,
                 height=300,
-                margin=dict(l=50, r=20, t=50, b=50),
+                margin={"l": 50, "r": 20, "t": 50, "b": 50},
             )
 
             charts["trade_scatter"] = fig.to_json()
@@ -615,16 +611,16 @@ class ReportGenerator:
         fig = go.Figure(
             data=[
                 go.Table(
-                    header=dict(
-                        values=["Metric", "Value"],
-                        fill_color=colors.equity_line,
-                        font=dict(color=colors.background, size=12),
-                    ),
-                    cells=dict(
-                        values=[list(metrics_data.keys()), list(metrics_data.values())],
-                        fill_color=colors.background,
-                        font=dict(color=colors.text),
-                    ),
+                    header={
+                        "values": ["Metric", "Value"],
+                        "fill_color": colors.equity_line,
+                        "font": {"color": colors.background, "size": 12},
+                    },
+                    cells={
+                        "values": [list(metrics_data.keys()), list(metrics_data.values())],
+                        "fill_color": colors.background,
+                        "font": {"color": colors.text},
+                    },
                 )
             ]
         )
@@ -633,7 +629,7 @@ class ReportGenerator:
             title="Key Metrics",
             template=template,
             height=300,
-            margin=dict(l=20, r=20, t=50, b=20),
+            margin={"l": 20, "r": 20, "t": 50, "b": 20},
         )
 
         charts["metrics_table"] = fig.to_json()
@@ -643,7 +639,7 @@ class ReportGenerator:
     def _get_metrics_table(self, statistics: StatsResult) -> dict[str, str]:
         """Extract metrics as formatted strings for table."""
 
-        def fmt(val: float | int | None) -> str:
+        def fmt(val: float | None) -> str:
             if val is None:
                 return "N/A"
             if isinstance(val, float):
@@ -934,7 +930,7 @@ class ReportGenerator:
         )
         charts_html = ""
         if plotly_available and charts:
-            for chart_id, chart_json in charts.items():
+            for chart_id, chart_json in charts.items():  # noqa: PERF102
                 charts_html += f"""
                 <div class="chart-container" id="{chart_id}">
                     <div id="plotly-{chart_id}"></div>

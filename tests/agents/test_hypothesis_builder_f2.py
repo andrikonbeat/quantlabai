@@ -3,21 +3,18 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-
-from quantlab.agents.hypothesis_builder.rule import RuleMode
 from quantlab.agents.hypothesis_builder.llm import LLMMode
+from quantlab.agents.hypothesis_builder.rule import RuleMode
 from quantlab.dsl.models import (
     BuildingBlock,
     EntryRule,
     HypothesisConfig,
     IndicatorConfig,
     LLMConfig,
-    Strategy,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -88,7 +85,10 @@ class TestLLMModeF2Wiring:
     def test_parse_response_drops_invalid_params(
         self, llm_mode: LLMMode, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from quantlab.agents.parameter_validator import ParameterValidator, ValidationResult
+        from quantlab.agents.parameter_validator import (
+            ParameterValidator,
+            ValidationResult,
+        )
 
         mock_validator = MagicMock(spec=ParameterValidator)
         mock_validator.validate_hypothesis.return_value = ValidationResult(
@@ -121,7 +121,10 @@ class TestLLMModeF2Wiring:
     def test_parse_response_keeps_valid_params(
         self, llm_mode: LLMMode, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        from quantlab.agents.parameter_validator import ParameterValidator, ValidationResult
+        from quantlab.agents.parameter_validator import (
+            ParameterValidator,
+            ValidationResult,
+        )
 
         mock_validator = MagicMock(spec=ParameterValidator)
         mock_validator.validate_hypothesis.return_value = ValidationResult(

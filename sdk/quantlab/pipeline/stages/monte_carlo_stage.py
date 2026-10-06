@@ -43,7 +43,7 @@ class MonteCarloStage(Stage):
             Dict with mc_results and mc_metrics.
         """
         candidate_id = ctx.artifacts.get("candidate_id", "unknown")
-        stats = ctx.artifacts.get("strategy_stats", {})
+        _stats = ctx.artifacts.get("strategy_stats", {})
 
         # Placeholder — Monte Carlo simulation logic goes here
         # In production this would delegate to the Retester/SQX Optimizer

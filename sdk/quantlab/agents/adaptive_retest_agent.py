@@ -15,9 +15,7 @@ from typing import Any
 
 from quantlab.cfx.models import (
     BuildTask,
-    CfxArchive as CfxArchive,
     CrossChecksConfig,
-    DatabanksConfig as DatabanksConfig,
     RankingsConfig,
     RetesterDataConfig,
 )

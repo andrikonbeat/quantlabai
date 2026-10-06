@@ -1,16 +1,20 @@
 """Tests for pipeline CLI: registry, run, list, history."""
 
-import asyncio
+import tempfile
 from datetime import datetime
 from pathlib import Path
-import tempfile
 
 import pytest
-
-from quantlab.pipeline.config import PipelineConfig
-from quantlab.pipeline.registry import PipelineRegistry
-from quantlab.pipeline.models import PipelineRun, StageRun, StageStatus, PipelineResult, StageResult
 from quantlab.knowledge.store import KnowledgeStore
+from quantlab.pipeline.config import PipelineConfig
+from quantlab.pipeline.models import (
+    PipelineResult,
+    PipelineRun,
+    StageResult,
+    StageRun,
+    StageStatus,
+)
+from quantlab.pipeline.registry import PipelineRegistry
 
 
 class TestPipelineConfig:

@@ -14,7 +14,6 @@ import asyncio
 import json
 
 import pytest
-
 from quantlab.gates.callbacks import (
     QuestionToolGateCallback,
     decision_path,
@@ -23,9 +22,9 @@ from quantlab.gates.callbacks import (
 )
 from quantlab.gates.models import (
     DEFAULT_GATE_POLICIES,
+    HUMAN_GATE_IDS,
     FallbackPolicy,
     GateDecisionAction,
-    HUMAN_GATE_IDS,
 )
 from quantlab.gates.orchestrator import HumanGateOrchestrator
 

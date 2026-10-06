@@ -11,6 +11,7 @@ Covers:
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -240,9 +241,6 @@ class TestPipelineIntegration:
         THEN it returns dict with the 5 required artifact keys.
         """
         from quantlab.pipeline.base import PipelineContext
-        from quantlab.pipeline.stages.agent_stages import (
-            LLMResearchStage as LLMResearchStage,
-        )
 
         # We need a concrete class — get it from the registry
         registry = StageRegistry()
@@ -318,7 +316,7 @@ class TestPipelineIntegration:
             new=AsyncMock(return_value=mock_config),
         ):
             ctx = PipelineContext(config={})
-            result = await stage.execute(ctx)
+            _result = await stage.execute(ctx)
 
         # Verify artifacts written to context
         assert ctx.artifacts.get("research_config") is not None

@@ -1,7 +1,8 @@
 """Tests for dashboard foundation — DashboardServer and create_app."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from sdk.quantlab.dashboard.app import DashboardServer, ServerConfig, create_app
 

@@ -9,7 +9,7 @@ import argparse
 import asyncio
 import sys
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -201,7 +201,7 @@ async def cmd_pipeline_run(args: argparse.Namespace) -> int:
             run.duration = time.monotonic() - start_time
             run.status = StageStatus.FAILED
             run.error = f"{type(e).__name__}: {e}"
-            run.completed_at = datetime.now()
+            run.completed_at = datetime.now(tz=UTC)
             if args.json:
                 print_json(run.to_dict())
             else:
@@ -490,9 +490,6 @@ def add_pipeline_subparser(subparsers: argparse._SubParsersAction[argparse.Argum
 
 async def cmd_pipeline_validate(args: argparse.Namespace) -> int:
     """Validate pipeline configuration file."""
-    from quantlab.pipeline.config.loader import (
-        MultiAgentPipelineConfigLoader as MultiAgentPipelineConfigLoader,
-    )
     from quantlab.pipeline.config.models import MultiAgentPipelineConfig
 
     try:

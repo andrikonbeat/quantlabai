@@ -25,7 +25,6 @@ import builtins
 from pathlib import Path
 
 import pytest
-
 import quantlab.cli.main as cli_main
 
 CLI_MAIN = Path(cli_main.__file__)

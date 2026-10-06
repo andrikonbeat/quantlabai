@@ -105,7 +105,7 @@ class RegimeClassifier:
                 "Close": [b.close for b in bars],
             }
         )
-        df_window = pd.DataFrame(
+        _df_window = pd.DataFrame(
             {
                 "High": [b.high for b in window],
                 "Low": [b.low for b in window],

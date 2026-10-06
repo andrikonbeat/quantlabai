@@ -81,7 +81,7 @@ def register(srv: QuantLabMCPServer) -> None:
             JSON string with health metrics.
         """
         try:
-            calculator = srv.health_calculator
+            _calculator = srv.health_calculator
 
             # Without a real StatsResult, we return a scaffolding response
             # that tells callers how to supply data via compute_fitness.

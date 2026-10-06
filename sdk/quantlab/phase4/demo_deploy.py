@@ -17,7 +17,7 @@ import logging
 import os
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from enum import Enum
 from typing import Any
 
@@ -178,7 +178,7 @@ class DemoDeployer:
             The backend's ``DeploymentResult``, or a ``BLOCKED_EXPIRED``
             result carrying ``pending_gate="HUMAN_APPROVE_DEMO"``.
         """
-        today = now or date.today()
+        today = now or datetime.now(tz=UTC).date()
         window = self._window or DemoWindow(started_at=today)
 
         if window.is_expired(today):

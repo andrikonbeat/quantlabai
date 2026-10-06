@@ -5,10 +5,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
-
-from quantlab.agents.parameter_validator import ParameterValidator, ValidationResult
+from quantlab.agents.parameter_validator import ParameterValidator
 from quantlab.dsl.models import HypothesisConfig
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

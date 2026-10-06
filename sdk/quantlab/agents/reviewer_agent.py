@@ -15,7 +15,6 @@ from typing import Any
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.agent_stages import ReviewStage
 from quantlab.stats.aggregation import StatisticsAggregator
-from quantlab.stats.models import BenchmarkComparison as BenchmarkComparison
 
 logger = logging.getLogger(__name__)
 
@@ -291,8 +290,8 @@ class ReviewerAgent(ReviewStage):
             Dict with ``mc_overfit_flag``, ``breach_trade``, ``severity``.
         """
         p10_curve = monte_carlo_bands.get(10, [])
-        p50_curve = monte_carlo_bands.get(50, [])
-        p90_curve = monte_carlo_bands.get(90, [])
+        _p50_curve = monte_carlo_bands.get(50, [])
+        _p90_curve = monte_carlo_bands.get(90, [])
 
         if not p10_curve:
             return {
@@ -411,8 +410,8 @@ class ReviewerAgent(ReviewStage):
         # Determine verdict
         alpha = comparison_dict.get("alpha", 0.0)
         info_ratio = comparison_dict.get("information_ratio", 0.0)
-        beta = comparison_dict.get("beta", 1.0)
-        tracking_error = comparison_dict.get("tracking_error", 0.0)
+        _beta = comparison_dict.get("_beta", 1.0)
+        _tracking_error = comparison_dict.get("_tracking_error", 0.0)
 
         # Handle nan values from constant return series
         alpha_valid = self._has_alpha(alpha)

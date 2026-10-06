@@ -7,11 +7,9 @@ so per-campaign exports never collide.
 
 from __future__ import annotations
 
-import asyncio
 import uuid
 
 import pytest
-
 from quantlab.sqx.mock_sqx_server import MockSQXServer
 
 

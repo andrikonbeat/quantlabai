@@ -11,21 +11,15 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from quantlab.pipeline.base import Pipeline
+from quantlab.pipeline.base import Pipeline, PipelineContext
 from quantlab.pipeline.base import Stage as PipelineStage
 from quantlab.pipeline.config import (
     PipelineConfig,
     PipelineSummary,
-    StageConfig as StageConfig,
 )
 from quantlab.pipeline.stages.agent_stages import (
     BuilderStage,
-    DeployStage as DeployStage,
-    MonitorStage as MonitorStage,
-    PortfolioStage as PortfolioStage,
     ResearchStage,
-    ReviewStage as ReviewStage,
-    StatisticsStage as StatisticsStage,
 )
 from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
 from quantlab.pipeline.stages.dispatch_stage import DispatchStage
@@ -162,7 +156,6 @@ class StageRegistry:
         from quantlab.pipeline.stages.agent_stages import (
             AnalysisStage,
             GuardianEvaluationAgentStage,
-            GuardianEvaluationStage as GuardianEvaluationStage,
             HypothesisBuilderStage,
             LLMResearchStage,
             RefutationStage,
@@ -335,7 +328,7 @@ class StageRegistry:
                     for h in raw_hypotheses
                 ]
                 building_blocks = ctx.artifacts.get("building_blocks", [])
-                strategies = ctx.artifacts.get("strategies", [])
+                _strategies = ctx.artifacts.get("_strategies", [])
                 market_context = ctx.artifacts.get("market_context")
 
                 result = await self._layer.refute(

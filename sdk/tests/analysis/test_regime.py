@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-
 from quantlab.data.market import Bar
 
 # ── Helpers ────────────────────────────────────────────────────────────────────

@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
-
 import yaml
 
 
@@ -77,7 +76,6 @@ class TestPhase5bESmoke:
     @pytest.mark.asyncio
     async def test_phase5b_e_smoke_full_pipeline(self, mock_campaign_data):
         """Full Phase 5b-5e smoke test: pipeline → history → report → query."""
-        import sys
         
         kl_root = mock_campaign_data / "knowledge"
         
@@ -85,7 +83,6 @@ class TestPhase5bESmoke:
         os.environ["QUANTLAB_KNOWLEDGE_ROOT"] = str(kl_root)
         
         # Import after setting env var
-        from quantlab.cli.main import main
         from quantlab.cli.main import build_parser
         
         parser = build_parser()

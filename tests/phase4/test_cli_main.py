@@ -4,30 +4,26 @@ import argparse
 import json
 import sys
 from io import StringIO
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from quantlab.cli.main import (
-    build_parser,
-    main,
     _parse_strategies,
+    build_parser,
     cmd_daemon_start,
-    cmd_daemon_stop,
     cmd_daemon_status,
-    cmd_portfolio_run,
-    cmd_portfolio_status,
-    cmd_portfolio_export,
+    cmd_daemon_stop,
+    cmd_jforex_deploy,
+    cmd_optimizer_export,
     cmd_optimizer_run,
     cmd_optimizer_status,
-    cmd_optimizer_export,
+    cmd_portfolio_export,
+    cmd_portfolio_run,
+    cmd_portfolio_status,
     cmd_retester_run,
     cmd_retester_status,
-    cmd_retester_export,
-    cmd_jforex_deploy,
+    main,
 )
-
 
 # ── Fixtures ────────────────────────────────────────────────────────────────
 

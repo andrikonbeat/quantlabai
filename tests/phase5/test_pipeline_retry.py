@@ -1,13 +1,12 @@
 """Tests for PipelineRunner retry logic and StageStatus.RETRYING."""
 
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch
 
+import pytest
 from quantlab.pipeline.base import Pipeline, PipelineContext, Stage
-from quantlab.pipeline.runner import PipelineRunner
-from quantlab.pipeline.models import StageStatus, StageResult, PipelineResult
+from quantlab.pipeline.models import StageStatus
 from quantlab.pipeline.progress import PhaseStatus
+from quantlab.pipeline.runner import PipelineRunner
 
 
 class RetryableStage(Stage):

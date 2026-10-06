@@ -12,7 +12,7 @@ from typing import Any
 
 from flask import Flask, Response, jsonify, render_template, request
 
-from quantlab.cli.runner import CliRunner, MockExecutor as MockExecutor
+from quantlab.cli.runner import CliRunner
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.readers.models import EquityPoint, Trade
 from quantlab.reporting.generator import (

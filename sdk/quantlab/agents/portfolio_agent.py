@@ -16,6 +16,8 @@ import logging
 import math
 from typing import Any
 
+import numpy as np
+
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.agent_stages import PortfolioStage
 from quantlab.stats.aggregation import StatisticsAggregator

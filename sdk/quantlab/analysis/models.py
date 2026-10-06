@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from pydantic import BaseModel, Field
 
 from quantlab.stats.models import StatsResult

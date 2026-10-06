@@ -1,17 +1,15 @@
 """Integration test for full 17-stage pipeline dry-run with mocked dependencies."""
 
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
-from pathlib import Path
 import tempfile
-import yaml
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+import yaml
+from quantlab.pipeline.base import PipelineContext
+from quantlab.pipeline.config import PipelineConfig
 from quantlab.pipeline.registry import StageRegistry
 from quantlab.pipeline.runner import PipelineRunner
-from quantlab.pipeline.config import PipelineConfig
-from quantlab.pipeline.base import PipelineContext
-from quantlab.knowledge.store import KnowledgeStore
 
 
 class TestFullPipelineDryRun:

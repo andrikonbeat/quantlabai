@@ -4,6 +4,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
+import pytest
 from quantlab.cfx.models import (
     BuildTask,
     CfxArchive,
@@ -12,8 +13,6 @@ from quantlab.cfx.models import (
 )
 from quantlab.cfx.reader import CfxReader
 from quantlab.cfx.writer import CfxWriter
-
-import pytest
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 

@@ -92,9 +92,7 @@ class SQXDocProvider:
             / "parameters"
             / normalized
         )
-        if yaml_dir.exists() and any(yaml_dir.glob("*.yaml")):
-            return True
-        return False
+        return yaml_dir.exists() and any(yaml_dir.glob("*.yaml"))
 
     def get_indicator_range(
         self, indicator: str, sqx_version: str

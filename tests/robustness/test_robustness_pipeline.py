@@ -5,13 +5,12 @@ import os
 import tempfile
 
 import pytest
-
+from quantlab.knowledge.store import KnowledgeStore
 from quantlab.robustness.circuit_breaker import CircuitBreaker, CircuitOpenError
 from quantlab.robustness.knowledge_health import HealthStatus
 from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 from quantlab.robustness.resilient_notifier import ResilientNotifier
 from quantlab.robustness.retry_policy import RetryPolicy
-from quantlab.knowledge.store import KnowledgeStore
 
 
 class FakeNotifier:

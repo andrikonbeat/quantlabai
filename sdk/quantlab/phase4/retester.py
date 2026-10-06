@@ -15,9 +15,7 @@ from typing import Any
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
 from quantlab.phase4.errors import (
-    DatabankPathError as DatabankPathError,
     RetesterDatabankError,
-    RetesterError as RetesterError,
     RetesterRunError,
 )
 from quantlab.phase4.templates import CfxTemplateBuilder

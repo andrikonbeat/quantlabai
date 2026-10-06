@@ -14,7 +14,6 @@ from __future__ import annotations
 import pathlib
 
 import pytest
-
 from quantlab.agents.builder_agent import BuilderAgent, DispatchResult
 from quantlab.dsl.models import IterationConfig, LLMConfig, ResearchConfig
 from quantlab.pipeline.base import PipelineContext

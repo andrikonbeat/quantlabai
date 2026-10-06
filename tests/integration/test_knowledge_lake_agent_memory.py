@@ -1,13 +1,9 @@
 """Integration test for knowledge lake agent memory functionality."""
 
-import asyncio
 import tempfile
 from pathlib import Path
-from datetime import datetime
-from unittest.mock import AsyncMock
 
 import pytest
-
 from quantlab.agents.memory import AgentMemoryManager
 from quantlab.knowledge.store import KnowledgeStore
 

@@ -29,10 +29,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any
 import warnings
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
@@ -43,7 +43,9 @@ from quantlab.robustness.knowledge_health import (
     HealthStatus,
     KnowledgeStoreHealthCheck,
 )
-from quantlab.tools.exceptions import ParseError as ParseError
+
+if TYPE_CHECKING:
+    from quantlab.pipeline.models import PipelineRun
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -685,7 +687,7 @@ class KnowledgeStore:
 
         if version == "2":
             data["_version"] = "5"
-            am_index = data.setdefault("agent_memory", {})
+            _am_index = data.setdefault("agent_memory", {})
             for path, info in (
                 data.get("directories", {}).get("agent-memory", {}).items()
             ):
@@ -939,6 +941,9 @@ class KnowledgeStore:
     def query(self) -> object:
         """Create a QueryBuilder for this Knowledge Lake.
 
+        Historical note: a dead duplicate once accepted a `filters` argument,
+        but no live caller uses it. The signature is kept simple by design.
+
         Returns:
             QueryBuilder instance configured with the current index.
         """
@@ -1149,7 +1154,7 @@ class KnowledgeStore:
         Returns:
             List of PipelineRun objects (deserialized from YAML).
         """
-        from quantlab.pipeline.models import PipelineRun, StageStatus as StageStatus
+        from quantlab.pipeline.models import PipelineRun
 
         runs_dir = self.root / "pipeline-runs"
         if not runs_dir.exists():

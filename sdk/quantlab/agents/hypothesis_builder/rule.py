@@ -366,7 +366,7 @@ class RuleMode:
     def _is_valid_override(indicator: str, param_key: str, value: Any) -> bool:
         """Validate a parameter override against SQXDocProvider."""
         try:
-            from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+            from quantlab.knowledge.sqx_doc_provider import SQXDocProvider
 
             validator = ParameterValidator(doc_provider=SQXDocProvider())
             hyp = HypothesisConfig(

@@ -16,7 +16,6 @@ import yaml
 
 from quantlab.pipeline.config.models import (
     MultiAgentPipelineConfig,
-    StageConfig as StageConfig,
 )
 
 # Environment variable prefix for overrides

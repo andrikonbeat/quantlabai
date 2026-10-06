@@ -11,12 +11,11 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from quantlab.agents.deployment_agent import SimulatedJCloudDeployClient
 from quantlab.data.demo.store import DemoWindowStore
 from quantlab.pipeline.base import PipelineContext
-from quantlab.pipeline.stages.deploy_stage import DeployStage
 from quantlab.pipeline.stages.demo_stage import DemoStage
+from quantlab.pipeline.stages.deploy_stage import DeployStage
 
 
 @pytest.fixture

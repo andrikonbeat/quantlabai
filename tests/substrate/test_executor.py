@@ -12,13 +12,10 @@ RED contract tests for the unified execution substrate:
 
 from __future__ import annotations
 
-import asyncio
 from pathlib import Path
 
-import pytest
-
-from quantlab.phase4.models import PhaseStatus
 from quantlab.phase4.http_client import AsyncSQXClient
+from quantlab.phase4.models import PhaseStatus
 from quantlab.substrate.executor import (
     Executor,
     Phase,

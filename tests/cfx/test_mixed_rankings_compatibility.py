@@ -27,7 +27,6 @@ keeps that lane out of the comparison entirely.
 
 from __future__ import annotations
 
-import tempfile
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree

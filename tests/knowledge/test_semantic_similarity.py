@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
-
+from quantlab.knowledge.models import QueryResult
 from quantlab.knowledge.query import QueryBuilder
-from quantlab.knowledge.models import QueryResult, CampaignSummary
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

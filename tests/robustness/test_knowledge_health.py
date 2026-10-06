@@ -1,11 +1,8 @@
 """Tests for KnowledgeStoreHealthCheck — probe, TTL caching, cleanup."""
 
 import asyncio
-import os
-import tempfile
 
 import pytest
-
 from quantlab.robustness.knowledge_health import (
     HealthStatus,
     KnowledgeStoreHealthCheck,

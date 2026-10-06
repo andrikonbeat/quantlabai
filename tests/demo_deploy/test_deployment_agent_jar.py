@@ -13,7 +13,6 @@ import zipfile
 from pathlib import Path
 
 import pytest
-
 from quantlab.agents.deployment_agent import (
     DeploymentAgent,
     JCloudConfig,

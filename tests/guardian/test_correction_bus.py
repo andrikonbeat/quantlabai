@@ -17,7 +17,6 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-
 from quantlab.guardian.correction_bus import (
     CORRECTION_EVENT_TYPES,
     CorrectionBus,

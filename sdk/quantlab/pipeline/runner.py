@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -311,13 +311,13 @@ class PipelineRunner:
             stage_result = StageResult(
                 stage_name=stage.name,
                 status=StageStatus.RUNNING,
-                started_at=datetime.now(),
+                started_at=datetime.now(tz=UTC),
             )
 
             if _notify:
                 _notify(f"pipeline/{stage.name}", PhaseStatus.STARTED)
 
-            last_error: Exception | None = None
+            _last_error: Exception | None = None
             max_attempts = max(1, self.max_retries + 1)
 
             for attempt in range(max_attempts):
@@ -339,12 +339,12 @@ class PipelineRunner:
                     stage_result.status = StageStatus.COMPLETED
                     stage_result.duration = stage_duration
                     stage_result.output = output
-                    stage_result.completed_at = datetime.now()
+                    stage_result.completed_at = datetime.now(tz=UTC)
 
                     if _notify:
                         _notify(f"pipeline/{stage.name}", PhaseStatus.SUCCESS)
 
-                    last_error = None
+                    _last_error = None
                     break  # success, exit retry loop
 
                 except GateTimeoutError:
@@ -352,13 +352,13 @@ class PipelineRunner:
                     stage_result.status = StageStatus.FAILED
                     stage_result.duration = stage_duration
                     stage_result.error = "Gate timed out and aborted pipeline"
-                    stage_result.completed_at = datetime.now()
+                    stage_result.completed_at = datetime.now(tz=UTC)
                     ctx.error = GateTimeoutError("Gate aborted pipeline")
-                    last_error = ctx.error
+                    _last_error = ctx.error
                     break  # gate abort is immediate, no retry
 
                 except Exception as e:
-                    last_error = e
+                    _last_error = e
                     if attempt < self.max_retries:
                         # Will retry (loop continues)
                         continue
@@ -371,7 +371,7 @@ class PipelineRunner:
                             f"{type(e).__name__}: {e} "
                             f"(failed after {self.max_retries} retries)"
                         )
-                        stage_result.completed_at = datetime.now()
+                        stage_result.completed_at = datetime.now(tz=UTC)
                         ctx.error = e
                         if _notify:
                             _notify(
@@ -434,13 +434,13 @@ class PipelineRunner:
             stage_result = StageResult(
                 stage_name=stage.name,
                 status=StageStatus.RUNNING,
-                started_at=datetime.now(),
+                started_at=datetime.now(tz=UTC),
             )
 
             if _notify:
                 _notify(f"pipeline/{stage.name}", PhaseStatus.STARTED)
 
-            last_error: Exception | None = None
+            _last_error: Exception | None = None
             max_attempts = max(1, self.max_retries + 1)
 
             for attempt in range(max_attempts):
@@ -461,10 +461,10 @@ class PipelineRunner:
                     stage_result.status = StageStatus.COMPLETED
                     stage_result.duration = stage_duration
                     stage_result.output = output
-                    stage_result.completed_at = datetime.now()
+                    stage_result.completed_at = datetime.now(tz=UTC)
                     if _notify:
                         _notify(f"pipeline/{stage.name}", PhaseStatus.SUCCESS)
-                    last_error = None
+                    _last_error = None
                     break  # success
 
                 except GateTimeoutError:
@@ -472,13 +472,13 @@ class PipelineRunner:
                     stage_result.status = StageStatus.FAILED
                     stage_result.duration = stage_duration
                     stage_result.error = "Gate timed out and aborted pipeline"
-                    stage_result.completed_at = datetime.now()
+                    stage_result.completed_at = datetime.now(tz=UTC)
                     ctx.error = GateTimeoutError("Gate aborted pipeline")
-                    last_error = ctx.error
+                    _last_error = ctx.error
                     break  # gate abort is immediate, no retry
 
                 except Exception as e:
-                    last_error = e
+                    _last_error = e
                     if attempt < self.max_retries:
                         continue  # retry
                     else:
@@ -489,7 +489,7 @@ class PipelineRunner:
                             f"{type(e).__name__}: {e} "
                             f"(failed after {self.max_retries} retries)"
                         )
-                        stage_result.completed_at = datetime.now()
+                        stage_result.completed_at = datetime.now(tz=UTC)
                         ctx.error = e
                         if _notify:
                             _notify(
@@ -508,7 +508,7 @@ class PipelineRunner:
                     gate_result = StageResult(
                         stage_name=gate.name,
                         status=StageStatus.RUNNING,
-                        started_at=datetime.now(),
+                        started_at=datetime.now(tz=UTC),
                     )
                     try:
                         gate_output = await gate.execute(ctx)
@@ -516,13 +516,13 @@ class PipelineRunner:
                         gate_result.status = StageStatus.COMPLETED
                         gate_result.duration = gate_duration
                         gate_result.output = gate_output
-                        gate_result.completed_at = datetime.now()
+                        gate_result.completed_at = datetime.now(tz=UTC)
                     except GateTimeoutError as e:
                         gate_duration = time.monotonic() - stage_start
                         gate_result.status = StageStatus.FAILED
                         gate_result.duration = gate_duration
                         gate_result.error = str(e)
-                        gate_result.completed_at = datetime.now()
+                        gate_result.completed_at = datetime.now(tz=UTC)
                         ctx.error = e
                         result.stages.append(gate_result)
                         break  # Stop on gate abort
@@ -531,7 +531,7 @@ class PipelineRunner:
                         gate_result.status = StageStatus.FAILED
                         gate_result.duration = gate_duration
                         gate_result.error = f"{type(e).__name__}: {e}"
-                        gate_result.completed_at = datetime.now()
+                        gate_result.completed_at = datetime.now(tz=UTC)
                         ctx.error = e
                         result.stages.append(gate_result)
                         break

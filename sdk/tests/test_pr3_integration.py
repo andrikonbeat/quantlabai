@@ -42,7 +42,7 @@ def _create_export_dir(trades: list[float], equity: list[float]) -> str:
             # Use ordinal date format to avoid hour/day overflow
             from datetime import datetime, timedelta
 
-            ts = datetime(2024, 1, 1) + timedelta(hours=i)
+            ts = datetime(2024, 1, 1) + timedelta(hours=i)  # noqa: DTZ001
             writer.writerow([e, ts.isoformat()])
 
     return tmp_dir

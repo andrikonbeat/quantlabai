@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-
 from quantlab.analysis.engine import (
-    AnalysisEngine as AnalysisEngine,
     AnalysisThresholds,
 )
 from quantlab.analysis.models import SelectionResult, StrategyAnalysis

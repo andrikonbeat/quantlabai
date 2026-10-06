@@ -7,7 +7,6 @@ Covers tasks 1.1 (indirectly) + 1.3.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.knowledge.store import TimeSeriesStore
 
 

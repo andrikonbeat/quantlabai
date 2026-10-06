@@ -207,7 +207,7 @@ class StatisticsAgent(StatisticsStage):
         Returns:
             List of ``EquityPoint`` objects.
         """
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         points: list[EquityPoint] = []
         with open(path, "r", newline="") as f:
@@ -215,7 +215,7 @@ class StatisticsAgent(StatisticsStage):
             for row in reader:
                 equity_val = float(row.get("equity", row.get("balance", 0)))
                 ts_str = row.get("timestamp", row.get("time", ""))
-                timestamp = datetime.fromisoformat(ts_str) if ts_str else datetime.now()
+                timestamp = datetime.fromisoformat(ts_str) if ts_str else datetime.now(tz=UTC)
                 points.append(EquityPoint(equity=equity_val, timestamp=timestamp))
         return points
 

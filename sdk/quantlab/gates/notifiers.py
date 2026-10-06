@@ -68,7 +68,7 @@ class WebhookNotifier(Notifier):
                 logger.info("Webhook notification sent to %s", self.url)
         except ImportError:
             logger.info("[WEBHOOK NOTIFICATION] url=%s payload=%s", self.url, payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Webhook notification to %s failed: %s", self.url, exc)
 
 
@@ -124,7 +124,7 @@ class EmailNotifier(Notifier):
                 subject,
                 message,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Email notification failed: %s", exc)
 
 
@@ -152,7 +152,7 @@ class SlackNotifier(Notifier):
                 logger.info("Slack notification posted to %s", self.webhook_url)
         except ImportError:
             logger.info("[SLACK NOTIFICATION] %s", payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Slack notification to %s failed: %s", self.webhook_url, exc)
 
 
@@ -205,7 +205,7 @@ class MobilePushNotifier(Notifier):
                 self.endpoint,
                 payload,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "Mobile push notification to %s failed: %s", self.endpoint, exc
             )

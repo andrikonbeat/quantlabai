@@ -5,8 +5,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 from quantlab.pipeline.models import PipelineRun, StageRun, StageStatus
+
 from sdk.quantlab.dashboard.app import ServerConfig, resolve_sqcli_binary
 
 from .seed import seed_campaign, seed_campaign_without_metrics, seed_export_data

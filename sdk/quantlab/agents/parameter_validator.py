@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from quantlab.dsl.models import HypothesisConfig
-from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+from quantlab.knowledge.sqx_doc_provider import SQXDocProvider
 
 
 @dataclass

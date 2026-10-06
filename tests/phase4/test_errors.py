@@ -1,30 +1,29 @@
 """Tests for Phase 4 exception hierarchy."""
 
-import pytest
 
 from quantlab.phase4.errors import (
-    Phase4Error,
-    JForexError,
+    DatabankPathError,
     JForexConnectionError,
-    JForexStrategyNotFoundError,
+    JForexError,
     JForexServerError,
-    PortfolioError,
-    StrategyNotFoundError,
-    PortfolioOptimizationError,
-    PortfolioStrategyLoadError,
-    PortfolioSaveError,
-    PortfolioMasterError,
+    JForexStrategyNotFoundError,
     OptimizerError,
     OptimizerRunError,
+    Phase4Error,
+    PortfolioError,
+    PortfolioMasterError,
+    PortfolioOptimizationError,
+    PortfolioSaveError,
+    PortfolioStrategyLoadError,
+    RetesterDatabankError,
     RetesterError,
     RetesterRunError,
-    RetesterDatabankError,
-    DatabankPathError,
-    SQXError,
     SQXBindingError,
-    UnsupportedSQXVersionError,
     SQXDaemonStartError,
+    SQXError,
     SQXSessionLockError,
+    StrategyNotFoundError,
+    UnsupportedSQXVersionError,
 )
 
 

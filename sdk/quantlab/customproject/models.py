@@ -8,7 +8,7 @@ be imported and tested standalone. The mapping to CFX models happens in
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from quantlab.versioning import PINNED_SQX_VERSION
 

@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any
 
 from quantlab.phase4.errors import (
-    JForexConnectionError as JForexConnectionError,
     SQXSessionLockError,
 )
 from quantlab.phase4.http_client import (
@@ -371,7 +370,7 @@ class CommandDispatcher:
                 if re.match(r"^\d{2}:\d{2}:\d{2}", line):
                     continue
                 # Skip separators, CLI usage hints, and empty markers
-                if line.startswith("-") or line.startswith("sqcli"):
+                if line.startswith(("-", "sqcli")):
                     continue
                 if "available projects" in line.lower():
                     continue

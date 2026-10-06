@@ -23,7 +23,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from quantlab.campaign.delegation import (
     AuthorityViolationError,
     PhaseNotFoundError,

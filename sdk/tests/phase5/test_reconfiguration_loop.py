@@ -17,7 +17,6 @@ import pytest
 
 from quantlab.agents.research_director import CampaignState, ResearchDirector
 from quantlab.dsl.models import (
-    HypothesisConfig as HypothesisConfig,
     IterationConfig,
     ResearchConfig,
 )
@@ -32,12 +31,12 @@ def _make_config(**overrides) -> ResearchConfig:
         max_iterations=overrides.pop("max_iterations", 3),
         auto_iterate=overrides.pop("auto_iterate", True),
     )
-    base = dict(
-        campaign="LoopTest",
-        market="EURUSD",
-        timeframe="H1",
-        iteration_config=iteration_config,
-    )
+    base = {
+        "campaign": "LoopTest",
+        "market": "EURUSD",
+        "timeframe": "H1",
+        "iteration_config": iteration_config,
+    }
     base.update(overrides)
     return ResearchConfig(**base)
 

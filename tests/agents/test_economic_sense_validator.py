@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from quantlab.agents.economic_sense.validator import EconomicSenseValidator
 from quantlab.dsl.models import HypothesisConfig
 

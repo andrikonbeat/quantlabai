@@ -7,7 +7,6 @@ from typing import Any
 
 from quantlab.robustness.circuit_breaker import (
     CircuitBreaker,
-    CircuitOpenError as CircuitOpenError,
 )
 
 

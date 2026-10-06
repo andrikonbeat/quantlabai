@@ -8,7 +8,6 @@ from quantlab.analysis.models import StrategyAnalysis
 from quantlab.readers.models import StrategySummary
 from quantlab.stats.engine import StatisticsEngine
 from quantlab.stats.models import StatsResult
-from quantlab.tools.exceptions import QuantLabError as QuantLabError
 
 
 @dataclass

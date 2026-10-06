@@ -17,9 +17,13 @@ import re
 from pathlib import Path
 
 import pytest
-
 from quantlab.campaign.delegation import PHASE_AGENTS
-from quantlab.campaign.flow import PHASES, STAGE_FOR_PHASE, FlowIntegrityError, assert_flow
+from quantlab.campaign.flow import (
+    PHASES,
+    STAGE_FOR_PHASE,
+    FlowIntegrityError,
+    assert_flow,
+)
 
 CANONICAL_14 = (
     "research",

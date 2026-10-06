@@ -10,7 +10,6 @@ from __future__ import annotations
 from zipfile import ZipFile
 
 import pytest
-
 from quantlab.compiler.errors import CompilerError
 from quantlab.compiler.jfx import JfxArtifact, package_classes
 

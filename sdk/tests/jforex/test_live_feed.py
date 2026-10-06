@@ -5,9 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
-
 from quantlab.jforex.live_feed import JForexLiveFeed
-from quantlab.jforex.models import OrderEvent as OrderEvent
 from quantlab.readers.models import EquityPoint
 
 

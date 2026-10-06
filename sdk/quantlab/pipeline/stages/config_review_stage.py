@@ -31,6 +31,7 @@ from quantlab.knowledge.kb.teaching import (
     build_teaching_table,
 )
 from quantlab.pipeline.base import PipelineContext, Stage
+from quantlab.sqx.project_builder import BuildConfig
 
 try:  # CostsConfig is optional — the reviewer degrades to a preset note
     from quantlab.costs.models import CostsConfig

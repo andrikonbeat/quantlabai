@@ -7,7 +7,6 @@ Strict TDD: written first — FAIL (RED) until `SentimentScorer` exists.
 
 from __future__ import annotations
 
-
 from quantlab.data.news.models import NewsItem
 
 # ── Helpers ────────────────────────────────────────────────────────────────────

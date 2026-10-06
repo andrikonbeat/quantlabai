@@ -2,8 +2,8 @@
 
 import pytest
 from quantlab.pipeline.base import Pipeline, PipelineContext, Stage
-from quantlab.pipeline.runner import PipelineRunner
 from quantlab.pipeline.models import StageStatus
+from quantlab.pipeline.runner import PipelineRunner
 
 
 class SuccessStage(Stage):

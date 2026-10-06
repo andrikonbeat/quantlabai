@@ -63,7 +63,6 @@ class TestRuleMode:
         ("pullback entry after retracement",    {"EMA", "RSI"}),
         ("support and resistance levels",       {"BB", "RSI"}),
     ])
-    # fmt: on
     def test_keyword_mapping(
         self,
         rule_mode: RuleMode,
@@ -72,7 +71,7 @@ class TestRuleMode:
     ) -> None:
         """Each RB-4 keyword pattern produces the expected indicators."""
         hyp = HypothesisConfig(name="test", description=description)
-        blocks, strategies = rule_mode.build(hyp)
+        blocks, _strategies = rule_mode.build(hyp)
 
         indicator_names = {b.indicator.name for b in blocks}
         for ind in expected_indicators:
@@ -88,7 +87,7 @@ class TestRuleMode:
         hyp = HypothesisConfig(
             name="test", description="custom strategy idea no keywords"
         )
-        blocks, strategies = rule_mode.build(hyp)
+        blocks, _strategies = rule_mode.build(hyp)
         assert len(blocks) >= 1
         assert blocks[0].indicator.name == "RSI"
 
@@ -342,7 +341,7 @@ class TestHypothesisBuilder:
         builder = HypothesisBuilder(mode="rule")
         h1 = HypothesisConfig(name="h1", description="mean-reversion")
         h2 = HypothesisConfig(name="h2", description="momentum")
-        blocks, strategies = await builder.build([h1, h2])
+        blocks, _strategies = await builder.build([h1, h2])
         indicator_names = {b.indicator.name for b in blocks}
         assert "RSI" in indicator_names
         assert "BB" in indicator_names
@@ -371,7 +370,7 @@ class TestHypothesisBuilder:
         """When mode='llm' but unimplemented, falls back to rule."""
         builder = HypothesisBuilder(mode="llm")
         hyp = HypothesisConfig(name="test", description="mean-reversion")
-        blocks, strategies = await builder.build([hyp])
+        blocks, _strategies = await builder.build([hyp])
         assert len(blocks) >= 1
         assert blocks[0].indicator.name == "RSI"
 
@@ -380,7 +379,7 @@ class TestHypothesisBuilder:
         """Market_context=None is accepted without error."""
         builder = HypothesisBuilder(mode="rule")
         hyp = HypothesisConfig(name="test", description="breakout")
-        blocks, strategies = await builder.build([hyp], market_context=None)
+        blocks, _strategies = await builder.build([hyp], market_context=None)
         assert len(blocks) >= 1
 
     @pytest.mark.asyncio
@@ -627,7 +626,7 @@ class TestLLMModeParse:
                 ],
             }
         )
-        blocks, strategies = llm_mode._parse_response(response)
+        blocks, _strategies = llm_mode._parse_response(response)
 
         assert len(blocks) == 1
         assert blocks[0].entry is None
@@ -653,7 +652,7 @@ class TestHypothesisBuilderLLMFallback:
             mock_llm.build = AsyncMock(side_effect=Exception("LLM API error"))
 
             hyp = HypothesisConfig(name="test", description="mean-reversion EURUSD")
-            blocks, strategies = await builder.build([hyp])
+            blocks, _strategies = await builder.build([hyp])
 
             # Should return valid rule-mode output
             assert len(blocks) >= 1
@@ -682,7 +681,7 @@ class TestHypothesisBuilderLLMFallback:
             )
 
             hyp = HypothesisConfig(name="test", description="breakout with volume")
-            blocks, strategies = await builder.build([hyp])
+            blocks, _strategies = await builder.build([hyp])
 
             assert len(blocks) >= 1
             # Breakout keyword → Donchian + Volume
@@ -744,7 +743,7 @@ class TestHypothesisBuilderLLMFallback:
         """mode='llm' but no LLMConfig → uses rule mode."""
         builder = HypothesisBuilder(mode="llm")
         hyp = HypothesisConfig(name="test", description="mean-reversion EURUSD")
-        blocks, strategies = await builder.build([hyp])
+        blocks, _strategies = await builder.build([hyp])
         assert len(blocks) >= 1
         # Should have RSI (from rule mode fallback)
         assert blocks[0].indicator.name == "RSI"
@@ -846,7 +845,7 @@ class TestHypothesisBuilderLLMModeScenario:
         )
         hyp = HypothesisConfig(name="test", description="mean-reversion")
         # Should use rule even though construction mode is llm
-        blocks, strategies = await builder.build([hyp], mode="rule")
+        blocks, _strategies = await builder.build([hyp], mode="rule")
 
         assert len(blocks) >= 1
         assert blocks[0].indicator.name == "RSI"
@@ -877,7 +876,7 @@ class TestHypothesisBuilderLLMModeScenario:
                     [Strategy(name="S1", building_blocks=["RSI_14"])],
                 ),
             )
-            blocks, strategies = await builder.build([h1, h2])
+            blocks, _strategies = await builder.build([h1, h2])
 
             assert mock_llm.build.call_count == 2
             assert len(blocks) >= 1
@@ -956,7 +955,7 @@ class TestHypothesisBuilderLLMModeScenario:
                     [Strategy(name="S1", building_blocks=["RSI_14"])],
                 ),
             )
-            blocks, strategies = await builder.build(
+            blocks, _strategies = await builder.build(
                 [hyp], market_context={"market": "EURUSD"}
             )
             assert len(blocks) == 1

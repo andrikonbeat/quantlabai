@@ -356,7 +356,7 @@ class TestDispatchStage:
         result = await stage.execute(ctx)
 
         assert len(builder.dispatch_calls) == 1
-        cfx, config, skip_data, campaign_id, build_config = builder.dispatch_calls[0]
+        cfx, _config, _skip_data, campaign_id, _build_config = builder.dispatch_calls[0]
         assert cfx == b"cfx-bytes"
         assert campaign_id == "RetestOptTest"  # forwarded from research_config
         assert ctx.artifacts["campaign_id"] == "RetestOptTest"

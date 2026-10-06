@@ -18,7 +18,6 @@ Strict TDD: written first — RED until Slice A lands.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.errors import PortfolioStateBlockedError
 from quantlab.pipeline.stages.agent_stages import BuilderStage

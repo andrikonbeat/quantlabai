@@ -11,9 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
-import pytest
-
-from quantlab.agents.archiver import ArchiveResult, Archiver
+from quantlab.agents.archiver import Archiver, ArchiveResult
 from quantlab.guardian.models import PortfolioState
 from quantlab.knowledge.models import MaintenancePlan
 from quantlab.pipeline.base import PipelineContext

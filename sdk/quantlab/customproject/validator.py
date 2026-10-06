@@ -80,7 +80,7 @@ def sqcli_ready(sqcli_path: str | Path, timeout: int = 300) -> bool:
     """
     try:
         result = subprocess.run(
-            [str(sqcli_path), "-h"],
+                [str(sqcli_path), "-h"], check=True,
             capture_output=True,
             timeout=timeout,
         )

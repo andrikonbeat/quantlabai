@@ -6,9 +6,6 @@ in quantlab.cfx.models. Expected failures: ImportError / AttributeError.
 
 from __future__ import annotations
 
-import pytest
-
-
 # ── Generic dialect helpers ──────────────────────────────────────────
 
 _GENERIC_XML = """<CrossChecks>
@@ -142,9 +139,6 @@ class TestCrossChecksAutomaticRetestDefaults:
     def test_default_values(self):
         from quantlab.cfx.models import (
             CrossChecksAutomaticRetest,
-            MonteCarloRetest,
-            RetestWithHigherPrecision,
-            WalkForwardOptimization,
         )
 
         model = CrossChecksAutomaticRetest()

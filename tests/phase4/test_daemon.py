@@ -1,11 +1,9 @@
 """Tests for SQXDaemonManager — lifecycle, health checks, binding enforcement."""
 
 import asyncio
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from quantlab.phase4.daemon import SQXDaemonManager
 from quantlab.phase4.errors import SQXBindingError, SQXDaemonStartError
 

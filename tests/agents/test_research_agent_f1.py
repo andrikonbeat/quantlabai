@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
-from quantlab.agents.economic_sense.validator import EconomicSenseValidator
 from quantlab.agents.research_agent import ResearchAgent
-from quantlab.agents.tag_calibrator import TagCalibrator
 from quantlab.dsl.models import HypothesisConfig
 
 

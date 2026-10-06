@@ -13,10 +13,7 @@ Strict TDD: written first — RED until Slice B lands.
 
 from __future__ import annotations
 
-from datetime import datetime
-
 import pytest
-
 from quantlab.guardian.base import BaseGuardian
 from quantlab.guardian.models import (
     GuardianResult,

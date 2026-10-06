@@ -4,7 +4,6 @@ Uses ``CfxTemplateBuilder._build_retester_task`` to verify model-level
 injection without serialization round-trips.
 """
 
-from quantlab.cfx.models import BuildTask, SettingsSection
 from quantlab.phase4.templates import CfxTemplateBuilder
 
 

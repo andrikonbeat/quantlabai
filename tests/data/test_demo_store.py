@@ -8,11 +8,7 @@ raises ``StateCorruptionError`` instead of returning garbage.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import pytest
-
 from quantlab.data.demo.store import DemoWindowStore, StateCorruptionError
 
 

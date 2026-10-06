@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from datetime import UTC, datetime
 
 from quantlab.readers.models import EquityPoint
 
@@ -48,7 +48,7 @@ class ResultReader:
                 "ResultReader.stream_live: yielding sentinel for %s",
                 campaign_id,
             )
-            yield EquityPoint(timestamp=datetime.now(), equity=0.0)
+            yield EquityPoint(timestamp=datetime.now(tz=UTC), equity=0.0)
             return
 
         retries = 0

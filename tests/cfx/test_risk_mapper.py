@@ -16,7 +16,6 @@ Strict TDD: written first — RED until Slice A lands.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.cfx.models import BuildTask, CfxConfig, SettingsSection
 from quantlab.cfx.reader import _MAX_VERSION
 from quantlab.cfx.risk_mapper import RiskConfig, RiskConfigError, RiskConfigMapper

@@ -15,9 +15,7 @@ from quantlab.compiler import (
 )
 from quantlab.compiler.compiler import CompilerPipeline
 from quantlab.phase4.errors import (
-    JForexConnectionError as JForexConnectionError,
     JForexError,
-    JForexServerError as JForexServerError,
     JForexStrategyNotFoundError,
 )
 from quantlab.phase4.http_client import DEFAULT_PORT, AsyncSQXClient

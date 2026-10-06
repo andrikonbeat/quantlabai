@@ -12,14 +12,14 @@ from quantlab.cfx import (
     CfxConfig,
     CfxPatcher,
     CfxProject,
-    CfxWriter as CfxWriter,
+    CfxWriter,
     SettingsSection,
     add_ranking_condition,
     add_timeframe,
     enable_block,
-    enable_crosscheck as enable_crosscheck,
-    set_date_range as set_date_range,
-    set_genetic as set_genetic,
+    enable_crosscheck,
+    set_date_range,
+    set_genetic,
     set_market,
 )
 from quantlab.cfx.models import (
@@ -39,15 +39,15 @@ from quantlab.cfx.models import (
     WalkForwardConfig,
 )
 from quantlab.dsl.models import (
-    AcceptanceCriterion as AcceptanceCriterion,
+    AcceptanceCriterion,
     AdvancedRankingFilter,
-    BuildingBlock as BuildingBlock,
+    BuildingBlock,
     ColumnValueFilter,
     DataRangePartsDSL,
-    Market as Market,
+    Market,
     ResearchConfig,
-    Strategy as Strategy,
-    Timeframe as Timeframe,
+    Strategy,
+    Timeframe,
 )
 from quantlab.tools.exceptions import TranslationError, ValidationError
 from quantlab.versioning import PINNED_SQX_VERSION
@@ -581,11 +581,6 @@ def generate_retester_cfx_archive(
 
 __all__ = [
     "SUPPORTED_TIMEFRAMES",
-    "generate_cfx_archive",
-    "generate_cfx_xml",
-    "generate_optimizer_cfx_archive",
-    "generate_portfolio_cfx_archive",
-    "generate_retester_cfx_archive",
     "AcceptanceCriterion",
     "BuildingBlock",
     "CfxWriter",
@@ -593,6 +588,11 @@ __all__ = [
     "Strategy",
     "Timeframe",
     "enable_crosscheck",
+    "generate_cfx_archive",
+    "generate_cfx_xml",
+    "generate_optimizer_cfx_archive",
+    "generate_portfolio_cfx_archive",
+    "generate_retester_cfx_archive",
     "set_date_range",
     "set_genetic",
 ]

@@ -1,9 +1,7 @@
 """Tests for ExecutionGuardian CostCollector wiring (Task 4.3)."""
 
-import pytest
 
 from quantlab.guardian.execution import ExecutionGuardian
-from quantlab.guardian.models import GuardianStatus
 
 
 class FakeBroker:

@@ -15,14 +15,12 @@ import argparse
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from quantlab.cli.monitor_commands import (
     add_monitor_subparser,
     cmd_monitor_start,
-    cmd_monitor_stop,
     cmd_monitor_status,
+    cmd_monitor_stop,
 )
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Task 3.1: monitor subparser structure and argument parsing (unit)

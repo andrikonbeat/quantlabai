@@ -256,7 +256,7 @@ def _validate_zip_paths(zf: zipfile.ZipFile) -> None:
     for name in zf.namelist():
         # Normalise to POSIX separators for consistent checking.
         normalised = name.replace("\\", "/")
-        if normalised.startswith("/") or normalised.startswith(".."):
+        if normalised.startswith(("/", "..")):
             raise CfxCorruptError(f"Path traversal detected in archive entry: {name!r}")
         # Deeply nested ".." also rejected.
         parts = normalised.split("/")

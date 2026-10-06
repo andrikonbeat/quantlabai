@@ -11,11 +11,9 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
-
 from quantlab.phase4.demo_deploy import (
-    DemoWindow,
-    DemoWindowStatus,
     DemoDeployer,
+    DemoWindow,
     RenewalReminder,
     is_demo_dry_run,
 )

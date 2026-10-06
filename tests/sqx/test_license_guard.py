@@ -9,21 +9,18 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from quantlab.cli.runner import CliResult, MockExecutor
 from quantlab.pipeline.license import (
-    LicenseInfo,
     LicenseManager,
     LicenseStatus,
     license_preflight,
 )
-from quantlab.tools.exceptions import LicenseError
 from quantlab.sqx.cli_wrapper import dispatch_campaign
+from quantlab.tools.exceptions import LicenseError
 
 
 class TestSQXLicenseOverride:

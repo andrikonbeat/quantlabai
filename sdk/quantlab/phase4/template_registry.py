@@ -1,11 +1,13 @@
+from __future__ import annotations
+
+from quantlab.customproject.templates import CampaignTemplate
+
 """Template Registry for Project Template Engine (REQ-22 extended).
 
 Provides case-insensitive registration and resolution of campaign templates.
 The registry stores ``TemplateDefinition`` instances keyed by lowercase name
 so lookup is O(1) and case-insensitive per the spec.
 """
-
-from __future__ import annotations
 
 from dataclasses import dataclass
 

@@ -35,6 +35,9 @@ from quantlab.gates.notifiers import (
 from quantlab.knowledge.store import TimeSeriesStore
 from quantlab.readers.models import EquityPoint
 from quantlab.readers.result_reader import ResultReader
+from quantlab.robustness.knowledge_health import (
+    HealthStatus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -494,7 +497,6 @@ class AutonomousMonitorDaemon:
 
         # Health check for store
         from quantlab.robustness.knowledge_health import (
-            HealthStatus as HealthStatus,
             KnowledgeStoreHealthCheck,
         )
 
@@ -713,7 +715,7 @@ class AutonomousMonitorDaemon:
         except Exception as exc:
             self._loop_exception = exc
             self._state = "error"
-            logger.exception("Daemon loop fatal error: %s", exc)
+            logger.exception("Daemon loop fatal error")
 
     async def _on_point(self, point: EquityPoint) -> None:
         """Process a single equity point: buffer it and deliver it to the
@@ -953,6 +955,6 @@ class AutonomousMonitorDaemon:
                     notifiers[name] = ConsoleNotifier()
                 else:
                     logger.warning("Unknown notifier type '%s' — skipping", name)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 logger.warning("Failed to build notifier '%s' — skipping", name)
         return notifiers

@@ -16,8 +16,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from quantlab.phase4.http_client import AsyncSQXClient
 from quantlab.phase4.models import PhaseStatus
 from quantlab.substrate.executor import (
@@ -27,7 +25,6 @@ from quantlab.substrate.executor import (
     Phase,
     PhaseConfig,
 )
-from quantlab.substrate.lifecycle import LifecycleState, SubstrateCheckpoint
 
 
 class RecordingClient:

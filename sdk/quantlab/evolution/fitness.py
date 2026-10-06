@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from quantlab.evolution.config import WeightProfile
 from quantlab.health.calculator import HealthScoreCalculator
 from quantlab.stats.models import StatsResult

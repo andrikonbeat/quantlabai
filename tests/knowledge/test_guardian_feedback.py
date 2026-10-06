@@ -21,7 +21,6 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-
 from quantlab.guardian.models import PortfolioState
 from quantlab.knowledge.guardian_store import (
     GUARDIAN_FEEDBACK_DIR,

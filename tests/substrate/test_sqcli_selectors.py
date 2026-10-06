@@ -9,12 +9,10 @@ Threat-matrix row (subprocess: sqcli invocation):
 
 from __future__ import annotations
 
-import os
 import stat
 from pathlib import Path
 
 import pytest
-
 from quantlab.substrate.executor import (
     Executor,
     Phase,

@@ -308,7 +308,7 @@ class TestFullPipelineWithGates:
         )
 
         runner = PipelineRunner()
-        result = await runner.run(pipeline, ctx)
+        _result = await runner.run(pipeline, ctx)
 
         key = "gate_decision_HUMAN_REVIEW_OBJECTIVES"
         assert key in ctx.artifacts

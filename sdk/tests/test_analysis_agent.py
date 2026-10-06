@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from quantlab.agents.analysis_agent import AnalysisAgent
-from quantlab.analysis.models import StrategyAnalysis as StrategyAnalysis
 from quantlab.pipeline.base import PipelineContext
 
 
@@ -29,7 +28,7 @@ class TestAnalysisAgentRun:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
         assert ctx.artifacts["strategy_analysis"] == []
         assert ctx.artifacts["selected_strategies"] == []
         assert ctx.artifacts["strategy_verdicts"] == {}
@@ -54,7 +53,7 @@ class TestAnalysisAgentRun:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
         assert ctx.artifacts["strategy_analysis"] == []
         assert ctx.artifacts["selected_strategies"] == []
         assert ctx.artifacts["strategy_verdicts"] == {}
@@ -103,7 +102,7 @@ class TestAnalysisAgentRun:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
         assert len(ctx.artifacts["selected_strategies"]) > 0
         assert all(v == "ACCEPT" for v in ctx.artifacts["strategy_verdicts"].values())
         assert "strategy_analysis" in ctx.artifacts
@@ -139,7 +138,7 @@ class TestAnalysisAgentRun:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
         assert ctx.artifacts["strategy_verdicts"]["BadStrat"] == "REJECT"
         assert ctx.artifacts["strategy_verdicts"]["GoodStrat"] == "ACCEPT"
 
@@ -215,7 +214,7 @@ class TestAnalysisAgentRun:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
         # With min_trades=50, 30 trades with PF=2.5 should NOT trigger extreme_pf
         # because extreme_pf is 3.0 and PF=2.5 < 3.0
         assert ctx.artifacts["strategy_verdicts"]["EdgeStrat"] == "ACCEPT"

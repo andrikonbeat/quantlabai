@@ -15,8 +15,6 @@ from quantlab.agents.statistics_agent import StatisticsAgent
 from quantlab.pipeline.base import PipelineContext
 from quantlab.readers.models import EquityPoint, Trade
 from quantlab.stats.models import (
-    AggregateStats as AggregateStats,
-    RollingMetrics as RollingMetrics,
     StatsResult,
 )
 
@@ -201,8 +199,8 @@ def _make_test_trade(profit: float) -> Trade:
 
     return Trade(
         profit=profit,
-        entry_time=datetime(2024, 1, 1),
-        exit_time=datetime(2024, 1, 2),
+        entry_time=datetime(2024, 1, 1),  # noqa: DTZ001
+        exit_time=datetime(2024, 1, 2),  # noqa: DTZ001
         direction="LONG",
         lots=1.0,
     )

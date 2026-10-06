@@ -13,12 +13,9 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
-
 from quantlab.data import DataManager
 from quantlab.data.datasource_registry import DatasourceHandler, DatasourceRegistry
 from quantlab.data.market.models import Bar
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -51,10 +48,10 @@ class _FakeJForexHandler(DatasourceHandler):
     def sqx_name(self, symbol: str, datatype: str) -> str:
         return f"{symbol}_{datatype}_jforex"
 
-    async def ensure(self, symbol: str, datatype: str, sqx_name: str) -> None:  # noqa: ARG002
+    async def ensure(self, symbol: str, datatype: str, sqx_name: str) -> None:
         return None
 
-    async def update(self, symbol: str, datatype: str, sqx_name: str) -> None:  # noqa: ARG002
+    async def update(self, symbol: str, datatype: str, sqx_name: str) -> None:
         return None
 
     def fetch_history(self, symbol: str, datatype: str) -> list[Bar]:

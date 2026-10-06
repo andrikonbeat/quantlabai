@@ -103,7 +103,7 @@ class TestGuardianModels:
             message="Test",
         )
 
-        with pytest.raises(Exception):  # Should raise FrozenInstanceError or similar
+        with pytest.raises(Exception):  # Should raise FrozenInstanceError or similar  # noqa: B017
             result.score = 0.9
 
     def test_meta_guardian_config_defaults(self):

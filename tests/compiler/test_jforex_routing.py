@@ -11,12 +11,9 @@ Rollback boundary: ``QUANTLAB_COMPILER=0`` keeps the ``.java``-only path.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
-
 from quantlab.compiler import JfxArtifact
-from quantlab.compiler.errors import CompilerConfigError, CompileError
+from quantlab.compiler.errors import CompileError, CompilerConfigError
 from quantlab.phase4.jforex_deploy import JForexDeployer
 
 

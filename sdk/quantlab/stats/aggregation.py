@@ -216,7 +216,7 @@ class StatisticsAggregator:
         # Collect all metric names from all cycles
         all_metrics: set[str] = set()
         for cycle in cycles:
-            for k in cycle.metrics.keys():
+            for k in cycle.metrics.keys():  # noqa: SIM118
                 all_metrics.add(normalize(k))
 
         # Collect values for each normalized metric

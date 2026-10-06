@@ -14,10 +14,8 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from quantlab.agents.llm_research_agent import LLMResearchAgent
 from quantlab.data.market.models import Bar
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

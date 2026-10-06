@@ -1,12 +1,9 @@
 """Tests for CfxTemplateBuilder — Portfolio/Optimizer/Retester CFX output validation."""
 
-import base64
 import zipfile
 from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree
-
-import pytest
 
 from quantlab.cfx.reader import CfxReader
 from quantlab.phase4.templates import CfxTemplateBuilder

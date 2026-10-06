@@ -6,9 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
-
-from quantlab.knowledge.ingest import DocIndexer, IngestStats
-
+from quantlab.knowledge.ingest import DocIndexer
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 

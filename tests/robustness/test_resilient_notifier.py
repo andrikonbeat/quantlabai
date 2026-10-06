@@ -1,12 +1,9 @@
 """Tests for ResilientNotifier — retry, queue eviction, JSONL persistence, flush()."""
 
-import asyncio
-import json
 import os
 import tempfile
 
 import pytest
-
 from quantlab.robustness.resilient_notifier import ResilientNotifier
 from quantlab.robustness.retry_policy import RetryPolicy
 

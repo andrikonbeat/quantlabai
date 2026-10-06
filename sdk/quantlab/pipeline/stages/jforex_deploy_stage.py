@@ -59,7 +59,7 @@ class JForexDeployStage(Stage):
             try:
                 bridge.deploy(Path(jfx_path))
                 results[sid] = {"status": "OK"}
-            except Exception as exc:  # noqa: BLE001 - fail-closed per strategy
+            except Exception as exc:
                 results[sid] = {"status": "FAILED", "errors": [str(exc)]}
 
         ctx.artifacts["deployment_result"] = results

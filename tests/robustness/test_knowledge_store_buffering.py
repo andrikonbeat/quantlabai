@@ -2,12 +2,10 @@
 
 import asyncio
 import tempfile
-from pathlib import Path
 
 import pytest
-
-from quantlab.robustness.circuit_breaker import CircuitBreaker, CircuitOpenError
 from quantlab.knowledge.store import KnowledgeStore
+from quantlab.robustness.circuit_breaker import CircuitBreaker
 
 
 class TestKnowledgeStoreCircuitBreaker:

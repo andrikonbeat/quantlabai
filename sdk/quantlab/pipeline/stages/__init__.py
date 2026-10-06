@@ -31,15 +31,23 @@ from quantlab.pipeline._stages import (
 # Re-export new agent stages
 from quantlab.pipeline.stages.agent_stages import (
     AnalysisStage as AnalysisStage,
+)
+from quantlab.pipeline.stages.agent_stages import (
     BuilderStage,
     GuardianEvaluationStage,
-    HypothesisBuilderStage as HypothesisBuilderStage,
-    LLMResearchStage as LLMResearchStage,
     MonitorStage,
-    RefutationStage as RefutationStage,
     ResearchStage,
     ReviewStage,
     StatisticsStage,
+)
+from quantlab.pipeline.stages.agent_stages import (
+    HypothesisBuilderStage as HypothesisBuilderStage,
+)
+from quantlab.pipeline.stages.agent_stages import (
+    LLMResearchStage as LLMResearchStage,
+)
+from quantlab.pipeline.stages.agent_stages import (
+    RefutationStage as RefutationStage,
 )
 
 # Concrete post-optimize stages (PR 6, REQ-01 phases 9-13): these shadow the
@@ -70,45 +78,45 @@ from quantlab.pipeline.stages.portfolio_stage import PortfolioStage
 from quantlab.pipeline.stages.retester_stage import RetesterStage
 
 __all__ = [  # Original SQX stages
-    "ValidateStage",
-    "TranslateStage",
+    "HUMAN_GATE_IDS",  # Monte Carlo
+    "AnalysisStage",
+    "ArchiveStage",  # Canonical live-ops phase (REQ-01 phase 14)
+    "BuilderStage",
+    "CampaignStage",
+    "CompileStage",
+    "ComputeStatsStage",
+    "ConfigReviewStage",
     "CostInjectionStage",
     "DaemonStartStage",
-    "LoadConfigStage",
-    "RunCampaignStage",
-    "PollCampaignStage",
-    "CampaignStage",
+    "DemoStage",
+    "DeployStage",
+    "DispatchStage",
     "ExportStage",
-    "ReadStage",
-    "ComputeStatsStage",
+    "FallbackPolicy",
+    "GateAction",
+    "GateCallback",
+    "GateContext",
+    "GateDecision",
+    "GateInterceptorStage",
+    "GuardianEvaluationStage",  # Gate interceptor
+    "HypothesisBuilderStage",
     "KnowledgeStoreStage",
+    "LLMResearchStage",
+    "LiveOpsStage",
+    "LoadConfigStage",
+    "MonitorStage",
+    "MonteCarloStage",  # Orchestrated flow (PR 3)
+    "OptimizerStage",  # Post-optimize orchestrated stages (PR 6, REQ-01 phases 9-13)
+    "PollCampaignStage",
+    "PortfolioStage",
+    "ReadStage",
+    "RefutationStage",
     "ReportStage",  # New agent stages
     "ResearchStage",
-    "BuilderStage",
-    "StatisticsStage",
-    "ReviewStage",
-    "MonitorStage",
-    "GuardianEvaluationStage",  # Gate interceptor
-    "GateInterceptorStage",
-    "GateDecision",
-    "GateContext",
-    "GateCallback",
-    "GateAction",
-    "FallbackPolicy",
-    "HUMAN_GATE_IDS",  # Monte Carlo
-    "MonteCarloStage",  # Orchestrated flow (PR 3)
-    "ConfigReviewStage",
-    "DispatchStage",
     "RetesterStage",
-    "OptimizerStage",  # Post-optimize orchestrated stages (PR 6, REQ-01 phases 9-13)
-    "PortfolioStage",
-    "DeployStage",
-    "CompileStage",
-    "DemoStage",
-    "ArchiveStage",  # Canonical live-ops phase (REQ-01 phase 14)
-    "LiveOpsStage",
-    "AnalysisStage",
-    "HypothesisBuilderStage",
-    "LLMResearchStage",
-    "RefutationStage",
+    "ReviewStage",
+    "RunCampaignStage",
+    "StatisticsStage",
+    "TranslateStage",
+    "ValidateStage",
 ]

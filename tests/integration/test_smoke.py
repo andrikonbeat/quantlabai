@@ -1,22 +1,16 @@
 """Integration test for full smoke test with auto-approve gates."""
 
-import asyncio
 import csv
-import json
 import os
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-import yaml
 
 import pytest
+import yaml
 
 pytest
-from quantlab.knowledge.store import KnowledgeStore
-from quantlab.readers.models import Trade, EquityPoint
-from quantlab.stats.models import StatsResult
-from quantlab.cli import cli_entry
 from quantlab.cli.main import build_parser
 
 
@@ -141,7 +135,6 @@ class TestSmokeTestWithAutoApproveGates:
         
         try:
             # Import after setting env var
-            from quantlab.cli.main import main
             parser = build_parser()
             
             # 1. Pipeline dry-run (11 stages as per Spec 1 FR-002)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import UTC
+from datetime import UTC, datetime
 from typing import Any
 
 from quantlab.data.market.models import Bar
@@ -68,7 +68,7 @@ class YahooProvider(MarketDataProvider):
         # Yahoo dates may be "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
             try:
-                dt = datetime.strptime(str(value), fmt)
+                dt = datetime.strptime(str(value), fmt).replace(tzinfo=UTC)
                 return dt.replace(tzinfo=UTC)
             except ValueError:
                 continue

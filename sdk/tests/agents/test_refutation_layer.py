@@ -390,7 +390,7 @@ class TestRefutationLayer:
         layer = RefutationLayer(config=config)
 
         with patch.object(layer, "_strategies") as mock_strategies:
-            result = await layer.refute(
+            _result = await layer.refute(
                 hypotheses=[hyp_trend_following],
             )
 
@@ -930,12 +930,6 @@ class TestRefutationLayerPR2Integration:
         self, hyp_rsi: HypothesisConfig
     ) -> None:
         """Default strategy list includes all three strategies."""
-        from quantlab.agents.refutation.strategies.adversarial import (
-            LLMAdversarialStrategy as LLMAdversarialStrategy,
-        )
-        from quantlab.agents.refutation.strategies.historical import (
-            HistoricalCounterExampleStrategy as HistoricalCounterExampleStrategy,
-        )
 
         layer = RefutationLayer()
         strategy_types = {type(s).__name__ for s in layer._strategies}

@@ -10,11 +10,13 @@ from xml.etree import ElementTree
 
 from quantlab.cfx.models import (
     AdvancedRankingCondition,
+    BuildTask,
+    CfxArchive,
+    CfxConfig,
     ColumnValue,
     SetAdvancedRankingsInstruction,
 )
 from quantlab.cfx.patcher import CfxPatcher, build_advanced_rankings_xml
-from quantlab.cfx.models import BuildTask, CfxArchive, CfxConfig
 from quantlab.customproject.models import CustomProjectTask
 from quantlab.customproject.renderers import render_advanced_rankings, render_retest
 

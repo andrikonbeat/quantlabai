@@ -14,7 +14,6 @@ Covers:
 
 from __future__ import annotations
 
-
 from quantlab.sqx.campaign_monitor import (
     BaselineConfig,
     CampaignMonitor,

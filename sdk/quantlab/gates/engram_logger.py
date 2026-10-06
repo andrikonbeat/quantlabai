@@ -78,5 +78,5 @@ async def record_gate_decision(
         logger.info(
             "Engram audit recorded for gate '%s' (topic=%s)", gate_id, topic_key
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("Engram audit recording failed for gate '%s': %s", gate_id, exc)

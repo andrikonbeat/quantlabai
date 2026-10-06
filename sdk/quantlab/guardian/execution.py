@@ -167,10 +167,10 @@ class ExecutionGuardian(BaseGuardian):
                                 "connected",
                                 "ready",
                             )
-                    except Exception as e:
+                    except Exception:
                         # If a method exists and is callable but throws an exception,
                         # we treat this as a connection failure
-                        raise e
+                        raise
 
         # Fallback: try a simple attribute
         if hasattr(self.broker, "connected"):

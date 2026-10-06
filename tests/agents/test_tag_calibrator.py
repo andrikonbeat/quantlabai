@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
 import pytest
-
 from quantlab.agents.tag_calibrator import TagCalibrator
 from quantlab.dsl.models import HypothesisConfig
 

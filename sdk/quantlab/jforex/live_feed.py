@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -49,7 +49,7 @@ def jforex_progress_fn(
                 count = poll_equity_count()
             else:
                 count = len(feed.read_equity())
-        except Exception:  # noqa: BLE001 - fail-closed on any feed error
+        except Exception:
             return False, None
         if count <= 0:
             return True, None
@@ -98,7 +98,7 @@ class JForexLiveFeed:
         """
         return self._parse_orders(self._read_json("orders.json"))
 
-    def __iter__(self) -> Iterable[EquityPoint]:
+    def __iter__(self) -> Iterator[EquityPoint]:
         """Iterate over equity points (enables ``list(feed)``)."""
         return iter(self.read_equity())
 
@@ -129,7 +129,7 @@ class JForexLiveFeed:
         points: list[EquityPoint] = []
         for item in raw:
             try:
-                ts = datetime.fromisoformat(item["timestamp"].replace("Z", "+00:00"))
+                ts = datetime.fromisoformat(item["timestamp"].replace("Z", "+00:00"))  # noqa: FURB162
                 points.append(EquityPoint(timestamp=ts, equity=float(item["equity"])))
             except (KeyError, ValueError, TypeError):
                 continue

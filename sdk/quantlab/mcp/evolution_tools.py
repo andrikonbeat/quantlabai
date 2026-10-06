@@ -40,7 +40,6 @@ def register(srv: QuantLabMCPServer) -> None:
             JSON string with the evolution result.
         """
         try:
-            from quantlab.evolution import EvolutionCandidate as EvolutionCandidate
 
             orchestrator = srv.evolution_orchestrator
             # The orchestrator.genetic.optimize is the primary generator path.

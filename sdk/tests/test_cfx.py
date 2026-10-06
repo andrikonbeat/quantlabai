@@ -3,7 +3,6 @@
 import zipfile
 from pathlib import Path
 
-
 from quantlab.dsl.models import ResearchConfig, Strategy
 from quantlab.translate.cfx import CfxArchive, CfxResult
 

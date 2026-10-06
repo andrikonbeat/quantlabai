@@ -124,7 +124,7 @@ class AgentMemoryManager:
                     content=content,
                     capture_prompt=False,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("AgentMemoryManager Engram save failed: %s", exc)
 
         # Knowledge Lake persistence
@@ -187,7 +187,7 @@ class AgentMemoryManager:
                 )
                 if isinstance(results, list):
                     return [r.get("content", "") for r in results]
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("AgentMemoryManager Engram search failed: %s", exc)
 
         return []

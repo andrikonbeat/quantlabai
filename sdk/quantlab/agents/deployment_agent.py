@@ -477,7 +477,7 @@ class DeploymentAgent(DeployStage):
                 endpoint_url=f"https://jcloud.quantlab.ai/{campaign_id}",
                 artifact_paths=[str(jforex_package)],
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Live deployment failed: %s", exc)
             return DeploymentResult(
                 status="FAILED",

@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
-from quantlab.phase4.errors import OptimizerError as OptimizerError, OptimizerRunError
+from quantlab.phase4.errors import OptimizerRunError
 from quantlab.phase4.templates import CfxTemplateBuilder
 
 # ── Known SQX metric column names (lowercased, no spaces/dashes/underscores) ──
@@ -474,7 +474,7 @@ class Optimizer:
             parts.append("<h2>Summary Statistics</h2>\n")
             parts.append('<div class="summary-grid">\n')
             # Show num_cycles first, then alphabetical
-            summary_items = sorted(
+            _summary_items = sorted(
                 (k, v) for k, v in result.summary.items() if k != "num_cycles"
             )
             parts.append(_summary_card("num_cycles", str(len(result.cycles)), "Cycles"))

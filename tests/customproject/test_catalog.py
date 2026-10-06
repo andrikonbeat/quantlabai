@@ -7,7 +7,6 @@ from io import BytesIO
 from xml.etree import ElementTree
 
 import pytest
-
 from quantlab.customproject.catalog import CATALOG_TYPES, TaskNotSupportedError
 from quantlab.customproject.generator import generate_cfx_archive
 from quantlab.customproject.models import (

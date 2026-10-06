@@ -12,7 +12,6 @@ import re
 from collections.abc import Iterator
 from pathlib import Path
 
-
 from quantlab.knowledge.ingest.adapters import (
     DocRecord,
     _front_matter,

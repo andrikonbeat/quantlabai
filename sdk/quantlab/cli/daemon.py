@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import Awaitable, Callable
+from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from types import TracebackType
-from typing import AsyncContextManager
 from typing import Any
 
 from quantlab.phase4.command_dispatcher import CommandDispatcher
@@ -51,14 +51,14 @@ class DaemonContext:
         self._client: AsyncSQXClient | None = None
         self._dispatcher: CommandDispatcher | None = None
 
-    async def __aenter__(self) -> DaemonContext:
+    async def __aenter__(self) -> DaemonContext:  # noqa: PYI034
         """Start daemon, create client + dispatcher."""
         self._daemon = SQXDaemonManager(
             self.sqx_install_path,
             port=self.port,
             startup_timeout=self.startup_timeout,
         )
-        base_url = await self._daemon.start()
+        _base_url = await self._daemon.start()
 
         self._client = AsyncSQXClient(self._daemon.base_url)
         self._dispatcher = await CommandDispatcher.from_daemon(self._daemon)
@@ -141,7 +141,7 @@ async def daemon_context(
     sqx_install_path: str = "/opt/StrategyQuantX",
     port: int = 8888,
     startup_timeout: float = 60.0,
-) -> AsyncContextManager[DaemonContext]:
+) -> AbstractAsyncContextManager[DaemonContext]:
     """Async context manager for DaemonContext.
 
     Usage:

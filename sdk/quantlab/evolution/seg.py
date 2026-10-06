@@ -10,7 +10,6 @@ from quantlab.evolution.genetic import GeneticOptimizer
 from quantlab.evolution.models import (
     CandidateStatus,
     EvolutionCandidate,
-    EvolutionSignal as EvolutionSignal,
 )
 from quantlab.evolution.novelty import NoveltyGenerator
 from quantlab.evolution.pool import CandidatePool

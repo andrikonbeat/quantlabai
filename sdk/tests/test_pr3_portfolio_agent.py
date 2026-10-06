@@ -126,7 +126,7 @@ class TestCorrelationAnalysis:
             f"strat_{i}": [float(v) for v in rng.randn(100) * 0.01] for i in range(3)
         }
 
-        result = agent.analyze_correlation(returns_dict)
+        _result = agent.analyze_correlation(returns_dict)
 
         # With random data and high threshold, likely no clusters
         # This is probabilistic but very likely
@@ -405,7 +405,7 @@ class TestRunMethod:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
 
         assert ctx.artifacts["portfolio_result"]["status"] == "skipped"
 
@@ -424,7 +424,7 @@ class TestRunMethod:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
 
         assert ctx.artifacts["portfolio_result"]["status"] == "blocked"
 
@@ -443,7 +443,7 @@ class TestRunMethod:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
 
         assert ctx.artifacts["portfolio_result"]["status"] != "blocked"
         assert len(ctx.artifacts["portfolio_result"]["selected_strategies"]) == 2
@@ -463,7 +463,7 @@ class TestRunMethod:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
 
         matrix = ctx.artifacts.get("correlation_matrix", [])
         assert len(matrix) == 3  # 3 strategies
@@ -487,7 +487,7 @@ class TestRunMethod:
             },
         )
 
-        result = await agent.run(ctx)
+        _result = await agent.run(ctx)
 
         risk = ctx.artifacts["risk_allocation"]
         assert "kelly_results" in risk

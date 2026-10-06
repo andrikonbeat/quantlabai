@@ -22,7 +22,6 @@ import asyncio
 import json
 
 import pytest
-
 from quantlab.gates.callbacks import (
     DecisionsFileGateCallback,
     decision_path,

@@ -11,7 +11,6 @@ from typing import Any
 
 from quantlab.knowledge.store import KnowledgeStore
 from quantlab.reporting.generator import (
-    ReportGenerator as ReportGenerator,
     generate_report,
 )
 from quantlab.reporting.models import ReportConfig, ReportFormat, ReportTheme
@@ -30,6 +29,13 @@ def generate_report_command(args: argparse.Namespace) -> int:
     if not formats:
         formats = [ReportFormat.HTML, ReportFormat.JSON]
 
+    benchmark_equity = None
+    if args.benchmark:
+        try:
+            benchmark_equity = _load_benchmark_equity(args.benchmark)
+        except Exception as e:
+            print(f"Warning: Failed to load benchmark: {e}", file=sys.stderr)
+
     config = ReportConfig(
         campaign_id=args.campaign_id,
         output_dir=Path(args.output_dir),
@@ -38,6 +44,7 @@ def generate_report_command(args: argparse.Namespace) -> int:
         theme=ReportTheme(args.theme),
         title=args.title,
         template_path=Path(args.template) if args.template else None,
+        benchmark_equity=benchmark_equity,
     )
 
     # Load campaign data from Knowledge Lake
@@ -50,14 +57,6 @@ def generate_report_command(args: argparse.Namespace) -> int:
     except Exception as e:
         print(f"Error loading campaign data: {e}", file=sys.stderr)
         return 2
-
-    # Load benchmark equity if provided
-    benchmark_equity = None
-    if args.benchmark:
-        try:
-            benchmark_equity = _load_benchmark_equity(args.benchmark)
-        except Exception as e:
-            print(f"Warning: Failed to load benchmark: {e}", file=sys.stderr)
 
     try:
         result = generate_report(
@@ -110,7 +109,7 @@ def _load_benchmark_equity(path: str) -> list[dict[str, Any]]:
                     equity.append(
                         {
                             "timestamp": datetime.fromisoformat(
-                                timestamp.replace("Z", "+00:00")
+                                timestamp.replace("Z", "+00:00")  # noqa: FURB162
                             )
                             if "T" in timestamp
                             else timestamp,

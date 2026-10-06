@@ -154,7 +154,6 @@ def register(srv: QuantLabMCPServer) -> None:
             JSON string with the run details or an error.
         """
         try:
-            from quantlab.pipeline import PipelineRun as PipelineRun
 
             # In-memory runs are ephemeral — log the lookup for observability.
             # A production implementation would query the Knowledge Lake.

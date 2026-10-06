@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 import time
 from datetime import datetime, timezone
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 from quantlab.sqx.campaign_monitor import (
     BaselineConfig,
     CampaignMonitor,
@@ -20,7 +18,6 @@ from quantlab.sqx.campaign_monitor import (
     extract_error_patterns,
     extract_results_count,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Fixtures
@@ -946,6 +943,7 @@ class TestDispatchWithMonitorE2E:
         """dispatch_campaign(force_mock=True, on_watcher_event=cb) returns
         watcher_events in the result dict."""
         from unittest.mock import MagicMock
+
         from quantlab.sqx.cli_wrapper import dispatch_campaign
 
         callback = MagicMock()

@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from quantlab.guardian.live import (
-    DEFAULT_LIVE_DRAWDOWN_THRESHOLD as DEFAULT_LIVE_DRAWDOWN_THRESHOLD,
     LiveEvaluation,
     evaluate_live,
     max_drawdown,

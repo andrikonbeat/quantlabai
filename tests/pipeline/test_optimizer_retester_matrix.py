@@ -16,9 +16,13 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from quantlab.agents.parameter_matrix import ParameterMatrixError
-from quantlab.dsl.models import IterationConfig, OptimizeBlock, ResearchConfig, RetestBlock
+from quantlab.dsl.models import (
+    IterationConfig,
+    OptimizeBlock,
+    ResearchConfig,
+    RetestBlock,
+)
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.optimizer_stage import OptimizerStage
 from quantlab.pipeline.stages.retester_stage import RetesterStage

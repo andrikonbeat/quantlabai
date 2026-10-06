@@ -1,25 +1,25 @@
 """Tests for Knowledge Lake CLI commands."""
 
-import pytest
+import argparse
 import asyncio
-import json
 import csv
-import tempfile
+import json
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import argparse
+from unittest.mock import Mock, patch
 
+import pytest
 from quantlab.cli.knowledge_commands import (
+    add_knowledge_subparser,
+    cmd_knowledge_export,
+    cmd_knowledge_link,
     cmd_knowledge_query,
     cmd_knowledge_tag,
-    cmd_knowledge_link,
-    cmd_knowledge_export,
-    add_knowledge_subparser,
 )
-from quantlab.knowledge.models import CampaignSummary, CampaignMetrics, QueryResult, QueryFilter
-from quantlab.readers.models import Trade, EquityPoint
-from quantlab.stats.models import StatsResult
+from quantlab.knowledge.models import (
+    CampaignMetrics,
+    QueryResult,
+)
 
 
 def run_async(coro):

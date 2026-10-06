@@ -13,7 +13,6 @@ from unittest.mock import MagicMock
 
 from quantlab.cli.runner import CliResult
 from quantlab.pipeline.license import (
-    LicenseInfo as LicenseInfo,
     LicenseManager,
     LicenseStatus,
 )

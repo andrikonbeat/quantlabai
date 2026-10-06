@@ -13,7 +13,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from quantlab.agents.builder_agent import BuilderAgent, ParameterMatrixError
 from quantlab.dsl.models import Market, Timeframe
 from quantlab.sqx.project_builder import (

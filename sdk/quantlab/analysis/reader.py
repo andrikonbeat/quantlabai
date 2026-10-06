@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from quantlab.readers.databank import read_strategies
-from quantlab.tools.exceptions import ParseError as ParseError
 
 if TYPE_CHECKING:
     from quantlab.readers.models import StrategySummary

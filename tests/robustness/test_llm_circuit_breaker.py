@@ -3,7 +3,6 @@
 import asyncio
 
 import pytest
-
 from quantlab.robustness.circuit_breaker import CircuitOpenError
 from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 

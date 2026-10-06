@@ -97,3 +97,5 @@ notifications.jsonl
 
 # Stray junk
 missing.jfx
+# Local Pi runtime state
+.atl/

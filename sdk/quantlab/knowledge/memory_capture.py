@@ -130,14 +130,14 @@ class MemoryCaptureService:
                             phase,
                             "; ".join(corrections),
                         )
-            except Exception as exc:  # noqa: BLE001 — detection is best-effort
+            except Exception as exc:
                 logger.warning(
                     "self-correction detection skipped (non-blocking): %s", exc
                 )
             await manager.save_decision(
                 agent, campaign, decision, phase=phase, config=config
             )
-        except Exception as exc:  # noqa: BLE001 — non-blocking by contract
+        except Exception as exc:
             logger.warning(
                 "memory capture failed for phase '%s' (non-blocking): %s",
                 phase,

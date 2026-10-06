@@ -10,12 +10,6 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-import pytest
-
-from quantlab.cfx.models import (
-    CrossChecksConfig,
-    CrossChecksGeneric,
-)
 from quantlab.cfx.reader import CfxReader
 from quantlab.cfx.writer import CfxWriter
 
@@ -203,7 +197,7 @@ class TestWriterSetCrosschecksTyped:
         WHEN CfxWriter.set_crosschecks is called
         THEN cross_checks_section has dialect='generic' and typed CrossChecksGeneric.
         """
-        from quantlab.cfx.models import BuildTask, CfxArchive, CfxConfig
+        from quantlab.cfx.models import BuildTask
 
         task = BuildTask()
         task = CfxWriter.set_crosschecks(

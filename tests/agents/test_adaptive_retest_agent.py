@@ -11,12 +11,9 @@ Covers:
 from __future__ import annotations
 
 import hashlib
-import zipfile
-from io import BytesIO
 from pathlib import Path
 
 import pytest
-
 from quantlab.agents.adaptive_retest_agent import (
     RetestMode,
     RetestSignals,
@@ -31,7 +28,6 @@ from quantlab.cfx.models import (
     CfxProject,
     CrossChecksConfig,
     DatabanksConfig,
-    RankingsConfig,
     RetesterDataConfig,
     SettingsSection,
 )
@@ -40,7 +36,6 @@ from quantlab.cfx.writer import CfxWriter
 from quantlab.phase4.retester import RetesterConfig
 from quantlab.pipeline.base import PipelineContext
 from quantlab.pipeline.stages.retester_stage import RetesterStage
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -512,8 +507,9 @@ class TestRetesterStageCfxConfig:
         WHEN RetesterStage.execute runs
         THEN RetesterConfig is built from CFX and the retester is invoked.
         """
-        from quantlab.dsl.models import ResearchConfig
         from unittest.mock import AsyncMock, MagicMock
+
+        from quantlab.dsl.models import ResearchConfig
 
         cfx = tmp_path / "stage.cfx"
         task = BuildTask(
@@ -561,8 +557,9 @@ class TestRetesterStageCfxConfig:
         WHEN RetesterStage.execute runs
         THEN DSL config is used and CFX is ignored.
         """
-        from quantlab.dsl.models import ResearchConfig, RetestBlock
         from unittest.mock import AsyncMock, MagicMock
+
+        from quantlab.dsl.models import ResearchConfig, RetestBlock
 
         cfx = tmp_path / "stage_dsl.cfx"
         task = BuildTask(

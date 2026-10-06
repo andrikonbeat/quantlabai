@@ -3,7 +3,9 @@
 from unittest.mock import patch
 
 from quantlab.costs.profiles import BrokerProfile
-from quantlab.sqx.project_builder import create_project, _JFOREX_COMMISSION, _JFOREX_SLIPPAGE, _JFOREX_SPREAD
+from quantlab.sqx.project_builder import (
+    create_project,
+)
 
 
 class TestCreateProjectBrokerProfile:

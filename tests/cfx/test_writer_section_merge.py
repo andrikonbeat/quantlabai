@@ -18,7 +18,6 @@ from quantlab.cfx.models import (
     CfxConfig,
     ColumnValue,
     CrossChecksConfig,
-    CrossChecksGeneric,
     DataRangeParts,
     SetAdvancedRankingsInstruction,
     SettingsSection,

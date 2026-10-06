@@ -68,5 +68,5 @@ def test_tool_response_json_serializable():
 
 def test_frozen_models():
     req = ToolRequest(name="test", arguments={})
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017
         req.name = "changed"

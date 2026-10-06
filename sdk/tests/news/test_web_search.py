@@ -1,10 +1,15 @@
+from __future__ import annotations
+
+
+class RateLimitError(Exception):
+    pass
+
 """Strict TDD — RED phase: WebSearchProvider tests.
 
 Covers spec scenarios from:
 - openspec/specs/news-analysis/spec.md
 """
 
-from __future__ import annotations
 
 
 import pytest
@@ -94,7 +99,7 @@ class TestWebSearchProvider:
         await provider.cache.clear()
 
         async def always_fails(query):
-            raise Exception("Rate limit exceeded (500)")
+            raise RateLimitError("Rate limit exceeded (500)")
 
         original = provider._search_ddgs
         provider._search_ddgs = always_fails
@@ -110,7 +115,6 @@ class TestWebSearchProvider:
         WHEN search_web() called again
         THEN the cached response is returned AND no external request is made.
         """
-        from quantlab.data.news.models import WebResult as WebResult
         from quantlab.data.news.web_search import WebSearchProvider
 
         provider = WebSearchProvider()

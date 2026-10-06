@@ -16,11 +16,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 import pytest
-
 from quantlab.gates.callbacks import sanitize_campaign_id
 from quantlab.sqx.campaign_monitor import BaselineConfig, CampaignMonitor
 from quantlab.sqx.llm_generation_monitor import MonitorSnapshot

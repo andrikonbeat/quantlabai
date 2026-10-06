@@ -191,7 +191,8 @@ def build_educational_dataset(
         Dataset records (deterministic; input params are not mutated).
     """
     global TPL_KEY_MAP
-    key_map = tpl_key_map if tpl_key_map is not None else TPL_KEY_MAP
+    global TPL_KEY_MAP  # noqa: PLW0602
+    _key_map = tpl_key_map if tpl_key_map is not None else TPL_KEY_MAP
     records: list[EducationalRecord] = []
     for param in params:
         entry, status = _template_lookup(param, tpl)

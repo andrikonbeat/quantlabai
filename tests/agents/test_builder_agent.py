@@ -6,10 +6,7 @@ config when QUANTLAB_14PHASE=1, and 8-phase config otherwise.
 
 from __future__ import annotations
 
-import os
-
 import pytest
-
 from quantlab.agents.builder_agent import BuilderAgent
 
 

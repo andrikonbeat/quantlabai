@@ -34,7 +34,7 @@ from quantlab.dsl.models import (
     ResearchConfig,
     Timeframe,
 )
-from quantlab.knowledge.sqX_doc_provider import SQXDocProvider
+from quantlab.knowledge.sqx_doc_provider import SQXDocProvider
 from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
 
 try:
@@ -590,7 +590,7 @@ class LLMResearchAgent:
                 # Availability probe: the name is bound but never used. The redundant
                 # alias marks it intentional so `ruff --fix` cannot delete the check
                 # and silently remove the friendly "install openai" error below.
-                import openai as openai
+                import openai  # noqa: F401
             except ImportError:
                 raise ImportError(
                     "openai SDK is not installed. Install with: pip install openai"
@@ -678,8 +678,9 @@ class LLMResearchAgent:
             prompt,
         ]
         try:
-            completed = subprocess.run(
-                cmd,
+                completed = subprocess.run(
+                    cmd, check=True,
+
                 capture_output=True,
                 text=True,
                 timeout=_OPENCODE_CLI_TIMEOUT,

@@ -16,13 +16,11 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 import yaml
-
 from quantlab.data.market.models import Bar
 from quantlab.knowledge.store import (
     KNOWLEDGE_DIRS,

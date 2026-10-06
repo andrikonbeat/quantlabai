@@ -17,6 +17,8 @@ from quantlab.knowledge.ingest.adapters import (
     DocsJsonAdapter,
     SnippetsAdapter,
     TemplatesAdapter,
+)
+from quantlab.knowledge.ingest.adapters import (
     _sha256_of as _sha256_of,
 )
 from quantlab.knowledge.store import KnowledgeStore

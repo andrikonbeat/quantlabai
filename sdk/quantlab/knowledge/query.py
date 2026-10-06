@@ -63,7 +63,7 @@ class QueryBuilder:
         self._filter = QueryFilter()
 
     def filter_by_sharpe(
-        self, min_val: float = None, max_val: float = None
+        self, min_val: float | None = None, max_val: float | None = None
     ) -> QueryBuilder:
         """Filter by Sharpe ratio range."""
         if min_val is not None:
@@ -72,17 +72,17 @@ class QueryBuilder:
             self._filter.sharpe_max = max_val
         return self
 
-    def filter_by_profit_factor(self, min_val: float = None) -> QueryBuilder:
+    def filter_by_profit_factor(self, min_val: float | None = None) -> QueryBuilder:
         """Filter by minimum profit factor."""
         self._filter.profit_factor_min = min_val
         return self
 
-    def filter_by_win_rate(self, min_val: float = None) -> QueryBuilder:
+    def filter_by_win_rate(self, min_val: float | None = None) -> QueryBuilder:
         """Filter by minimum win rate."""
         self._filter.win_rate_min = min_val
         return self
 
-    def filter_by_max_drawdown(self, max_val: float = None) -> QueryBuilder:
+    def filter_by_max_drawdown(self, max_val: float | None = None) -> QueryBuilder:
         """Filter by maximum drawdown (upper bound)."""
         self._filter.max_drawdown_max = max_val
         return self
@@ -93,7 +93,7 @@ class QueryBuilder:
         return self
 
     def filter_by_date(
-        self, start: str | datetime = None, end: str | datetime = None
+        self, start: str | datetime | None = None, end: str | datetime | None = None
     ) -> QueryBuilder:
         """Filter by creation date range."""
         if isinstance(start, str):
@@ -233,7 +233,7 @@ class QueryBuilder:
             if dir_name not in self._index.get("directories", {}):
                 continue
             for rel_path, info in (
-                self._index.get("directories", {}).get(dir_name, {}).items()
+                self._index.get("directories", {}).get(dir_name, {}).items()  # noqa: PERF102
             ):
                 campaign_id = (
                     info.get("path", "").split("/")[-1]
@@ -428,7 +428,7 @@ class QueryBuilder:
             scored.append((rel_path, meta, score))
         return scored
 
-    def execute(self, root: Path = None) -> QueryResult:
+    def execute(self, root: Path | None = None) -> QueryResult:
         """Execute the query and return results."""
         import time
 
@@ -459,7 +459,6 @@ class QueryBuilder:
     def _extract_campaigns(self, index: dict[str, Any]) -> list[CampaignSummary]:
         """Extract campaign summaries from index."""
         from quantlab.knowledge.models import (
-            AgentMemoryEntry as AgentMemoryEntry,
             CampaignSummary,
         )
 

@@ -1,17 +1,14 @@
 """Tests for PortfolioMaster — CSV/XML result parsing and build flow."""
 
-from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
-
+from quantlab.phase4.errors import PortfolioMasterError
 from quantlab.phase4.portfolio_master import (
     PortfolioMaster,
     PortfolioMasterResult,
     SelectedStrategy,
 )
-from quantlab.phase4.errors import PortfolioMasterError
-
 
 # ── XML samples ────────────────────────────────────────────────────────────
 

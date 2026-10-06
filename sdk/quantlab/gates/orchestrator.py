@@ -127,7 +127,7 @@ class HumanGateOrchestrator:
                 policy.fallback.value,
             )
             decision = self._apply_fallback(gate_id, policy)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Gate '%s' callback error: %s", gate_id, exc)
             decision = self._apply_fallback(gate_id, policy)
 
@@ -203,5 +203,5 @@ class HumanGateOrchestrator:
             notifier = self._notifiers.get(channel, self._default_notifier)
             try:
                 await notifier.send(message)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("Notification channel '%s' failed: %s", channel, exc)

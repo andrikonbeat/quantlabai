@@ -18,7 +18,6 @@ from pydantic import BaseModel, Field
 
 from quantlab.tools.exceptions import SQXNotFoundError, TimeoutError
 from quantlab.tools.platform import (
-    get_sqcli_binary as get_sqcli_binary,
     resolve_sqcli_path,
 )
 
@@ -201,8 +200,9 @@ class RealExecutor:
         effective_timeout = resolve_sqcli_timeout(timeout)
 
         try:
-            proc = subprocess.run(
-                [str(self._binary), *_coerce_command(command)],
+                proc = subprocess.run(
+                    [str(self._binary), *_coerce_command(command)], check=True,
+
                 capture_output=True,
                 text=True,
                 timeout=effective_timeout,

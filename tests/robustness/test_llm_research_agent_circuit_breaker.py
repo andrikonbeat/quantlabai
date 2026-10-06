@@ -1,13 +1,11 @@
 """Tests for LLMResearchAgent circuit breaker integration."""
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
+from quantlab.agents.llm_research_agent import LLMResearchAgent
 from quantlab.robustness.circuit_breaker import CircuitOpenError
 from quantlab.robustness.llm_circuit_breaker import LLMCircuitBreaker
-from quantlab.agents.llm_research_agent import LLMResearchAgent
 
 
 class TestLLMResearchAgentCircuitBreakerIntegration:

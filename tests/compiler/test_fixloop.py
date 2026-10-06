@@ -12,7 +12,6 @@ Per-iteration logging: every iteration records its fix, errors, and outcome.
 from __future__ import annotations
 
 import pytest
-
 from quantlab.compiler.compiler import CompileError, CompilerPipeline
 from quantlab.compiler.fixloop import (
     FixIteration,

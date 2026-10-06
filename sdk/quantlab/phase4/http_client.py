@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import time
 import urllib.parse
 from pathlib import Path
@@ -16,7 +17,6 @@ from quantlab.phase4.errors import (
     JForexServerError,
     JForexStrategyNotFoundError,
     SQXBindingError,
-    SQXSessionLockError as SQXSessionLockError,
 )
 
 DEFAULT_PORT = 5050
@@ -114,7 +114,7 @@ class SQXSessionLock:
             try:
                 import portalocker
 
-                self._file_lock = open(self._lock_file, "w")
+                self._file_lock = open(self._lock_file, "w")  # noqa: SIM115
                 portalocker.lock(
                     self._file_lock, portalocker.LOCK_EX | portalocker.LOCK_NB
                 )
@@ -122,7 +122,7 @@ class SQXSessionLock:
                 try:
                     import fcntl
 
-                    self._file_lock = open(self._lock_file, "w")
+                    self._file_lock = open(self._lock_file, "w")  # noqa: SIM115
                     fcntl.flock(self._file_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 except Exception:
                     self._file_lock = None
@@ -151,11 +151,11 @@ class SQXSessionLock:
             self._async_lock.release()
             self._acquired = False
 
-    async def __aenter__(self) -> SQXSessionLock:
+    async def __aenter__(self) -> SQXSessionLock:  # noqa: PYI034
         await self.acquire()
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         self.release()
 
 
@@ -335,13 +335,124 @@ class AsyncSQXClient:
         resp.raise_for_status()
         return resp.text
 
+    async def load_strategy(self, strategy_id: str) -> dict[str, Any]:
+        """Load a strategy into the SQX Portfolio Composer session.
+
+        Args:
+            strategy_id: SQX strategy identifier.
+
+        Returns:
+            Parsed JSON response from SQX.
+
+        Raises:
+            JForexStrategyNotFoundError: If SQX returns HTTP 404.
+            JForexConnectionError: If the connection fails.
+            JForexServerError: If SQX returns HTTP 5xx.
+        """
+        client = await self._ensure_client()
+        url = f"/portfolio/load?id={urllib.parse.quote(strategy_id, safe='')}"
+
+        try:
+            resp = await client.get(url)
+        except httpx.TimeoutException as exc:
+            raise JForexConnectionError(
+                self.bind_address,
+                DEFAULT_PORT,
+                f"Timeout loading strategy {strategy_id}: {exc}",
+            ) from exc
+        except httpx.ConnectError as exc:
+            raise JForexConnectionError(
+                self.bind_address,
+                DEFAULT_PORT,
+                f"Connection failed loading strategy {strategy_id}: {exc}",
+            ) from exc
+
+        if resp.status_code == 404:
+            raise JForexStrategyNotFoundError(strategy_id)
+        if 500 <= resp.status_code < 600:
+            raise JForexServerError(resp.status_code, resp.text)
+
+        resp.raise_for_status()
+        return json.loads(resp.text)
+
+    async def recompute_portfolio(self) -> dict[str, Any]:
+        """Recompute portfolio weights via SQX HTTP API.
+
+        Returns:
+            Parsed JSON response from SQX.
+
+        Raises:
+            JForexConnectionError: If the connection fails.
+            JForexServerError: If SQX returns HTTP 5xx.
+        """
+        client = await self._ensure_client()
+        url = "/portfolio/recompute"
+
+        try:
+            resp = await client.get(url)
+        except httpx.TimeoutException as exc:
+            raise JForexConnectionError(
+                self.bind_address,
+                DEFAULT_PORT,
+                f"Timeout recomputing portfolio: {exc}",
+            ) from exc
+        except httpx.ConnectError as exc:
+            raise JForexConnectionError(
+                self.bind_address,
+                DEFAULT_PORT,
+                f"Connection failed recomputing portfolio: {exc}",
+            ) from exc
+
+        if 500 <= resp.status_code < 600:
+            raise JForexServerError(resp.status_code, resp.text)
+
+        resp.raise_for_status()
+        return json.loads(resp.text)
+
+    async def save_portfolio(self, name: str) -> dict[str, Any]:
+        """Save portfolio via SQX HTTP API.
+
+        Args:
+            name: Portfolio name.
+
+        Returns:
+            Parsed JSON response containing the saved CFX path.
+
+        Raises:
+            JForexConnectionError: If the connection fails.
+            JForexServerError: If SQX returns HTTP 5xx.
+        """
+        client = await self._ensure_client()
+        url = f"/portfolio/save?name={urllib.parse.quote(name, safe='')}"
+
+        try:
+            resp = await client.get(url)
+        except httpx.TimeoutException as exc:
+            raise JForexConnectionError(
+                self.bind_address,
+                DEFAULT_PORT,
+                f"Timeout saving portfolio {name}: {exc}",
+            ) from exc
+        except httpx.ConnectError as exc:
+            raise JForexConnectionError(
+                self.bind_address,
+                DEFAULT_PORT,
+                f"Connection failed saving portfolio {name}: {exc}",
+            ) from exc
+
+        if 500 <= resp.status_code < 600:
+            raise JForexServerError(resp.status_code, resp.text)
+
+        resp.raise_for_status()
+        return json.loads(resp.text)
+
     async def close(self) -> None:
         if self._client:
             await self._client.aclose()
             self._client = None
 
-    async def __aenter__(self) -> AsyncSQXClient:
+    async def __aenter__(self) -> AsyncSQXClient:  # noqa: PYI034
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         await self.close()
