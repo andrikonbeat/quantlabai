@@ -411,6 +411,8 @@ class MockSQXServer:
                 return
             except Exception:
                 self.stop()
+                import time
+                time.sleep(0.1)  # Allow port to be released
 
         import socket
 
@@ -433,6 +435,9 @@ class MockSQXServer:
                 self._server.shutdown()
             except Exception:
                 pass
+            # Wait for the server thread to fully terminate
+            if self._thread is not None:
+                self._thread.join(timeout=2.0)
             self._server = None
             self._thread = None
 

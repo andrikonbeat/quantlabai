@@ -959,7 +959,7 @@ class TestDispatchLLMMonitorE2E:
     BASE_URL = "http://127.0.0.1:5050"
     RESULT_KEYS = {"status", "export_paths", "watcher_events"}
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture(autouse=True, scope="function")
     def _mock_server(self) -> Any:
         from quantlab.sqx.mock_sqx_server import MockSQXServer
 
@@ -990,38 +990,41 @@ class TestDispatchLLMMonitorE2E:
         MockSQXServer.reset()
         server = MockSQXServer.instance(port=5050, mode="rejection")
         server.start()
+        try:
+            hook = Mock()
+            confirm = AsyncMock(return_value=True)
+            caller = AsyncMock(
+                return_value=json.dumps(verdict_payload(action="stop", confidence=0.9))
+            )
 
-        hook = Mock()
-        confirm = AsyncMock(return_value=True)
-        caller = AsyncMock(
-            return_value=json.dumps(verdict_payload(action="stop", confidence=0.9))
-        )
+            result = await dispatch_campaign(
+                cfx_bytes=b"dummy-cfx",
+                campaign_id="e2e-llm-stop",
+                config=self._config(),
+                poll_interval=0.1,
+                timeout=30.0,
+                force_mock=True,
+                on_watcher_event=Mock(),
+                llm_config=LLMConfig(),
+                on_llm_verdict=hook,
+                llm_caller=caller,
+                confirm_stop=confirm,
+                poll_every_n=1,
+            )
 
-        result = await dispatch_campaign(
-            cfx_bytes=b"dummy-cfx",
-            campaign_id="e2e-llm-stop",
-            config=self._config(),
-            poll_interval=0.1,
-            timeout=30.0,
-            force_mock=True,
-            on_watcher_event=Mock(),
-            llm_config=LLMConfig(),
-            on_llm_verdict=hook,
-            llm_caller=caller,
-            confirm_stop=confirm,
-            poll_every_n=1,
-        )
-
-        # Prompt return, not timeout — the LLM stop path ended dispatch.
-        assert result["status"] == "completed"
-        assert set(result.keys()) == self.RESULT_KEYS
-        # The campaign was stopped on the server (zero-acceptance stop).
-        assert MockSQXHandler._campaigns["e2e-llm-stop"]["status"] == "stopped"
-        # The verdict hook received the stop verdict.
-        assert hook.call_count >= 1
-        verdict = hook.call_args.args[0]
-        assert isinstance(verdict, Verdict)
-        assert verdict.recommended_action == "stop"
+            # Prompt return, not timeout — the LLM stop path ended dispatch.
+            assert result["status"] == "completed"
+            assert set(result.keys()) == self.RESULT_KEYS
+            # The campaign was stopped on the server (zero-acceptance stop).
+            assert MockSQXHandler._campaigns["e2e-llm-stop"]["status"] == "stopped"
+            # The verdict hook received the stop verdict.
+            assert hook.call_count >= 1
+            verdict = hook.call_args.args[0]
+            assert isinstance(verdict, Verdict)
+            assert verdict.recommended_action == "stop"
+        finally:
+            # Clean up the mock server started by this test
+            MockSQXServer.reset()
 
     @pytest.mark.asyncio
     async def test_e2e_no_llm_config_zero_llm_calls(self, monkeypatch) -> None:
