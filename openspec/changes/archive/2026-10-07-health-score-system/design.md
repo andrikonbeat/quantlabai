@@ -36,7 +36,7 @@ to existing code.
 ## Data Flow
 
 ```
-StatsResult ──→ HealthScoreCalculator.score() ──→ HealthScore
+StatsResult ──→ HealthScoreCalculator.compute() ──→ HealthScore
                     │                                   │
                     ├── normalize(profit_factor)         ├── overall_score (0–100)
                     ├── normalize(sharpe_ratio)          ├── state (HealthState)
@@ -46,8 +46,8 @@ StatsResult ──→ HealthScoreCalculator.score() ──→ HealthScore
 
 Per-period scoring:
 ```
-StatsResult[30d] ──→ score() ──→ HealthScore(period="30d")
-StatsResult[90d] ──→ score() ──→ HealthScore(period="90d")
+StatsResult[30d] ──→ compute() ──→ HealthScore(period="30d")
+StatsResult[90d] ──→ compute() ──→ HealthScore(period="90d")
 ```
 
 ## File Changes
@@ -57,8 +57,8 @@ StatsResult[90d] ──→ score() ──→ HealthScore(period="90d")
 | `sdk/quantlab/health/__init__.py` | Create | Public exports: HealthState, HealthScore, HealthWeights, HealthScoreCalculator |
 | `sdk/quantlab/health/models.py` | Create | HealthState enum, HealthScore model, HealthWeights model |
 | `sdk/quantlab/health/calculator.py` | Create | HealthScoreCalculator — normalise + weight + score |
-| `sdk/quantlab/health/weights.py` | Create | DefaultWeightConfig, normalisation function map |
-| `tests/test_health_score.py` | Create | Unit tests for all 5 requirements |
+| `sdk/quantlab/health/weights.py` | Create | `DEFAULT_WEIGHTS` (frozen HealthWeights), module-level `normalize_*` functions + `_NORMALIZERS` map |
+| `sdk/tests/test_health_score.py` | Create | Unit tests for all 5 requirements (repo test layout) |
 
 ## Interfaces
 
@@ -91,30 +91,32 @@ class HealthWeights(BaseModel):
 ```
 
 ```python
+# weights.py — module-level normalisation functions
+DEFAULT_WEIGHTS: Final[HealthWeights] = HealthWeights()  # frozen, sums to 1.0
+
+def normalize_profit_factor(pf: float | None) -> float: ...      # weights.py:66
+def normalize_sharpe_ratio(sr: float | None) -> float: ...       # weights.py:79
+def normalize_sortino_ratio(sr: float | None) -> float: ...      # weights.py:90
+def normalize_max_drawdown(mdd: float | None) -> float: ...      # weights.py:101
+def normalize_recovery_factor(rf: float | None) -> float: ...    # weights.py:116
+def normalize_win_rate(wr: float | None) -> float: ...           # weights.py:129
+def normalize_expectancy_ratio(er: float | None) -> float: ...   # weights.py:142
+def normalize_metric(name: str, value: float | None) -> float: ...  # registry dispatch
+
 # calculator.py
 class HealthScoreCalculator:
     WEIGHT_TOTAL: ClassVar[float] = 1.0
 
-    def score(
-        self,
-        stats: StatsResult,
-        weights: HealthWeights | None = None,
-        period: str = "all",
-    ) -> HealthScore: ...
+    def __init__(self, weights: HealthWeights | None = None) -> None: ...  # default DEFAULT_WEIGHTS
 
-    def normalize_profit_factor(self, pf: float | None) -> float: ...
-    def normalize_sharpe_ratio(self, sr: float | None) -> float: ...
-    def normalize_sortino_ratio(self, sr: float | None) -> float: ...
-    def normalize_max_drawdown(self, mdd: float | None) -> float: ...
-    def normalize_recovery_factor(self, rf: float | None) -> float: ...
-    def normalize_win_rate(self, wr: float | None) -> float: ...
-    def normalize_expectancy_ratio(self, er: float | None) -> float: ...
+    def compute(self, stats: StatsResult, period: str = "all") -> HealthScore: ...
 
     @staticmethod
     def map_score_to_state(score: float) -> HealthState: ...
 ```
 
-Normalisation breakpoints (domain-tuned):
+Normalisation breakpoints (domain-tuned; canonical values at
+`sdk/quantlab/health/weights.py`):
 
 | Metric | None | Points |
 |--------|------|--------|

@@ -120,16 +120,19 @@ defaults:
 ### HS-REQ-05: Time Windowing
 
 The system SHALL support scoring over different time periods — 30 days, 90
-days, 1 year, and all-time — by accepting filtered lists of StatsResult.
+days, 1 year, and all-time. The calculator accepts a single `StatsResult` plus
+a `period` label that is stamped onto the returned `HealthScore`; filtering
+StatsResult collections by window is the caller's responsibility (design
+decision AD-3 — pass-through label, no internal time-windowing state).
 
 #### Scenario: Score each period
 
-- GIVEN StatsResult collections for "30d", "90d", and "1y" periods
-- WHEN the calculator scores each period
+- GIVEN StatsResult collections for "30d", "90d", and "1y" already filtered by the caller
+- WHEN the calculator scores each collection with its period label
 - THEN a HealthScore with the matching period label is returned for each
 
-#### Scenario: Empty collection raises error
+#### Scenario: Period label pass-through
 
-- GIVEN an empty list of StatsResult for "30d"
-- WHEN the calculator scores it
-- THEN an InsufficientDataError is raised
+- GIVEN a single StatsResult scored with period="30d"
+- WHEN compute() returns a HealthScore
+- THEN HealthScore.period equals "30d"
