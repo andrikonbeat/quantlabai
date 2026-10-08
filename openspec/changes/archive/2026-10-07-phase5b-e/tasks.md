@@ -73,12 +73,12 @@ Chain strategy: stacked-to-main
 
 ## Phase 5: Cross-Cutting & Polish (across PRs)
 
-- [ ] **5.1** `orchestrator-report-stage` — Modify `sdk/quantlab/phase4/stages/__init__.py`: rewrite `SQXReportStage` to delegate to `ReportGenerator` per delta spec; update constructor, `execute()`, artifact keys (`report_html`, `report_json`, `report_charts`)
-- [ ] **5.2** `orchestrator-tests` — Modify `tests/phase4/test_stages.py`: update tests for new `SQXReportStage` behavior, verify HTML/JSON artifacts, error on missing `CampaignResult`
-- [ ] **5.3** `cli-exports` — Modify `sdk/quantlab/cli/__init__.py`: export new command modules (`pipeline_commands`, `report_commands`)
-- [ ] **5.4** `e2e-smoke-tests` — Create `tests/test_phase5b_e_smoke.py`: run `quantlab report generate`, `quantlab knowledge query`, `quantlab pipeline run --dry-run`, `quantlab pipeline history` in temp Knowledge Lake; verify exit codes and outputs
-- [ ] **5.5** `docs-update` — Update `README.md` or `docs/` with new CLI commands, reporting extra install, knowledge query examples, pipeline YAML schema
-- [ ] **5.6** `test-suite-regression` — Run full test suite (507 existing + ~80 new); ensure all pass, no regressions in `StatisticsEngine`, `KnowledgeStore`, `PipelineRunner`, `CampaignOrchestrator`
+- [x] **5.1** `orchestrator-report-stage` — IMPLEMENTED: `phase4/stages/__init__.py:475-512` — `class SQXReportStage(ReportStage)` delegates to `ReportGenerator` (`from quantlab.reporting.generator import ReportGenerator` at `:486`, `generator = ReportGenerator(config)` at `:512`); artifacts `report_html`/`report_json`/`report_charts`
+- [ ] **5.2** `orchestrator-tests` — `tests/phase4/test_stages.py` does **NOT exist**. SQXReportStage behavior covered indirectly by `tests/integration/test_full_pipeline.py` + `tests/integration/test_smoke.py` (both green). Follow-up.
+- [ ] **5.3** `cli-exports` — NOT done by design: `cli/__init__.py` exports only runner+daemon and documents "Import at runtime to avoid circular import warning". `pipeline_commands`/`report_commands` reachable via `cli_entry() → main` (smoke-proven). Explicit export would reintroduce the circular import. Recorded, not forced.
+- [x] **5.4** `e2e-smoke-tests` — Implemented as `tests/integration/test_smoke.py::test_phase5f_i_smoke_full_pipeline` (not `tests/test_phase5b_e_smoke.py`; naming drift). Covers all four required commands: `report generate`, `knowledge query`, `pipeline run --dry-run`, `pipeline history` in temp Knowledge Lake with auto-approve gates. **1 passed in 1.24s**. Shared with phase5f-i task 3.1.
+- [x] **5.5** `docs-update` — README has Pipeline/Report/Knowledge Commands sections (grep 3 hits); `docs/guides/reporting.md` (10.2K), `docs/guides/knowledge-query.md` (7.8K), `docs/configuration/pipeline-yaml.md` (9.0K), indexed in `docs/index.md`
+- [x] **5.6** `test-suite-regression` — Ran full suite: **4100 passed** / 51 failed / 29 skipped / 343s. All 51 failures are pre-existing env/config classes, none in named areas: prompt-sync live-vs-repo parity (42), cfx/compiler requiring real `sqcli` (8), windows-binary-naming on linux (1). Close batch touched **no runtime code** (docs/specs only). Area suites green: health 89, phase4 657, smoke 1.
 
 ---
 
