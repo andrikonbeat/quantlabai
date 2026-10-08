@@ -2,107 +2,89 @@
 
 ## Purpose
 
-HTTP-based portfolio weight optimization using StrategyQuant's `recompute` and `savePortfolio` endpoints. Loads strategies into an SQX session, optimizes weights against a fitness metric, and exports the result as a portfolio CFX file.
+Drive SQX Portfolio Composer's weight-optimization session over the HTTP API:
+load strategies, run weight optimization, and save the resulting portfolio.
 
 ## Requirements
 
-### Requirement: Load Strategies into SQX Session
+### PCO-REQ-01: Load strategies
 
-The system MUST load a list of strategy IDs into the current SQX HTTP session via the appropriate API.
+The system SHALL load a list of strategy IDs into the SQX Portfolio Composer
+session and record the successfully loaded IDs as the active session set.
 
-#### Scenario: Load strategies adds all to session
+#### Scenario: Load valid strategies
 
-- GIVEN a list of 5 valid strategy IDs
-- WHEN `PortfolioComposer.load_strategies(strategy_ids)` is called
-- THEN each strategy ID is sent to the SQX load endpoint
-- AND all 5 strategies appear in the session strategy list
+- GIVEN a running SQX daemon and strategy IDs that exist
+- WHEN `load_strategies(["A", "B"])` is called
+- THEN both IDs are loaded and `_loaded_strategy_ids == ["A", "B"]`
 
-#### Scenario: Load invalid strategy ID raises StrategyNotFoundError
+#### Scenario: Unknown strategy raises
 
-- GIVEN a list containing 1 invalid strategy ID
-- WHEN `load_strategies()` is called
-- THEN StrategyNotFoundError is raised with the invalid ID
-- AND no strategies are loaded (atomic operation)
+- GIVEN a strategy ID SQX cannot resolve
+- WHEN `load_strategies` is called with it
+- THEN `StrategyNotFoundError` is raised
+- AND the already-loaded strategies remain loaded (no rollback)
 
-#### Scenario: Load strategies with empty list is no-op
+#### Scenario: Load failure raises
 
-- GIVEN an empty strategy list
-- WHEN `load_strategies([])` is called
-- THEN no HTTP calls are made and method returns successfully
+- GIVEN an HTTP failure while loading a strategy
+- WHEN `load_strategies` is called
+- THEN `PortfolioStrategyLoadError` is raised
 
-### Requirement: Optimize Weights via recompute
+### PCO-REQ-02: Clear session
 
-The system MUST invoke the SQX `recompute` endpoint with a fitness metric to optimize portfolio weights.
+The system SHALL provide a session reset that empties the tracked loaded-strategy
+set (the HTTP API offers no per-strategy unload).
 
-#### Scenario: Optimize weights returns weight dictionary
+#### Scenario: Clear tracked session
 
-- GIVEN 3 strategies loaded in session
-- WHEN `PortfolioComposer.optimize_weights(fitness_metric="NetProfit")` is called
-- THEN the `recompute` endpoint is invoked with the metric
-- AND a dictionary `{strategy_id: weight}` is returned with weights summing to 1.0
+- GIVEN a session with loaded strategies
+- WHEN `clear_session()` is called
+- THEN `_loaded_strategy_ids` is empty
 
-#### Scenario: Optimize with custom metric uses provided metric
+### PCO-REQ-03: Parse and validate weights
 
-- GIVEN strategies loaded
-- WHEN `optimize_weights(fitness_metric="SharpeRatio")` is called
-- THEN the `recompute` request includes `fitness=SharpeRatio`
+The system SHALL parse an optimization result dict, validating that `weights`
+exists, is a non-empty mapping of strategy ID to numeric weight, each weight is
+within `[0, 1]`, and the sum is within 0.01 of 1.0.
 
-#### Scenario: Optimize with no strategies loaded raises error
+#### Scenario: Valid weights parse
 
-- GIVEN no strategies loaded in session
+- GIVEN an optimization result with weights summing to 1.0
+- WHEN `_parse_weights(result)` is called
+- THEN a list of `(strategy_id, weight)` tuples is returned
+
+#### Scenario: Missing weights key raises
+
+- GIVEN a result dict without a `weights` key
+- WHEN `_parse_weights` is called
+- THEN `PortfolioOptimizationError` is raised
+
+#### Scenario: Out-of-range weight raises
+
+- GIVEN a weight above 1.0 or below 0
+- WHEN `_parse_weights` is called
+- THEN `PortfolioOptimizationError` is raised
+
+#### Scenario: Bad sum raises
+
+- GIVEN weights that do not sum to approximately 1.0
+- WHEN `_parse_weights` is called
+- THEN `PortfolioOptimizationError` is raised
+
+### PCO-REQ-04: Optimize and save
+
+The system SHALL run weight optimization against the loaded session and SHALL
+support persisting the resulting portfolio weights via `save_portfolio`.
+
+#### Scenario: Optimize loaded session
+
+- GIVEN a session with loaded strategies
 - WHEN `optimize_weights()` is called
-- THEN PortfolioEmptyError is raised
+- THEN a validated weight result is produced and normalised
 
-### Requirement: Save Portfolio CFX
+#### Scenario: Empty session raises
 
-The system MUST persist the optimized portfolio as a CFX file via the `savePortfolio` HTTP endpoint.
-
-#### Scenario: Save portfolio exports CFX file
-
-- GIVEN optimized weights exist from `optimize_weights()`
-- WHEN `PortfolioComposer.save_portfolio(name="MyPortfolio", output_dir="/tmp/out")` is called
-- THEN `savePortfolio` endpoint is called with name and weights
-- AND a `{name}.cfx` file is written to output_dir
-- AND the CFX contains the portfolio weights and strategy references
-
-#### Scenario: Save with duplicate name overwrites
-
-- GIVEN a portfolio CFX already exists at output path
-- WHEN `save_portfolio()` is called with same name
-- THEN the existing file is overwritten with new weights
-
-#### Scenario: Save without prior optimization raises error
-
-- GIVEN `load_strategies()` was called but `optimize_weights()` was not
-- WHEN `save_portfolio()` is called
-- THEN PortfolioNotOptimizedError is raised
-
-### Requirement: End-to-End Portfolio Creation
-
-The system SHOULD provide a convenience method that chains load → optimize → save.
-
-#### Scenario: Create portfolio end-to-end
-
-- GIVEN strategy IDs ["strat1", "strat2", "strat3"]
-- WHEN `PortfolioComposer.create_portfolio(strategy_ids, fitness="NetProfit", name="MyPortfolio", output_dir="/tmp")` is called
-- THEN strategies are loaded, weights optimized, and portfolio CFX saved
-- AND the method returns the path to the created CFX file
-
-#### Scenario: Create portfolio with custom metric and weight constraints
-
-- GIVEN strategy IDs and fitness="SortinoRatio"
-- WHEN `create_portfolio()` is called with `min_weight=0.1, max_weight=0.6`
-- THEN optimization uses these constraints
-- AND returned weights respect min/max bounds
-
-### Requirement: Dry-Run Mode
-
-The system MUST support dry-run mode for testing without SQX server.
-
-#### Scenario: Dry-run creates mock portfolio CFX
-
-- GIVEN PortfolioComposer with dry_run=True
-- WHEN `create_portfolio(["s1", "s2"], "NetProfit", "Test", "/tmp")` is called
-- THEN no HTTP calls are made
-- AND a mock CFX file is created at `/tmp/Test.cfx`
-- AND the CFX contains mock weights for the provided strategies
+- GIVEN no loaded strategies
+- WHEN `optimize_weights()` is called
+- THEN a typed `PortfolioOptimizationError` is raised

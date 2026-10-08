@@ -2,129 +2,74 @@
 
 ## Purpose
 
-Automates walk-forward optimization via StrategyQuant CLI (`sqcli`). Generates Optimizer CFX templates with parameter spaces, walk-forward settings, and databanks; executes optimization via sqcli; exports results to CSV/DataFrame.
+Automate SQX walk-forward optimization over the HTTP API: build an optimizer CFX
+from an `OptimizerConfig`, dispatch it through sqcli, poll to completion, export
+the optimization CSV, and parse it into a structured result.
 
 ## Requirements
 
-### Requirement: Optimizer CFX Template Generation
+### OPT-REQ-01: Optimizer configuration
 
-The system MUST generate a valid Optimizer CFX XML from an `OptimizerConfig` specification.
+The system SHALL accept an `OptimizerConfig` carrying the strategy ID,
+optimization method, objective, and related tuning knobs used to build the
+optimizer CFX.
 
-#### Scenario: Generate CFX with parameter space
+#### Scenario: Config drives CFX build
 
-- GIVEN `OptimizerConfig` with parameter_ranges={"Period": [10, 50, 5], "Threshold": [0.1, 1.0, 0.1]}
-- WHEN `OptimizerTemplateBuilder.build(config)` is called
-- THEN CFX contains `<Optimization>` section with Parameters for Period and Threshold
-- AND each parameter has Min, Max, Step attributes
+- GIVEN a configured `OptimizerConfig` for a strategy
+- WHEN `Optimizer.run()` builds the CFX
+- THEN the generated CFX embeds the configured method and objective
 
-#### Scenario: Generate CFX with walk-forward cycles
+### OPT-REQ-02: Run optimization
 
-- GIVEN `OptimizerConfig(walkforward_cycles=5, walkforward_oot_ratio=0.3)`
-- WHEN `build()` is called
-- THEN CFX contains `<WalkForward>` section with Cycles=5 and OutOfSampleRatio=0.3
+The system SHALL run the optimizer end-to-end: build CFX, load config, start the
+project, poll until complete (or timeout), export the optimization results CSV,
+and parse it. The temporary CFX SHALL be removed on exit.
 
-#### Scenario: Generate CFX with databanks
+#### Scenario: Successful run returns parsed result
 
-- GIVEN `OptimizerConfig(databanks=["EURUSD_H1", "GBPUSD_H1"])`
-- WHEN `build()` is called
-- THEN CFX contains `<Databanks>` section with both symbols
+- GIVEN a daemon that completes successfully
+- WHEN `run(config, campaign_name, output_dir)` is called
+- THEN a parsed optimization result is returned and the temp CFX is removed
 
-#### Scenario: Generate CFX with objective function
+#### Scenario: Timeout raises
 
-- GIVEN `OptimizerConfig(objective_function="NetProfit")`
-- WHEN `build()` is called
-- THEN CFX contains `<ObjectiveFunction>` set to NetProfit
+- GIVEN the project does not complete within the timeout
+- WHEN polling exceeds the bound
+- THEN `OptimizerRunError` is raised ("Timeout after ...")
 
-### Requirement: OptimizerConfig Validation
+#### Scenario: Export failure raises
 
-The system MUST validate `OptimizerConfig` before CFX generation.
+- GIVEN the export step fails
+- WHEN `run` reaches export
+- THEN `OptimizerRunError` is raised
 
-#### Scenario: Missing parameter_ranges raises ValidationError
+### OPT-REQ-03: CSV parsing contract
 
-- GIVEN `OptimizerConfig` with empty parameter_ranges
-- WHEN `OptimizerConfig.model_validate(config)` is called
-- THEN ValidationError is raised: "parameter_ranges must contain at least one parameter"
+The system SHALL parse the optimization CSV requiring the fixed columns
+`cycle`, `insamplestart`, `insampleend`, `outsamplestart`, `outsampleend`
+(case-insensitive headers), and SHALL reject missing, empty, or malformed files.
 
-#### Scenario: Invalid walkforward_cycles raises ValidationError
+#### Scenario: Parse valid export
 
-- GIVEN `OptimizerConfig(walkforward_cycles=0)`
-- WHEN validation runs
-- THEN ValidationError: "walkforward_cycles must be >= 1"
+- GIVEN a CSV with all five required column headers and data rows
+- WHEN `parse_csv(path, strategy_id)` is called
+- THEN a structured result with the cycle rows is returned
 
-#### Scenario: Valid config passes validation
+#### Scenario: Missing file raises
 
-- GIVEN complete config with all required fields
-- WHEN validation runs
-- THEN no error is raised
+- GIVEN a non-existent path
+- WHEN `parse_csv` is called
+- THEN `OptimizerRunError` is raised ("CSV file not found")
 
-### Requirement: SQX CLI Lifecycle Management
+#### Scenario: Empty file raises
 
-The system MUST execute optimizer via sqcli with proper lifecycle: loadconfig → start → status polling → stop → export.
+- GIVEN an empty file or header-only file
+- WHEN `parse_csv` is called
+- THEN `OptimizerRunError` is raised ("no header row" / "no data rows")
 
-#### Scenario: Run optimizer completes full lifecycle
+#### Scenario: Missing required columns raises
 
-- GIVEN valid optimizer CFX at "/tmp/optimizer.cfx"
-- WHEN `Optimizer.run(config)` is called
-- THEN sqcli loadconfig is called with the CFX
-- AND sqcli start is called
-- AND status is polled until "completed"
-- AND results are exported to CSV
-- AND method returns path to results CSV
-
-#### Scenario: Run optimizer handles timeout
-
-- GIVEN optimization exceeds configured timeout (default 1 hour)
-- WHEN `run()` is called
-- THEN sqcli stop is sent
-- AND OptimizationTimeoutError is raised with partial results path
-
-#### Scenario: Run optimizer handles sqcli failure
-
-- GIVEN sqcli returns exit code != 0
-- WHEN `run()` is called
-- THEN OptimizerExecutionError is raised with stderr
-
-### Requirement: Results Export to CSV
-
-The system MUST export optimization results to CSV with expected columns.
-
-#### Scenario: Export produces CSV with required columns
-
-- GIVEN optimization completed
-- WHEN `Optimizer.export_results(output_path="/tmp/results.csv")` is called
-- THEN CSV is created with columns: ParameterSet, NetProfit, SharpeRatio, MaxDrawdown, TradesCount, WalkForwardScore
-
-#### Scenario: Export handles empty results
-
-- GIVEN optimization completed but no valid parameter sets
-- WHEN `export_results()` is called
-- THEN CSV is created with header only (0 data rows)
-
-### Requirement: Dry-Run Mode
-
-The system MUST support dry-run for testing CFX generation without sqcli.
-
-#### Scenario: Dry-run returns mock results
-
-- GIVEN Optimizer with dry_run=True
-- WHEN `run(config)` is called
-- THEN no sqcli is invoked
-- AND a mock CSV is created with sample parameter sets
-- AND CFX file is generated at expected path for inspection
-
-### Requirement: Chained Optimize Task (REQ-44)
-
-The Optimizer MUST be invocable as a task within a multi-task Custom Project (REQ-22/REQ-23), chained after retest in ONE project load (REQ-27). Standalone `Optimizer.run` SHALL remain unchanged.
-
-#### Scenario: Optimize as chained task
-
-- GIVEN a multi-task project with Optimize after Retest
-- WHEN the generator emits the project
-- THEN the Optimize task XML carries parameter ranges and Walk-Forward settings
-- AND SQX executes it chained in one load
-
-#### Scenario: Standalone path preserved
-
-- GIVEN Optimizer invoked standalone
-- WHEN `run(config)` is called
-- THEN behavior is identical to pre-change output
+- GIVEN a header lacking one of the five fixed columns
+- WHEN `parse_csv` is called
+- THEN `OptimizerRunError` is raised naming the missing columns

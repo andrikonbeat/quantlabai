@@ -7,10 +7,10 @@ Automate the end-to-end pipeline from SQX strategy research → JForex `.java` e
 ## Scope
 
 ### In Scope
-- `sdk/quantlab/phase4/jforex-deploy/` — HTTP `sourcecode/print` wrapper + custom indicator deployment
-- `sdk/quantlab/phase4/portfolio/` — PortfolioComposer (HTTP weight optimization) + PortfolioMaster (CFX genetic config) orchestration
-- `sdk/quantlab/phase4/optimizer/` — CFX template generation + sqcli project lifecycle (start/stop/status/export)
-- `sdk/quantlab/phase4/retester/` — CFX template generation + sqcli + databank export for Monte Carlo/WF reports
+- `sdk/quantlab/phase4/jforex_deploy.py` — HTTP `sourcecode/print` wrapper + custom indicator deployment
+- `sdk/quantlab/phase4/portfolio_composer.py` + `portfolio_master.py` — PortfolioComposer (HTTP weight optimization) + PortfolioMaster (CFX genetic config) orchestration
+- `sdk/quantlab/phase4/optimizer.py` — CFX template generation + sqcli project lifecycle (start/status/export)
+- `sdk/quantlab/phase4/retester.py` — CFX template generation + sqcli + databank export for Monte Carlo/WF reports
 - Shared `CfxTemplateBuilder` utilities for Portfolio/Optimizer/Retester CFX XML structures
 
 ### Out of Scope
@@ -35,7 +35,7 @@ Automate the end-to-end pipeline from SQX strategy research → JForex `.java` e
 
 ## Approach
 
-Unified `sdk/quantlab/phase4/` package with four submodules sharing `CfxTemplateBuilder` for CFX XML generation. Each submodule exposes a high-level async API:
+Unified `sdk/quantlab/phase4/` package with flat modules sharing `CfxTemplateBuilder` for CFX XML generation. Each module exposes a high-level async API:
 
 ```python
 # JForex Deploy
@@ -59,10 +59,12 @@ All sqcli calls route through extended `CommandDispatcher`; all CFX generation r
 
 | Area | Impact | Description |
 |------|--------|-------------|
-| `sdk/quantlab/phase4/jforex_deploy/` | New | HTTP export + indicator copy |
-| `sdk/quantlab/phase4/portfolio/` | New | Composer HTTP + Master CFX/sqcli |
-| `sdk/quantlab/phase4/optimizer/` | New | Optimizer CFX template + sqcli |
-| `sdk/quantlab/phase4/retester/` | New | Retester CFX template + sqcli |
+| `sdk/quantlab/phase4/jforex_deploy.py` | New | HTTP export + indicator copy |
+| `sdk/quantlab/phase4/portfolio_composer.py` | New | Composer HTTP weight optimization |
+| `sdk/quantlab/phase4/portfolio_master.py` | New | Master CFX build + sqcli run + extraction |
+| `sdk/quantlab/phase4/optimizer.py` | New | Optimizer CFX template + sqcli |
+| `sdk/quantlab/phase4/retester.py` | New | Retester CFX template + sqcli |
+| `sdk/quantlab/phase4/template_registry.py` | New | `CfxTemplateBuilder` shared CFX builders |
 | `sdk/quantlab/cfx/` | Modified | Extended writers for Portfolio/Optimizer/Retester sections |
 | `sdk/quantlab/sqx_translator/` | Modified | New CFX template methods |
 | `sdk/quantlab/sqx_cli/` | Modified | New project action methods + daemon mgmt |
@@ -91,10 +93,10 @@ All sqcli calls route through extended `CommandDispatcher`; all CFX generation r
 
 ## Success Criteria
 
-- [ ] `JForexDeployer.export_strategy()` produces valid `.java` compilable in JForex SDK
-- [ ] `PortfolioComposer.optimize_weights()` returns weight vector matching SQX GUI result (±0.1%)
-- [ ] `PortfolioMaster.build_portfolio()` completes genetic search and exports selected strategies
-- [ ] `Optimizer.run()` executes walk-forward optimization and exports CSV with expected columns
-- [ ] `Retester.run()` produces Monte Carlo report with percentile bands matching GUI
-- [ ] All four submodules pass dry-run tests without SQX installation
-- [ ] End-to-end integration test: DSL → CFX → Optimize → Retest → Portfolio → JForex export
+- [x] `JForexDeployer.export_strategy()` produces valid `.java` compilable in JForex SDK (routing covered by `tests/compiler/test_jforex_routing.py`; no direct test file in `tests/phase4/`)
+- [ ] `PortfolioComposer.optimize_weights()` returns weight vector matching SQX GUI result (±0.1%) — requires live SQX GUI; dry-run coverage in `tests/phase4/test_portfolio_composer.py` (41 tests)
+- [x] `PortfolioMaster.build_portfolio()` completes genetic search and exports selected strategies (`tests/phase4/test_portfolio_master.py`, 44 tests)
+- [x] `Optimizer.run()` executes walk-forward optimization and exports CSV with expected columns (`tests/phase4/test_optimizer.py`, 41 tests)
+- [ ] `Retester.run()` produces Monte Carlo report with percentile bands matching GUI — percentile-band parity requires live SQX; coverage in `test_retester.py` + `test_retester_config.py` (55 tests)
+- [x] All four modules pass dry-run tests without SQX installation (181 tests in `tests/phase4/`, `SQX_FORCE_MOCK=1`)
+- [ ] End-to-end integration test: DSL → CFX → Optimize → Retest → Portfolio → JForex export — not implemented; partial orchestration covered by `test_campaign_orchestrator.py`

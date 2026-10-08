@@ -122,3 +122,9 @@ Beyond `.java` export, the deploy path MUST route exported sources through the c
 - WHEN the fix loop (REQ-30) exhausts its bound
 - THEN deployment is blocked with the compile error
 - AND no JAR is produced
+
+#### Scenario: Compiler disabled keeps java-only path
+
+- GIVEN environment `QUANTLAB_COMPILER=0`
+- WHEN the compile route is reached
+- THEN the deploy stays `.java`-only — the original export is returned unchanged

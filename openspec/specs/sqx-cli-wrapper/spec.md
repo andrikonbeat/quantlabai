@@ -1,94 +1,194 @@
-# SQX CLI Wrapper Specification
+# Delta for SQX CLI Wrapper
 
-## Purpose
+## ADDED Requirements
 
-Cross-platform subprocess wrapper around StrategyQuant's `sqcli.exe`. Provides a clean Python interface for SQX operations with full dry-run support, enabling development and testing without an SQX installation.
+### Requirement: Portfolio Project Actions
 
-## Requirements
+The system MUST support sqcli project actions for Portfolio Composer and Portfolio Master projects.
+
+#### Scenario: Loadconfig for portfolio CFX
+
+- GIVEN a Portfolio Composer CFX at "/tmp/portfolio.cfx"
+- WHEN `CommandDispatcher.loadconfig("portfolio-1", "/tmp/portfolio.cfx")` is called
+- THEN sqcli command `action=loadconfig name=portfolio-1 file=/tmp/portfolio.cfx` is sent
+- AND the project is loaded in the SQX daemon
+
+#### Scenario: Loadconfig for portfolio master CFX
+
+- GIVEN a Portfolio Master CFX at "/tmp/master.cfx"
+- WHEN `CommandDispatcher.loadconfig("master-1", "/tmp/master.cfx")` is called
+- THEN sqcli loads the portfolio builder configuration
+
+#### Scenario: Start portfolio optimization
+
+- GIVEN a portfolio project loaded
+- WHEN `CommandDispatcher.start("portfolio-1")` is called
+- THEN `action=start` is sent to the daemon
+- AND the portfolio weight optimization begins
+
+#### Scenario: Start portfolio master genetic search
+
+- GIVEN a portfolio master project loaded
+- WHEN `CommandDispatcher.start("master-1")` is called
+- THEN the genetic portfolio builder starts running
+
+### Requirement: Optimizer Project Actions
+
+The system MUST support sqcli project actions for Optimizer projects.
+
+#### Scenario: Loadconfig for optimizer CFX
+
+- GIVEN an Optimizer CFX at "/tmp/optimizer.cfx"
+- WHEN `CommandDispatcher.loadconfig("optimizer-1", "/tmp/optimizer.cfx")` is called
+- THEN the optimizer configuration is loaded
+
+#### Scenario: Start optimizer begins walk-forward optimization
+
+- GIVEN an optimizer project loaded
+- WHEN `CommandDispatcher.start("optimizer-1")` is called
+- THEN the walk-forward optimization begins
+
+#### Scenario: Status polling returns optimizer phase
+
+- GIVEN an optimizer running
+- WHEN `CommandDispatcher.status("optimizer-1")` is called
+- THEN a CampaignStatus is returned with phase reflecting optimizer state (optimizing, walkforward, completed)
+
+### Requirement: Retester Project Actions
+
+The system MUST support sqcli project actions for Retester projects.
+
+#### Scenario: Loadconfig for retester CFX
+
+- GIVEN a Retester CFX at "/tmp/retester.cfx"
+- WHEN `CommandDispatcher.loadconfig("retester-1", "/tmp/retester.cfx")` is called
+- THEN the retester configuration is loaded
+
+#### Scenario: Start retester begins Monte Carlo/Walk-Forward
+
+- GIVEN a retester project loaded
+- WHEN `CommandDispatcher.start("retester-1")` is called
+- THEN Monte Carlo and Walk-Forward retesting begins
+
+#### Scenario: Status returns retester progress
+
+- GIVEN a retester running
+- WHEN `CommandDispatcher.status("retester-1")` is called
+- THEN CampaignStatus includes current Monte Carlo run and Walk-Forward cycle
+
+### Requirement: Result Export for New Project Types
+
+The system MUST export results from Portfolio, Optimizer, and Retester projects.
+
+#### Scenario: Export portfolio weights CSV
+
+- GIVEN a completed portfolio project
+- WHEN `CommandDispatcher.export("portfolio-1", "/tmp/out", format="csv")` is called
+- THEN a CSV with strategy IDs and weights is exported
+
+#### Scenario: Export optimizer results CSV
+
+- GIVEN a completed optimizer project
+- WHEN `CommandDispatcher.export("optimizer-1", "/tmp/out", format="csv")` is called
+- THEN CSV with all parameter combinations and objective values is exported
+
+#### Scenario: Export retester reports
+
+- GIVEN a completed retester project
+- WHEN `CommandDispatcher.export("retester-1", "/tmp/out", format="html")` is called
+- THEN Monte Carlo report and Walk-Forward report HTML files are exported
+
+#### Scenario: Export retester databank files
+
+- GIVEN a completed retester project with databank export enabled
+- WHEN `CommandDispatcher.export("retester-1", "/tmp/out", format="databank")` is called
+- THEN exported databank files are saved to output directory
+
+### Requirement: Daemon Lifecycle for GUI Server
+
+The system MUST manage the SQX GUI daemon lifecycle required for HTTP API calls (used by Portfolio Composer and JForex Deploy).
+
+#### Scenario: Start daemon launches SQX with -gui flag
+
+- GIVEN SQX installation path configured
+- WHEN `DaemonManager.start()` is called
+- THEN `sqcli -gui` is launched as subprocess
+- AND the daemon process is tracked
+
+#### Scenario: Stop daemon terminates process
+
+- GIVEN a running SQX GUI daemon
+- WHEN `DaemonManager.stop()` is called
+- THEN the daemon process is terminated gracefully
+- AND any child processes are cleaned up
+
+#### Scenario: Daemon health check verifies HTTP endpoint
+
+- GIVEN a running daemon
+- WHEN `DaemonManager.is_healthy()` is called
+- THEN an HTTP GET to the API endpoint (default localhost:8888) is attempted
+- AND True is returned if 200 OK, False otherwise
+
+#### Scenario: Auto-restart on daemon crash
+
+- GIVEN daemon crashes during operation
+- WHEN next command is dispatched
+- THEN a new daemon is started automatically
+- AND the command is retried once
+
+## MODIFIED Requirements
 
 ### Requirement: Subprocess Execution
 
-The system MUST execute `sqcli.exe` commands via subprocess with configurable timeout, stdout/stderr capture, and exit code inspection. Arguments MUST be passed as structured `key=value` pairs — each pair SHALL be a separate subprocess argument, NOT split by spaces.
-(Previously: arguments passed via `command.split()` which breaks on `key=value` pairs with spaces)
+The system MUST execute `sqcli.exe` commands via subprocess with configurable timeout, stdout/stderr capture, and exit code inspection. Arguments MUST be passed as structured `key=value` pairs — each pair SHALL be a separate subprocess argument, NOT split by spaces. (Previously: Campaign commands only)
 
-#### Scenario: key=value arguments are passed correctly
+#### Scenario: Portfolio command args passed correctly
 
-- GIVEN a command with arguments `action=loadconfig name=my campaign file=/tmp/test.cfx`
+- GIVEN a portfolio command with arguments `action=loadconfig name=my portfolio file=/tmp/test.cfx`
 - WHEN the wrapper executes it
-- THEN the subprocess receives 3 separate arguments: `action=loadconfig`, `name=my campaign`, `file=/tmp/test.cfx`
-- AND the command does not split on the space in "my campaign"
+- THEN the subprocess receives 3 separate arguments: `action=loadconfig`, `name=my portfolio`, `file=/tmp/test.cfx`
+- AND the command does not split on the space in "my portfolio"
+(Previously: only campaign commands were tested)
 
-#### Scenario: Command executes and returns output
+#### Scenario: Optimizer command args passed correctly
 
-- GIVEN a valid sqcli command with structured key=value args
-- WHEN the wrapper executes it
-- THEN stdout, stderr, and exit code are captured and returned as a structured result
+- GIVEN an optimizer command with key=value pairs containing spaces
+- WHEN executed
+- THEN each pair is a separate subprocess argument
+(Previously: only campaign commands were tested)
 
-#### Scenario: Command times out gracefully
+#### Scenario: Retester command args passed correctly
 
-- GIVEN a long-running sqcli command
-- WHEN the execution exceeds the configured timeout
-- THEN the subprocess is terminated and a TimeoutError is raised
-
-### Requirement: Dry-Run Mode
-
-The system MUST provide a dry-run mode where no subprocess is spawned. In dry-run mode, the system SHALL return documented mock results.
-
-#### Scenario: Dry-run returns mock success
-
-- GIVEN the wrapper is in dry-run mode
-- WHEN any `sqcli.exe` command is invoked
-- THEN no subprocess is created and a structured mock result is returned with exit code 0 and documented mock output
-
-#### Scenario: Dry-run mode is configurable per-call
-
-- GIVEN a wrapper instance initialized with dry-run=true
-- WHEN a command is invoked with dry-run=false override
-- THEN the subprocess is executed (not mocked) for that call
-
-### Requirement: Cross-Platform Path Resolution
-
-The system MUST resolve the `sqcli.exe` path according to the host OS. On Windows, it SHALL search common installation paths. On Linux/WSL, it SHALL use a configurable path or raise a clear error.
-
-#### Scenario: Windows finds sqcli.exe automatically
-
-- GIVEN Windows with SQX installed in Program Files
-- WHEN the wrapper resolves the sqcli path
-- THEN the default installation path is found without manual configuration
-
-#### Scenario: Linux reports sqcli not found
-
-- GIVEN Linux/WSL without a configured sqcli path
-- WHEN the wrapper attempts to resolve sqcli
-- THEN a clear error is raised indicating sqcli is not installed and suggesting dry-run mode
-
-### Requirement: Structured Results
-
-The system MUST wrap all subprocess results in a structured Pydantic model containing stdout, stderr, exit code, and execution metadata (duration, dry-run flag, platform).
-
-#### Scenario: Result model contains all metadata
-
-- GIVEN any command execution (real or dry-run)
-- WHEN the wrapper completes
-- THEN a structured result with stdout, stderr, exit_code, duration_seconds, is_dry_run, and platform fields is returned
+- GIVEN a retester command with key=value pairs containing special characters
+- WHEN executed
+- THEN each pair is a separate subprocess argument
+(Previously: only campaign commands were tested)
 
 ### Requirement: CommandDispatcher
 
-The system MUST provide a `CommandDispatcher` abstraction that manages sqcli daemon lifecycle: start daemon, send commands, keep alive, and stop daemon. The dispatcher SHALL construct all commands using structured `key=value` argument formatting.
+The system MUST provide a `CommandDispatcher` abstraction that manages sqcli daemon lifecycle: start daemon, send commands, keep alive, and stop daemon. The dispatcher SHALL construct all commands using structured `key=value` argument formatting. (Previously: Campaign project lifecycle only)
 
-#### Scenario: Daemon starts and accepts commands
+#### Scenario: Daemon manages portfolio projects
 
-- GIVEN a CommandDispatcher targeting a valid sqcli binary
+- GIVEN a CommandDispatcher with valid sqcli binary
 - WHEN the dispatcher starts the daemon
 - THEN the daemon process is launched
-- AND subsequent commands (loadconfig, status, export) are sent to the running daemon
+- AND subsequent portfolio commands (loadconfig, start, status, export) are sent to the running daemon
+(Previously: only campaign projects were managed)
 
-#### Scenario: Daemon stop terminates the process
+#### Scenario: Daemon manages optimizer projects
 
-- GIVEN a running sqcli daemon
-- WHEN the dispatcher stops the daemon
-- THEN `sqcli -exit` is sent
-- AND the daemon process is terminated
+- GIVEN a CommandDispatcher
+- WHEN optimizer commands are dispatched
+- THEN they are routed to the running daemon
+(Previously: only campaign projects were managed)
+
+#### Scenario: Daemon manages retester projects
+
+- GIVEN a CommandDispatcher
+- WHEN retester commands are dispatched
+- THEN they are routed to the running daemon
+(Previously: only campaign projects were managed)
 
 #### Scenario: Campaign commands construct correct arguments
 
@@ -96,114 +196,45 @@ The system MUST provide a `CommandDispatcher` abstraction that manages sqcli dae
 - WHEN constructing a loadconfig command with CFX file "/tmp/test.cfx"
 - THEN the command is `sqcli -project action=loadconfig name=campaign-1 file=/tmp/test.cfx`
 - AND each key=value pair is a separate argument (not split by spaces)
+(Previously: this was the only project type supported)
 
 ### Requirement: Campaign Result Types
 
-The system MUST provide structured result types for campaign operations: `CampaignStatus` (running, completed, failed, stopped), `CampaignPhase` (enum of all 7 phases), and extended `CliResult` with command metadata (command string, args list, phase).
+The system MUST provide structured result types for campaign operations: `CampaignStatus` (running, completed, failed, stopped), `CampaignPhase` (enum of all 7 phases), and extended `CliResult` with command metadata (command string, args list, phase). (Previously: Campaign-specific types only)
 
-#### Scenario: CampaignStatus reflects sqcli output
+#### Scenario: PortfolioStatus reflects sqcli output
 
-- GIVEN a completed sqcli project
+- GIVEN a completed sqcli portfolio project
 - WHEN the dispatcher polls status via `-project action=status`
-- THEN a CampaignStatus with status=completed is returned
+- THEN a PortfolioStatus with status=completed is returned
 - AND the result includes the raw stdout for debugging
+(Previously: only CampaignStatus existed)
+
+#### Scenario: OptimizerStatus reflects optimization phase
+
+- GIVEN a running optimizer project
+- WHEN status is polled
+- THEN an OptimizerStatus with phase="walkforward_3_of_5" is returned
+(Previously: only CampaignStatus existed)
+
+#### Scenario: RetesterStatus reflects Monte Carlo progress
+
+- GIVEN a running retester project
+- WHEN status is polled
+- THEN a RetesterStatus with mc_run=42, mc_total=100 is returned
+(Previously: only CampaignStatus existed)
 
 #### Scenario: Extended CliResult includes command metadata
 
-- GIVEN any dispatched command
+- GIVEN any dispatched command (portfolio, optimizer, retester, campaign)
 - WHEN the dispatcher returns the result
 - THEN the result includes command string, args list, phase name, and all base CliResult fields (stdout, stderr, exit_code, duration)
+(Previously: only campaign command metadata was included)
 
+## REMOVED Requirements
 
-### Requirement: extract_results_count Helper
+None.
 
-The system MUST expose a public function `extract_results_count(status_text: str) -> int` that parses the "Strategies generated" line from SQX status plain text output and returns the integer count. If the pattern is not found, it SHALL return 0.
+## RENAMED Requirements
 
-#### Scenario: Parses strategies generated count
-
-- GIVEN status text containing "Strategies generated 255"
-- WHEN extract_results_count is called
-- THEN it returns 255
-
-#### Scenario: Missing pattern returns zero
-
-- GIVEN status text without "Strategies generated" (e.g., error message)
-- WHEN extract_results_count is called
-- THEN it returns 0
-
-### Requirement: extract_error_patterns Helper
-
-The system MUST expose a public function `extract_error_patterns(status_text: str) -> list[str]` that scans status text for SQX error patterns. The function SHALL detect: `Cannot start project`, `config errors`, `Error:`, and `Cannot get`. Each matched line (up to 3) SHALL be returned. If no patterns match, it SHALL return an empty list.
-
-#### Scenario: Detects config error line
-
-- GIVEN status text containing "Cannot start project 'X', it has config errors in task 'Build'"
-- WHEN extract_error_patterns is called
-- THEN it returns a list with one entry matching the error line
-
-#### Scenario: Clean status returns empty list
-
-- GIVEN a clean status response with strategies, running time, and databank
-- WHEN extract_error_patterns is called
-- THEN it returns an empty list
-
-#### Scenario: Multiple errors detected
-
-- GIVEN status text with multiple error lines
-- WHEN extract_error_patterns is called
-- THEN it returns up to 3 matched lines
-- AND each line is the full text from the status response
-
-### Requirement: MOK-01 Loud mock warning
-
-Whenever mock dispatch is chosen — `SQX_FORCE_MOCK` set OR sqcli not found — the system MUST emit a prominent warning (logger/stderr) stating results are simulated, at every decision point (`cli_wrapper.py` and `builder_agent.py:604-606`). (Previously: silent fallback at cli_wrapper.py:132-160)
-
-#### Scenario: Missing sqcli warns
-- GIVEN sqcli not found and no SQX_FORCE_MOCK
-- WHEN a command dispatches
-- THEN mock dispatch occurs AND a MOCK MODE warning is emitted
-
-#### Scenario: Forced mock warns
-- GIVEN `SQX_FORCE_MOCK=1`
-- WHEN a command dispatches
-- THEN mock is used AND the warning is emitted
-
-**Acceptance**: no silent mock dispatch (proposal success criterion).
-
-### Requirement: MOK-02 Production hard-fail
-
-When `QUANTLAB_ENV=production` and mock would be used WITHOUT explicit `SQX_FORCE_MOCK`, the system MUST abort (raise/exit) before dispatching.
-
-#### Scenario: Production blocks silent mock
-- GIVEN QUANTLAB_ENV=production, no sqcli, no SQX_FORCE_MOCK
-- WHEN a command dispatches
-- THEN an error is raised and no mock result is returned
-
-#### Scenario: Production allows explicit mock
-- GIVEN QUANTLAB_ENV=production and SQX_FORCE_MOCK=1
-- WHEN a command dispatches
-- THEN mock is used with the MOK-01 warning
-
-**Acceptance**: production never silently mocks.
-
-### Requirement: REQ-701 Version Preflight Hook
-
-The system MUST run a version preflight in `cli_wrapper._dispatch_real` alongside `license_preflight`, before any SQX project work. The preflight SHALL compare the installed build (REQ-301) against `PINNED_SQX_VERSION` (REQ-302) and SHALL be warn-only (fail-open): drift MUST NOT block or mock dispatch. Dry-run/mock paths SHALL skip the preflight.
-
-#### Scenario: In-sync preflight is silent
-
-- GIVEN installed build equals pinned
-- WHEN `_dispatch_real` starts
-- THEN no version warning is emitted and dispatch continues
-
-#### Scenario: Drift warns only
-
-- GIVEN installed build differs from pinned
-- WHEN `_dispatch_real` starts
-- THEN a drift warning is logged and dispatch continues (fail-open)
-
-#### Scenario: Missing sqcli skips preflight
-
-- GIVEN no sqcli binary found at the install path
-- WHEN `_dispatch_real` starts
-- THEN the preflight is skipped with a warning, mirroring license_preflight behavior
+None.

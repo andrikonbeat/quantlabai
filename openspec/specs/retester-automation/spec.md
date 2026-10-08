@@ -2,141 +2,71 @@
 
 ## Purpose
 
-Automates StrategyQuant's Retester workflow via CFX template and `sqcli` with databank export. Configures Monte Carlo and Walk-Forward retesting, executes the retester, and exports Monte Carlo and Walk-Forward reports.
+Automate SQX retesting with Monte Carlo analysis over the HTTP API: build a
+retest CFX from a `RetesterConfig`, dispatch it, poll to completion, export the
+HTML and CSV reports, and parse the CSV into a structured `RetestResult` with
+normalised metric names.
 
 ## Requirements
 
-### Requirement: Retester Configuration Model
+### RET-REQ-01: Retester configuration
 
-The system MUST provide a configuration class encapsulating all retester parameters including optional cost-related parameters.
-(Previously: No cost parameters existed in RetesterConfig)
+The system SHALL accept a `RetesterConfig` carrying the strategy ID, databanks,
+Monte Carlo run count, and related settings used to build the retest CFX.
 
-#### Scenario: RetesterConfig accepts all required parameters
+#### Scenario: Config drives CFX build
 
-- GIVEN `RetesterConfig(databanks=["EURUSD_H1", "GBPUSD_H1"], monte_carlo_runs=100, walkforward_cycles=5, confidence_level=0.95, min_trades=30)`
-- WHEN the config is instantiated
-- THEN all parameters are stored and validated
-- AND `monte_carlo_runs` MUST be >= 10
-- AND `walkforward_cycles` MUST be >= 1
-- AND `confidence_level` MUST be in (0.5, 0.99]
-- AND `databanks` MUST be non-empty list
+- GIVEN a configured `RetesterConfig` for a strategy
+- WHEN `Retester.run()` builds the CFX
+- THEN the generated CFX embeds the databanks and Monte Carlo settings
 
-#### Scenario: RetesterConfig uses sensible defaults
+### RET-REQ-02: Run retest
 
-- GIVEN `RetesterConfig(databanks=["EURUSD_H1"])`
-- WHEN instantiated with minimal args
-- THEN defaults: monte_carlo_runs=100, walkforward_cycles=5, confidence_level=0.95, min_trades=30
+The system SHALL run the retest end-to-end: build CFX, load config, start the
+project, poll until complete (or timeout), export the HTML report and the CSV,
+parse the CSV, and attach `html_path`, `csv_path`, and `strategy_id` to the
+result. The temporary CFX SHALL be removed on exit.
 
-#### Scenario: RetesterConfig with cost params
+#### Scenario: Successful run returns full result
 
-- GIVEN `RetesterConfig(strategy_id="s1", databanks=["EURUSD_H1"], broker_profile="ib")`
-- WHEN instantiated
-- THEN broker_profile is stored
-- AND cost_config defaults to None
+- GIVEN a daemon that completes successfully
+- WHEN `run(config, campaign_name, output_dir)` is called
+- THEN a `RetestResult` is returned with parsed metrics and report paths set
+- AND the temp CFX is removed
 
-#### Scenario: RetesterConfig without cost params (backward compatible)
+#### Scenario: Timeout raises
 
-- GIVEN `RetesterConfig(strategy_id="s1", databanks=["EURUSD_H1"])`
-- WHEN instantiated
-- THEN broker_profile is None
-- AND cost_config is None
-- AND existing params (monte_carlo_runs, walkforward_cycles, etc.) are unchanged
+- GIVEN the project does not complete within the timeout
+- WHEN polling exceeds the bound
+- THEN `RetesterRunError` is raised ("Timeout after ...")
 
-### Requirement: Generate Retester CFX
+#### Scenario: Run failure wraps
 
-The system MUST generate a CFX file configuring the Retester with Monte Carlo and Walk-Forward sections, optionally including commission/cost parameters when a broker profile is provided.
+- GIVEN an unexpected error during the run
+- WHEN `run` fails
+- THEN `RetesterRunError` is raised with the underlying message (re-raised unchanged if already typed)
 
-#### Scenario: CFX contains Rankings section with acceptance criteria
+### RET-REQ-03: CSV parsing with normalised metrics
 
-- GIVEN `RetesterConfig(monte_carlo_runs=100, walkforward_cycles=5)`
-- WHEN `RetesterAutomation.generate_cfx(config, strategy_id="s1")` is called
-- THEN CFX contains `Rankings` section with:
-  - `MonteCarloRuns` = 100
-  - `WalkForwardCycles` = 5
-  - `AcceptanceCriteria` subsection with min_trades, confidence_level
+The system SHALL parse the retest CSV into a metrics dict using canonical,
+case-insensitive metric keys with documented aliases (e.g. `MC_MAX_DRAWDOWN` →
+`MC_Drawdown`, `CI_LOWER_BOUND` → `CI_Lower`, `MC_NET_PROFIT` → `MC_NetProfit`),
+and SHALL reject unreadable or metric-less files.
 
-#### Scenario: CFX includes CrossChecks section for Monte Carlo and Walk-Forward
+#### Scenario: Parse valid CSV with aliases
 
-- GIVEN any valid config
-- WHEN CFX is generated
-- THEN a `CrossChecks` section is included with:
-  - `MonteCarlo` enabled with runs and confidence level
-  - `WalkForward` enabled with cycles
-  - `MonteCarloPercentile` = 95 (default)
+- GIVEN a retest CSV whose headers use alias spellings
+- WHEN `parse_csv(path)` is called
+- THEN a `RetestResult` with canonical metric keys is returned
 
-#### Scenario: CFX includes Data section with databanks
+#### Scenario: Missing file raises
 
-- GIVEN databanks=["EURUSD_H1", "GBPUSD_H1"]
-- WHEN CFX is generated
-- THEN `Data` section lists both databanks with correct paths
+- GIVEN a non-existent path
+- WHEN `parse_csv` is called
+- THEN `RetesterRunError` is raised ("CSV file not found")
 
-#### Scenario: CFX with cost injection
+#### Scenario: No parseable metrics raises
 
-- GIVEN `RetesterConfig(..., broker_profile="ib")`
-- WHEN generating CFX
-- THEN the CFX includes commission and spread settings matching the broker profile
-
-#### Scenario: CFX without costs (backward compatible)
-
-- GIVEN `RetesterConfig(..., broker_profile=None)`
-- WHEN generating CFX
-- THEN CFX has no commission/cost sections — identical to pre-change output
-
-### Requirement: Run Retester via sqcli with Databank Export
-
-The system MUST execute the retester through `sqcli`, exporting databanks and reports.
-
-#### Scenario: Run retester completes full lifecycle with databank export
-
-- GIVEN a valid retester CFX
-- WHEN `RetesterAutomation.run(config, strategy_id="s1", output_dir="/tmp/out")` is called
-- THEN sqcli daemon is started
-- AND `loadconfig` loads the CFX
-- AND `start` begins retesting
-- AND `status` is polled until completion
-- AND `export` saves Monte Carlo report, Walk-Forward report, and databank files
-- AND daemon is stopped
-
-#### Scenario: Export produces Monte Carlo report
-
-- GIVEN retester completed with monte_carlo_runs=100
-- WHEN results are exported
-- THEN a Monte Carlo report file is created with percentile bands (5%, 25%, 50%, 75%, 95%)
-- AND report format matches SQX GUI output
-
-#### Scenario: Export produces Walk-Forward report
-
-- GIVEN retester completed with walkforward_cycles=5
-- WHEN results are exported
-- THEN a Walk-Forward report is created with per-cycle metrics
-- AND aggregate statistics (mean, std, worst) are included
-
-### Requirement: Dry-Run Mode
-
-The system MUST support dry-run mode for testing without SQX.
-
-#### Scenario: Dry-run generates mock reports
-
-- GIVEN RetesterAutomation with dry_run=True
-- WHEN `run(config, "s1", "/tmp/out")` is called
-- THEN no sqcli process is spawned
-- AND mock Monte Carlo report is created at `/tmp/out/monte_carlo_report.html`
-- AND mock Walk-Forward report is created at `/tmp/out/walkforward_report.html`
-- AND mock databank exports are created
-
-### Requirement: Chained Retest Task (REQ-43)
-
-The Retester MUST be invocable as a task within a multi-task Custom Project (REQ-22/REQ-23), allowing retest to run chained with optimize in ONE project load (REQ-27). Standalone `RetesterAutomation` generation/execution SHALL remain unchanged.
-
-#### Scenario: Retest as chained task
-
-- GIVEN a multi-task project declaring Filtering → Retest → Optimize
-- WHEN the generator emits the project
-- THEN the Retest task XML carries its CrossChecks (Monte Carlo, Walk-Forward)
-- AND SQX executes it chained in one load
-
-#### Scenario: Standalone path preserved
-
-- GIVEN RetesterAutomation invoked standalone
-- WHEN `run(config, strategy_id, output_dir)` is called
-- THEN behavior is identical to pre-change output
+- GIVEN a file with no recognisable metric columns
+- WHEN `parse_csv` is called
+- THEN `RetesterRunError` is raised

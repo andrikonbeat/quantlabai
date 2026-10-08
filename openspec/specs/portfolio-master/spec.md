@@ -2,88 +2,94 @@
 
 ## Purpose
 
-Automates StrategyQuant's Portfolio Master (genetic portfolio builder) via CFX template and `sqcli`. Generates genetic portfolio CFX from strategy list, runs optimization via sqcli, and extracts selected strategies from the result.
+Run the SQX Portfolio Master genetic builder end-to-end: build a portfolio CFX
+from selected strategies, dispatch it through sqcli, poll to completion, and
+extract the selected strategies with their allocated weights.
 
 ## Requirements
 
-### Requirement: Portfolio Master CFX Generation
+### PMA-REQ-01: Selected strategy model
 
-The system MUST generate a valid Portfolio Master CFX with genetic algorithm configuration.
+The system SHALL represent a genetic-builder selection as `SelectedStrategy`
+(strategy_id, weight, rank by descending weight, optional fitness) and a run
+result as `PortfolioMasterResult` (strategies sorted by rank, total_count,
+source format "csv"/"xml").
 
-#### Scenario: CFX contains AutomaticPortfolioBuilder section
+#### Scenario: Build a result object
 
-- GIVEN `PortfolioMasterConfig(strategies=["s1", "s2", "s3"], generations=50, population=200)`
-- WHEN `PortfolioMaster.build_cfx(config)` is called
-- THEN CFX contains `<AutomaticPortfolioBuilder>` section with:
-  - `Generations` = 50
-  - `PopulationSize` = 200
-  - `StrategyCount` = 3
+- GIVEN parsed strategies from a builder export
+- WHEN a `PortfolioMasterResult` is constructed
+- THEN strategies are ordered by rank (1 = highest weight) and `total_count` matches
 
-#### Scenario: CFX includes PortfolioSettings
+### PMA-REQ-02: Build portfolio run
 
-- GIVEN any valid config
-- WHEN CFX is generated
-- THEN `<PortfolioSettings>` section includes:
-  - `FitnessFunction` (default: "NetProfit")
-  - `MinStrategies` (default: 1)
-  - `MaxStrategies` (default: strategy count)
-  - `RebalancingPeriod` (default: "Monthly")
+The system SHALL build a portfolio CFX from strategy IDs, load and start the
+project via sqcli, poll until completion (or fail), export the results, and
+return the extracted selections. Empty strategy input SHALL be rejected.
 
-#### Scenario: CFX includes selected strategies
+#### Scenario: Empty strategy list raises
 
-- GIVEN config with strategies=["s1", "s2", "s3"]
-- WHEN CFX is generated
-- THEN each strategy is referenced in `<Strategies>` subsection with correct ID
+- GIVEN an empty strategies list
+- WHEN `build_portfolio([])` is called
+- THEN `PortfolioMasterError` is raised ("At least one strategy ID is required")
 
-### Requirement: Run Portfolio Master via sqcli
+#### Scenario: Successful build returns selections
 
-The system MUST execute the portfolio master through sqcli and extract results.
+- GIVEN strategy IDs and a daemon that completes successfully
+- WHEN `build_portfolio(ids, campaigns, generations, population)` is called
+- THEN a `PortfolioMasterResult` with extracted strategies is returned
+- AND the temporary CFX file is removed on exit
 
-#### Scenario: Run completes genetic search and exports selected strategies
+#### Scenario: Failed campaign raises
 
-- GIVEN valid portfolio master CFX
-- WHEN `PortfolioMaster.run(config)` is called
-- THEN sqcli loadconfig/start/status/stop lifecycle is executed
-- AND results are exported
-- AND method returns list of selected strategy IDs from the genetic run
+- GIVEN the project reaches a failed status
+- WHEN polling completes
+- THEN `PortfolioMasterError` is raised with the campaign error message
 
-#### Scenario: Run returns empty list if no strategies selected
+#### Scenario: Timeout raises
 
-- GIVEN genetic run completes but selects no strategies
-- WHEN `run()` is called
-- THEN empty list is returned (not an error)
+- GIVEN the project does not finish within the timeout
+- WHEN polling exceeds the bound
+- THEN `PortfolioMasterError` is raised ("Timeout waiting for ...")
 
-#### Scenario: Run handles sqcli timeout
+#### Scenario: Export failure raises
 
-- GIVEN genetic search exceeds timeout
-- WHEN `run()` is called
-- THEN sqcli stop is sent
-- AND PortfolioMasterTimeoutError is raised with partial results
+- GIVEN the export step fails
+- WHEN `build_portfolio` reaches export
+- THEN `PortfolioMasterError` is raised
 
-### Requirement: Extract Selected Strategies from Results
+### PMA-REQ-03: Extract selections from results
 
-The system MUST parse the sqcli export to identify which strategies were selected.
+The system SHALL parse Portfolio Master export results in XML or CSV format
+(auto-detected, XML preferred on ambiguity), resolving strategy/weight/rank/
+fitness columns case-insensitively through documented aliases.
 
-#### Scenario: Extract returns strategy IDs from portfolio result
+#### Scenario: Parse simple CSV
 
-- GIVEN sqcli exported portfolio result XML
-- WHEN `PortfolioMaster.extract_selected_strategies(result_path)` is called
-- THEN list of selected strategy IDs is returned in order of selection
+- GIVEN a CSV export with strategy/weight columns using known aliases
+- WHEN `_extract_selected_strategies` is called
+- THEN a `PortfolioMasterResult` with `source_format="csv"` is returned
 
-#### Scenario: Extract handles missing result file
+#### Scenario: Parse simple XML
 
-- GIVEN result path does not exist
-- WHEN `extract_selected_strategies()` is called
-- THEN PortfolioMasterResultError is raised
+- GIVEN an XML export
+- WHEN `_extract_selected_strategies` is called
+- THEN a `PortfolioMasterResult` with `source_format="xml"` is returned
 
-### Requirement: Dry-Run Mode
+#### Scenario: Empty export raises
 
-The system MUST support dry-run for CFX inspection without SQX.
+- GIVEN an empty result payload
+- WHEN extraction is attempted
+- THEN `PortfolioMasterError` is raised
 
-#### Scenario: Dry-run generates CFX and returns mock selected strategies
+#### Scenario: Invalid header raises
 
-- GIVEN PortfolioMaster with dry_run=True
-- WHEN `run(config)` is called
-- THEN CFX is generated at expected path
-- AND mock selected strategies list is returned (first N strategies from input)
-- AND no sqcli process is spawned
+- GIVEN a CSV with a non-numeric weight value or missing strategy column
+- WHEN extraction is attempted
+- THEN `PortfolioMasterError` is raised
+
+#### Scenario: Mixed formats resolve safely
+
+- GIVEN payload content that looks like both CSV and XML
+- WHEN extraction is attempted
+- THEN the XML interpretation is used first
