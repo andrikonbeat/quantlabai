@@ -4,7 +4,11 @@
 
 ### Requirement: Pipeline CLI Subcommand
 
-The system MUST provide a `pipeline` subcommand with `run`, `status`, and `list` sub-subcommands. `pipeline run <pipeline.yaml>` SHALL parse a YAML stage config, build a `Pipeline`, run it via `PipelineRunner`, and stream per-stage status to stdout. `pipeline status <name>` SHALL check pipeline run status. `pipeline list` SHALL list recent pipeline runs.
+The system MUST provide a `pipeline` subcommand with `run`, `list`, and `history` sub-subcommands. `pipeline run <pipeline.yaml>` SHALL parse a YAML stage config, build a `Pipeline`, run it via `PipelineRunner`, and stream per-stage status to stdout. `pipeline history <name>` SHALL show pipeline run history with per-stage results. `pipeline list` SHALL list recent pipeline runs.
+
+> Amendment (2026-10-07, AD-pipe-1): the registered naming `pipeline status` was implemented as
+> `pipeline history` (`cmd_pipeline_history`, `cli/pipeline_commands.py:352`, with status filter at
+> `:359`). Naming drift reconciled in favor of the shipped CLI, matching the smoke test and docs.
 
 #### Scenario: pipeline run executes from YAML
 
@@ -20,10 +24,10 @@ The system MUST provide a `pipeline` subcommand with `run`, `status`, and `list`
 - THEN a PipelineError is raised
 - AND the CLI prints the error to stderr and exits with code 1
 
-#### Scenario: pipeline status reports run state
+#### Scenario: pipeline history shows run states
 
 - GIVEN a previous pipeline run with name "test-run"
-- WHEN `pipeline status test-run` is executed
+- WHEN `pipeline history test-run` is executed
 - THEN run state (completed/failed/running) is printed
 - AND per-stage results are included
 
