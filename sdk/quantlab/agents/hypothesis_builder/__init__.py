@@ -64,7 +64,9 @@ class HypothesisBuilder:
 
         Returns:
             Tuple of ``(list[BuildingBlock], list[Strategy])``.
-            Always returns a valid result — fallback to rule on any error.
+            Falls back to rule mode on LLM errors; validation failures
+            (RB-5 invariants) propagate as ``ValueError`` — unvalidated
+            output is never returned.
         """
         if not hypotheses:
             return [], []
@@ -169,7 +171,9 @@ class HypothesisBuilder:
                     if ref not in existing.building_blocks:
                         existing.building_blocks.append(ref)
 
-        # Always validate — raises if something is wrong
+        # Always validate — raises if something is wrong (RB-5 contract).
+        # Validation failures MUST propagate: swallowing them would ship
+        # unvalidated blocks/strategies downstream (H2, 2026-10-07).
         try:
             self._validator.validate(deduped_blocks, merged_strategies)
         except ValueError:
@@ -178,6 +182,7 @@ class HypothesisBuilder:
                 len(deduped_blocks),
                 len(merged_strategies),
             )
+            raise
 
         return deduped_blocks, merged_strategies
 

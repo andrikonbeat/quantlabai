@@ -749,6 +749,42 @@ class TestHypothesisBuilderLLMFallback:
         assert blocks[0].indicator.name == "RSI"
 
 
+# ── H2 fix (2026-10-07): _merge_and_validate must propagate validation errors ─
+
+class TestMergeValidatePropagates:
+    """Validation failures raised by BuildingBlockValidator must propagate.
+
+    RED for H2: _merge_and_validate() previously swallowed ValueError
+    (logger.exception + continue), shipping unvalidated blocks/strategies
+    downstream. RB-5 contract is strict validation — verify both the
+    wrapper unit path and the full build() path.
+    """
+
+    def test_validation_error_propagates_from_merge_and_validate(
+        self,
+    ) -> None:
+        """Direct wrapper call: invalid merged output raises, never returns."""
+        builder = HypothesisBuilder(mode="rule")
+        bad_blocks = [
+            BuildingBlock(
+                name="bad",
+                indicator=IndicatorConfig(name="UNKNOWN_INDICATOR", params={}),
+            )
+        ]
+        with pytest.raises(ValueError, match="Unknown indicator"):
+            builder._merge_and_validate(bad_blocks, [])
+
+    @pytest.mark.asyncio
+    async def test_rule_build_propagates_validation_error(self) -> None:
+        """build() path: a validator failure surfaces to the caller."""
+        builder = HypothesisBuilder(mode="rule")
+        with patch.object(builder, "_validator") as mock_validator:
+            mock_validator.validate.side_effect = ValueError("Unknown indicator")
+            hyp = HypothesisConfig(name="test", description="mean-reversion")
+            with pytest.raises(ValueError, match="Unknown indicator"):
+                await builder.build([hyp])
+
+
 # ── Task 2.4 / 2.7: S-1 LLM mode with rationale + per-call mode override ────
 
 
