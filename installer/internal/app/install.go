@@ -83,7 +83,8 @@ func cmdInstallHome(w io.Writer, args []string, home string) error {
 	// --- Step 2: Configuration (wizard optional) ---
 	runWiz := wizardEnabled(args, term.IsTerminal(int(os.Stdout.Fd())))
 
-	var apiKey, modelChoice, sdkPath string
+	var apiKey, modelChoice, sdkPath, sqxPath string
+	var gentleAIPresent, depsVerified bool
 	sdkPath = sdkPathFlag(args)
 
 	if !runWiz {
@@ -101,11 +102,17 @@ func cmdInstallHome(w io.Writer, args []string, home string) error {
 			return fmt.Errorf("wizard: %w", err)
 		}
 
-		apiKey, modelChoice, sdkPath = wizModel.Result()
+		apiKey, modelChoice, sdkPath, sqxPath, gentleAIPresent, depsVerified = wizModel.Result()
 		if apiKey == "" {
 			fmt.Fprintf(w, "\n⚠ No API key provided — SDK will rely on OpenCode/LLM env vars. Continuing to sync agents/skills/prompts.\n")
 		} else {
 			fmt.Fprintf(w, "  ✓ Configuration collected\n")
+		}
+		st.SQXPath = sqxPath
+		st.GentleAIPresent = gentleAIPresent
+		st.DepsVerified = depsVerified
+		if _, err := st.Save(); err != nil {
+			return fmt.Errorf("save state: %w", err)
 		}
 	}
 
@@ -113,7 +120,7 @@ func cmdInstallHome(w io.Writer, args []string, home string) error {
 	fmt.Fprintf(w, "\n🚀 Installing QuantLab AI...\n\n")
 
 	j := journal.New(qlDir, filepath.Dir(opencodePath))
-	plan := buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath, st, j)
+	plan := buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath, sqxPath, st, j)
 
 	progress := func(ev pipeline.ProgressEvent) {
 		status := "⋯"
@@ -135,6 +142,10 @@ func cmdInstallHome(w io.Writer, args []string, home string) error {
 	}
 
 	fmt.Fprintf(w, "\n✅ QuantLab AI installed successfully!\n")
+	if sqxPath != "" && sqxPath != "auto" {
+		fmt.Fprintf(w, "  SQX: %s\n", sqxPath)
+	}
+	fmt.Fprintf(w, "  Ready to open OpenCode → select agent: quantlab-orchestrator\n")
 	fmt.Fprintf(w, "  Run 'quantlab status' to verify.\n")
 
 	if !st.OnboardingCompleted {
@@ -191,7 +202,7 @@ func runWizard() (*wizard.Model, error) {
 }
 
 // buildInstallPlan constructs the pipeline plan for installation.
-func buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath string, st *state.State, j *journal.Journal) pipeline.StagePlan {
+func buildInstallPlan(qlDir, opencodePath, apiKey, modelChoice, sdkPath, sqxPath string, st *state.State, j *journal.Journal) pipeline.StagePlan {
 	steps := []pipeline.Step{
 		// Step 1: Create ~/.quantlab/ directory
 		&simpleStep{
@@ -394,4 +405,17 @@ func (s *writeStep) Rollback() error {
 		return nil
 	}
 	return s.journal.Restore()
+}
+
+// persistDeps writes dependency metadata into state.
+func persistDeps(st *state.State, sqxPath string, gentleAIPresent, depsVerified bool) {
+	if st == nil {
+		return
+	}
+	if sqxPath != "" {
+		st.SQXPath = sqxPath
+	}
+	st.GentleAIPresent = gentleAIPresent
+	st.DepsVerified = depsVerified
+	st.Save()
 }

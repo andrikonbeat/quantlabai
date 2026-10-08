@@ -28,6 +28,11 @@ type State struct {
 	// Onboarding tracking
 	OnboardingCompleted   bool      `json:"onboarding_completed,omitempty"`
 	OnboardingCompletedAt *time.Time `json:"onboarding_completed_at,omitempty"`
+
+	// Installer dependencies
+	SQXPath         string `json:"sqx_path,omitempty"`
+	GentleAIPresent bool   `json:"gentle_ai_present,omitempty"`
+	DepsVerified    bool   `json:"deps_verified,omitempty"`
 }
 
 // ComponentID identifies a QuantLab component.

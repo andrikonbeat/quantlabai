@@ -137,7 +137,7 @@ func TestModel_SDKPathStep(t *testing.T) {
 
 	updated, _ := m.Update(tea.KeyMsg(tea.Key{Type: tea.KeyEnter}))
 	newM := updated.(Model)
-	if newM.step != StepSummary {
+	if newM.step != StepGentleAI {
 		t.Fatalf("after SDK path step, step = %d", newM.step)
 	}
 	if newM.sdkPath != "/custom/path" {
@@ -186,7 +186,7 @@ func TestModel_Result(t *testing.T) {
 	m.selectedModel = "gpt-4o"
 	m.sdkPath = "/test/path"
 
-	apiKey, model, sdkPath := m.Result()
+	apiKey, model, sdkPath, _, _, _ := m.Result()
 	if apiKey != "sk-test" {
 		t.Fatalf("Result apiKey = %q", apiKey)
 	}

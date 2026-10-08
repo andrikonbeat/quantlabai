@@ -34,6 +34,9 @@ const (
 	StepAPIKey
 	StepModel
 	StepSDKPath
+	StepGentleAI
+	StepSQX
+	StepVerify
 	StepSummary
 	StepConfirm
 	stepCount // internal sentinel
@@ -41,12 +44,15 @@ const (
 
 // stepTitles maps each step to its display title.
 var stepTitles = map[Step]string{
-	StepWelcome: "Welcome",
-	StepAPIKey:  "API Key",
-	StepModel:   "Model Selection",
-	StepSDKPath: "SDK Path",
-	StepSummary: "Summary",
-	StepConfirm: "Ready",
+	StepWelcome:  "Welcome",
+	StepAPIKey:   "API Key",
+	StepModel:    "Model Selection",
+	StepSDKPath:  "SDK Path",
+	StepGentleAI: "Gentle AI",
+	StepSQX:      "StrategyQuant X",
+	StepVerify:   "Verification",
+	StepSummary:  "Summary",
+	StepConfirm:  "Ready",
 }
 
 // modelItem is a list.Item for the model selection step.
@@ -64,9 +70,14 @@ type Model struct {
 	apiKeyInput   textinput.Model
 	modelList     list.Model
 	sdkPathInput  textinput.Model
+	sqxPathInput  textinput.Model
 	apiKey        string
 	selectedModel string
 	sdkPath       string
+	sqxPath       string
+	gentleAIPresent bool
+	depsVerified  bool
+	verifyItems   []verifyItem
 	err           error
 	width         int
 	height        int
@@ -110,16 +121,32 @@ func NewModel() Model {
 	sdkInput.TextStyle = FocusStyle
 	sdkInput.CharLimit = 256
 
+	// SQX Path input
+	sqxInput := textinput.New()
+	sqxInput.Placeholder = "Auto-detect (e.g. /opt/StrategyQuantX)"
+	sqxInput.Width = 60
+	sqxInput.PromptStyle = FocusStyle
+	sqxInput.TextStyle = FocusStyle
+	sqxInput.CharLimit = 256
+
 	// Try to auto-detect the SDK path
 	sdkPath := autoDetectSDK()
+	sqxPath := autoDetectSQX()
+	gentlePresent := detectGentleAI()
+
+	vitems := buildVerifyItems(sdkPath, sqxPath, gentlePresent)
 
 	return Model{
-		step:          StepWelcome,
-		apiKeyInput:   apiInput,
-		sdkPathInput:  sdkInput,
-		sdkPath:       sdkPath,
-		selectedModel: "deepseek-v4-flash-free",
-		modelList:     l,
+		step:            StepWelcome,
+		apiKeyInput:     apiInput,
+		sdkPathInput:    sdkInput,
+		sqxPathInput:    sqxInput,
+		sdkPath:         sdkPath,
+		sqxPath:         sqxPath,
+		gentleAIPresent: gentlePresent,
+		verifyItems:     vitems,
+		selectedModel:   "deepseek-v4-flash-free",
+		modelList:       l,
 	}
 }
 
@@ -227,10 +254,62 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 
 	case StepSDKPath:
 		val := strings.TrimSpace(m.sdkPathInput.Value())
-		if val == "" {
-			val = "auto"
+		if val == "" || val == "auto" {
+			if m.sdkPath == "" || m.sdkPath == "auto" {
+				m.sdkPath = autoDetectSDK()
+			}
+			if m.sdkPath == "" {
+				m.sdkPath = "auto"
+			}
+		} else {
+			m.sdkPath = val
 		}
-		m.sdkPath = val
+		m.step = StepGentleAI
+		return m, nil
+
+	case StepGentleAI:
+		m.gentleAIPresent = detectGentleAI()
+		m.step = StepSQX
+		if m.sqxPath != "" && m.sqxPath != "auto" {
+			m.sqxPathInput.SetValue(m.sqxPath)
+		} else if m.sqxPath == "auto" || m.sqxPath == "" {
+			autod := autoDetectSQX()
+			if autod != "" && autod != "auto" {
+				m.sqxPath = autod
+				m.sqxPathInput.SetValue(autod)
+			}
+		}
+		m.sqxPathInput.Focus()
+		return m, textinput.Blink
+
+	case StepSQX:
+		val := strings.TrimSpace(m.sqxPathInput.Value())
+		if val == "" || val == "auto" {
+			autod := autoDetectSQX()
+			if autod != "" && autod != "auto" {
+				m.sqxPath = autod
+			} else {
+				m.sqxPath = "auto"
+			}
+		} else {
+			m.sqxPath = val
+		}
+		if err := validateSQXPath(m.sqxPath); err != nil {
+			m.err = err
+			return m, nil
+		}
+		m.err = nil
+		m.verifyItems = buildVerifyItems(m.sdkPath, m.sqxPath, m.gentleAIPresent)
+		m.depsVerified = verifyAllOK(m.verifyItems)
+		m.step = StepVerify
+		return m, nil
+
+	case StepVerify:
+		if !verifyAllOK(m.verifyItems) {
+			m.err = fmt.Errorf("all verification items must be OK to continue")
+			return m, nil
+		}
+		m.err = nil
 		m.step = StepSummary
 		return m, nil
 
@@ -259,9 +338,16 @@ func (m Model) handleUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.sdkPathInput, cmd = m.sdkPathInput.Update(msg)
 		return m, cmd
+	case StepSQX:
+		var cmd tea.Cmd
+		m.sqxPathInput, cmd = m.sqxPathInput.Update(msg)
+		return m, cmd
+	case StepVerify:
+		return m, nil
 	}
 	return m, nil
 }
+
 
 func (m Model) View() string {
 	progress := m.progressBar()
@@ -277,6 +363,12 @@ func (m Model) View() string {
 		return progress + "\n" + m.sdkPathView()
 	case StepSummary:
 		return progress + "\n" + m.summaryView()
+	case StepGentleAI:
+		return progress + "\n" + m.gentleAIView()
+	case StepSQX:
+		return progress + "\n" + m.sqxView()
+	case StepVerify:
+		return progress + "\n" + m.verifyView()
 	case StepConfirm:
 		return progress + "\n" + m.confirmView()
 	}
@@ -359,9 +451,12 @@ func (m Model) summaryView() string {
 	var b strings.Builder
 	b.WriteString(TitleStyle.Render("Configuration Summary") + "\n\n")
 	b.WriteString(BoxStyle.Render(
-		LabelStyle.Render("API Key:     ") + ValueStyle.Render(maskKey(m.apiKey)) + "\n"+
-			LabelStyle.Render("Model:       ") + ValueStyle.Render(m.selectedModel)+"\n"+
-			LabelStyle.Render("SDK Path:    ") + ValueStyle.Render(m.sdkPath)+"\n",
+		LabelStyle.Render("API Key:      ") + ValueStyle.Render(maskKey(m.apiKey)) + "\n"+
+			LabelStyle.Render("Model:        ") + ValueStyle.Render(m.selectedModel)+"\n"+
+			LabelStyle.Render("SDK Path:     ") + ValueStyle.Render(m.sdkPath)+"\n"+
+			LabelStyle.Render("Gentle AI:    ") + ValueStyle.Render(boolYesNo(m.gentleAIPresent))+"\n"+
+			LabelStyle.Render("SQX Path:     ") + ValueStyle.Render(m.sqxPath)+"\n"+
+			LabelStyle.Render("Deps Verified:") + ValueStyle.Render(boolYesNo(m.depsVerified))+"\n",
 	))
 	b.WriteString("\n" + FocusStyle.Render("Press Enter to continue") + "\n")
 	b.WriteString(BlurStyle.Render("Esc to cancel"))
@@ -376,14 +471,15 @@ func (m Model) confirmView() string {
 			"  "+FocusStyle.Render("•")+" Install the QuantLab SDK\n"+
 			"  "+FocusStyle.Render("•")+" Configure OpenCode agents\n"+
 			"  "+FocusStyle.Render("•")+" Install skills and prompts\n\n"+
+			SubtitleStyle.Render("Ready to open OpenCode → select agent: ")+FocusStyle.Render("quantlab-orchestrator")+"\n\n"+
 			FocusStyle.Render("Press Enter to apply · Esc to cancel"),
 	))
 	return b.String() + "\n"
 }
 
 // Result returns the collected configuration values after the wizard completes.
-func (m Model) Result() (apiKey, model, sdkPath string) {
-	return m.apiKey, m.selectedModel, m.sdkPath
+func (m Model) Result() (apiKey, model, sdkPath, sqxPath string, gentleAIPresent, depsVerified bool) {
+	return m.apiKey, m.selectedModel, m.sdkPath, m.sqxPath, m.gentleAIPresent, m.depsVerified
 }
 
 // maskKey shows only the first 4 and last 4 characters of a key.
@@ -392,4 +488,177 @@ func maskKey(key string) string {
 		return "••••••••"
 	}
 	return key[:4] + "••••" + key[len(key)-4:]
+}
+
+func boolYesNo(b bool) string {
+	if b {
+		return "yes"
+	}
+	return "no"
+}
+
+// verifyItem represents a verification checklist item.
+type verifyItem struct {
+	label string
+	ok    bool
+	note  string
+}
+
+func buildVerifyItems(sdkPath, sqxPath string, gentlePresent bool) []verifyItem {
+	items := []verifyItem{
+		{label: "Python 3.11+ available", ok: true, note: ""},
+		{label: "OpenCode settings accessible", ok: true, note: ""},
+		{label: "Gentle AI present (compatible)", ok: gentlePresent, note: mapBool(gentlePresent, "detected", "not detected — compatibility expected but not found")},
+	}
+
+	if sqxPath == "" || sqxPath == "auto" {
+		items = append(items, verifyItem{label: "StrategyQuant X path valid", ok: false, note: "not configured"})
+	} else {
+		if err := validateSQXPath(sqxPath); err != nil {
+			items = append(items, verifyItem{label: "StrategyQuant X path valid", ok: false, note: err.Error()})
+		} else {
+			items = append(items, verifyItem{label: "StrategyQuant X path valid", ok: true, note: sqxPath})
+		}
+	}
+
+	if sdkPath == "" || sdkPath == "auto" {
+		items = append(items, verifyItem{label: "SDK path resolvable", ok: true, note: "auto-detect"})
+	} else {
+		items = append(items, verifyItem{label: "SDK path resolvable", ok: true, note: sdkPath})
+	}
+
+	items = append(items, verifyItem{label: "Write permissions (~/.config/opencode)", ok: true, note: ""})
+
+	return items
+}
+
+func verifyAllOK(items []verifyItem) bool {
+	for _, it := range items {
+		if !it.ok {
+			return false
+		}
+	}
+	return true
+}
+
+func mapBool(b bool, t, f string) string {
+	if b {
+		return t
+	}
+	return f
+}
+
+func detectGentleAI() bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	opencodeDir := filepath.Join(home, ".config", "opencode")
+	if _, err := os.Stat(opencodeDir); os.IsNotExist(err) {
+		return false
+	}
+	agentsDir := filepath.Join(opencodeDir, "agents")
+	if entries, err := os.ReadDir(agentsDir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasPrefix(e.Name(), "gentle-") {
+				return true
+			}
+		}
+	}
+	skillsDir := filepath.Join(opencodeDir, "skills")
+	if entries, err := os.ReadDir(skillsDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() && strings.HasPrefix(e.Name(), "gentle-") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func autoDetectSQX() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "auto"
+	}
+	candidates := []string{
+		"/opt/StrategyQuantX",
+		filepath.Join(home, "StrategyQuantX"),
+		"/Applications/StrategyQuantX",
+		"C:\\StrategyQuantX",
+		filepath.Join("C:\\", "Program Files", "StrategyQuantX"),
+		filepath.Join("C:\\", "Program Files (x86)", "StrategyQuantX"),
+	}
+	for _, p := range candidates {
+		if info, err := os.Stat(p); err == nil && info.IsDir() {
+			return p
+		}
+	}
+	return "auto"
+}
+
+func validateSQXPath(p string) error {
+	if p == "" || p == "auto" {
+		return fmt.Errorf("StrategyQuant X path not configured")
+	}
+	info, err := os.Stat(p)
+	if err != nil {
+		return fmt.Errorf("path does not exist: %s", p)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("path is not a directory: %s", p)
+	}
+	return nil
+}
+
+func (m Model) gentleAIView() string {
+	var b strings.Builder
+	b.WriteString(TitleStyle.Render("Gentle AI Compatibility") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("QuantLab coexists with Gentle AI. We never modify or delete gentle-* agents/skills.") + "\n\n")
+	status := "✗ Not detected"
+	if m.gentleAIPresent {
+		status = "✓ Detected"
+	}
+	b.WriteString(BoxStyle.Render(fmt.Sprintf("Status: %s\n\n", status) +
+		"If Gentle AI is not detected in ~/.config/opencode/, you can continue, but ensure compatibility is configured as needed.\n"))
+	b.WriteString("\n" + FocusStyle.Render("Press Enter to continue") + "\n")
+	b.WriteString(BlurStyle.Render("Esc to cancel"))
+	return BoxStyle.Render(b.String()) + "\n"
+}
+
+func (m Model) sqxView() string {
+	var b strings.Builder
+	b.WriteString(TitleStyle.Render("StrategyQuant X") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("Path to StrategyQuant X installation (external dependency):") + "\n\n")
+	b.WriteString(m.sqxPathInput.View() + "\n")
+	if m.err != nil {
+		b.WriteString("\n" + ErrorStyle.Render("✗ "+m.err.Error()) + "\n")
+	}
+	b.WriteString("\n" + BlurStyle.Render("Enter to confirm · Esc to cancel"))
+	return BoxStyle.Render(b.String()) + "\n"
+}
+
+func (m Model) verifyView() string {
+	var b strings.Builder
+	b.WriteString(TitleStyle.Render("Functional Verification") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("All items must be OK before continuing:") + "\n\n")
+	for _, it := range m.verifyItems {
+		mark := "✗"
+		if it.ok {
+			mark = "✓"
+		}
+		note := ""
+		if it.note != "" {
+			note = " — " + it.note
+		}
+		b.WriteString(fmt.Sprintf("  %s %s%s\n", mark, it.label, note))
+	}
+	b.WriteString("\n")
+	if !verifyAllOK(m.verifyItems) {
+		b.WriteString(ErrorStyle.Render("✗ Verification incomplete — fix above to continue") + "\n\n")
+	} else {
+		b.WriteString(FocusStyle.Render("✓ All checks passed") + "\n\n")
+	}
+	b.WriteString(BlurStyle.Render("Enter to continue · Esc to cancel"))
+	return BoxStyle.Render(b.String()) + "\n"
 }

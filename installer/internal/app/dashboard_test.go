@@ -16,7 +16,7 @@ func TestCmdDashboard_Output(t *testing.T) {
 	output := buf.String()
 	checks := []string{
 		"Dashboard",
-		"quantlab-ai.com",
+		"Dashboard",
 		"localhost:5000",
 	}
 

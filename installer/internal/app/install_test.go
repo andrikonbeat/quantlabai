@@ -30,7 +30,7 @@ func TestBuildInstallPlan_Stages(t *testing.T) {
 	st := testState(home)
 
 	j := journal.New(qlDir, filepath.Dir(opencodePath))
-	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", "auto", st, j)
+	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", "auto", "auto", st, j)
 
 	if len(plan.Apply) == 0 {
 		t.Fatal("plan has no apply steps")
@@ -86,7 +86,7 @@ func TestBuildInstallPlan_RunCreateDir(t *testing.T) {
 	j := journal.New(qlDir, filepath.Dir(opencodePath))
 	// Use a non-existent local SDK path so the pip install fails fast
 	// without touching the network (no PyPI dependency in tests).
-	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", filepath.Join(home, "no-such-sdk"), st, j)
+	plan := buildInstallPlan(qlDir, opencodePath, "sk-test", "gpt-4o", filepath.Join(home, "no-such-sdk"), "auto", st, j)
 
 	// Run with progress
 	err := pipeline.Run(plan, func(ev pipeline.ProgressEvent) {
@@ -212,7 +212,7 @@ func TestBuildInstallPlan_NoAPIKey(t *testing.T) {
 
 	st := testState(home)
 	j := journal.New(qlDir, filepath.Dir(opencodePath))
-	plan := buildInstallPlan(qlDir, opencodePath, "", "gpt-4o", "auto", st, j)
+	plan := buildInstallPlan(qlDir, opencodePath, "", "gpt-4o", "auto", "auto", st, j)
 
 	// The "Write SDK config" step must succeed with an empty API key and
 	// produce a config file without one.
