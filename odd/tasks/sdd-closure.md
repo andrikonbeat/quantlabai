@@ -12,8 +12,8 @@ Delivery strategy: one work-unit commit per change close; user decides push/PR/m
 - [x] T4 phase5b-e — closed. Commit `0b41e45`. 5.1 delegate verified (phase4/stages/__init__.py:475-512), 5.2/5.3 noted, 5.4 smoke shared, 5.6 full suite 4100 passed (51 pre-existing env fails classified).
 - [x] T5 phase5-pipeline-core — closed. Commit `7cef6aa`. Spec sqx-cli-wrapper amended AD-pipe-1 (status→history); 4.3 metric + 6.4/6.7 test files as follow-ups; backcompat 657.
 - [x] T6 hypothesis-builder — closed. Fix commit `99109d5` (H2: validation errors propagate, TDD RED→GREEN 68 passed) + archive `9fc284b`. H1 rejected (feature-flag WU8a contract; adding stages would duplicate engine).
-- [ ] T7 research-agent-improvements — 10/12 reales, verify FAIL (F1-03, F1-05), F3 feedback_writer absent → re-verify each, close or document honestly.
+- [x] T7 research-agent-improvements — CLOSED. Fix `cc51e7c` (F1-03 wiring both modes + 2 tests, F1-05 LRU frozenset cache + tests, F3 KnowledgeLakeFeedbackWriter + HypothesisFeedbackRecord + tests; removed try/except Exception anti-patterns from delegated worker) + archive `1faa5f5`. 122 targeted / 615 regression passed; verify-report replaces prior FAIL with pass. Follow-ups: build_pipeline docstring (9 vs 11 stages) doc-only; uncommitted sqx_doc_provider `_registry_key` fix tracked separately.
 - [ ] T8 multi-agent-research-system — PR2-6 implemented, verify STALE (HOLD exists gate_interceptor.py:42,156; notifications models.py:61) → re-verify, reconcile 69[x]/58[ ], archive.
 - [ ] T9 research-agent-enhancements — NOT STARTED (0/34, planning-only archive). DECISION NEEDED: implement 3 work units (~large) or scope-down/drop. Requires explicit user authorization before implementation.
 
-Next: T7 research-agent-improvements (re-verify F1-03/F1-05/F3).
+Next: T8 multi-agent-research-system (re-verify PR2–6, reconcile checkboxes 69/58).
