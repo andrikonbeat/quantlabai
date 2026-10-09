@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/model"
-	"github.com/ogzuz/quantlab/internal/state"
+	"github.com/andrikonbeat/quantlabai/internal/model"
+	"github.com/andrikonbeat/quantlabai/internal/state"
 )
 
 func TestBuildUninstallPlan_Stages(t *testing.T) {

@@ -126,7 +126,7 @@ Examples:
 
 Self-update the QuantLab binary to the latest version from GitHub.
 
-  1. Checks latest release on github.com/ogzuz/quantlab
+  1. Checks latest release on github.com/andrikonbeat/quantlabai
   2. Downloads the binary matching your platform (OS + architecture)
   3. Verifies SHA-256 checksum
   4. Atomically replaces the running binary

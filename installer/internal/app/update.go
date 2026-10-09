@@ -8,9 +8,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/ogzuz/quantlab/internal/tui/confirm"
-	"github.com/ogzuz/quantlab/internal/tui/spinner"
-	"github.com/ogzuz/quantlab/internal/update"
+	"github.com/andrikonbeat/quantlabai/internal/tui/confirm"
+	"github.com/andrikonbeat/quantlabai/internal/tui/spinner"
+	"github.com/andrikonbeat/quantlabai/internal/update"
 )
 
 // cmdUpdate implements the `quantlab update` command. It checks for a newer
@@ -44,7 +44,7 @@ func cmdUpdate(w io.Writer) error {
 	assetName, assetURL, _, ok := release.FindAssetForPlatform()
 	if !ok {
 		fmt.Fprintf(w, "  ✗ No binary found for your platform (%s/%s).\n", runtime.GOOS, runtime.GOARCH)
-		fmt.Fprintf(w, "    Release page: https://github.com/ogzuz/quantlab/releases/latest\n")
+		fmt.Fprintf(w, "    Release page: https://github.com/andrikonbeat/quantlabai/releases/latest\n")
 		return nil
 	}
 

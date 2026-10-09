@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ogzuz/quantlab/internal/filemerge"
-	"github.com/ogzuz/quantlab/internal/model"
+	"github.com/andrikonbeat/quantlabai/internal/filemerge"
+	"github.com/andrikonbeat/quantlabai/internal/model"
 )
 
 // State represents the persisted installation state of QuantLab.

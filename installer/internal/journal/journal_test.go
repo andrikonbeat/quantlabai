@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/journal"
+	"github.com/andrikonbeat/quantlabai/internal/journal"
 )
 
 func TestNewJournal(t *testing.T) {

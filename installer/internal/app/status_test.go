@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/config"
-	"github.com/ogzuz/quantlab/internal/model"
-	"github.com/ogzuz/quantlab/internal/opencode"
-	"github.com/ogzuz/quantlab/internal/sdk"
-	"github.com/ogzuz/quantlab/internal/state"
+	"github.com/andrikonbeat/quantlabai/internal/config"
+	"github.com/andrikonbeat/quantlabai/internal/model"
+	"github.com/andrikonbeat/quantlabai/internal/opencode"
+	"github.com/andrikonbeat/quantlabai/internal/sdk"
+	"github.com/andrikonbeat/quantlabai/internal/state"
 )
 
 func TestDetectIssues_NoIssues(t *testing.T) {

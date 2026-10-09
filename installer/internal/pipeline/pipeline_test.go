@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/pipeline"
+	"github.com/andrikonbeat/quantlabai/internal/pipeline"
 )
 
 // testStep is a basic step that records whether it ran

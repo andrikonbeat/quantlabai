@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/app"
+	"github.com/andrikonbeat/quantlabai/internal/app"
 )
 
 func TestRunArgs_VersionCommand(t *testing.T) {

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/journal"
-	"github.com/ogzuz/quantlab/internal/pipeline"
-	"github.com/ogzuz/quantlab/internal/state"
+	"github.com/andrikonbeat/quantlabai/internal/journal"
+	"github.com/andrikonbeat/quantlabai/internal/pipeline"
+	"github.com/andrikonbeat/quantlabai/internal/state"
 )
 
 func TestBuildInstallPlan_Stages(t *testing.T) {

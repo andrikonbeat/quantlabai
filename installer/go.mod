@@ -1,4 +1,4 @@
-module github.com/ogzuz/quantlab
+module github.com/andrikonbeat/quantlabai
 
 go 1.23.0
 

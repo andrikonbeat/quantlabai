@@ -3,7 +3,7 @@ package app
 import (
 	"io/fs"
 
-	"github.com/ogzuz/quantlab/internal/assets"
+	"github.com/andrikonbeat/quantlabai/internal/assets"
 )
 
 // assetFS returns the embedded asset filesystem containing the skills,

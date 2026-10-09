@@ -3,7 +3,7 @@ package app
 import (
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/tui/onboarding"
+	"github.com/andrikonbeat/quantlabai/internal/tui/onboarding"
 )
 
 func TestOnboardingCommandRegistered(t *testing.T) {

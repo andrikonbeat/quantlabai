@@ -8,8 +8,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/ogzuz/quantlab/internal/config"
-	"github.com/ogzuz/quantlab/internal/tui/wizard"
+	"github.com/andrikonbeat/quantlabai/internal/config"
+	"github.com/andrikonbeat/quantlabai/internal/tui/wizard"
 )
 
 // cmdConfigure implements the `quantlab configure` command. It re-runs the

@@ -5,9 +5,9 @@ package app
 // Build-time variables — set via ldflags:
 //
 //	go build -ldflags="\
-//	  -X github.com/ogzuz/quantlab/internal/app.version=0.1.0 \
-//	  -X github.com/ogzuz/quantlab/internal/app.commit=abc1234 \
-//	  -X github.com/ogzuz/quantlab/internal/app.date=2026-07-30T14:00:00Z" \
+//	  -X github.com/andrikonbeat/quantlabai/internal/app.version=0.1.0 \
+//	  -X github.com/andrikonbeat/quantlabai/internal/app.commit=abc1234 \
+//	  -X github.com/andrikonbeat/quantlabai/internal/app.date=2026-07-30T14:00:00Z" \
 //	  ./cmd/quantlab
 var (
 	version = "dev"

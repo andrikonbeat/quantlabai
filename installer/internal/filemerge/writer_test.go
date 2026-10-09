@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/filemerge"
+	"github.com/andrikonbeat/quantlabai/internal/filemerge"
 )
 
 func TestWriteFileAtomic_NewFile(t *testing.T) {

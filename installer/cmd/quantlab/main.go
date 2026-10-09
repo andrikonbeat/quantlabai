@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/ogzuz/quantlab/internal/app"
+	"github.com/andrikonbeat/quantlabai/internal/app"
 )
 
 func main() {

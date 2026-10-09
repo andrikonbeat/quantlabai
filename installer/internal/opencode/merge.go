@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/ogzuz/quantlab/internal/assets"
-	"github.com/ogzuz/quantlab/internal/filemerge"
+	"github.com/andrikonbeat/quantlabai/internal/assets"
+	"github.com/andrikonbeat/quantlabai/internal/filemerge"
 )
 
 // LoadOverlay reads the embedded overlay.json and returns it as a generic map.

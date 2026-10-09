@@ -9,11 +9,11 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/ogzuz/quantlab/internal/config"
-	"github.com/ogzuz/quantlab/internal/opencode"
-	"github.com/ogzuz/quantlab/internal/state"
-	"github.com/ogzuz/quantlab/internal/tools"
-	"github.com/ogzuz/quantlab/internal/tui/onboarding"
+	"github.com/andrikonbeat/quantlabai/internal/config"
+	"github.com/andrikonbeat/quantlabai/internal/opencode"
+	"github.com/andrikonbeat/quantlabai/internal/state"
+	"github.com/andrikonbeat/quantlabai/internal/tools"
+	"github.com/andrikonbeat/quantlabai/internal/tui/onboarding"
 )
 
 // cmdOnboarding runs the interactive onboarding flow.

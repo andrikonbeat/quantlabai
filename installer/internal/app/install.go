@@ -10,14 +10,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"golang.org/x/term"
 
-	"github.com/ogzuz/quantlab/internal/config"
-	"github.com/ogzuz/quantlab/internal/journal"
-	"github.com/ogzuz/quantlab/internal/model"
-	"github.com/ogzuz/quantlab/internal/opencode"
-	"github.com/ogzuz/quantlab/internal/pipeline"
-	"github.com/ogzuz/quantlab/internal/sdk"
-	"github.com/ogzuz/quantlab/internal/state"
-	"github.com/ogzuz/quantlab/internal/tui/wizard"
+	"github.com/andrikonbeat/quantlabai/internal/config"
+	"github.com/andrikonbeat/quantlabai/internal/journal"
+	"github.com/andrikonbeat/quantlabai/internal/model"
+	"github.com/andrikonbeat/quantlabai/internal/opencode"
+	"github.com/andrikonbeat/quantlabai/internal/pipeline"
+	"github.com/andrikonbeat/quantlabai/internal/sdk"
+	"github.com/andrikonbeat/quantlabai/internal/state"
+	"github.com/andrikonbeat/quantlabai/internal/tui/wizard"
 )
 
 // cmdInstall implements the `quantlab install` command. It runs the full

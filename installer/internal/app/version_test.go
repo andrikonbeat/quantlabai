@@ -3,7 +3,7 @@ package app_test
 import (
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/app"
+	"github.com/andrikonbeat/quantlabai/internal/app"
 )
 
 func TestGetVersionInfo_Defaults(t *testing.T) {

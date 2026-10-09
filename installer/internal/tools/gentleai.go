@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ogzuz/quantlab/internal/update"
+	"github.com/andrikonbeat/quantlabai/internal/update"
 )
 
 // InstallGentleAI installs gentle-ai from the latest GitHub release. If the

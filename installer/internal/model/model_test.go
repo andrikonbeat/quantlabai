@@ -3,7 +3,7 @@ package model_test
 import (
 	"testing"
 
-	"github.com/ogzuz/quantlab/internal/model"
+	"github.com/andrikonbeat/quantlabai/internal/model"
 )
 
 func TestAgentIDConstants(t *testing.T) {

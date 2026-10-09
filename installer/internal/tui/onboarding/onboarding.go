@@ -12,9 +12,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/ogzuz/quantlab/internal/assets"
-	"github.com/ogzuz/quantlab/internal/config"
-	"github.com/ogzuz/quantlab/internal/tools"
+	"github.com/andrikonbeat/quantlabai/internal/assets"
+	"github.com/andrikonbeat/quantlabai/internal/config"
+	"github.com/andrikonbeat/quantlabai/internal/tools"
 )
 
 // Step identifies the current onboarding step.
