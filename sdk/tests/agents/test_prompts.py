@@ -21,6 +21,8 @@ class TestPromptTemplateExists:
             "technical",
             "macro",
             "news",
+            "research-literature",
+            "sqx-catalog",
         }
 
     def test_each_template_is_non_empty_string(self) -> None:

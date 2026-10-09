@@ -67,21 +67,7 @@ class SQXDocProvider:
     def has_indicator(self, name: str, sqx_version: str) -> bool:
         """Return True if the indicator is known (by name or by its tab having YAML)."""
         normalized = name.lower().strip()
-        # Known indicators (covers F2 wiring + legacy tests without YAML).
-        _KNOWN_INDICATORS: set[str] = {
-            "rsi",
-            "bb",
-            "bollingerbands",
-            "ema",
-            "sma",
-            "atr",
-            "macd",
-            "signal",
-            "donchian",
-            "volume",
-            "economic",
-        }
-        if normalized in _KNOWN_INDICATORS:
+        if normalized in self._KNOWN_INDICATORS:
             return True
         # Fallback: original tab-based check (keeps existing behavior).
         yaml_dir = (
@@ -97,11 +83,17 @@ class SQXDocProvider:
     def get_indicator_range(
         self, indicator: str, sqx_version: str
     ) -> dict[str, tuple[float, float]] | None:
-        """Return parameter ranges for an indicator, or None when unknown."""
-        normalized = indicator.lower().strip()
-        if normalized not in self._INDICATOR_RANGES:
+        """Return parameter ranges for an indicator, or None when unknown.
+
+        ``sqx_version`` is accepted for API symmetry with the parameter
+        lookups; documented ranges live in the indicator registry (aligned
+        with EconomicSenseValidator and the F2 prompt), so the registry is
+        version-independent today.
+        """
+        key = self._registry_key(indicator)
+        if key not in self._INDICATOR_RANGES:
             return None
-        return dict(self._INDICATOR_RANGES[normalized])
+        return dict(self._INDICATOR_RANGES[key])
 
     def get_valid_range(
         self, indicator: str, param_name: str, sqx_version: str
@@ -113,7 +105,7 @@ class SQXDocProvider:
         if isinstance(range_val, (list, tuple)) and len(range_val) == 2:
             return (float(range_val[0]), float(range_val[1]))
         # 2) Built-in fallback for known indicators.
-        fallback = self._INDICATOR_RANGES.get(indicator.lower(), {}).get(
+        fallback = self._INDICATOR_RANGES.get(self._registry_key(indicator), {}).get(
             param_name.lower()
         )
         if fallback is not None:
@@ -136,7 +128,7 @@ class SQXDocProvider:
         desc = doc.get("description", "")
         if isinstance(desc, str) and desc:
             return desc
-        return self._INDICATOR_DESCRIPTIONS.get(indicator.lower(), {}).get(
+        return self._INDICATOR_DESCRIPTIONS.get(self._registry_key(indicator), {}).get(
             param_name.lower(), ""
         )
 
@@ -195,8 +187,6 @@ class SQXDocProvider:
 
     # ── Internal helpers ────────────────────────────────────────────────────
 
-    # ── Internal helpers ────────────────────────────────────────────────────
-
     _KNOWN_INDICATORS: set[str] = {
         "rsi",
         "bb",
@@ -209,6 +199,11 @@ class SQXDocProvider:
         "donchian",
         "volume",
         "economic",
+    }
+
+    # Indicator name variants → canonical registry key (``_INDICATOR_RANGES``).
+    _INDICATOR_ALIASES: dict[str, str] = {
+        "bollingerbands": "bb",
     }
 
     # Parameter ranges aligned with EconomicSenseValidator and F2 build_prompt.
@@ -320,6 +315,12 @@ class SQXDocProvider:
             doc.get("type", "unknown"),
         )
         return doc
+
+    @classmethod
+    def _registry_key(cls, indicator: str) -> str:
+        """Normalize an indicator name to its canonical registry key."""
+        normalized = indicator.lower().strip()
+        return cls._INDICATOR_ALIASES.get(normalized, normalized)
 
     @staticmethod
     def _param_to_field(param: str) -> str:

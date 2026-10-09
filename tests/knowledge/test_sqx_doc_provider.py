@@ -150,6 +150,46 @@ class TestSQXDocProviderFallback:
             provider.get_valid_range("Trading options", "missing", "144.2953")
 
 
+# ── KB-Driven Indicator Ranges (sqx-doc-provider spec) ────────────────────────
+
+
+class TestGetIndicatorRange:
+    """get_indicator_range returns param->(min, max) mappings for known
+    indicators and None for unknown ones (spec scenarios)."""
+
+    def test_known_indicator_returns_ranges(self, provider: SQXDocProvider) -> None:
+        result = provider.get_indicator_range("RSI", "144.2953")
+        assert result == {
+            "period": (2.0, 200.0),
+            "oversold": (0.0, 100.0),
+            "overbought": (0.0, 100.0),
+        }
+
+    def test_unknown_indicator_returns_none(self, provider: SQXDocProvider) -> None:
+        assert provider.get_indicator_range("FOOBAR", "144.2953") is None
+
+    def test_returns_independent_copy(self, provider: SQXDocProvider) -> None:
+        result = provider.get_indicator_range("RSI", "144.2953")
+        assert result is not None
+        result["period"] = (1.0, 1.0)
+        again = provider.get_indicator_range("RSI", "144.2953")
+        assert again is not None
+        assert again["period"] == (2.0, 200.0)
+
+    def test_bollinger_bands_alias_returns_ranges(self, provider: SQXDocProvider) -> None:
+        # "BollingerBands" is a known indicator (has_indicator => True) and must
+        # resolve to the same registry entry as "BB".
+        assert provider.has_indicator("BollingerBands", "144.2953") is True
+        assert provider.get_indicator_range("BollingerBands", "144.2953") == {
+            "period": (2.0, 200.0),
+            "deviation": (0.1, 5.0),
+        }
+        assert provider.get_valid_range("BollingerBands", "period", "144.2953") == (
+            2.0,
+            200.0,
+        )
+
+
 # ── Task T-004: Version isolation ─────────────────────────────────────────────
 
 

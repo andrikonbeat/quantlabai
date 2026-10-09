@@ -57,8 +57,6 @@ KNOWLEDGE_DIRS = [
     "datasets",
     "pipeline-runs",
     "agent-memory",
-    "campaigns",
-    "results",
     "tags",
     "campaign-phases",
     "parameter-matrix",

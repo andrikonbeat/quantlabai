@@ -57,7 +57,6 @@ class TestToolKnowledgeTemplates:
             )
 
     def test_existing_market_data_templates_untouched(self) -> None:
-        # Backward compatibility: the 4 market-data templates keep their keys.
-        assert set(PROMPT_TEMPLATES.keys()) == {
-            "fundamental", "technical", "macro", "news",
-        }
+        # Backward compatibility: the 4 original market-data templates remain.
+        for key in {"fundamental", "technical", "macro", "news"}:
+            assert key in PROMPT_TEMPLATES

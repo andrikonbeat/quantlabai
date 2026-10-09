@@ -139,3 +139,17 @@ where each building block has an ``IndicatorConfig`` with valid params.
 **Given** a ``HypothesisBuilderStage`` instance
 **Then** its ``requires`` includes ``["research_config", "hypotheses", "objectives"]``
 and its ``provides`` includes ``["building_blocks", "strategies"]``.
+
+### S-10: Parametric diversification (ADDED T9)
+
+`ResearchAgent.formulate_hypotheses()` and `LLMResearchAgent.parse_response()` MUST accept
+`diversify: bool = False` and, when True, expand hypotheses via `DiversityEngine`
+(scaled numeric variants, fingerprint dedup, originals preserved). Default False preserves
+output shape. `PreValidator` MUST gate `generate_config()` under `validation_policy`
+(`strict` raises, `lenient` attaches warnings deduplicated, `off` skips). `LLMMode`
+MUST render `hyp.semantic_context` when set; `HypothesisBuilder` stamps it from
+`market_context` without overwriting explicit context.
+
+**Given** a hypothesis with `semantic_context="Market: EURUSD H1"`
+**When** `LLMMode._build_prompt()` runs
+**Then** the prompt contains a `Semantic Context` section with that text.

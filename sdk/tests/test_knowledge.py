@@ -342,7 +342,7 @@ class TestKnowledgeStoreIndexV6:
 
         index = store.read_index()
 
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
         assert "directories" in index
         assert index["kb_parameters"] == {}
         assert index["version_events"] == {}
@@ -366,7 +366,7 @@ class TestKnowledgeStoreIndexV6:
 
         index = store.read_index()
 
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
         assert index["kb_parameters"] == {}
         assert index["version_events"] == {}
         assert index["campaign_phases"] == {}
@@ -393,7 +393,7 @@ class TestKnowledgeStoreIndexV6:
 
         index = store.read_index()
 
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
         assert index["kb_parameters"] == {}
         assert index["version_events"] == {}
         assert index["campaign_phases"] == {}

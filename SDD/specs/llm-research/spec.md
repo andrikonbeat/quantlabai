@@ -233,3 +233,26 @@ The system MUST reuse `TokenBucket` for LLM API call rate limiting and `SqliteCa
 - AND no exception is raised
 
 **Acceptance**: `tests/agents/test_llm_research_agent_f2.py` passes.
+
+### Requirement: Literature and Screener Providers (ADDED T9)
+
+`LLMResearchAgent.fetch_data()` MUST query `AcademicPapersProvider` (arXiv Atom API),
+`QuantBlogProvider` (RSS, deduped by URL) and `StockScreenerProvider` (AlphaVantage
+gainers/losers) in parallel via `asyncio.gather`, each isolated so one failure never
+blocks the others. Results merge into new `literature` and `screener` data keys.
+`build_prompt()` MUST render `research-literature` and `sqx-catalog` sections when
+present, and MUST inject the `TAG_CALIBRATION` section when lake tag stats are supplied.
+
+#### Scenario: Parallel providers with one failure
+
+- GIVEN the papers provider raises and blogs/screener succeed
+- WHEN `fetch_data()` runs
+- THEN literature contains the blog papers, screener holds its results, no exception propagates
+
+#### Scenario: Calibration section injected
+
+- GIVEN tag stats `{"trend": {"avg_sharpe": 1.8}}` and similar `["camp-9"]`
+- WHEN `build_prompt()` runs
+- THEN the prompt contains `TAG_CALIBRATION`, `trend` and `camp-9`
+
+**Acceptance**: `sdk/tests/agents/test_llm_literature_fetch.py` and `sdk/tests/agents/test_literature_templates.py` and `sdk/tests/agents/test_prompt_calibration.py` pass.

@@ -131,13 +131,13 @@
 
 ## Phase 5: Verification & Regression
 
-- [ ] 5.1 Full test suite: `SQX_FORCE_MOCK=1 python3 -m pytest -q`; fix regresiones.
-- [ ] 5.2 Test e2e: pipeline research mejorado produce ≥1 estrategia aceptada en mock mode.
-- [ ] 5.3 Tests privacidad/deny-list para URLs de providers nuevos y datos de feedback.
-- [ ] 5.4 Actualizar `openspec/specs/llm-research/spec.md` con providers + templates.
-- [ ] 5.5 Actualizar `openspec/specs/hypothesis-builder/spec.md` con diversificación + validación.
-- [ ] 5.6 Actualizar `openspec/specs/knowledge-store/spec.md` con embedding + similarity.
-- [ ] 5.7 Actualizar `openspec/specs/knowledge-memory/spec.md` con semantic injection + feedback.
+- [x] 5.1 Full test suite: `SQX_FORCE_MOCK=1 python3 -m pytest -q`; fix regresiones.
+- [x] 5.2 Test e2e: pipeline research mejorado produce ≥1 estrategia aceptada en mock mode.
+- [x] 5.3 Tests privacidad/deny-list para URLs de providers nuevos y datos de feedback.
+- [x] 5.4 Actualizar `openspec/specs/llm-research/spec.md` con providers + templates.
+- [x] 5.5 Actualizar `openspec/specs/hypothesis-builder/spec.md` con diversificación + validación.
+- [x] 5.6 Actualizar `openspec/specs/knowledge-store/spec.md` con embedding + similarity.
+- [x] 5.7 Actualizar `openspec/specs/knowledge-memory/spec.md` con semantic injection + feedback.
 
 ---
 

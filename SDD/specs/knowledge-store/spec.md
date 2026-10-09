@@ -140,3 +140,17 @@ The deployed `knowledge/index.yaml` MUST report `_version: '5'` and include `cam
 - WHEN `query_guardian_metrics(campaign_id="camp_nonexistent")` is called
 - THEN an empty list is returned
 - AND no error is raised
+
+#### Scenario: Index v6 with embeddings (ADDED T9)
+
+- GIVEN a lake with stored `.npy` embeddings and a v5 `index.yaml`
+- WHEN `rebuild_index()` / `read_index()` run
+- THEN the index reports `_version "6"`, includes an `embeddings` section with
+  model/dimension metadata, and legacy v1-v5 indexes upgrade to v6 with defaults
+
+#### Scenario: Feedback write refreshes the index (ADDED T9)
+
+- GIVEN a `HypothesisFeedbackRecord` for `camp-1`
+- WHEN `KnowledgeLakeFeedbackWriter.write_feedback()` runs
+- THEN `structured/camp-1/metadata.yaml` gains the record under `feedback:`
+- AND the lake index is rebuilt best-effort (skippable via `reindex=False`)

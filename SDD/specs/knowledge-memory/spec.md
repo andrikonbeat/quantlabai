@@ -131,3 +131,11 @@ The system MUST apply a privacy deny-list (license codes, API keys, `.env` conte
 - GIVEN a staged training export
 - WHEN the conformance test runs
 - THEN it fails if any deny-listed pattern or raw campaign ID is present
+
+#### Scenario: Semantic ranking and calibration in cross-agent retrieval (ADDED T9)
+
+- GIVEN agent-memory decisions with tags and a semantic query
+- WHEN `AgentMemoryManager.query_cross_agent()` runs with `semantic_query`/`tag_stats`
+- THEN matches are ranked by embedding cosine similarity carrying a `similarity`
+  score, and tag-matching decisions carry a `calibration` map; without the new
+  kwargs behavior is unchanged, and embedding failure keeps text order
