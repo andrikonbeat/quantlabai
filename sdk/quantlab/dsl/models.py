@@ -14,6 +14,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from quantlab.costs.models import CostsConfig
+from quantlab.knowledge.models import HypothesisFeedbackRecord
 
 # ── Enums ──────────────────────────────────────────────────────────────────────
 
@@ -385,6 +386,18 @@ class HypothesisConfig(BaseModel):
     )
     data_sources: list[str] = Field(
         default_factory=list, description="Provider names that supplied the data"
+    )
+
+    # T9 semantic/feedback fields
+    embedding: list[float] | None = Field(
+        default=None, description="Semantic embedding vector for similarity search"
+    )
+    feedback: HypothesisFeedbackRecord | None = Field(
+        default=None, description="Latest Knowledge Lake feedback for this hypothesis"
+    )
+    semantic_context: str | None = Field(
+        default=None,
+        description="Rendered similar-hypothesis context injected into LLM prompts",
     )
 
 
