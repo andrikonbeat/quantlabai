@@ -15,18 +15,18 @@
 | 1.5 | Tests unitarios: EmbeddingService, filter_by_similarity, Indexer metrics | ✅ HECHO | | 12 + 11 + 9 tests |
 | 1.6 | Test integración: write embeddings → query similarity → verify ranking | ✅ HECHO | | e2e real-path + ranking con mocks |
 
-## PR 2: Providers (Literature + Screener)
+## PR 2: Providers (Literature + Screener) — ✅ HECHO
 
 | Task | Descripción | Estado | Commit | Evidencia |
 |------|-------------|--------|--------|-----------|
-| 2.1 | data/literature/ (LiteratureProvider + PaperItem) | ⏳ Pendiente | | |
-| 2.2 | AcademicPapersProvider (arXiv/SSRN, rate-limit) | ⏳ Pendiente | | |
-| 2.3 | QuantBlogProvider (RSS, dedup) | ⏳ Pendiente | | |
+| 2.1 | data/literature/ (LiteratureProvider + PaperItem) | ✅ | daa5bb2 | 6 tests |
+| 2.2 | AcademicPapersProvider (arXiv Atom, sin dep nueva; SSRN diferido) | ✅ | 0799d88 | 7 tests |
+| 2.3 | QuantBlogProvider (RSS, dedup) | ✅ | ef643f8 | 5 tests |
 | 2.4 | SQXDocProvider — ✅ HECHO T7 | ✅ | 99109d5 | sqx_doc_provider.py |
-| 2.5 | StockScreenerProvider (Finviz/AlphaVantage, API keys) | ⏳ Pendiente | | |
-| 2.6 | LLMResearchAgent.fetch_data() paralelo + graceful degradation | ⏳ Pendiente | | |
-| 2.7 | Prompt templates research-literature + sqx-catalog | ⏳ Pendiente | | |
-| 2.8 | Tests providers (mock HTTP/feeds, parallel + failure isolation) | ⏳ Pendiente | | |
+| 2.5 | StockScreenerProvider (AlphaVantage; Finviz diferido) | ✅ | 10f8297 | 8 tests |
+| 2.6 | LLMResearchAgent.fetch_data() paralelo + graceful degradation | ✅ | e0f0052 | 4 tests + 19 news sin regresión |
+| 2.7 | Prompt templates research-literature + sqx-catalog | ✅ | | 7 tests + fix g3 v6 |
+| 2.8 | Tests providers | ✅ | | 37 tests totales PR2 |
 
 ## PR 3: LLM Intelligence
 
@@ -67,4 +67,6 @@
 
 **Regla**: un task = un commit work-unit (≤400 líneas). Tests + docs en mismo commit. Branch feature primero, chained PRs.
 
-**Próximo**: Task 1.1 EmbeddingService
+**Reviews**: 6d9a518 → medium/slice_budget_reached, granted por usuario, lens review-reliability indisponible (transport binding, 2 intentos) → commit sostenido por verificación funcional. 030361e → medium/under_budget (acumula en slice).
+
+**Próximo**: PR 2 — Task 2.1 data/literature/ (LiteratureProvider + PaperItem)

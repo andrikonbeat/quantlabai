@@ -229,7 +229,7 @@ class TestDukascopyMarketCache:
         assert lines[0] == "timestamp,open,high,low,close,volume"
         assert len(lines) == len(bars) + 1
         index = yaml.safe_load((tmp_path / "index.yaml").read_text(encoding="utf-8"))
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"  # v6 adds embeddings index (T9 1.2)
         assert "datasets/EURUSD/H1.csv" in index["directories"]["datasets"]
 
     @pytest.mark.asyncio

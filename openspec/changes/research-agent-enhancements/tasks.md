@@ -41,32 +41,38 @@
 ## Phase 2: Data Providers (PR 2)
 
 ### 2.1 Literature provider base package (RE-SCOPEADO)
-- [ ] 2.1 Crear `sdk/quantlab/data/literature/` con:
+- [x] 2.1 Crear `sdk/quantlab/data/literature/` con:
   - `LiteratureProvider(AbstractDataProvider)` en `base.py` (hereda de `data/fundamental/base.py:AbstractDataProvider`, auto-registro via `__init_subclass__`).
   - `PaperItem` model en `models.py`: `title`, `authors: list[str]`, `abstract`, `url`, `arxiv_id`, `categories: list[str]`, `published_at`, `source`.
   - `__init__.py` exportando ambos.
   - **NO** crear `data/providers/` ni `BaseProvider` nuevo ni `ProviderRegistry` — reusar `AbstractDataProvider`.
 
 ### 2.2 AcademicPapersProvider
-- [ ] 2.2 Implementar `AcademicPapersProvider` en `papers.py`: consulta arXiv/SSRN, filtro por categorías, rate-limit polito (reusar `data/news/rate_limit.py`). Requiere dep `arxiv` en `sdk/pyproject.toml`. Tests mock HTTP.
+- [x] 2.2 Implementar `AcademicPapersProvider` en `papers.py`: consulta arXiv/SSRN, filtro por categorías, rate-limit polito (reusar `data/news/rate_limit.py`). Tests mock HTTP.
+      - **Desviación documentada**: sin dep `arxiv` — usa la API Atom de arXiv con httpx + feedparser (ambas core), cero deps nuevas. SSRN diferido con warning (sin API pública estable).
 
 ### 2.3 QuantBlogProvider
-- [ ] 2.3 Implementar `QuantBlogProvider` en `blogs.py`: RSS feeds (feedparser ya en deps), dedup por URL, rate-limit. Tests mock feeds.
+- [x] 2.3 Implementar `QuantBlogProvider` en `blogs.py`: RSS feeds (feedparser ya en deps), dedup por URL, rate-limit. Tests mock feeds.
 
 ### 2.4 SQXDocProvider (✅ YA EXISTE — MARCAR HECHO)
 - [x] 2.4 **COMPLETADO EN T7**: `sdk/quantlab/knowledge/sqx_doc_provider.py` existe y funciona (lee YAML de `knowledge/structured/sqx-kb/` con fallback a `_BUILD_CONFIG_MAP`). **No hay nada que hacer aquí**.
 
 ### 2.5 StockScreenerProvider
-- [ ] 2.5 Implementar `StockScreenerProvider` en `screening.py` (nuevo `data/screening/`): Finviz/AlphaVantage con API keys via env vars (`data/data_manager.py` precedent). Tests mock HTTP.
+- [x] 2.5 Implementar `StockScreenerProvider` en `screening.py` (nuevo `data/screening/`): Finviz/AlphaVantage con API keys via env vars (`data/data_manager.py` precedent). Tests mock HTTP.
+      - **Decisión**: paquete nuevo `data/screening/` (un screener no es literature). Backend AlphaVantage
+        `TOP_GAINERS_LOSERS`; Finviz diferido (sin API oficial). Key por ctor o `ALPHAVANTAGE_API_KEY`.
 
 ### 2.6 Integración providers en LLMResearchAgent
-- [ ] 2.6 Actualizar `LLMResearchAgent.fetch_data()` en `llm_research_agent.py`: ejecución paralela de providers, graceful degradation (un provider falla → log + continúa), resultados fusionados en contexto.
+- [x] 2.6 Actualizar `LLMResearchAgent.fetch_data()` en `llm_research_agent.py`: ejecución paralela de providers, graceful degradation (un provider falla → log + continúa), resultados fusionados en contexto.
 
 ### 2.7 Prompt templates
-- [ ] 2.7 Añadir templates `research-literature` y `sqx-catalog` a `sdk/quantlab/agents/prompts.py` (o archivos en `prompts/` si hay carpeta).
+- [x] 2.7 Añadir templates `research-literature` y `sqx-catalog` a `sdk/quantlab/agents/prompts.py` (o archivos en `prompts/` si hay carpeta).
 
 ### 2.8 Tests providers
-- [ ] 2.8 Tests unitarios c/providers (mock HTTP/feeds), test ejecución paralela + aislamiento de fallos.
+- [x] 2.8 Tests unitarios c/providers (mock HTTP/feeds), test ejecución paralela + aislamiento de fallos.
+      - Cubierto por: `test_academic_papers.py` (7), `test_quant_blog.py` (5), `test_stock_screener.py` (8),
+        `test_literature_base.py` (6), `test_llm_literature_fetch.py` (4: paralelismo + aislamiento +
+        degradación), `test_literature_templates.py` (7).
 
 ---
 

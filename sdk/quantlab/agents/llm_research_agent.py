@@ -644,6 +644,44 @@ class LLMResearchAgent:
                 )
             )
 
+        # Literature section (papers + quant blogs)
+        literature = data.get("literature", [])
+        if literature:
+            paper_lines: list[str] = []
+            for p in literature[:10]:
+                line = f"- {p.get('title', '')}"
+                authors = p.get("authors", [])
+                if authors:
+                    line += f" by {', '.join(authors)}"
+                url = p.get("url", "")
+                if url:
+                    line += f" ({url})"
+                paper_lines.append(line)
+            sections.append(
+                PROMPT_TEMPLATES["research-literature"].format(
+                    query=objective,
+                    papers="\n".join(paper_lines),
+                )
+            )
+
+        # Screener catalog section
+        screener = data.get("screener", {})
+        screener_results = screener.get("results", []) if screener else []
+        if screener_results:
+            symbol_lines: list[str] = []
+            for s in screener_results[:10]:
+                line = f"- {s.get('symbol', '')} @ {s.get('price', 'N/A')}"
+                change = s.get("change_pct", "")
+                if change:
+                    line += f" ({change})"
+                symbol_lines.append(line)
+            sections.append(
+                PROMPT_TEMPLATES["sqx-catalog"].format(
+                    preset=screener.get("preset", ""),
+                    symbols="\n".join(symbol_lines),
+                )
+            )
+
         # Response format instruction
         sections.append(
             "\nReturn your response as valid JSON with the following structure:\n"

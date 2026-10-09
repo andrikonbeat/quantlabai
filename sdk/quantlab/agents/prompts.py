@@ -62,6 +62,26 @@ PROMPT_TEMPLATES: dict[str, str] = {
         "source_urls. Based on news sentiment and content, identify "
         "market-moving events, catalysts, and potential trading opportunities."
     ),
+    "research-literature": (
+        "You are a research analyst. Review the following academic papers "
+        "and quant-blog posts for query '{query}' and generate trading "
+        "hypotheses.\n\n"
+        "Literature:\n"
+        "{papers}\n\n"
+        "Each entry may include its source URL in parentheses. When you "
+        "base a hypothesis on a paper or post, cite that URL in the "
+        "hypothesis source_urls. Focus on empirically validated effects "
+        "and reproducible strategy ideas."
+    ),
+    "sqx-catalog": (
+        "You are a screener analyst. Review the following screener catalog "
+        "for preset '{preset}' and consider its symbols as candidates for "
+        "hypothesis generation.\n\n"
+        "Screener Catalog:\n"
+        "{symbols}\n\n"
+        "Prefer liquid symbols (higher price and volume) and note the "
+        "reported move direction when choosing entry setups."
+    ),
 }
 
 TOOL_KNOWLEDGE_TEMPLATES: dict[str, str] = {
