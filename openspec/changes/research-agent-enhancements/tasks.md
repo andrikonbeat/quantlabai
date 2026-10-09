@@ -110,16 +110,22 @@
 - [x] 4.1 **COMPLETADO EN T7**: `sdk/quantlab/agents/feedback_writer.py` con `KnowledgeLakeFeedbackWriter` y `HypothesisFeedbackRecord` en `knowledge/models.py`. **No hay nada que hacer** (ubicación: `agents/` vs `knowledge/` per task original — la implementación T7 la puso en `agents/` y es correcta por cohesión).
 
 ### 4.2 Hook feedback en boundary review→archive
-- [ ] 4.2 Hookear escritura de feedback al completar fase de review (campaign phase completion). En `gate_interceptor.py` o `research_director.py` al recibir `HUMAN_APPROVE_ARCHIVE`.
+- [x] 4.2 Hookear escritura de feedback al completar fase de review (campaign phase completion). En `gate_interceptor.py` o `research_director.py` al recibir `HUMAN_APPROVE_ARCHIVE`.
+      - Implementado en `HumanGateOrchestrator.on_gate()` paso 5: solo `HUMAN_APPROVE_ARCHIVE` aprobado
+        escribe `HypothesisFeedbackRecord(feedback_type="pass")` por hipótesis (dicts o HypothesisConfig
+        desde `ctx["hypotheses"]` o `ctx["artifacts"]["hypotheses"]`); best-effort, nunca lanza.
 
 ### 4.3 AgentMemoryManager retrieval semántico
-- [ ] 4.3 Extender `AgentMemoryManager.query_cross_agent()` en `memory.py` para incluir búsqueda semántica (usa `EmbeddingService.similarity()`) y métricas de calibración per-tag.
+- [x] 4.3 Extender `AgentMemoryManager.query_cross_agent()` en `memory.py` para incluir búsqueda semántica (usa `EmbeddingService.similarity()`) y métricas de calibración per-tag.
+      - Nuevos kwargs opcionales `semantic_query` (rankea + adjunta `similarity`, best-effort con fallback
+        a orden textual) y `tag_stats` (adjunta `calibration` por tags coincidentes). Defaults preservan conducta.
 
 ### 4.4 Feedback ingestion en Knowledge Store indexing
-- [ ] 4.4 Al escribir feedback, actualizar índices de Knowledge Lake (embeddings, tag stats) para que búsquedas futuras vean el feedback. En `store.py` o `indexer.py`.
+- [x] 4.4 Al escribir feedback, actualizar índices de Knowledge Lake (embeddings, tag stats) para que búsquedas futuras vean el feedback. En `store.py` o `indexer.py`.
+      - `write_feedback(record, reindex=True)` refresca el índice best-effort tras escribir (nunca lanza).
 
 ### 4.5 Test integración feedback loop
-- [ ] 4.5 Test e2e: campaña mock completa → feedback escrito → búsqueda semántica encuentra hipótesis similares previas con su feedback.
+- [x] 4.5 Test e2e: campaña mock completa → feedback escrito → búsqueda semántica encuentra hipótesis similares previas con su feedback.
 
 ---
 

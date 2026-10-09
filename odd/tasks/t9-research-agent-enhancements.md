@@ -41,15 +41,15 @@
 | 3.7 | HypothesisConfig: embedding + feedback fields (validation_warnings ya existe) | ✅ | 6fd7c5d | 5 tests |
 | 3.8 | Tests: DiversityEngine, PreValidator, prompt injection | ✅ | | 46 tests PR3 |
 
-## PR 4: Integration + Feedback Loop
+## PR 4: Integration + Feedback Loop — ✅ HECHO
 
 | Task | Descripción | Estado | Commit | Evidencia |
 |------|-------------|--------|--------|-----------|
 | 4.1 | FeedbackWriter — ✅ HECHO T7 | ✅ | cc51e7c | feedback_writer.py |
-| 4.2 | Hook feedback en boundary review→archive | ⏳ Pendiente | | |
-| 4.3 | AgentMemoryManager.query_cross_agent() + semantic + calibración | ⏳ Pendiente | | |
-| 4.4 | Feedback ingestion en Knowledge Store indexing | ⏳ Pendiente | | |
-| 4.5 | Test e2e feedback loop | ⏳ Pendiente | | |
+| 4.2 | Hook feedback en boundary review→archive | ✅ | 0adb47a | 5 tests (aprobado/rechazado/no-archive/fallo/objects) |
+| 4.3 | AgentMemoryManager.query_cross_agent() + semantic + calibración | ✅ | acd3c7f | 4 tests + 2 integración sin regresión |
+| 4.4 | Feedback ingestion en Knowledge Store indexing | ✅ | 696e8e0 | 3 tests + 2 writer sin regresión |
+| 4.5 | Test e2e feedback loop | ✅ | 3d2fbae | 1 test (wiring, verde al primer run) |
 
 ## PR 5: Verification & Regression
 
