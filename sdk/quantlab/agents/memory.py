@@ -197,6 +197,8 @@ class AgentMemoryManager:
         pattern: str,
         agent: str | None = None,
         campaign: str | None = None,
+        semantic_query: str | None = None,
+        tag_stats: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, list[dict[str, Any]]]:
         """Query memories across agents by pattern.
 
@@ -204,6 +206,12 @@ class AgentMemoryManager:
             pattern: Text pattern to search for (case-insensitive).
             agent: Optional agent name filter.
             campaign: Optional campaign filter.
+            semantic_query: Optional free text used to rank matches by
+                embedding cosine similarity (best-effort; text order is
+                kept when embeddings are unavailable). Ranked decisions
+                carry a ``similarity`` score.
+            tag_stats: Optional ``{tag: stats}`` calibration map; matching
+                per-decision tags are attached as ``calibration``.
 
         Returns:
             Dict mapping ``agent_name`` to list of matching decision dicts.
@@ -258,4 +266,59 @@ class AgentMemoryManager:
                 if matched:
                     results[agent_name] = matched
 
+        if tag_stats:
+            self._attach_calibration(results, tag_stats)
+
+        if semantic_query:
+            await self._rank_semantically(results, semantic_query)
+
         return results
+
+    @staticmethod
+    def _attach_calibration(
+        results: dict[str, list[dict[str, Any]]],
+        tag_stats: dict[str, dict[str, Any]],
+    ) -> None:
+        """Attach per-decision ``calibration`` for tags present in the map."""
+        for decisions in results.values():
+            for dec in decisions:
+                if not isinstance(dec, dict):
+                    continue
+                tags = dec.get("tags") or []
+                calibration = {t: tag_stats[t] for t in tags if t in tag_stats}
+                if calibration:
+                    dec["calibration"] = calibration
+
+    @staticmethod
+    async def _rank_semantically(
+        results: dict[str, list[dict[str, Any]]],
+        semantic_query: str,
+    ) -> None:
+        """Rank each agent's matches by embedding similarity (best-effort).
+
+        Ranked decisions carry a ``similarity`` score. Any failure keeps
+        the original text order — retrieval must never break on it.
+        """
+        try:
+            from quantlab.knowledge.embedding_service import EmbeddingService
+
+            svc = EmbeddingService(fallback_enabled=True)
+            query_vec = (await svc.embed([semantic_query]))[0]
+            for agent_name, decisions in results.items():
+                ranked = [d for d in decisions if isinstance(d, dict)]
+                if not ranked:
+                    continue
+                texts = [str(d) for d in ranked]
+                cand_vecs = await svc.embed(texts)
+                scores = svc.similarity_batch(query_vec, cand_vecs)
+                for dec, score in zip(ranked, scores):
+                    dec["similarity"] = round(float(score), 4)
+                scored = sorted(
+                    zip(ranked, scores), key=lambda pair: pair[1], reverse=True
+                )
+                others = [d for d in decisions if not isinstance(d, dict)]
+                results[agent_name] = [d for d, _ in scored] + others
+        except Exception as exc:
+            logger.warning(
+                "AgentMemoryManager semantic ranking failed: %s", exc
+            )
