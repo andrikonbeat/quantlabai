@@ -527,6 +527,65 @@ class LLMResearchAgent:
             "screener": screener_data,
         }
 
+    def _lake_calibration(
+        self,
+        objective: str,
+        market_context: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, dict[str, Any]], list[str]]:
+        """Best-effort tag calibration + similar campaigns from the lake.
+
+        Queries the Knowledge Lake for historical campaigns matching the
+        market/timeframe, aggregates per-tag Sharpe via ``TagCalibrator``,
+        and returns the top-5 tags plus the top-3 campaign ids by Sharpe.
+        Never raises — returns ``({}, [])`` when the lake is unavailable.
+
+        Args:
+            objective: Research objective string (currently unused, kept
+                for future text-similarity ranking).
+            market_context: Optional dict with ``market``/``timeframe``.
+
+        Returns:
+            ``(tag_stats, similar_campaign_ids)`` where ``tag_stats`` maps
+            tag -> ``{avg_sharpe, sample_count}``.
+        """
+        try:
+            from quantlab.agents.research_agent import ResearchAgent
+            from quantlab.agents.tag_calibrator import TagCalibrator
+
+            context = market_context or {}
+            market = str(context.get("market", "") or "")
+            timeframe = str(context.get("timeframe", "") or "H1")
+            results = ResearchAgent().query_knowledge_lake(
+                market, timeframe, limit=10
+            )
+            if not results:
+                return {}, []
+            stats = TagCalibrator._build_tag_stats(results)
+            top = sorted(
+                stats.items(),
+                key=lambda kv: kv[1].get("avg_sharpe", 0.0),
+                reverse=True,
+            )[:5]
+            tag_stats = {
+                tag: {
+                    "avg_sharpe": round(float(data.get("avg_sharpe", 0.0)), 2),
+                    "sample_count": int(data.get("sample_count", 0)),
+                }
+                for tag, data in top
+            }
+            ranked = sorted(
+                results, key=lambda r: (r.get("sharpe_ratio") or 0), reverse=True
+            )[:3]
+            similar = [
+                str(r.get("campaign_id", ""))
+                for r in ranked
+                if r.get("campaign_id")
+            ]
+            return tag_stats, similar
+        except Exception as exc:
+            logger.debug("Lake calibration unavailable: %s", exc)
+            return {}, []
+
     # ── Task 2.5: build_prompt ──────────────────────────────────────────────────
 
     def _render_f2_ranges(self, provider: SQXDocProvider | None, ver: str) -> str:
@@ -567,6 +626,8 @@ class LLMResearchAgent:
         self,
         objective: str,
         data: dict[str, Any],
+        tag_stats: dict[str, dict[str, Any]] | None = None,
+        similar_campaigns: list[str] | None = None,
     ) -> str:
         """Build a structured prompt from fetched data using templates.
 
@@ -577,6 +638,11 @@ class LLMResearchAgent:
             objective: The research objective string.
             data: Dict from ``fetch_data()`` with ``fundamental``, ``macro``,
                 ``news``, and ``ticker`` keys.
+            tag_stats: Optional per-tag Sharpe calibration
+                (``{tag: {avg_sharpe, sample_count}}``) from the Knowledge
+                Lake; rendered as a TAG_CALIBRATION section when provided.
+            similar_campaigns: Optional campaign ids of similar historical
+                campaigns; rendered alongside the calibration when provided.
 
         Returns:
             A formatted prompt string ready for LLM consumption.
@@ -680,6 +746,32 @@ class LLMResearchAgent:
                     preset=screener.get("preset", ""),
                     symbols="\n".join(symbol_lines),
                 )
+            )
+
+        # Tag calibration section (T9 3.5: per-tag Sharpe from Knowledge Lake)
+        if tag_stats:
+            cal_lines = ["\nTAG_CALIBRATION (historical per-tag Sharpe):"]
+            for tag, stats in sorted(
+                tag_stats.items(),
+                key=lambda kv: kv[1].get("avg_sharpe", 0.0),
+                reverse=True,
+            ):
+                cal_lines.append(
+                    f"- {tag}: avg Sharpe {stats.get('avg_sharpe', 0.0)}, "
+                    f"n={stats.get('sample_count', 0)}"
+                )
+            if similar_campaigns:
+                cal_lines.append(
+                    "Similar historical campaigns: "
+                    + ", ".join(similar_campaigns[:5])
+                )
+            cal_lines.append(
+                "Prefer tags with higher historical Sharpe when choosing setups."
+            )
+            sections.append("\n".join(cal_lines))
+        elif similar_campaigns:
+            sections.append(
+                "Similar historical campaigns: " + ", ".join(similar_campaigns[:5])
             )
 
         # Response format instruction
@@ -1084,10 +1176,15 @@ class LLMResearchAgent:
                 "ticker", ""
             )
 
-            # Step 2: Build prompt
+            # Step 2: Build prompt (with best-effort lake calibration)
+            tag_stats, similar = self._lake_calibration(
+                objectives[0] if objectives else "", market_context
+            )
             prompt = self.build_prompt(
                 objectives[0] if objectives else "",
                 data,
+                tag_stats=tag_stats or None,
+                similar_campaigns=similar or None,
             )
 
             # G3: cache the fetched market sample (best-effort).
