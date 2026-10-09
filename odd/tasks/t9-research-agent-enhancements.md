@@ -11,9 +11,9 @@
 | 1.1 | EmbeddingService (embed, similarity, fallback TF-IDF) | ✅ HECHO | | 12 tests pass |
 | 1.2 | embeddings/ dir existe (store.py:55) → version bump a 6 | ✅ HECHO | | v6 + migración + _build_embeddings_index; 31+23 tests |
 | 1.3 | QueryBuilder.filter_by_similarity() (usa EmbeddingService) | ✅ HECHO | | 10 tests pass; KNOWLEDGE_DIRS += campaigns/results/tags |
-| 1.4 | Indexer.compute_tag_sharpe_stats() + best_params_by_market (desde TagCalibrator) | ⏳ Pendiente | | |
-| 1.5 | Tests unitarios: EmbeddingService, filter_by_similarity, Indexer metrics | ⏳ Pendiente | | |
-| 1.6 | Test integración: write embeddings → query similarity → verify ranking | ⏳ Pendiente | | |
+| 1.4 | Indexer.compute_tag_sharpe_stats() + best_params_by_market (desde TagCalibrator) | ✅ HECHO | | 9 tests (incl. equivalencia con TagCalibrator) |
+| 1.5 | Tests unitarios: EmbeddingService, filter_by_similarity, Indexer metrics | ✅ HECHO | | 12 + 11 + 9 tests |
+| 1.6 | Test integración: write embeddings → query similarity → verify ranking | ✅ HECHO | | e2e real-path + ranking con mocks |
 
 ## PR 2: Providers (Literature + Screener)
 

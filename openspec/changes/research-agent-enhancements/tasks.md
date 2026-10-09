@@ -28,13 +28,13 @@
 - [x] 1.3 Implement `QueryBuilder.filter_by_similarity(query_text: str, top_k: int = 10, threshold: float = 0.7) -> QueryBuilder` en `query.py`. Usa `EmbeddingService.similarity()` con fallback a `_text_cosine()` (ya existe scaffolding: `_tokenize`, `_add_text`, `_text_cosine`, `search_text` en `query.py`). **Nota**: `search_similar_campaigns()` ya existe en `query.py:201` — este método es el *builder* equivalente para filtrar hipótesis.
 
 ### 1.4 Métricas por estrategia (CONSOLIDACIÓN)
-- [ ] 1.4 Mover/expone `avg_sharpe_by_tag` y `best_parameters_by_market` desde `TagCalibrator._build_tag_stats()` → `indexer.py` como métodos públicos `Indexer.compute_tag_sharpe_stats()` e `Indexer.compute_best_params_by_market()`. Tests en `tests/knowledge/test_indexer_metrics.py`.
+- [x] 1.4 Mover/expone `avg_sharpe_by_tag` y `best_parameters_by_market` desde `TagCalibrator._build_tag_stats()` → `indexer.py` como métodos públicos `Indexer.compute_tag_sharpe_stats()` e `Indexer.compute_best_params_by_market()`. Tests en `tests/knowledge/test_indexer_metrics.py`.
 
 ### 1.5 Tests unitarios Foundation
-- [ ] 1.5 Tests: `EmbeddingService` (embed + similarity + fallback), `QueryBuilder.filter_by_similarity()`, `Indexer` métricas nuevas.
+- [x] 1.5 Tests: `EmbeddingService` (embed + similarity + fallback), `QueryBuilder.filter_by_similarity()`, `Indexer` métricas nuevas.
 
 ### 1.6 Test integración Foundation
-- [ ] 1.6 Test integración: write embeddings → query similarity → verify ranking (tmp Knowledge Lake, mock embeddings).
+- [x] 1.6 Test integración: write embeddings → query similarity → verify ranking (tmp Knowledge Lake, mock embeddings).
 
 ---
 

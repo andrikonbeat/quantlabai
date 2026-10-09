@@ -182,6 +182,40 @@ class TestFilterBySimilarity:
             campaign_ids = {c.campaign_id for c in result.campaigns}
             assert campaign_ids == {"hyp_rsi", "hyp_bb"}
 
+    @pytest.mark.asyncio
+    async def test_end_to_end_write_embeddings_query_ranking(self, temp_store):
+        """T9 1.6: write embeddings -> query similarity -> verify loop (real path).
+
+        Uses the real EmbeddingService fallback (no mocks): verifies the full
+        loop is wired — embeddings persisted + indexed, then filter_by_similarity
+        executes over the same lake. Ranking precision is covered by the mocked
+        tests above; here the bar is a working loop returning all campaigns.
+        """
+        from quantlab.knowledge.embedding_service import EmbeddingService
+
+        svc = EmbeddingService(fallback_enabled=True)
+        svc._model_loaded = True
+        svc._model = None
+
+        await svc.embed_and_store(temp_store, "hyp_rsi", "hyp_rsi mean_reversion rsi")
+        await svc.embed_and_store(temp_store, "hyp_macd", "hyp_macd trend macd")
+
+        temp_store.rebuild_index()
+        index = temp_store.read_index()
+        assert "embeddings" in index
+        assert len(index["embeddings"]) == 2
+
+        builder = QueryBuilder(index=index, root=temp_store.root)
+        # threshold=-1.0: full cosine range (the hash-projection fallback can
+        # yield small negative scores for unrelated texts)
+        builder.filter_by_similarity("rsi mean reversion strategy", top_k=4, threshold=-1.0)
+        result = builder.execute(root=temp_store.root)
+
+        assert len(result.campaigns) == 4
+        assert {c.campaign_id for c in result.campaigns} == {
+            "hyp_rsi", "hyp_macd", "hyp_bb", "hyp_donchian",
+        }
+
 
 class TestQueryFilterSimilarityFields:
     """Test QueryFilter dataclass has similarity fields."""

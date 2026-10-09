@@ -188,6 +188,82 @@ class Indexer:
         return []
 
     @staticmethod
+    def compute_tag_sharpe_stats(
+        campaigns: list[dict[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        """Per-tag Sharpe/win-rate aggregation (consolidated, not duplicated).
+
+        The single implementation of the math lives in
+        ``quantlab.agents.tag_calibrator``; this method normalizes both the
+        TagCalibrator query-result shape (``tags``/``sharpe_ratio``/``win_rate``
+        at top level) and the ``build_index()`` entry shape (nested under
+        ``metrics``) into it, so the aggregation logic exists exactly once.
+
+        Args:
+            campaigns: Campaign dicts in either shape.
+
+        Returns:
+            Dict mapping tag -> ``{avg_sharpe, avg_win_rate, sample_count}``.
+        """
+        from quantlab.agents.tag_calibrator import TagCalibrator
+
+        normalized: list[dict[str, Any]] = []
+        for entry in campaigns:
+            metrics = entry.get("metrics")
+            if not isinstance(metrics, dict):
+                metrics = {}
+            normalized.append(
+                {
+                    "tags": entry.get("tags") or [],
+                    "sharpe_ratio": entry.get(
+                        "sharpe_ratio", metrics.get("sharpe_ratio")
+                    ),
+                    "win_rate": entry.get("win_rate", metrics.get("win_rate")),
+                }
+            )
+        return TagCalibrator._build_tag_stats(normalized)
+
+    @staticmethod
+    def compute_best_params_by_market(
+        campaigns: list[dict[str, Any]],
+    ) -> dict[str, dict[str, Any]]:
+        """Best parameters per market, picked by highest Sharpe (deterministic).
+
+        Accepts both the TagCalibrator query-result shape and the
+        ``build_index()`` entry shape (``market`` or ``symbol``; ``sharpe_ratio``
+        at top level or nested under ``metrics``). Entries without a market or
+        without a parseable Sharpe are skipped.
+
+        Args:
+            campaigns: Campaign dicts in either shape.
+
+        Returns:
+            Dict mapping market -> ``{campaign_id, sharpe_ratio, parameters}``
+            for the highest-Sharpe campaign in that market.
+        """
+        best: dict[str, dict[str, Any]] = {}
+        for entry in campaigns:
+            metrics = entry.get("metrics")
+            if not isinstance(metrics, dict):
+                metrics = {}
+            market = entry.get("market") or entry.get("symbol")
+            sharpe = entry.get("sharpe_ratio", metrics.get("sharpe_ratio"))
+            if not market or sharpe is None:
+                continue
+            try:
+                sharpe_f = float(sharpe)
+            except (TypeError, ValueError):
+                continue
+            current = best.get(market)
+            if current is None or sharpe_f > current["sharpe_ratio"]:
+                best[market] = {
+                    "campaign_id": entry.get("campaign_id"),
+                    "sharpe_ratio": sharpe_f,
+                    "parameters": entry.get("parameters") or {},
+                }
+        return best
+
+    @staticmethod
     def link_campaigns(store: Any, parent: str, children: list[str]) -> None:
         """Create parent-child links between campaigns.
 
