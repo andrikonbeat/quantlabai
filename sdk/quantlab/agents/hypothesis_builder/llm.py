@@ -91,7 +91,8 @@ class LLMMode:
         """Build a structured prompt from a hypothesis config.
 
         Includes hypothesis details, rationale, source URLs, data sources,
-        and the expected JSON response schema.
+        semantic context (when ``hyp.semantic_context`` is set), and the
+        expected JSON response schema.
 
         Args:
             hyp: The hypothesis config.
@@ -108,8 +109,13 @@ class LLMMode:
             f"Rationale: {hyp.llm_rationale or 'N/A'}",
             f"Source URLs: {', '.join(hyp.source_urls) if hyp.source_urls else 'N/A'}",
             f"Data Sources: {', '.join(hyp.data_sources) if hyp.data_sources else 'N/A'}",
-            "",
-            "Return your response as valid JSON with the following structure:",
+        ]
+        if hyp.semantic_context:
+            sections.append(f"Semantic Context: {hyp.semantic_context}")
+        sections.extend(
+            [
+                "",
+                "Return your response as valid JSON with the following structure:",
             "{",
             '  "building_blocks": [',
             "    {",
@@ -130,7 +136,8 @@ class LLMMode:
             "",
             "IMPORTANT: Each building block must have a unique name and a valid "
             "indicator configuration.",
-        ]
+            ]
+        )
         return "\n".join(sections)
 
     # ── Response parsing ────────────────────────────────────────────────────

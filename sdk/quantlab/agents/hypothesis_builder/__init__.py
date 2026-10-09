@@ -74,7 +74,7 @@ class HypothesisBuilder:
         active_mode = mode or self._mode
 
         if active_mode == "llm" and self._llm_mode is not None:
-            return await self._build_with_llm(hypotheses)
+            return await self._build_with_llm(hypotheses, market_context)
 
         return self._build_with_rule(hypotheses)
 
@@ -83,11 +83,15 @@ class HypothesisBuilder:
     async def _build_with_llm(
         self,
         hypotheses: list[HypothesisConfig],
+        market_context: dict[str, Any] | None = None,
     ) -> tuple[list[BuildingBlock], list[Strategy]]:
         """Build using LLM mode, falling back to rule on any error.
 
         Args:
             hypotheses: List of hypothesis configs.
+            market_context: Optional market metadata; stamped as
+                ``semantic_context`` on hypotheses that do not already
+                carry one, so ``LLMMode`` injects it into the prompt.
 
         Returns:
             Tuple of validated blocks and strategies from LLM, or from rule
@@ -96,8 +100,11 @@ class HypothesisBuilder:
         all_blocks: list[BuildingBlock] = []
         all_strategies: list[Strategy] = []
 
+        context_text = self._render_market_context(market_context)
         try:
             for hyp in hypotheses:
+                if context_text and not hyp.semantic_context:
+                    hyp.semantic_context = context_text
                 blocks, strategies = await self._llm_mode.build(hyp)  # type: ignore[union-attr]
                 all_blocks.extend(blocks)
                 all_strategies.extend(strategies)
@@ -109,6 +116,20 @@ class HypothesisBuilder:
             return self._build_with_rule(hypotheses)
 
         return self._merge_and_validate(all_blocks, all_strategies)
+
+    @staticmethod
+    def _render_market_context(
+        market_context: dict[str, Any] | None,
+    ) -> str | None:
+        """Render market metadata as a one-line semantic context string."""
+        if not market_context:
+            return None
+        parts = []
+        for key in ("market", "timeframe", "ticker"):
+            value = market_context.get(key)
+            if value:
+                parts.append(f"{key.capitalize()}: {value}")
+        return ", ".join(parts) or None
 
     # ── Rule mode (deterministic) ───────────────────────────────────────────
 
