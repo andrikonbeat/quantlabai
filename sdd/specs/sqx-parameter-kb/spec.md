@@ -8,11 +8,8 @@ Evidence-based Knowledge Base of SQX builder parameters: seeded from documentati
 
 ### Requirement: REQ-201 KB Schema
 
-The system MUST store each parameter as YAML at `structured/sqx-kb/{sqx_version}/parameters/{tab}/{param}.yaml` with fields: `name`, `sqx_name`, `tab`, `section`, `type`, `default`, `range`, `what_it_does`, `how_it_works_in_sqx`, `quant_trading_role`, `hypothesis_relation`, `edge_relation`, `small_account_recommendation` + `reason`, `why_choose`, `when_choose`, `related_parameters`, `status` (`seeded|verified|needs_review`), `sqx_version`, `evidence_ref`, plus the optional XML traceability pair `xml_path` and `element_name`.
-
-`xml_path` and `element_name` MUST be declared schema fields rather than accepted as unknown keys, and MUST be preserved unchanged by every store write (`verify`, `invalidate`, version-drift demotion). A write that drops either field MUST be treated as a defect.
-
-(Previously: the field set ended at `evidence_ref`; `xml_path`/`element_name` present in stored YAML were silently dropped on every store write)
+The system MUST store each parameter as YAML at `structured/sqx-kb/{sqx_version}/parameters/{tab}/{param}.yaml` with fields: `name`, `sqx_name`, `tab`, `section`, `type`, `xml_path`, `element_name`, `default`, `range`, `what_it_does`, `how_it_works_in_sqx`, `quant_trading_role`, `hypothesis_relation`, `edge_relation`, `small_account_recommendation` + `reason`, `why_choose`, `when_choose`, `related_parameters`, `status` (`seeded|verified|needs_review`), `sqx_version`, `evidence_ref`.
+(`xml_path` and `element_name` added by `crosschecks-full-parameter-catalog`, archived 2026-09-30. They make each entry traceable to the exact XML element it documents, so a mapping regex can be validated against real evidence instead of convention.)
 
 #### Scenario: Valid parameter file loads
 
@@ -26,11 +23,12 @@ The system MUST store each parameter as YAML at `structured/sqx-kb/{sqx_version}
 - WHEN the loader parses it
 - THEN validation fails listing the missing field
 
-#### Scenario: XML anchors survive a store write
+#### Scenario: Entry is traceable to its XML element
 
-- GIVEN a `Cross checks` entry carrying `xml_path` and `element_name`
-- WHEN the store writes it (promotion or drift demotion) and the file is reloaded
-- THEN both fields are present and unchanged, because they are declared schema fields
+- GIVEN a KB YAML carrying `xml_path` and `element_name`
+- WHEN the entry's `evidence_ref` is resolved and the cited CFX/template artifact is parsed
+- THEN the path resolves to the real element it names
+- AND the catalog consumer can assert the mapping against that element rather than against a hand-written fixture
 
 ### Requirement: REQ-202 Storage Layout
 
@@ -67,6 +65,8 @@ The system MUST seed all 8 tabs from `docs/sqx-builder-config/SQX Builder Config
 ### Requirement: REQ-204 Consumption by Agents
 
 `builder_agent` MUST consult the KB when configuring the builder and MUST NOT configure a parameter without a KB entry (or explicit needs_review justification). `config_reviewer` MUST validate builder configs against the KB.
+A consumer MUST warn when a consulted tab has no entries, or when any consulted entry has status `needs_review`, and MUST NOT abort on that basis unless strict mode is enabled. Under strict mode, a warning is promoted to a blocking error.
+(Warn-not-block semantics added by `crosschecks-full-parameter-catalog`, archived 2026-09-30. `needs_review` is a first-class status meaning "documented, not yet re-verified against this build" — it is a reason to surface risk to a human, not a reason to stop a run.)
 
 #### Scenario: Builder uses KB guidance
 
@@ -80,6 +80,19 @@ The system MUST seed all 8 tabs from `docs/sqx-builder-config/SQX Builder Config
 - GIVEN a parameter with no KB entry
 - WHEN builder_agent attempts to configure it
 - THEN configuration is blocked pending a needs_review entry or explicit user override
+
+#### Scenario: Needs-review entry warns without blocking
+
+- GIVEN a consulted tab holding at least one entry with status `needs_review`
+- WHEN builder_agent consults the KB in non-strict mode
+- THEN a warning naming the tab and the needs-review condition is returned
+- AND configuration proceeds
+
+#### Scenario: Strict mode promotes the warning to an error
+
+- GIVEN a consulted tab holding at least one entry with status `needs_review`
+- WHEN builder_agent consults the KB with strict mode enabled
+- THEN the collected warnings are raised as a single configuration error
 
 ### Requirement: REQ-205 Reviewer Teaching Table
 
@@ -127,11 +140,8 @@ The system MUST provide `quantlab sqx kb` with subcommands: `list [--tab] [--sta
 
 On SQX version drift (sqx-version-detection REQ-305), the system MUST mark all KB parameters of the old version `needs_review` and MUST NOT serve them as verified for the new version until re-verified.
 
-Re-verification MUST be evidence-first. An entry returns to `verified` only when an operator-supplied build artifact positively resolves its XML-anchored `xml_path`. An entry whose path resolves but whose element is absent MUST remain `needs_review`, and that absence MUST be treated as a terminal answer rather than a retry. An entry with no XML anchor MUST NOT be promoted by re-verification.
-
-The system MUST discriminate entry kinds by the structural shape of `xml_path`, never by the `status` string: a drift-demoted entry and a pre-existing documentation gap share `status: needs_review` and are indistinguishable from status alone.
-
-(Previously: the requirement ended at "until re-verified" — the re-verification path, its evidence, and its limits were unspecified)
+The hook MUST warn and never block: it MUST NOT raise, and the result it returns MUST report `blocked: False`. Strict-mode consumers decide for themselves whether a detected drift aborts. When the installed build matches the catalog bucket, the hook MUST short-circuit to a no-op.
+(Concrete `invalidate_on_version_drift()` contract added by `crosschecks-full-parameter-catalog`, archived 2026-09-30. **Known limitation**: the hook currently has no production caller — it is defined and unit-tested only, so a real version drift does not yet demote anything. See that change's archive-report W-3.)
 
 #### Scenario: Drift invalidates KB
 
@@ -139,20 +149,15 @@ The system MUST discriminate entry kinds by the structural shape of `xml_path`, 
 - WHEN the invalidation hook runs
 - THEN all params under `sqx-kb/144.2953/` become needs_review
 
-#### Scenario: XML evidence re-promotes a demoted entry
+#### Scenario: Drift warns without raising
 
-- GIVEN a demoted entry whose XML-anchored `xml_path` resolves in a supplied build artifact
-- WHEN re-verification runs against that artifact
-- THEN the entry becomes `verified` with an `evidence_ref` naming the artifact and anchor
+- GIVEN a detected change 144.2953 → 145.x
+- WHEN the invalidation hook runs
+- THEN it returns a result carrying both versions, the count of demoted entries, and an actionable warning naming both versions
+- AND `blocked` is `False` and no exception is raised
 
-#### Scenario: Absent field stays needs_review
+#### Scenario: Matching version is a no-op
 
-- GIVEN a demoted entry whose `xml_path` root resolves but whose element is absent
-- WHEN re-verification runs against the artifact
-- THEN the entry stays `needs_review` and the verdict records field absence
-
-#### Scenario: Documentation gap is never promoted
-
-- GIVEN a `needs_review` entry whose `xml_path` is a documentation anchor, not an XML path
-- WHEN re-verification runs
-- THEN the entry is skipped and its status is unchanged, whatever its current status
+- GIVEN the installed build equals the catalog bucket version
+- WHEN the invalidation hook runs
+- THEN no entry is demoted, `drifted` is `False`, and the warning list is empty

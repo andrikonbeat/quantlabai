@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from quantlab.cfx.models import CrossChecksConfig
 from quantlab.costs.profiles import BrokerProfile
+from quantlab.cfx.models import CrossChecksConfig
 from quantlab.data.symbol_registry import resolve_symbol
 
 logger = logging.getLogger(__name__)
@@ -20,13 +20,11 @@ _TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 _DEFAULT_TEMPLATE = _TEMPLATE_DIR / "default-project.sqx-template"
 
 # Default JForex Dukascopy broker settings
-_JFOREX_COMMISSION = 3.5  # USD per lot (standard Dukascopy)
-_JFOREX_SLIPPAGE = 1  # pips
-_JFOREX_SPREAD = 3  # pips base
-_JFOREX_ENGINE = (
-    "MetaTrader4"  # Engine handles backtesting/generation, NOT data source.
-)
-# Dukascopy data works fine with MetaTrader4 engine.
+_JFOREX_COMMISSION = 3.5       # USD per lot (standard Dukascopy)
+_JFOREX_SLIPPAGE = 1           # pips
+_JFOREX_SPREAD = 3             # pips base
+_JFOREX_ENGINE = "MetaTrader4"  # Engine handles backtesting/generation, NOT data source.
+                                  # Dukascopy data works fine with MetaTrader4 engine.
 
 # Known max dates per symbol (from Dukascopy data availability as of 2024-10).
 # date_to values beyond these cause silent generator failure.
@@ -80,7 +78,7 @@ def _template_xml() -> str:
     return _TEMPLATE_XML_CACHE
 
 
-def _extract_template_value(match: re.Match[str]) -> str:
+def _extract_template_value(match: re.Match) -> str:
     """Extract the value text from a build-config regex match.
 
     The map patterns are shape-heterogeneous: some wrap the value between two
@@ -104,9 +102,7 @@ def _extract_template_value(match: re.Match[str]) -> str:
     return text
 
 
-def _coerce_template_default(
-    raw: str, format_type: str
-) -> bool | int | float | str | None:
+def _coerce_template_default(raw: str, format_type: str):
     """Coerce the raw template text to the field's Python type."""
     if format_type in ("dict", "blocks"):
         # No scalar default: these fields are composite structures.
@@ -136,7 +132,7 @@ _TYPED_CROSSCHECKS_FIELDS = frozenset(
 )
 
 
-def _typed_crosschecks_default(field_name: str, template_xml: str) -> str | None:
+def _typed_crosschecks_default(field_name: str, template_xml: str):
     """Read a template CrossChecks default through the typed model.
 
     Returns ``None`` when the field is not typed, the template carries no
@@ -166,9 +162,7 @@ def _typed_crosschecks_default(field_name: str, template_xml: str) -> str | None
     return "true" if wfo.optimize_periods else "false"
 
 
-def get_template_default(
-    field_name: str,
-) -> bool | int | float | str | None:
+def get_template_default(field_name: str):
     """Return the SQX template default for a BuildConfig field, or ``None``.
 
     CrossChecks fields covered by the typed models are read from
@@ -189,11 +183,39 @@ def get_template_default(
     pattern, _replacement, format_type = entry
     template_xml = _template_xml()
 
+    # Typed fast path: the WalkForwardOptimization fields the typed models
+    # already cover. Returns None for every other field, so the tab-scoped
+    # probe below still handles all of them.
     typed = _typed_crosschecks_default(field_name, template_xml)
     if typed is not None:
-        return _coerce_template_default(str(typed), format_type)
+        # _BUILD_CONFIG_MAP records only the "crosscheck" marker for these
+        # fields; the scalar type lives in the spec table, same as the probe
+        # below. Coercing the typed value with the marker would hand back a
+        # raw string (e.g. "true") where the probe returns a real bool.
+        typed_type = format_type
+        spec = _CROSSCHECK_FIELD_SPEC_BY_NAME.get(field_name)
+        if spec is not None:
+            typed_type = spec[3]
+        return _coerce_template_default(str(typed), typed_type)
 
-    match = re.search(pattern, template_xml)
+    haystack = template_xml
+    if format_type == "crosscheck":
+        # CrossChecks leaf names repeat across tabs, so the probe must read the
+        # same scoped region the writer touches — otherwise, for example,
+        # wi_by_hours_use would report the RetestOnAdditionalMarkets commission
+        # method instead of the WhatIf one. The map records only the "crosscheck"
+        # marker, so the scalar type comes from the spec table.
+        spec = _CROSSCHECK_FIELD_SPEC_BY_NAME.get(field_name)
+        if spec is None:
+            return None
+        scope = spec[1]
+        format_type = spec[3]
+        region = re.search(scope, haystack, re.DOTALL)
+        if region is None:
+            return None
+        haystack = region.group(0)
+
+    match = re.search(pattern, haystack)
     if match is None:
         return None
     return _coerce_template_default(_extract_template_value(match), format_type)
@@ -329,6 +351,531 @@ _FIELD_TABS: dict[str, str] = {
     # ── Blocks bridge (REQ-18 / REQ-03) ──
     "enabled_blocks": "Blocks bridge",
     "block_weights": "Blocks bridge",
+}
+
+
+# ── CrossChecks tab-scoped mappings (crosschecks-parameter-catalog) ─────────
+# CrossChecks reuses many leaf names across its 9 robustness tabs: <MaxTests>
+# appears in three of them, <NumberOfSimulations> in two, and the Min/Max
+# Monte-Carlo <Param> keys in three different methods. An unscoped re.sub would
+# let one tab's field rewrite its siblings, so every catalog entry declares the
+# XML region it owns — a ``scope`` regex (whole tab, tab <Settings>, tab
+# <AcceptanceSettings>, or a single tab <Method type="...">) — plus a ``leaf``
+# regex whose two capture groups bracket the value.
+#
+# Every scope + leaf must resolve against real CFX evidence; the test suite
+# asserts that against the bundled template and a saved config, so an invented
+# element or attribute fails the suite instead of reaching a project.
+#
+# Evidence: sdk/quantlab/sqx/templates/default-project.sqx-template
+# (Build-Task1.xml, 8 tabs) and assets/SQX_144_2953_linux_20260601/user/
+# settings/Configs/DJ CFD H1.cfx (config.xml, adds <SequentialOptimization>).
+_CROSSCHECK_TAB = "CrossChecks"
+
+_RC = "RetestOnAdditionalMarkets"
+_WFO = "WalkForwardOptimization"
+_HPR = "RetestWithHigherPrecision"
+_MCR = "MonteCarloRetest"
+_WFM = "WalkForwardMatrix"
+_MCM = "MonteCarloManipulation"
+_PSPP = "OptProfileSysParamPermutation"
+_WI = "WhatIf"
+_SO = "SequentialOptimization"
+
+
+def _tab_scope(tab: str) -> str:
+    """Whole-tab region; self-closing tabs (SequentialOptimization) included."""
+    return rf"<{tab}\b[^>]*?/>|<{tab}\b[^>]*>.*?</{tab}>"
+
+
+def _settings_scope(tab: str) -> str:
+    """The tab's <Settings> region."""
+    return rf"<{tab}\b[^>]*>.*?<Settings\b[^>]*>.*?</Settings>"
+
+
+def _acceptance_scope(tab: str) -> str:
+    """The tab's <AcceptanceSettings> region."""
+    return rf"<{tab}\b[^>]*>.*?<AcceptanceSettings\b[^>]*>.*?</AcceptanceSettings>"
+
+
+def _method_scope(_tab: str, method: str) -> str:
+    """The ``<Method type="...">`` element of ``tab``, and nothing before it.
+
+    The region deliberately starts at the method tag rather than at the tab tag.
+    A tab-anchored region would also contain every earlier ``<Method>`` in that
+    tab, and the leaf's first match would then belong to the wrong method — the
+    three Monte-Carlo methods that each own a ``Min``/``Max`` pair are exactly
+    that failure mode. Method type names are unique in the template, which
+    ``test_every_method_type_is_unique_in_the_template`` asserts, so a future
+    collision fails the suite instead of silently retargeting another tab.
+    """
+    return rf'<Method\b[^>]*type="{method}"[^>]*>.*?</Method>'
+
+
+def _node(name: str) -> str:
+    """Leaf regex for a ``<name>value</name>`` text node."""
+    return rf"(<{name}>)[^<]*(</{name}>)"
+
+
+def _attr(element: str, attr: str) -> str:
+    """Leaf regex for one attribute of an element."""
+    return rf'(<{element}[^>]*\b{attr}=")[^"]*(")'
+
+
+def _param(key: str) -> str:
+    """Leaf regex for a typed ``<Param key="...">`` node."""
+    return rf'(<Param key="{key}" type="[A-Za-z]+">)[^<]*(</Param>)'
+
+
+# (field, scope, leaf, format_type) — every field is a BuildConfig attribute.
+_CROSSCHECK_FIELD_SPECS: tuple[tuple[str, str, str, str], ...] = (
+    # ── RetestOnAdditionalMarkets ──
+    ("rc_use", _tab_scope(_RC), _attr(_RC, "use"), "boolean"),
+    ("rc_date_from", _settings_scope(_RC), _attr("Setup", "dateFrom"), "string"),
+    ("rc_date_to", _settings_scope(_RC), _attr("Setup", "dateTo"), "string"),
+    ("rc_test_precision", _settings_scope(_RC), _attr("Setup", "testPrecision"), "int"),
+    ("rc_session", _settings_scope(_RC), _attr("Setup", "session"), "string"),
+    ("rc_slippage", _settings_scope(_RC), _attr("Setup", "slippage"), "int"),
+    ("rc_min_dist", _settings_scope(_RC), _attr("Setup", "minDist"), "int"),
+    ("rc_engine", _settings_scope(_RC), _attr("Setup", "engine"), "string"),
+    ("rc_symbol", _settings_scope(_RC), _attr("Chart", "symbol"), "string"),
+    ("rc_timeframe", _settings_scope(_RC), _attr("Chart", "timeframe"), "string"),
+    ("rc_commission_method", _settings_scope(_RC), _attr("Method", "type"), "string"),
+    ("rc_check", _acceptance_scope(_RC), _node("Check"), "string"),
+    ("rc_min_conditions", _acceptance_scope(_RC), _node("MinConditions"), "int"),
+    ("rc_min_markets", _acceptance_scope(_RC), _node("MinMarkets"), "int"),
+    # The project's main Setup also declares <Chart ... spread="...">, so the
+    # additional-markets spread is addressed through RC's own Settings scope.
+    ("rc_spread", _settings_scope(_RC), _attr("Chart", "spread"), "int"),
+    # PF minimums live in the Condition tree's <Numeric-Value>, not on
+    # Column-Value: SQX 144.2953 never writes a minValue attribute there
+    # (verified across Build-Task1.xml and 123 sampled real project configs).
+    # The leaf below therefore matches nothing and _apply_in_scope logs and
+    # preserves the document — these fields are intentionally inert here, and
+    # reaching the value requires CrossChecksConfig's Condition handling.
+    (
+        "rc_pf_min",
+        _acceptance_scope(_RC),
+        r'(<Column-Value\b[^>]*\bminValue=")[^"]*(")',
+        "float",
+    ),
+    # ── WalkForwardOptimization ──
+    ("wf_use", _tab_scope(_WFO), _attr(_WFO, "use"), "boolean"),
+    # WFO's Settings block repeats WalkForward/@period, OptimizePeriods,
+    # OptimizeExitTypes and MaxTests inside WalkForwardMatrix and
+    # OptProfileSysParamPermutation, so each leaf is addressed through its own
+    # tab scope. Verified against Build-Task1.xml.
+    ("wf_period", _settings_scope(_WFO), _attr("WalkForward", "period"), "int"),
+    (
+        "wf_optimization",
+        _settings_scope(_WFO),
+        _attr("WalkForward", "optimization"),
+        "int",
+    ),
+    ("wf_param1", _settings_scope(_WFO), _attr("Param1", "value"), "int"),
+    ("wf_param2", _settings_scope(_WFO), _attr("Param2", "value"), "int"),
+    ("wf_optimize_periods", _settings_scope(_WFO), _node("OptimizePeriods"), "boolean"),
+    (
+        "wf_optimize_exit_types",
+        _settings_scope(_WFO),
+        _node("OptimizeExitTypes"),
+        "boolean",
+    ),
+    ("wf_max_tests", _settings_scope(_WFO), _node("MaxTests"), "int"),
+    (
+        "wf_acceptance_threshold_pct",
+        _acceptance_scope(_WFO),
+        _attr("Conditions", "thresholdPct"),
+        "int",
+    ),
+    # WalkForwardOptimization declares no MinConditions/MinMarkets — only
+    # RetestOnAdditionalMarkets does. These two fields therefore have no leaf to
+    # own and stay no-ops on real XML; _apply_in_scope logs and preserves the
+    # document. See TestCrosscheckAcceptanceCountsAreTabOwned.
+    (
+        "wf_acceptance_min_conditions",
+        _acceptance_scope(_WFO),
+        _node("MinConditions"),
+        "int",
+    ),
+    (
+        "wf_acceptance_min_markets",
+        _acceptance_scope(_WFO),
+        _node("MinMarkets"),
+        "int",
+    ),
+    # Inert for the same reason as rc_pf_min: the WalkForwardOptimization PF
+    # minimum is a <Numeric-Value> inside the Condition tree, and no real
+    # config puts minValue on a Column-Value.
+    (
+        "wf_acceptance_pf_min",
+        _acceptance_scope(_WFO),
+        r'(<Column-Value\b[^>]*\bminValue=")[^"]*(")',
+        "float",
+    ),
+    # ── RetestWithHigherPrecision ──
+    ("hp_use", _tab_scope(_HPR), _attr(_HPR, "use"), "boolean"),
+    ("hp_precision", _settings_scope(_HPR), _node("Precision"), "int"),
+    ("hp_spread", _settings_scope(_HPR), _node("Spread"), "int"),
+    # ── MonteCarloRetest ──
+    ("mcr_use", _tab_scope(_MCR), _attr(_MCR, "use"), "boolean"),
+    (
+        "mcr_number_of_simulations",
+        _settings_scope(_MCR),
+        _node("NumberOfSimulations"),
+        "int",
+    ),
+    (
+        "mcr_history_data_use",
+        _method_scope(_MCR, "RandomizeHistoryData"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "mcr_history_probability_up",
+        _method_scope(_MCR, "RandomizeHistoryData"),
+        _param("ProbabilityUp"),
+        "int",
+    ),
+    (
+        "mcr_history_probability_down",
+        _method_scope(_MCR, "RandomizeHistoryData"),
+        _param("ProbabilityDown"),
+        "int",
+    ),
+    (
+        "mcr_history_max_change_up",
+        _method_scope(_MCR, "RandomizeHistoryData"),
+        _param("MaxChangeUp"),
+        "int",
+    ),
+    (
+        "mcr_history_max_change_down",
+        _method_scope(_MCR, "RandomizeHistoryData"),
+        _param("MaxChangeDown"),
+        "int",
+    ),
+    (
+        "mcr_min_distance_use",
+        _method_scope(_MCR, "RandomizeMinDistance"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "mcr_min_distance_min",
+        _method_scope(_MCR, "RandomizeMinDistance"),
+        _param("Min"),
+        "float",
+    ),
+    (
+        "mcr_min_distance_max",
+        _method_scope(_MCR, "RandomizeMinDistance"),
+        _param("Max"),
+        "float",
+    ),
+    (
+        "mcr_slippage_use",
+        _method_scope(_MCR, "RandomizeSlippage"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "mcr_slippage_min",
+        _method_scope(_MCR, "RandomizeSlippage"),
+        _param("Min"),
+        "float",
+    ),
+    (
+        "mcr_slippage_max",
+        _method_scope(_MCR, "RandomizeSlippage"),
+        _param("Max"),
+        "float",
+    ),
+    (
+        "mcr_spread_use",
+        _method_scope(_MCR, "RandomizeSpread"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "mcr_spread_min",
+        _method_scope(_MCR, "RandomizeSpread"),
+        _param("Min"),
+        "float",
+    ),
+    (
+        "mcr_spread_max",
+        _method_scope(_MCR, "RandomizeSpread"),
+        _param("Max"),
+        "float",
+    ),
+    (
+        "mcr_starting_bar_use",
+        _method_scope(_MCR, "RandomizeStartingBar"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "mcr_starting_bar_max_change",
+        _method_scope(_MCR, "RandomizeStartingBar"),
+        _param("MaxChange"),
+        "int",
+    ),
+    (
+        "mcr_strategy_params_use",
+        _method_scope(_MCR, "RandomizeStrategyParameters"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "mcr_strategy_params_probability",
+        _method_scope(_MCR, "RandomizeStrategyParameters"),
+        _param("Probability"),
+        "int",
+    ),
+    (
+        "mcr_strategy_params_max_change",
+        _method_scope(_MCR, "RandomizeStrategyParameters"),
+        _param("MaxChange"),
+        "int",
+    ),
+    (
+        "mcr_strategy_params_symmetric",
+        _method_scope(_MCR, "RandomizeStrategyParameters"),
+        _param("Symmetric"),
+        "boolean",
+    ),
+    # ── WalkForwardMatrix ──
+    ("wfm_use", _tab_scope(_WFM), _attr(_WFM, "use"), "boolean"),
+    ("wfm_param1_start", _settings_scope(_WFM), _attr("Param1", "start"), "int"),
+    ("wfm_param1_stop", _settings_scope(_WFM), _attr("Param1", "stop"), "int"),
+    ("wfm_param1_step", _settings_scope(_WFM), _attr("Param1", "step"), "int"),
+    ("wfm_param2_start", _settings_scope(_WFM), _attr("Param2", "start"), "int"),
+    ("wfm_param2_stop", _settings_scope(_WFM), _attr("Param2", "stop"), "int"),
+    ("wfm_param2_step", _settings_scope(_WFM), _attr("Param2", "step"), "int"),
+    ("wfm_threshold_pct", _acceptance_scope(_WFM), _attr("Conditions", "thresholdPct"), "int"),
+    ("wfm_rob_comb_rows", _acceptance_scope(_WFM), _attr("Conditions", "robCombRows"), "int"),
+    ("wfm_rob_comb_cols", _acceptance_scope(_WFM), _attr("Conditions", "robCombCols"), "int"),
+    ("wfm_rob_min_comb", _acceptance_scope(_WFM), _attr("Conditions", "robMinComb"), "int"),
+    # WalkForwardMatrix's own Settings block — same five leaves WFO declares,
+    # addressed through the matrix scope so the two tabs never share a value.
+    ("wfm_period", _settings_scope(_WFM), _attr("WalkForward", "period"), "int"),
+    (
+        "wfm_optimization",
+        _settings_scope(_WFM),
+        _attr("WalkForward", "optimization"),
+        "int",
+    ),
+    ("wfm_optimize_periods", _settings_scope(_WFM), _node("OptimizePeriods"), "boolean"),
+    (
+        "wfm_optimize_exit_types",
+        _settings_scope(_WFM),
+        _node("OptimizeExitTypes"),
+        "boolean",
+    ),
+    ("wfm_max_tests", _settings_scope(_WFM), _node("MaxTests"), "int"),
+    # ── MonteCarloManipulation ──
+    ("mcm_use", _tab_scope(_MCM), _attr(_MCM, "use"), "boolean"),
+    (
+        "mcm_number_of_simulations",
+        _settings_scope(_MCM),
+        _node("NumberOfSimulations"),
+        "int",
+    ),
+    (
+        "mcm_trades_order_use",
+        _method_scope(_MCM, "RandomizeTradesOrder"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "mcm_trades_order_method",
+        _method_scope(_MCM, "RandomizeTradesOrder"),
+        _param("Method"),
+        "string",
+    ),
+    (
+        "mcm_skip_trades_use",
+        _method_scope(_MCM, "RandomlySkipTrades"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "mcm_skip_trades_probability",
+        _method_scope(_MCM, "RandomlySkipTrades"),
+        _param("Probability"),
+        "int",
+    ),
+    # ── OptProfileSysParamPermutation ──
+    ("opspp_use", _tab_scope(_PSPP), _attr(_PSPP, "use"), "boolean"),
+    ("opspp_optim_periods", _settings_scope(_PSPP), _node("OptimPeriods"), "boolean"),
+    ("opspp_optim_exit_types", _settings_scope(_PSPP), _node("OptimExitTypes"), "boolean"),
+    ("opspp_max_tests", _settings_scope(_PSPP), _node("MaxTests"), "int"),
+    ("opspp_profit_opt_pct", _acceptance_scope(_PSPP), _node("ProfitOptPct"), "int"),
+    ("opspp_avg_profit", _acceptance_scope(_PSPP), _node("AvgProfit"), "int"),
+    (
+        "opspp_uniform_distr_changes",
+        _acceptance_scope(_PSPP),
+        _node("UniformDistrChanges"),
+        "int",
+    ),
+    ("opspp_stdev_avg_profit", _acceptance_scope(_PSPP), _node("StdevAvgProfit"), "int"),
+    (
+        "opspp_eval_profit_opt_check",
+        _acceptance_scope(_PSPP),
+        _node("EvalProfitOptCheck"),
+        "boolean",
+    ),
+    (
+        "opspp_eval_avg_profit_check",
+        _acceptance_scope(_PSPP),
+        _node("EvalAvgProfitCheck"),
+        "boolean",
+    ),
+    (
+        "opspp_eval_uniform_distr_check",
+        _acceptance_scope(_PSPP),
+        _node("EvalUniformDistrCheck"),
+        "boolean",
+    ),
+    (
+        "opspp_eval_top_profit_check",
+        _acceptance_scope(_PSPP),
+        _node("EvalTopProfitCheck"),
+        "boolean",
+    ),
+    # ── WhatIf ──
+    ("wi_use", _tab_scope(_WI), _attr(_WI, "use"), "boolean"),
+    (
+        "wi_by_days_use",
+        _method_scope(_WI, "ByDays"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_by_hours_use",
+        _method_scope(_WI, "ByHours"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_by_months_use",
+        _method_scope(_WI, "ByMonths"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_exclude_pct_biggest_pl_use",
+        _method_scope(_WI, "ExcludePctTradesWithBiggestPl"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_exclude_pct_lowest_pl_use",
+        _method_scope(_WI, "ExcludePctTradesWithLowestPl"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_exclude_short_trades_use",
+        _method_scope(_WI, "ExcludeShortTrades"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_exclude_biggest_pl_use",
+        _method_scope(_WI, "ExcludeTradesWithBiggestPl"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_exclude_lowest_pl_use",
+        _method_scope(_WI, "ExcludeTradesWithLowestPl"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_exclude_overlapping_use",
+        _method_scope(_WI, "ExludeOverlappingTrades"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_remove_balance_transactions_use",
+        _method_scope(_WI, "RemoveBalanceTransactions"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_remove_pending_trades_use",
+        _method_scope(_WI, "RemovePendingTrades"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    ("wi_swap_use", _method_scope(_WI, "Swap"), _attr("Method", "use"), "boolean"),
+    (
+        "wi_take_every_second_trade_use",
+        _method_scope(_WI, "TakeEverySecondTrade"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_take_max_trades_per_day_use",
+        _method_scope(_WI, "TakeMaxTradesPerDay"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_use_fixed_lots_use",
+        _method_scope(_WI, "UseFixedLots"),
+        _attr("Method", "use"),
+        "boolean",
+    ),
+    (
+        "wi_exclude_biggest_pl_trades",
+        _method_scope(_WI, "ExcludeTradesWithBiggestPl"),
+        _param("Trades"),
+        "int",
+    ),
+    (
+        "wi_exclude_lowest_pl_trades",
+        _method_scope(_WI, "ExcludeTradesWithLowestPl"),
+        _param("Trades"),
+        "int",
+    ),
+    (
+        "wi_exclude_short_trades_pct",
+        _method_scope(_WI, "ExcludeShortTrades"),
+        _param("TradesPct"),
+        "int",
+    ),
+    (
+        "wi_exclude_short_trades_minutes",
+        _method_scope(_WI, "ExcludeShortTrades"),
+        _param("Minutes"),
+        "int",
+    ),
+    (
+        "wi_take_max_trades_per_day_trades",
+        _method_scope(_WI, "TakeMaxTradesPerDay"),
+        _param("Trades"),
+        "int",
+    ),
+    ("wi_use_fixed_lots_size", _method_scope(_WI, "UseFixedLots"), _param("Size"), "float"),
+    ("wi_swap_long", _method_scope(_WI, "Swap"), _param("swapLongInput"), "float"),
+    ("wi_swap_short", _method_scope(_WI, "Swap"), _param("swapShortInput"), "float"),
+    # ── SequentialOptimization (self-closing in real configs) ──
+    ("so_use", _tab_scope(_SO), _attr(_SO, "use"), "boolean"),
+)
+
+# Bracket the value between two capture groups: every scoped leaf uses it.
+_CROSSCHECK_REPLACEMENT = r"\g<1>{value}\g<2>"
+_CROSSCHECK_SCOPES: dict[str, str] = {
+    field: scope for field, scope, _leaf, _ft in _CROSSCHECK_FIELD_SPECS
+}
+_CROSSCHECK_FIELD_SPEC_BY_NAME: dict[str, tuple[str, str, str, str]] = {
+    field: (field, scope, leaf, ft)
+    for field, scope, leaf, ft in _CROSSCHECK_FIELD_SPECS
 }
 
 
@@ -472,9 +1019,120 @@ class BuildConfig:
     rc_pf_min: float | None = None
     rc_min_conditions: int | None = None
     rc_min_markets: int | None = None
-    main_test_values: dict[str, bool] | None = (
-        None  # which cross-check validations to run
-    )
+    main_test_values: dict[str, bool] | None = None  # which cross-check validations to run
+
+    # ── CrossChecks full parameter catalog (crosschecks-parameter-catalog) ──
+    # Every leaf below is declared in _CROSSCHECK_FIELD_SPECS together with the
+    # XML scope it owns, so repeated names never leak between tabs.
+    # ── RetestOnAdditionalMarkets ──
+    rc_use: bool | None = None
+    rc_date_from: str | None = None
+    rc_date_to: str | None = None
+    rc_test_precision: int | None = None
+    rc_session: str | None = None
+    rc_slippage: int | None = None
+    rc_min_dist: int | None = None
+    rc_engine: str | None = None
+    rc_symbol: str | None = None
+    rc_timeframe: str | None = None
+    rc_commission_method: str | None = None
+    rc_check: str | None = None
+    # ── WalkForwardOptimization ──
+    wf_use: bool | None = None
+    # ── RetestWithHigherPrecision ──
+    hp_use: bool | None = None
+    hp_precision: int | None = None
+    hp_spread: int | None = None
+    # ── MonteCarloRetest ──
+    mcr_use: bool | None = None
+    mcr_number_of_simulations: int | None = None
+    mcr_history_data_use: bool | None = None
+    mcr_history_probability_up: int | None = None
+    mcr_history_probability_down: int | None = None
+    mcr_history_max_change_up: int | None = None
+    mcr_history_max_change_down: int | None = None
+    mcr_min_distance_use: bool | None = None
+    mcr_min_distance_min: float | None = None
+    mcr_min_distance_max: float | None = None
+    mcr_slippage_use: bool | None = None
+    mcr_slippage_min: float | None = None
+    mcr_slippage_max: float | None = None
+    mcr_spread_use: bool | None = None
+    mcr_spread_min: float | None = None
+    mcr_spread_max: float | None = None
+    mcr_starting_bar_use: bool | None = None
+    mcr_starting_bar_max_change: int | None = None
+    mcr_strategy_params_use: bool | None = None
+    mcr_strategy_params_probability: int | None = None
+    mcr_strategy_params_max_change: int | None = None
+    mcr_strategy_params_symmetric: bool | None = None
+    # ── WalkForwardMatrix ──
+    wfm_use: bool | None = None
+    wfm_param1_start: int | None = None
+    wfm_param1_stop: int | None = None
+    wfm_param1_step: int | None = None
+    wfm_param2_start: int | None = None
+    wfm_param2_stop: int | None = None
+    wfm_param2_step: int | None = None
+    wfm_threshold_pct: int | None = None
+    wfm_rob_comb_rows: int | None = None
+    wfm_rob_comb_cols: int | None = None
+    wfm_rob_min_comb: int | None = None
+    # WalkForwardMatrix declares its own copy of the WFO Settings leaves
+    # (Build-Task1.xml); without these they were only reachable by leaking WFO's
+    # values across tabs.
+    wfm_period: int | None = None
+    wfm_optimization: int | None = None
+    wfm_optimize_periods: bool | None = None
+    wfm_optimize_exit_types: bool | None = None
+    wfm_max_tests: int | None = None
+    # ── MonteCarloManipulation ──
+    mcm_use: bool | None = None
+    mcm_number_of_simulations: int | None = None
+    mcm_trades_order_use: bool | None = None
+    mcm_trades_order_method: str | None = None
+    mcm_skip_trades_use: bool | None = None
+    mcm_skip_trades_probability: int | None = None
+    # ── OptProfileSysParamPermutation ──
+    opspp_use: bool | None = None
+    opspp_optim_periods: bool | None = None
+    opspp_optim_exit_types: bool | None = None
+    opspp_max_tests: int | None = None
+    opspp_profit_opt_pct: int | None = None
+    opspp_avg_profit: int | None = None
+    opspp_uniform_distr_changes: int | None = None
+    opspp_stdev_avg_profit: int | None = None
+    opspp_eval_profit_opt_check: bool | None = None
+    opspp_eval_avg_profit_check: bool | None = None
+    opspp_eval_uniform_distr_check: bool | None = None
+    opspp_eval_top_profit_check: bool | None = None
+    # ── WhatIf ──
+    wi_use: bool | None = None
+    wi_by_days_use: bool | None = None
+    wi_by_hours_use: bool | None = None
+    wi_by_months_use: bool | None = None
+    wi_exclude_pct_biggest_pl_use: bool | None = None
+    wi_exclude_pct_lowest_pl_use: bool | None = None
+    wi_exclude_short_trades_use: bool | None = None
+    wi_exclude_biggest_pl_use: bool | None = None
+    wi_exclude_lowest_pl_use: bool | None = None
+    wi_exclude_overlapping_use: bool | None = None
+    wi_remove_balance_transactions_use: bool | None = None
+    wi_remove_pending_trades_use: bool | None = None
+    wi_swap_use: bool | None = None
+    wi_take_every_second_trade_use: bool | None = None
+    wi_take_max_trades_per_day_use: bool | None = None
+    wi_use_fixed_lots_use: bool | None = None
+    wi_exclude_biggest_pl_trades: int | None = None
+    wi_exclude_lowest_pl_trades: int | None = None
+    wi_exclude_short_trades_pct: int | None = None
+    wi_exclude_short_trades_minutes: int | None = None
+    wi_take_max_trades_per_day_trades: int | None = None
+    wi_use_fixed_lots_size: float | None = None
+    wi_swap_long: float | None = None
+    wi_swap_short: float | None = None
+    # ── SequentialOptimization ──
+    so_use: bool | None = None
 
     # ── Blocks bridge (REQ-18 / REQ-03) ──
     enabled_blocks: list[str] | None = None  # DSL building-block names to enable in SQX
@@ -543,47 +1201,49 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         r'<Param key="StoreChartData" className="StoreChartData">{value}</Param>',
         "boolean",
     ),
+
     # ── Rules Complexity ──
     "min_conditions": (
         r'(minConditions=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "max_conditions": (
         r'(maxConditions=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "min_exit_conditions": (
         r'(minExitConditions=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "max_exit_conditions": (
         r'(maxExitConditions=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "min_period": (
         r'(minPeriod=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "max_period": (
         r'(maxPeriod=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "min_shift": (
         r'(minShift=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "max_shift": (
         r'(maxShift=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
+
     # ── Market Sides ──
     "market_sides": (
         r'<MarketSides type="[^"]*">',
@@ -591,225 +1251,227 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "string",
     ),
     "entry_symmetry": (
-        r"<EntrySymmetry>[^<]*</EntrySymmetry>",
-        r"<EntrySymmetry>{value}</EntrySymmetry>",
+        r'<EntrySymmetry>[^<]*</EntrySymmetry>',
+        r'<EntrySymmetry>{value}</EntrySymmetry>',
         "boolean",
     ),
     "exit_symmetry": (
-        r"<ExitSymmetry>[^<]*</ExitSymmetry>",
-        r"<ExitSymmetry>{value}</ExitSymmetry>",
+        r'<ExitSymmetry>[^<]*</ExitSymmetry>',
+        r'<ExitSymmetry>{value}</ExitSymmetry>',
         "boolean",
     ),
+
     # ── SL/PT Options ──
     "sl_required": (
-        r"<SLRequired>[^<]*</SLRequired>",
-        r"<SLRequired>{value}</SLRequired>",
+        r'<SLRequired>[^<]*</SLRequired>',
+        r'<SLRequired>{value}</SLRequired>',
         "boolean",
     ),
     "sl_fixed_pips": (
-        r"<SLFixedPips>[^<]*</SLFixedPips>",
-        r"<SLFixedPips>{value}</SLFixedPips>",
+        r'<SLFixedPips>[^<]*</SLFixedPips>',
+        r'<SLFixedPips>{value}</SLFixedPips>',
         "boolean",
     ),
     "min_sl_pips": (
-        r"<MinSLInPips>[^<]*</MinSLInPips>",
-        r"<MinSLInPips>{value}</MinSLInPips>",
+        r'<MinSLInPips>[^<]*</MinSLInPips>',
+        r'<MinSLInPips>{value}</MinSLInPips>',
         "int",
     ),
     "max_sl_pips": (
-        r"<MaxSLInPips>[^<]*</MaxSLInPips>",
-        r"<MaxSLInPips>{value}</MaxSLInPips>",
+        r'<MaxSLInPips>[^<]*</MaxSLInPips>',
+        r'<MaxSLInPips>{value}</MaxSLInPips>',
         "int",
     ),
     "min_sl_money": (
-        r"<MinSLInMoney>[^<]*</MinSLInMoney>",
-        r"<MinSLInMoney>{value}</MinSLInMoney>",
+        r'<MinSLInMoney>[^<]*</MinSLInMoney>',
+        r'<MinSLInMoney>{value}</MinSLInMoney>',
         "int",
     ),
     "max_sl_money": (
-        r"<MaxSLInMoney>[^<]*</MaxSLInMoney>",
-        r"<MaxSLInMoney>{value}</MaxSLInMoney>",
+        r'<MaxSLInMoney>[^<]*</MaxSLInMoney>',
+        r'<MaxSLInMoney>{value}</MaxSLInMoney>',
         "int",
     ),
     "sl_atr": (
-        r"<SLATR>[^<]*</SLATR>",
-        r"<SLATR>{value}</SLATR>",
+        r'<SLATR>[^<]*</SLATR>',
+        r'<SLATR>{value}</SLATR>',
         "boolean",
     ),
     "min_sl_atr_multiple": (
-        r"<MinSLATRMultiple>[^<]*</MinSLATRMultiple>",
-        r"<MinSLATRMultiple>{value}</MinSLATRMultiple>",
+        r'<MinSLATRMultiple>[^<]*</MinSLATRMultiple>',
+        r'<MinSLATRMultiple>{value}</MinSLATRMultiple>',
         "float",
     ),
     "max_sl_atr_multiple": (
-        r"<MaxSLATRMultiple>[^<]*</MaxSLATRMultiple>",
-        r"<MaxSLATRMultiple>{value}</MaxSLATRMultiple>",
+        r'<MaxSLATRMultiple>[^<]*</MaxSLATRMultiple>',
+        r'<MaxSLATRMultiple>{value}</MaxSLATRMultiple>',
         "float",
     ),
     "min_sl_atr_period": (
-        r"<MinSLATRPeriod>[^<]*</MinSLATRPeriod>",
-        r"<MinSLATRPeriod>{value}</MinSLATRPeriod>",
+        r'<MinSLATRPeriod>[^<]*</MinSLATRPeriod>',
+        r'<MinSLATRPeriod>{value}</MinSLATRPeriod>',
         "int",
     ),
     "max_sl_atr_period": (
-        r"<MaxSLATRPeriod>[^<]*</MaxSLATRPeriod>",
-        r"<MaxSLATRPeriod>{value}</MaxSLATRPeriod>",
+        r'<MaxSLATRPeriod>[^<]*</MaxSLATRPeriod>',
+        r'<MaxSLATRPeriod>{value}</MaxSLATRPeriod>',
         "int",
     ),
     "pt_required": (
-        r"<PTRequired>[^<]*</PTRequired>",
-        r"<PTRequired>{value}</PTRequired>",
+        r'<PTRequired>[^<]*</PTRequired>',
+        r'<PTRequired>{value}</PTRequired>',
         "boolean",
     ),
     "pt_fixed_pips": (
-        r"<PTFixedPips>[^<]*</PTFixedPips>",
-        r"<PTFixedPips>{value}</PTFixedPips>",
+        r'<PTFixedPips>[^<]*</PTFixedPips>',
+        r'<PTFixedPips>{value}</PTFixedPips>',
         "boolean",
     ),
     "min_pt_pips": (
-        r"<MinPTInPips>[^<]*</MinPTInPips>",
-        r"<MinPTInPips>{value}</MinPTInPips>",
+        r'<MinPTInPips>[^<]*</MinPTInPips>',
+        r'<MinPTInPips>{value}</MinPTInPips>',
         "int",
     ),
     "max_pt_pips": (
-        r"<MaxPTInPips>[^<]*</MaxPTInPips>",
-        r"<MaxPTInPips>{value}</MaxPTInPips>",
+        r'<MaxPTInPips>[^<]*</MaxPTInPips>',
+        r'<MaxPTInPips>{value}</MaxPTInPips>',
         "int",
     ),
     "min_pt_money": (
-        r"<MinPTInMoney>[^<]*</MinPTInMoney>",
-        r"<MinPTInMoney>{value}</MinPTInMoney>",
+        r'<MinPTInMoney>[^<]*</MinPTInMoney>',
+        r'<MinPTInMoney>{value}</MinPTInMoney>',
         "int",
     ),
     "max_pt_money": (
-        r"<MaxPTInMoney>[^<]*</MaxPTInMoney>",
-        r"<MaxPTInMoney>{value}</MaxPTInMoney>",
+        r'<MaxPTInMoney>[^<]*</MaxPTInMoney>',
+        r'<MaxPTInMoney>{value}</MaxPTInMoney>',
         "int",
     ),
     "pt_atr": (
-        r"<PTATR>[^<]*</PTATR>",
-        r"<PTATR>{value}</PTATR>",
+        r'<PTATR>[^<]*</PTATR>',
+        r'<PTATR>{value}</PTATR>',
         "boolean",
     ),
     "min_pt_atr_multiple": (
-        r"<MinPTATRMultiple>[^<]*</MinPTATRMultiple>",
-        r"<MinPTATRMultiple>{value}</MinPTATRMultiple>",
+        r'<MinPTATRMultiple>[^<]*</MinPTATRMultiple>',
+        r'<MinPTATRMultiple>{value}</MinPTATRMultiple>',
         "float",
     ),
     "max_pt_atr_multiple": (
-        r"<MaxPTATRMultiple>[^<]*</MaxPTATRMultiple>",
-        r"<MaxPTATRMultiple>{value}</MaxPTATRMultiple>",
+        r'<MaxPTATRMultiple>[^<]*</MaxPTATRMultiple>',
+        r'<MaxPTATRMultiple>{value}</MaxPTATRMultiple>',
         "float",
     ),
     "min_pt_atr_period": (
-        r"<MinPTATRPeriod>[^<]*</MinPTATRPeriod>",
-        r"<MinPTATRPeriod>{value}</MinPTATRPeriod>",
+        r'<MinPTATRPeriod>[^<]*</MinPTATRPeriod>',
+        r'<MinPTATRPeriod>{value}</MinPTATRPeriod>',
         "int",
     ),
     "max_pt_atr_period": (
-        r"<MaxPTATRPeriod>[^<]*</MaxPTATRPeriod>",
-        r"<MaxPTATRPeriod>{value}</MaxPTATRPeriod>",
+        r'<MaxPTATRPeriod>[^<]*</MaxPTATRPeriod>',
+        r'<MaxPTATRPeriod>{value}</MaxPTATRPeriod>',
         "int",
     ),
     "limit_slpt_rrr": (
-        r"<LimitSLPTRRR>[^<]*</LimitSLPTRRR>",
-        r"<LimitSLPTRRR>{value}</LimitSLPTRRR>",
+        r'<LimitSLPTRRR>[^<]*</LimitSLPTRRR>',
+        r'<LimitSLPTRRR>{value}</LimitSLPTRRR>',
         "boolean",
     ),
     "limit_slpt_rrr_from": (
-        r"<LimitSLPTRRRFrom>[^<]*</LimitSLPTRRRFrom>",
-        r"<LimitSLPTRRRFrom>{value}</LimitSLPTRRRFrom>",
+        r'<LimitSLPTRRRFrom>[^<]*</LimitSLPTRRRFrom>',
+        r'<LimitSLPTRRRFrom>{value}</LimitSLPTRRRFrom>',
         "int",
     ),
     "limit_slpt_rrr_to": (
-        r"<LimitSLPTRRRTo>[^<]*</LimitSLPTRRRTo>",
-        r"<LimitSLPTRRRTo>{value}</LimitSLPTRRRTo>",
+        r'<LimitSLPTRRRTo>[^<]*</LimitSLPTRRRTo>',
+        r'<LimitSLPTRRRTo>{value}</LimitSLPTRRRTo>',
         "int",
     ),
     "sl_value_type": (
-        r"<SLValueType>[^<]*</SLValueType>",
-        r"<SLValueType>{value}</SLValueType>",
+        r'<SLValueType>[^<]*</SLValueType>',
+        r'<SLValueType>{value}</SLValueType>',
         "string",
     ),
     "pt_value_type": (
-        r"<PTValueType>[^<]*</PTValueType>",
-        r"<PTValueType>{value}</PTValueType>",
+        r'<PTValueType>[^<]*</PTValueType>',
+        r'<PTValueType>{value}</PTValueType>',
         "string",
     ),
     "sl_indicator_based": (
-        r"<SLIndicatorBased>[^<]*</SLIndicatorBased>",
-        r"<SLIndicatorBased>{value}</SLIndicatorBased>",
+        r'<SLIndicatorBased>[^<]*</SLIndicatorBased>',
+        r'<SLIndicatorBased>{value}</SLIndicatorBased>',
         "boolean",
     ),
     "pt_indicator_based": (
-        r"<PTIndicatorBased>[^<]*</PTIndicatorBased>",
-        r"<PTIndicatorBased>{value}</PTIndicatorBased>",
+        r'<PTIndicatorBased>[^<]*</PTIndicatorBased>',
+        r'<PTIndicatorBased>{value}</PTIndicatorBased>',
         "boolean",
     ),
     "sl_percent": (
-        r"<SLPercent>[^<]*</SLPercent>",
-        r"<SLPercent>{value}</SLPercent>",
+        r'<SLPercent>[^<]*</SLPercent>',
+        r'<SLPercent>{value}</SLPercent>',
         "boolean",
     ),
     "min_sl_percent": (
-        r"<MinSLInPercent>[^<]*</MinSLInPercent>",
-        r"<MinSLInPercent>{value}</MinSLInPercent>",
+        r'<MinSLInPercent>[^<]*</MinSLInPercent>',
+        r'<MinSLInPercent>{value}</MinSLInPercent>',
         "float",
     ),
     "max_sl_percent": (
-        r"<MaxSLInPercent>[^<]*</MaxSLInPercent>",
-        r"<MaxSLInPercent>{value}</MaxSLInPercent>",
+        r'<MaxSLInPercent>[^<]*</MaxSLInPercent>',
+        r'<MaxSLInPercent>{value}</MaxSLInPercent>',
         "float",
     ),
     "pt_percent": (
-        r"<PTPercent>[^<]*</PTPercent>",
-        r"<PTPercent>{value}</PTPercent>",
+        r'<PTPercent>[^<]*</PTPercent>',
+        r'<PTPercent>{value}</PTPercent>',
         "boolean",
     ),
     "min_pt_percent": (
-        r"<MinPTInPercent>[^<]*</MinPTInPercent>",
-        r"<MinPTInPercent>{value}</MinPTInPercent>",
+        r'<MinPTInPercent>[^<]*</MinPTInPercent>',
+        r'<MinPTInPercent>{value}</MinPTInPercent>',
         "float",
     ),
     "max_pt_percent": (
-        r"<MaxPTInPercent>[^<]*</MaxPTInPercent>",
-        r"<MaxPTInPercent>{value}</MaxPTInPercent>",
+        r'<MaxPTInPercent>[^<]*</MaxPTInPercent>',
+        r'<MaxPTInPercent>{value}</MaxPTInPercent>',
         "float",
     ),
+
     # ── BuildMode (Genetic) ──
     "generations": (
-        r"<MaxGenerations>\d+</MaxGenerations>",
-        r"<MaxGenerations>{value}</MaxGenerations>",
+        r'<MaxGenerations>\d+</MaxGenerations>',
+        r'<MaxGenerations>{value}</MaxGenerations>',
         "int",
     ),
     "population": (
-        r"<PopulationSize>\d+</PopulationSize>",
-        r"<PopulationSize>{value}</PopulationSize>",
+        r'<PopulationSize>\d+</PopulationSize>',
+        r'<PopulationSize>{value}</PopulationSize>',
         "int",
     ),
     "islands": (
-        r"<Islands>\d+</Islands>",
-        r"<Islands>{value}</Islands>",
+        r'<Islands>\d+</Islands>',
+        r'<Islands>{value}</Islands>',
         "int",
     ),
     "migration_modulo": (
-        r"<MigrationModulo>\d+</MigrationModulo>",
-        r"<MigrationModulo>{value}</MigrationModulo>",
+        r'<MigrationModulo>\d+</MigrationModulo>',
+        r'<MigrationModulo>{value}</MigrationModulo>',
         "int",
     ),
     "migration_rate": (
-        r"<MigrationRate>\d+</MigrationRate>",
-        r"<MigrationRate>{value}</MigrationRate>",
+        r'<MigrationRate>\d+</MigrationRate>',
+        r'<MigrationRate>{value}</MigrationRate>',
         "int",
     ),
     "init_generation_type": (
-        r"<InitGenerationType>\d+</InitGenerationType>",
-        r"<InitGenerationType>{value}</InitGenerationType>",
+        r'<InitGenerationType>\d+</InitGenerationType>',
+        r'<InitGenerationType>{value}</InitGenerationType>',
         "int",
     ),
     "decimation_coef": (
-        r"<DecimationCoef>\d+</DecimationCoef>",
-        r"<DecimationCoef>{value}</DecimationCoef>",
+        r'<DecimationCoef>\d+</DecimationCoef>',
+        r'<DecimationCoef>{value}</DecimationCoef>',
         "int",
     ),
     "evo_restart_on_finish": (
@@ -838,44 +1500,45 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "int",
     ),
     "fresh_blood_replace_similar": (
-        r"<FreshBloodReplaceSimilar>[^<]*</FreshBloodReplaceSimilar>",
-        r"<FreshBloodReplaceSimilar>{value}</FreshBloodReplaceSimilar>",
+        r'<FreshBloodReplaceSimilar>[^<]*</FreshBloodReplaceSimilar>',
+        r'<FreshBloodReplaceSimilar>{value}</FreshBloodReplaceSimilar>',
         "boolean",
     ),
     "fresh_blood_replace_weakest": (
-        r"<FreshBloodReplaceWeakest>[^<]*</FreshBloodReplaceWeakest>",
-        r"<FreshBloodReplaceWeakest>{value}</FreshBloodReplaceWeakest>",
+        r'<FreshBloodReplaceWeakest>[^<]*</FreshBloodReplaceWeakest>',
+        r'<FreshBloodReplaceWeakest>{value}</FreshBloodReplaceWeakest>',
         "boolean",
     ),
     "fresh_blood_weakest_pct": (
-        r"<FreshBloodWeakestPct>\d+</FreshBloodWeakestPct>",
-        r"<FreshBloodWeakestPct>{value}</FreshBloodWeakestPct>",
+        r'<FreshBloodWeakestPct>\d+</FreshBloodWeakestPct>',
+        r'<FreshBloodWeakestPct>{value}</FreshBloodWeakestPct>',
         "int",
     ),
     "fresh_blood_weakest_generations": (
-        r"<FreshBloodWeakestGenerations>\d+</FreshBloodWeakestGenerations>",
-        r"<FreshBloodWeakestGenerations>{value}</FreshBloodWeakestGenerations>",
+        r'<FreshBloodWeakestGenerations>\d+</FreshBloodWeakestGenerations>',
+        r'<FreshBloodWeakestGenerations>{value}</FreshBloodWeakestGenerations>',
         "int",
     ),
     "filter_initial_population": (
-        r"<FilterInitialPopulation>[^<]*</FilterInitialPopulation>",
-        r"<FilterInitialPopulation>{value}</FilterInitialPopulation>",
+        r'<FilterInitialPopulation>[^<]*</FilterInitialPopulation>',
+        r'<FilterInitialPopulation>{value}</FilterInitialPopulation>',
         "boolean",
     ),
     "evo_fitness_restart_type": (
-        r"<EvoFitnessRestartType>\d+</EvoFitnessRestartType>",
-        r"<EvoFitnessRestartType>{value}</EvoFitnessRestartType>",
+        r'<EvoFitnessRestartType>\d+</EvoFitnessRestartType>',
+        r'<EvoFitnessRestartType>{value}</EvoFitnessRestartType>',
         "int",
     ),
     "evo_stagnation_restart_generations": (
-        r"<EvoStagnationRestartGenerations>\d+</EvoStagnationRestartGenerations>",
-        r"<EvoStagnationRestartGenerations>{value}</EvoStagnationRestartGenerations>",
+        r'<EvoStagnationRestartGenerations>\d+</EvoStagnationRestartGenerations>',
+        r'<EvoStagnationRestartGenerations>{value}</EvoStagnationRestartGenerations>',
         "int",
     ),
+
     # ── Rankings ──
     "max_strategies": (
-        r"<MaxStrategies>\d+</MaxStrategies>",
-        r"<MaxStrategies>{value}</MaxStrategies>",
+        r'<MaxStrategies>\d+</MaxStrategies>',
+        r'<MaxStrategies>{value}</MaxStrategies>',
         "int",
     ),
     "ranking_type": (
@@ -885,24 +1548,25 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
     ),
     "ranking_avg_trades_min": (
         r'(<Column-Value column="AvgTradesPerMonth"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "ranking_pf_min": (
         r'(<Column-Value column="ProfitFactor"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "float",
     ),
     "ranking_return_dd_min": (
         r'(<Column-Value column="ReturnDDRatio"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "float",
     ),
     "ranking_conditions_type": (
-        r"<ConditionsType>\d+</ConditionsType>",
-        r"<ConditionsType>{value}</ConditionsType>",
+        r'<ConditionsType>\d+</ConditionsType>',
+        r'<ConditionsType>{value}</ConditionsType>',
         "int",
     ),
+
     # ── MoneyManagement ──
     "mm_method": (
         r'<Method type="[^"]*" use="[^"]*"',
@@ -915,8 +1579,8 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "float",
     ),
     "initial_capital": (
-        r"<InitialCapital>\d+</InitialCapital>",
-        r"<InitialCapital>{value}</InitialCapital>",
+        r'<InitialCapital>\d+</InitialCapital>',
+        r'<InitialCapital>{value}</InitialCapital>',
         "int",
     ),
     "mm_risk_pct": (
@@ -929,137 +1593,64 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         r'<RiskManagement maxDrawdown="{value}">',
         "int",
     ),
+
     # ── ATMs ──
     "atms_enable": (
         r'(<ATMs enable=")[^"]*(")',
-        r"\g<1>{value}\g<2>",
+        r'\g<1>{value}\g<2>',
         "boolean",
     ),
     "atms_scale_out_type": (
         r'(<ATMs[^>]*scaleOutType=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "atms_size_decimals": (
         r'(<ATMs[^>]*sizeDecimals=")\d+(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "int",
     ),
     "atms_min_size": (
         r'(<ATMs[^>]*minSize=")[^"]*(")',
-        r"\g<1>{value}\2",
+        r'\g<1>{value}\2',
         "float",
     ),
+
     # ── PartsToImprove ──
     "entry_rules_symmetry": (
         r'(<EntryRules symmetry=")[^"]*(")',
-        r"\g<1>{value}\g<2>",
+        r'\g<1>{value}\g<2>',
         "boolean",
     ),
     "entry_long_improvement": (
         r'(<LongImprovement use=")[^"]*(")',
-        r"\g<1>{value}\g<2>",
+        r'\g<1>{value}\g<2>',
         "boolean",
     ),
     "entry_short_improvement": (
         r'(<ShortImprovement use=")[^"]*(")',
-        r"\g<1>{value}\g<2>",
+        r'\g<1>{value}\g<2>',
         "boolean",
     ),
     "exit_rules_symmetry": (
         r'(<ExitRules symmetry=")[^"]*(")',
-        r"\g<1>{value}\g<2>",
+        r'\g<1>{value}\g<2>',
         "boolean",
     ),
     "exit_long_improvement": (
         r'(<LongImprovement use=")[^"]*(")',
-        r"\g<1>{value}\g<2>",
+        r'\g<1>{value}\g<2>',
         "boolean",
     ),
     "exit_short_improvement": (
         r'(<ShortImprovement use=")[^"]*(")',
-        r"\g<1>{value}\g<2>",
+        r'\g<1>{value}\g<2>',
         "boolean",
     ),
-    # ── CrossChecks internals ──
-    "wf_period": (
-        r'(<WalkForward type="1" period=")\d+(")',
-        r"\g<1>{value}\2",
-        "int",
-    ),
-    "wf_optimization": (
-        r'(<WalkForward type="1" period="\d+" optimization=")\d+(")',
-        r"\g<1>{value}\2",
-        "int",
-    ),
-    "wf_param1": (
-        r'(<Param1 value=")\d+(")',
-        r"\g<1>{value}\2",
-        "int",
-    ),
-    "wf_param2": (
-        r'(<Param2 value=")\d+(")',
-        r"\g<1>{value}\2",
-        "int",
-    ),
-    "wf_optimize_periods": (
-        r"(<OptimizePeriods>)[^<]*(</OptimizePeriods>)",
-        r"\g<1>{value}\g<2>",
-        "boolean",
-    ),
-    "wf_optimize_exit_types": (
-        r"(<OptimizeExitTypes>)[^<]*(</OptimizeExitTypes>)",
-        r"\g<1>{value}\g<2>",
-        "boolean",
-    ),
-    "wf_max_tests": (
-        r"(<MaxTests>)\d+(</MaxTests>)",
-        r"\g<1>{value}\g<2>",
-        "int",
-    ),
-    "wf_acceptance_threshold_pct": (
-        r'(<Conditions thresholdPct=")\d+(")',
-        r"\g<1>{value}\2",
-        "int",
-    ),
-    "wf_acceptance_min_conditions": (
-        r"(<MinConditions>)\d+(</MinConditions>)",
-        r"\g<1>{value}\g<2>",
-        "int",
-    ),
-    "wf_acceptance_min_markets": (
-        r"(<MinMarkets>)\d+(</MinMarkets>)",
-        r"\g<1>{value}\g<2>",
-        "int",
-    ),
-    "wf_acceptance_pf_min": (
-        r'(<Column-Value column="NetProfit"[^>]*resultType="WalkForwardOptimization"[^>]*minValue=")[^"]*(")',
-        r"\g<1>{value}\2",
-        "float",
-    ),
-    "rc_spread": (
-        r'(<Chart symbol="[^"]*" timeframe="[^"]*" spread=")\d+(")',
-        r"\g<1>{value}\2",
-        "int",
-    ),
-    "rc_pf_min": (
-        r'(<Column-Value column="ProfitFactor"[^>]*resultType="RetestOnAdditionalMarkets"[^>]*minValue=")[^"]*(")',
-        r"\g<1>{value}\2",
-        "float",
-    ),
-    "rc_min_conditions": (
-        r"(<MinConditions>)\d+(</MinConditions>)",
-        r"\g<1>{value}\g<2>",
-        "int",
-    ),
-    "rc_min_markets": (
-        r"(<MinMarkets>)\d+(</MinMarkets>)",
-        r"\g<1>{value}\g<2>",
-        "int",
-    ),
+
     "main_test_values": (
-        r"<MainTestValues[^>]*/>",
-        r"<MainTestValues {main_test_values_xml} />",
+        r'<MainTestValues[^>]*/>',
+        r'<MainTestValues {main_test_values_xml} />',
         "dict",
     ),
     # ── Blocks bridge (REQ-18 / REQ-03) ──
@@ -1080,6 +1671,36 @@ _BUILD_CONFIG_MAP: dict[str, tuple[str, str, str]] = {
         "blocks",
     ),
 }
+
+# CrossChecks leaves are registered with format_type "crosscheck" instead of
+# being expanded inline: the same pattern works for a dozen fields, and the
+# scoping — the part that actually prevents cross-tab corruption — stays in one
+# reviewable table. _apply_build_config looks the scope up in
+# _CROSSCHECK_SCOPES and rewrites inside that region only.
+_BUILD_CONFIG_MAP.update(
+    {
+        field: (leaf, _CROSSCHECK_REPLACEMENT, "crosscheck")
+        for field, _scope, leaf, _ft in _CROSSCHECK_FIELD_SPECS
+    }
+)
+
+_CROSSCHECK_TABS_BY_PREFIX: dict[str, str] = {
+    "rc_": _RC,
+    "wf_": _WFO,
+    "hp_": _HPR,
+    "mcr_": _MCR,
+    "wfm_": _WFM,
+    "mcm_": _MCM,
+    "opspp_": _PSPP,
+    "wi_": _WI,
+    "so_": _SO,
+}
+for _field, _scope, _leaf, _ft in _CROSSCHECK_FIELD_SPECS:
+    for _prefix, _tab in _CROSSCHECK_TABS_BY_PREFIX.items():
+        if _field.startswith(_prefix):
+            _FIELD_TABS[_field] = _tab
+            break
+
 
 
 def get_tab_for_field(field_name: str) -> str:
@@ -1214,7 +1835,15 @@ def get_tab_for_field(field_name: str) -> str:
         "enabled_blocks": "Blocks bridge",
         "block_weights": "Blocks bridge",
     }
-    return _TAB_MAP.get(field_name, "Other")
+    tab = _TAB_MAP.get(field_name)
+    if tab is not None:
+        return tab
+    # CrossChecks leaves are classified by the prefix table so the 92-entry
+    # catalog cannot drift from its tab mapping (tests assert this round-trip).
+    for _prefix, _crosscheck_tab in _CROSSCHECK_TABS_BY_PREFIX.items():
+        if field_name.startswith(_prefix):
+            return _crosscheck_tab
+    return "Other"
 
 
 def _format_build_config_value(value: Any, format_type: str) -> str:
@@ -1225,7 +1854,9 @@ def _format_build_config_value(value: Any, format_type: str) -> str:
         return str(value)
     elif format_type == "float":
         return f"{value:.2f}"
-    elif format_type == "string" or format_type == "dict":
+    elif format_type == "string":
+        return str(value)
+    elif format_type == "dict":
         return str(value)
     else:
         return str(value)
@@ -1258,7 +1889,7 @@ def _apply_block_entries(
     for name in enabled:
         if not re.search(rf'<Block key="{re.escape(name)}"', template_xml):
             logger.warning(
-                'Blocks bridge: template has no <Block key="%s"> — leaving XML unchanged',
+                "Blocks bridge: template has no <Block key=\"%s\"> — leaving XML unchanged",
                 name,
             )
             return template_xml
@@ -1268,17 +1899,46 @@ def _apply_block_entries(
         weight = weights.get(name, 1.0)
         xml = re.sub(
             rf'(<Block key="{re.escape(name)}"[^>]*?weight=")[^"]*(")',
-            rf"\g<1>{weight:g}\g<2>",
+            rf'\g<1>{weight:g}\g<2>',
             xml,
             count=1,
         )
         xml = re.sub(
             rf'(<Block key="{re.escape(name)}"[^>]*?use=")false(")',
-            r"\g<1>true\g<2>",
+            r'\g<1>true\g<2>',
             xml,
             count=1,
         )
     return xml
+
+
+def _apply_in_scope(
+    xml: str, field_name: str, scope: str, leaf: str, replacement: str
+) -> str:
+    """Rewrite ``leaf`` only inside the region ``scope`` matches.
+
+    A missing scope or a leaf that does not match inside its own region means
+    the field targets XML this build does not have. Rather than silently
+    corrupting a sibling tab — or rewriting every occurrence in the document —
+    the original XML is preserved and the situation is logged.
+    """
+    region = re.search(scope, xml, re.DOTALL)
+    if region is None:
+        logger.warning(
+            "BuildConfig field '%s': no matching XML region for its tab scope — "
+            "leaving XML unchanged. The field likely does not exist in this SQX build.",
+            field_name,
+        )
+        return xml
+
+    patched = re.sub(leaf, replacement, region.group(0), flags=re.DOTALL)
+    if re.search(leaf, region.group(0), flags=re.DOTALL) is None:
+        logger.warning(
+            "BuildConfig field '%s': pattern found no match inside its own tab scope — "
+            "leaving XML unchanged.",
+            field_name,
+        )
+    return xml[: region.start()] + patched + xml[region.end() :]
 
 
 def _apply_build_config(template_xml: str, config: BuildConfig) -> str:
@@ -1309,12 +1969,27 @@ def _apply_build_config(template_xml: str, config: BuildConfig) -> str:
         if format_type == "dict" and field_name == "main_test_values":
             # Special handling for MainTestValues dict
             values_xml = _build_main_test_values_xml(value)
-            xml = re.sub(pattern, f"<MainTestValues {values_xml} />", xml)
+            xml = re.sub(pattern, f'<MainTestValues {values_xml} />', xml)
             continue
 
         if format_type == "blocks":
             # Blocks bridge (REQ-03): emit block entries via template probe.
             xml = _apply_block_entries(xml, value, config.block_weights or {})
+            continue
+
+        if format_type == "crosscheck":
+            # The map records the "crosscheck" marker, not the scalar type, so
+            # the real type comes from the spec table. Formatting with the
+            # marker would emit Python's True/False instead of SQX's true/false.
+            spec = _CROSSCHECK_FIELD_SPEC_BY_NAME[field_name]
+            formatted = _format_build_config_value(value, spec[3])
+            xml = _apply_in_scope(
+                xml,
+                field_name,
+                spec[1],
+                pattern,
+                replacement.format(value=formatted),
+            )
             continue
 
         formatted = _format_build_config_value(value, format_type)
@@ -1325,6 +2000,7 @@ def _apply_build_config(template_xml: str, config: BuildConfig) -> str:
             logger.warning("Failed to apply build config field '%s': %s", field_name, e)
 
     return xml
+
 
 
 def create_project(
@@ -1369,24 +2045,14 @@ def create_project(
     dest_cfx = project_dir / "project.cfx"
 
     # Clamp date_to to available data for the symbol
-    effective_date_to = (
-        _clamp_date_to(symbol, date_to) if date_to else _MAX_DATE_DEFAULT
-    )
+    effective_date_to = _clamp_date_to(symbol, date_to) if date_to else _MAX_DATE_DEFAULT
 
     # Use broker_profile to override slippage/spread/commission defaults
     if broker_profile is not None:
         slippage = max(1, int(broker_profile.slippage.fixed_pips))
         spread = max(1, int(broker_profile.spread_config.base_spread))
-        comm_type = (
-            broker_profile.commission.type.value
-            if hasattr(broker_profile.commission.type, "value")
-            else broker_profile.commission.type
-        )
-        _commission = (
-            float(broker_profile.commission.value)
-            if comm_type in ("fixed", "percent")
-            else 0.0
-        )
+        comm_type = broker_profile.commission.type.value if hasattr(broker_profile.commission.type, 'value') else broker_profile.commission.type
+        commission = float(broker_profile.commission.value) if comm_type in ("fixed", "percent") else 0.0
 
     # Remove if exists
     if project_dir.exists():
@@ -1394,11 +2060,8 @@ def create_project(
 
     # Create databank directories (SQX expects these)
     databanks = [
-        "Results",
-        "Last generation",
-        "Initial population",
-        "Strategies to improve",
-        "Existing portfolio",
+        "Results", "Last generation", "Initial population",
+        "Strategies to improve", "Existing portfolio",
     ]
     for db in databanks:
         (project_dir / "databanks" / db).mkdir(parents=True, exist_ok=True)
@@ -1473,23 +2136,23 @@ def create_project(
 
     # 4. Genetic settings
     task_xml = re.sub(
-        r"<PopulationSize>\d+</PopulationSize>",
-        f"<PopulationSize>{population}</PopulationSize>",
+        r'<PopulationSize>\d+</PopulationSize>',
+        f'<PopulationSize>{population}</PopulationSize>',
         task_xml,
     )
     task_xml = re.sub(
-        r"<MaxGenerations>\d+</MaxGenerations>",
-        f"<MaxGenerations>{generations}</MaxGenerations>",
+        r'<MaxGenerations>\d+</MaxGenerations>',
+        f'<MaxGenerations>{generations}</MaxGenerations>',
         task_xml,
     )
     task_xml = re.sub(
-        r"<CrossoverProbability>[0-9.]+</CrossoverProbability>",
-        f"<CrossoverProbability>{crossover}</CrossoverProbability>",
+        r'<CrossoverProbability>[0-9.]+</CrossoverProbability>',
+        f'<CrossoverProbability>{crossover}</CrossoverProbability>',
         task_xml,
     )
     task_xml = re.sub(
-        r"<MutationProbability>[0-9.]+</MutationProbability>",
-        f"<MutationProbability>{mutation}</MutationProbability>",
+        r'<MutationProbability>[0-9.]+</MutationProbability>',
+        f'<MutationProbability>{mutation}</MutationProbability>',
         task_xml,
     )
 
@@ -1506,17 +2169,17 @@ def create_project(
         # Find ProfitFactor condition and set threshold
         task_xml = re.sub(
             r'(<Column-Value column="ProfitFactor"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-            f"\\g<1>{rankings_min_profit_factor}\\2",
+            f'\\g<1>{rankings_min_profit_factor}\\2',
             task_xml,
         )
         task_xml = re.sub(
             r'(<Column-Value column="AvgTradesPerMonth"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-            f"\\g<1>{rankings_min_avg_trades}\\2",
+            f'\\g<1>{rankings_min_avg_trades}\\2',
             task_xml,
         )
         task_xml = re.sub(
             r'(<Column-Value column="ReturnDDRatio"[^>]*/>[\s\S]*?<Numeric-Value value=")[^"]*(")',
-            f"\\g<1>{rankings_min_return_dd}\\2",
+            f'\\g<1>{rankings_min_return_dd}\\2',
             task_xml,
         )
     else:
@@ -1557,14 +2220,8 @@ def create_project(
 
     logger.info(
         "Created project '%s' at %s (%s %s, %d gen, %d pop, date %s..%s)",
-        campaign_id,
-        dest_cfx,
-        symbol,
-        timeframe,
-        generations,
-        population,
-        date_from,
-        effective_date_to,
+        campaign_id, dest_cfx, symbol, timeframe,
+        generations, population, date_from, effective_date_to,
     )
     return str(dest_cfx)
 

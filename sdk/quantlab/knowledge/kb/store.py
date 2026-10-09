@@ -17,16 +17,42 @@ needs_review, REQ-208).
 
 from __future__ import annotations
 
-import builtins
-from collections.abc import Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Iterable, Sequence
 
-from quantlab.knowledge.kb.models import SQX_VERSION, KbParameter
+from quantlab.knowledge.kb.models import KbParameter, SQX_VERSION
+from quantlab.knowledge.kb.reverify import (
+    EntryVerdict,
+    EvidenceUnreadableError,
+    ReverifyReport,
+    classify,
+    load_evidence,
+    require_known_bucket,
+)
 from quantlab.knowledge.store import KnowledgeStore
 
 
 class KbParamNotFoundError(KeyError):
     """Raised when a parameter does not exist for the requested version."""
+
+
+@dataclass(frozen=True)
+class VersionDriftResult:
+    """Outcome of a version-drift check (REQ-208).
+
+    ``drifted`` tells the consumer whether the catalog it is about to read still
+    matches the installed SQX build. ``blocked`` is always ``False`` here: drift
+    invalidates entries and warns, it never refuses. Callers running in a strict
+    mode decide for themselves to abort based on ``drifted``.
+    """
+
+    catalog_version: str
+    current_version: str
+    drifted: bool
+    invalidated: int
+    blocked: bool = False
+    warnings: list[str] = field(default_factory=list)
 
 
 def _format_param_path(tab: str, param: str) -> str:
@@ -75,11 +101,19 @@ class KbStore:
 
     def _param_path(self, tab: str, param: str, sqx_version: str) -> Path:
         return (
-            self._version_dir(sqx_version) / tab / f"{_safe_param_filename(param)}.yaml"
+            self._version_dir(sqx_version)
+            / tab
+            / f"{_safe_param_filename(param)}.yaml"
         )
 
     def _resolve_version(self, sqx_version: str | None) -> str:
         return sqx_version or SQX_VERSION
+
+    def _version_buckets(self) -> list[str]:
+        """Every SQX version bucket the lake actually holds (empty if it has none)."""
+        return sorted(
+            p.name for p in (self.root / "structured" / "sqx-kb").glob("*") if p.is_dir()
+        )
 
     def _load_file(self, path: Path) -> KbParameter:
         raw = path.read_text(encoding="utf-8")
@@ -92,7 +126,9 @@ class KbStore:
 
     # ── Reads (REQ-502) ───────────────────────────────────────────────────────
 
-    def get(self, tab: str, param: str, sqx_version: str | None = None) -> KbParameter:
+    def get(
+        self, tab: str, param: str, sqx_version: str | None = None
+    ) -> KbParameter:
         """Load a single parameter, enforcing version isolation.
 
         Raises:
@@ -141,7 +177,7 @@ class KbStore:
         tab: str | None = None,
         status: str | None = None,
         sqx_version: str | None = None,
-    ) -> builtins.list[dict[str, object]]:
+    ) -> list[dict[str, object]]:
         """Look up parameters by exact-or-fuzzy name (REQ-502 consumption hook).
 
         Used by agents (REQ-204) to consult the KB before configuring the
@@ -249,8 +285,11 @@ class KbStore:
     def invalidate(self, sqx_version: str) -> int:
         """Mark every parameter of a version ``needs_review`` (REQ-208).
 
-        Called by the version-drift hook: after 144.2953 → 145.x, no old
-        entry may be served as verified until re-verified.
+        Legacy simple form: returns only the count of demoted entries.
+        Production drift handling goes through
+        :meth:`invalidate_on_version_drift`, which returns a
+        ``VersionDriftResult`` with ``drifted``/``warnings`` for consumers
+        (used by ``DriftWorkflow`` in :mod:`quantlab.versioning`).
         """
         version_dir = self._version_dir(sqx_version)
         if not version_dir.is_dir():
@@ -265,6 +304,125 @@ class KbStore:
             self._save_file(entry)
             count += 1
         return count
+
+    def invalidate_on_version_drift(
+        self,
+        current_version: str,
+        *,
+        catalog_version: str | None = None,
+        tab: str | None = None,
+    ) -> VersionDriftResult:
+        """Invalidate the catalog when the installed SQX build drifted (REQ-208).
+
+        Compares the installed build against the version bucket the catalog was
+        extracted from. On a mismatch every entry of the old bucket is demoted
+        to ``needs_review`` so it is never served as ``verified`` again, and the
+        returned result carries the warnings a consumer must surface.
+
+        Drift **warns, it never blocks**: the method does not raise and
+        ``blocked`` stays ``False``. Strict-mode consumers abort on
+        ``result.drifted`` themselves.
+
+        Args:
+            current_version: Installed SQX build, e.g. ``"145.1"``.
+            catalog_version: Catalog bucket to check; defaults to the pinned one.
+            tab: Optional tab to scope the invalidation to.
+
+        Returns:
+            A :class:`VersionDriftResult` describing what happened.
+        """
+        version = self._resolve_version(catalog_version)
+        if current_version == version:
+            return VersionDriftResult(
+                catalog_version=version,
+                current_version=current_version,
+                drifted=False,
+                invalidated=0,
+            )
+
+        params = self.list(tab=tab, sqx_version=version)
+        invalidated = 0
+        for param in params:
+            if param.status == "needs_review":
+                continue
+            param.status = "needs_review"
+            self._save_file(param)
+            invalidated += 1
+
+        return VersionDriftResult(
+            catalog_version=version,
+            current_version=current_version,
+            drifted=True,
+            invalidated=invalidated,
+            warnings=[
+                f"SQX version drift: catalog sqx-kb/{version} does not match the "
+                f"installed build {current_version}. {invalidated} entry(ies) "
+                f"demoted to needs_review — re-verify before relying on them.",
+            ],
+        )
+
+    def reverify_against_build(
+        self,
+        evidence: str | Path,
+        *,
+        tab: str | None = None,
+        sqx_version: str | None = None,
+        apply: bool = False,
+    ) -> ReverifyReport:
+        """Re-verify the catalog against operator-supplied build XML (kb-reverification).
+
+        Thin wrapper by design (D3/D4): decisions live in the pure
+        :mod:`~quantlab.knowledge.kb.reverify` module, so this method only supplies the
+        population and the single write path — every promotion goes through :meth:`verify`,
+        the only place a ``verified`` entry is written. ``tab`` scopes the population and
+        ``sqx_version`` defaults to the pinned bucket.
+
+        Two contract points the implementation must not soften:
+
+        * The population is **never** filtered by ``status`` (D5). Verdicts come from the
+          shape of ``xml_path``, so a documentation anchor already sitting at ``verified``
+          is still classified (and skipped), and re-running ``verify`` is idempotent.
+        * Unreadable evidence is *reported*, not raised (spec): the run writes nothing and
+          returns ``evidence_ok=False``, leaving the exit code to the caller. An unknown
+          version bucket is the opposite — refused with ``UnknownVersionBucketError``,
+          never answered with an empty run.
+
+        Returns a :class:`ReverifyReport` carrying a verdict per entry under both
+        ``apply`` values; ``apply=False`` simply performs no writes.
+        """
+        version = self._resolve_version(sqx_version)
+        require_known_bucket(version, self._version_buckets())
+
+        try:
+            loaded = load_evidence(evidence)
+        except EvidenceUnreadableError as exc:
+            return ReverifyReport.unreadable(str(evidence), exc.reason)
+
+        report = ReverifyReport.from_entries(
+            str(loaded.path),
+            [
+                EntryVerdict(
+                    tab=param.tab,
+                    name=param.name,
+                    xml_path=param.xml_path,
+                    verdict=classify(
+                        param.xml_path, param.element_name, loaded.crosschecks
+                    ),
+                )
+                for param in self.list(tab=tab, sqx_version=version)
+            ],
+        )
+        if not apply:
+            return report
+
+        for entry in report.promotable:
+            self.verify(
+                entry.tab,
+                entry.name,
+                f"{report.artifact}#{entry.xml_path}",
+                sqx_version=version,
+            )
+        return report
 
     def status(self, sqx_version: str | None = None) -> dict[str, object]:
         """Summary counts by status for a version (or the pinned version)."""
@@ -283,7 +441,7 @@ class KbStore:
                 entry.tab, {"total": 0, "seeded": 0, "verified": 0, "needs_review": 0}
             )
             tab_stats["total"] += 1
-            tab_stats[entry.status] += 1
+            tab_stats[entry.status] += 1  # type: ignore[index]
         summary["tabs"] = by_tab
         return summary
 

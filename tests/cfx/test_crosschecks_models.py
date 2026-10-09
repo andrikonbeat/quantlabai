@@ -153,6 +153,172 @@ class TestCrossChecksAutomaticRetestDefaults:
         assert model.opt_profile_sys_param_permutation is None
 
 
+_WHATIF_XML = """<CrossChecks use="true">
+  <WhatIf use="false">
+    <Settings>
+      <Methods>
+        <Method use="true" type="ByDays">
+          <Params>
+            <Param key="Monday" type="Boolean">true</Param>
+            <Param key="Tuesday" type="Boolean">false</Param>
+          </Params>
+        </Method>
+        <Method use="true" type="ExcludeTradesWithBiggestPl">
+          <Params>
+            <Param key="Trades" type="Integer">2</Param>
+          </Params>
+        </Method>
+      </Methods>
+    </Settings>
+    <AcceptanceSettings><Conditions /></AcceptanceSettings>
+  </WhatIf>
+</CrossChecks>"""
+
+
+_MULTI_TAB_XML = """<CrossChecks use="true" evaluateAll="true">
+  <MonteCarloRetest use="true">
+    <Settings>
+      <Methods>
+        <Method use="true" type="RandomizeHistoryData">
+          <Params><Param key="ProbabilityUp" type="Integer">30</Param></Params>
+        </Method>
+        <Method use="true" type="RandomizeSpread">
+          <Params><Param key="Min" type="Double">1.0</Param><Param key="Max" type="Double">5.0</Param></Params>
+        </Method>
+      </Methods>
+      <NumberOfSimulations>10</NumberOfSimulations>
+    </Settings>
+    <AcceptanceSettings><Conditions /></AcceptanceSettings>
+  </MonteCarloRetest>
+  <WhatIf use="false">
+    <Settings>
+      <Methods>
+        <Method use="true" type="ByDays">
+          <Params>
+            <Param key="Monday" type="Boolean">true</Param>
+            <Param key="Tuesday" type="Boolean">false</Param>
+          </Params>
+        </Method>
+        <Method use="true" type="ExcludeTradesWithBiggestPl">
+          <Params><Param key="Trades" type="Integer">2</Param></Params>
+        </Method>
+      </Methods>
+    </Settings>
+    <AcceptanceSettings><Conditions /></AcceptanceSettings>
+  </WhatIf>
+</CrossChecks>"""
+
+
+# ── Serialization fix tests ──────────────────────────────────────────
+
+class TestCrossChecksSerializationFix:
+    """Generic MonteCarlo round-trip uses runs, not simulations."""
+
+    def test_generic_monte_carlo_uses_runs_attribute(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_GENERIC_XML)
+        xml = config.to_xml()
+
+        assert 'runs="200"' in xml
+        assert "simulations" not in xml
+
+
+# ── WhatIf round-trip tests ──────────────────────────────────────────
+
+class TestWhatIfRoundTrip:
+    """WhatIf check type parses and serializes typed method params."""
+
+    def test_whatif_method_params_roundtrip(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_WHATIF_XML)
+        assert config.dialect == "automatic_retest"
+        assert config.automatic_retest is not None
+        assert config.automatic_retest.what_if is not None
+        assert config.automatic_retest.what_if.use is False
+        assert len(config.automatic_retest.what_if.methods) == 2
+
+        xml = config.to_xml()
+        reparsed = CrossChecksConfig.from_xml(xml)
+        assert reparsed.automatic_retest is not None
+        assert reparsed.automatic_retest.what_if is not None
+        assert reparsed.automatic_retest.what_if.use is False
+        assert len(reparsed.automatic_retest.what_if.methods) == 2
+
+
+# ── MonteCarloRetest method tests ────────────────────────────────────
+
+class TestMonteCarloMethods:
+    """MonteCarloRetest methods list parses typed params from CFX evidence."""
+
+    def test_mc_method_params_parsed(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_XML)
+        assert config.automatic_retest is not None
+        assert config.automatic_retest.monte_carlo_retest is not None
+        assert config.automatic_retest.monte_carlo_retest.methods is not None
+        assert len(config.automatic_retest.monte_carlo_retest.methods) == 1
+        method = config.automatic_retest.monte_carlo_retest.methods[0]
+        assert method.use is True
+        assert method.type == "RandomizeHistoryData"
+        assert method.params["Probability"] == 20
+
+    def test_mc_methods_survive_full_roundtrip(self):
+        """REQ task 4.3: from_xml() → to_xml() → from_xml() keeps method params."""
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_MULTI_TAB_XML)
+        reparsed = CrossChecksConfig.from_xml(config.to_xml())
+
+        first = reparsed.automatic_retest
+        second = config.automatic_retest
+        assert first is not None and second is not None
+        # WhatIf methods survive with their param values and types.
+        assert first.what_if is not None
+        assert [m.type for m in first.what_if.methods] == [
+            m.type for m in second.what_if.methods
+        ]
+        assert first.what_if.methods[0].params["Monday"] is True
+        assert first.what_if.methods[0].params["Tuesday"] is False
+        assert first.what_if.methods[1].params["Trades"] == 2
+        # MonteCarloRetest methods survive too (6 real methods in SQX evidence).
+        assert first.monte_carlo_retest is not None
+        assert first.monte_carlo_retest.methods is not None
+        assert [m.type for m in first.monte_carlo_retest.methods] == [
+            m.type for m in second.monte_carlo_retest.methods
+        ]
+        spread = next(
+            m
+            for m in first.monte_carlo_retest.methods
+            if m.type == "RandomizeSpread"
+        )
+        assert spread.params["Max"] == 5.0
+        assert first.monte_carlo_retest.number_of_simulations == 10
+
+
+# ── Summary contract tests ──────────────────────────────────────────
+
+class TestSummaryContract:
+    """summary() returns both JSON dict and human-readable text."""
+
+    def test_summary_returns_json_and_text(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_XML)
+        summary = config.summary()
+
+        assert "json" in summary
+        assert "text" in summary
+        assert isinstance(summary["json"], dict)
+        assert isinstance(summary["text"], str)
+        assert summary["json"]["dialect"] == "automatic_retest"
+        assert "enabled_tabs" in summary["json"]
+        assert "typed_values" in summary["json"]
+        assert "\n" not in summary["text"] and "\r" not in summary["text"]
+
+
 # ── CrossChecksConfig dialect container tests ─────────────────────────
 
 class TestCrossChecksConfigFromXml:
@@ -421,8 +587,15 @@ class TestCrossChecksRawXmlFidelity:
         assert ar.walk_forward_matrix.raw_xml.strip().startswith("<WalkForwardMatrix")
 
 
-class TestCrossChecksConfigSummary:
-    """summary() returns readable parameter overview."""
+class TestCrossChecksConfigSummaryFlat:
+    """summary() keeps the pre-``json``/``text`` flat contract.
+
+    These assertions read ``dialect``/``generic``/``automatic_retest`` off the
+    top level of ``summary()``. They are the complement of
+    ``TestCrossChecksConfigSummary``, which reads the nested ``json``/``text``
+    envelope off the same superset mapping; the flat view is split into its
+    own class so neither set of assertions shadows the other.
+    """
 
     def test_generic_summary(self):
         from quantlab.cfx.models import CrossChecksConfig
@@ -454,3 +627,46 @@ class TestCrossChecksConfigSummary:
         assert summary["dialect"] in (None, "")
         assert summary.get("generic") is None or summary.get("generic") == {}
         assert summary.get("automatic_retest") is None or summary.get("automatic_retest") == {}
+
+
+class TestCrossChecksConfigSummary:
+    """summary() returns readable parameter overview."""
+
+    def test_generic_summary(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_GENERIC_XML)
+        summary = config.summary()
+
+        assert "json" in summary
+        assert "text" in summary
+        assert summary["json"]["dialect"] == "generic"
+        assert "generic" in summary["json"]
+        assert summary["json"]["generic"]["mc_enabled"] is True
+        assert summary["json"]["generic"]["mc_runs"] == 200
+        assert "\n" not in summary["text"] and "\r" not in summary["text"]
+
+    def test_automatic_retest_summary(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig.from_xml(_AUTOMATIC_RETEST_XML)
+        summary = config.summary()
+
+        assert "json" in summary
+        assert "text" in summary
+        assert summary["json"]["dialect"] == "automatic_retest"
+        assert "automatic_retest" in summary["json"]
+        assert summary["json"]["automatic_retest"]["use"] is True
+        assert "\n" not in summary["text"] and "\r" not in summary["text"]
+
+    def test_empty_config_summary(self):
+        from quantlab.cfx.models import CrossChecksConfig
+
+        config = CrossChecksConfig()
+        summary = config.summary()
+
+        assert "json" in summary
+        assert "text" in summary
+        assert summary["json"]["dialect"] in (None, "")
+        assert summary["json"].get("generic") is None or summary["json"].get("generic") == {}
+        assert summary["json"].get("automatic_retest") is None or summary["json"].get("automatic_retest") == {}

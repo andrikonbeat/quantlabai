@@ -2,12 +2,15 @@
 
 Subcommands: ``list [--tab] [--status]``, ``get {tab}/{param}``,
 ``seed [--doc]`` (full flow + REQ-209 gate), ``validate`` (gate re-check),
-``verify {tab}/{param} --evidence-ref``, ``status``, ``check-version``.
+``verify {tab}/{param} --evidence-ref``, ``status``, ``check-version``,
+``reverify --evidence <path> [--tab] [--apply]``.
 
 Exit contract: 0 on success; 1 with a "not found" message for unknown
 parameters (REQ-207 scenario), and 1 on any operational failure or when the
 REQ-209 gate fails (REQ-209 scenarios). ``check-version`` exits 0 in-sync,
-1 drift, 0 unknown (fail-open).
+1 drift, 0 unknown (fail-open). ``reverify`` exits 0 when it ran (dry-run or
+applied), 1 on a refused version bucket, and :data:`EXIT_EVIDENCE_UNREADABLE`
+(3) on unreadable evidence — argparse keeps 2 for usage errors.
 """
 
 from __future__ import annotations
@@ -15,21 +18,21 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 from quantlab.data import DataManager
 from quantlab.data.market.models import Bar
+from quantlab.knowledge.kb.models import KB_TABS, SQX_VERSION
+from quantlab.knowledge.kb.reverify import UnknownVersionBucketError
+from quantlab.knowledge.kb.seeding_flow import (
+    _default_evidence_base,
+    run_seed_flow,
+)
+from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH
 from quantlab.knowledge.kb.educational import (
     build_educational_dataset,
     build_educational_table,
     parse_tpl_build,
-)
-from quantlab.knowledge.kb.models import KB_TABS, SQX_VERSION
-from quantlab.knowledge.kb.seeder import DEFAULT_DOC_PATH
-from quantlab.knowledge.kb.seeding_flow import (
-    _default_evidence_base,
-    run_seed_flow,
 )
 from quantlab.knowledge.kb.store import KbParamNotFoundError, KbStore
 from quantlab.knowledge.kb.validation import validate_seed
@@ -42,6 +45,11 @@ _DEFAULT_EVIDENCE_BASE_FACTORY = _default_evidence_base
 # G6 seed-ohlc defaults (Q3): a single symbol keeps CI deterministic.
 DEFAULT_SEED_SYMBOLS = ("EURUSD",)
 DEFAULT_SEED_TIMEFRAMES = ("M1", "M5", "H1")
+
+# D6: unreadable evidence gets its own exit code so automation can tell "the run
+# happened and nothing was promoted" (0) from "no verdict was computed at all"
+# (3). 1 stays operational failure and argparse's 2 stays the usage error.
+EXIT_EVIDENCE_UNREADABLE = 3
 
 
 def print_human(message: str, *, error: bool = False) -> None:
@@ -95,13 +103,13 @@ class _DataManagerOhlcSource:
     """
 
     def __init__(self, jforex_state_dir: str | Path | None = None) -> None:
-        self._dm = DataManager(jforex_state_dir=jforex_state_dir)  # type: ignore[arg-type]
+        self._dm = DataManager(jforex_state_dir=jforex_state_dir)
 
     def fetch_bars(self, symbol: str, timeframe: str) -> list[Bar]:
         handler = self._dm.datasources.get("jforex")
         if handler is None:
             return []
-        return handler.fetch_history(symbol, timeframe)  # type: ignore[no-any-return, attr-defined]
+        return handler.fetch_history(symbol, timeframe)
 
     def gap_hint(self) -> str:
         return (
@@ -144,16 +152,17 @@ async def cmd_kb_list(args: argparse.Namespace) -> int:
     """List KB parameters with optional tab/status filters."""
     try:
         store = _kb_store(args)
-        params = store.list(
-            tab=args.tab, status=args.status, sqx_version=args.sqx_version
-        )
+        params = store.list(tab=args.tab, status=args.status, sqx_version=args.sqx_version)
         scope = f"sqx-kb/{args.sqx_version}"
         if args.tab:
             scope += f" tab={args.tab}"
         if args.status:
             scope += f" status={args.status}"
         print_human(f"{len(params)} parameter(s) in {scope}")
-        rows = [[p.name, p.tab, p.status, p.evidence_ref or ""] for p in params]
+        rows = [
+            [p.name, p.tab, p.status, p.evidence_ref or ""]
+            for p in params
+        ]
         print_table(["Parameter", "Tab", "Status", "Evidence"], rows)
         return 0
     except Exception as e:  # pragma: no cover - defensive
@@ -314,9 +323,7 @@ async def cmd_kb_verify(args: argparse.Namespace) -> int:
         entry = store.verify(
             tab, param, evidence_ref=args.evidence_ref, sqx_version=args.sqx_version
         )
-        print_human(
-            f"Verified {entry.name} ({entry.tab}) — evidence: {entry.evidence_ref}"
-        )
+        print_human(f"Verified {entry.name} ({entry.tab}) — evidence: {entry.evidence_ref}")
         return 0
     except KbParamNotFoundError as e:
         print_error(str(e))
@@ -324,6 +331,53 @@ async def cmd_kb_verify(args: argparse.Namespace) -> int:
     except Exception as e:  # pragma: no cover - defensive
         print_error(f"KB verify failed: {e}")
         return 1
+
+
+async def cmd_kb_reverify(args: argparse.Namespace) -> int:
+    """Re-verify the catalog against operator-supplied build XML (kb-reverification).
+
+    Renders the report produced by :meth:`KbStore.reverify_against_build` and nothing
+    else — every decision already lives in the pure ``reverify`` module, and every
+    promotion already goes through ``verify()``. Dry-run unless ``--apply`` (spec), so
+    stdout carries per-entry verdicts plus per-outcome counts (D7; the report file is
+    deferred, which leaves stdout as the only report surface).
+
+    Exit contract (D6): 0 the run happened — verdicts printed, and promotions written
+    only under ``--apply``; 1 the version bucket was refused; 3 the evidence could not be
+    read, in which case no entry was classified and nothing was written.
+    """
+    try:
+        store = _kb_store(args)
+        report = store.reverify_against_build(
+            args.evidence,
+            tab=args.tab,
+            sqx_version=args.sqx_version,
+            apply=args.apply,
+        )
+    except UnknownVersionBucketError as e:
+        print_error(str(e))
+        return 1
+    except Exception as e:  # pragma: no cover - defensive
+        print_error(f"KB reverify failed: {e}")
+        return 1
+
+    print_human(f"evidence: {report.artifact}")
+    print_table(
+        ["tab", "name", "verdict", "reason"],
+        [[e.tab, e.name, e.verdict.value, e.reason] for e in report.entries],
+    )
+    print_human(
+        "counts: " + ", ".join(f"{outcome} {n}" for outcome, n in report.counts.items())
+    )
+    if not report.evidence_ok:
+        print_error(f"evidence unreadable: {report.unreadable_reason}")
+        return EXIT_EVIDENCE_UNREADABLE
+    print_human(
+        "dry-run (no changes)"
+        if not args.apply
+        else f"applied {len(report.promotable)} promotion(s) via verify()"
+    )
+    return 0
 
 
 async def cmd_kb_status(args: argparse.Namespace) -> int:
@@ -336,7 +390,7 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
             f"seeded {summary['seeded']}, verified {summary['verified']}, "
             f"needs_review {summary['needs_review']}"
         )
-        for tab, stats in summary["tabs"].items():  # type: ignore[attr-defined]
+        for tab, stats in summary["tabs"].items():  # type: ignore[union-attr]
             print_human(
                 f"  {tab}: {stats['total']} (seeded {stats['seeded']}, "
                 f"verified {stats['verified']}, needs_review {stats['needs_review']})"
@@ -350,16 +404,9 @@ async def cmd_kb_status(args: argparse.Namespace) -> int:
 # ── builder template path: real install templates dir, on the lake root's
 # project. CLI default: repo `assets/SQX_*/.../tpl_build.xml`; tests
 # monkeypatch this factory.
-_DEFAULT_TPL_PATH_FACTORY: Callable[[Path], Path] = lambda knowledge_root: (
-    Path(knowledge_root).parent
-    / "assets"
-    / "SQX_144_2953_linux_20260601"
-    / "internal"
-    / "web"
-    / "BUILDER"
-    / "templates"
-    / "tpl_build.xml"
-)
+_DEFAULT_TPL_PATH_FACTORY = lambda knowledge_root: Path(  # noqa: E731
+    knowledge_root
+).parent / "assets" / "SQX_144_2953_linux_20260601" / "internal" / "web" / "BUILDER" / "templates" / "tpl_build.xml"
 
 
 async def cmd_kb_table(args: argparse.Namespace) -> int:
@@ -388,7 +435,11 @@ async def cmd_kb_table(args: argparse.Namespace) -> int:
         import yaml
 
         edu_dir = (
-            store.root / "structured" / "sqx-kb" / args.sqx_version / "educational"
+            store.root
+            / "structured"
+            / "sqx-kb"
+            / args.sqx_version
+            / "educational"
         )
         edu_dir.mkdir(parents=True, exist_ok=True)
         dataset_path = edu_dir / "educational-dataset.yaml"
@@ -430,7 +481,7 @@ async def cmd_sqx_check_version(args: argparse.Namespace) -> int:
         sqx_path = args.sqx_path or DEFAULT_SQX_PATH
         binary = _find_sqcli(sqx_path)
         preflight = VersionPreflight(
-            executor=None if binary is None else RealExecutor(binary),  # type: ignore[arg-type]
+            executor=None if binary is None else RealExecutor(binary),
             knowledge_root=args.knowledge_root,
         )
         status = preflight.run()
@@ -452,7 +503,7 @@ async def cmd_sqx_check_version(args: argparse.Namespace) -> int:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def add_sqx_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
     """Add the ``sqx`` command group (``sqx kb ...``) to the main parser."""
     p_sqx = subparsers.add_parser("sqx", help="SQX parameter knowledge base (KB)")
     sqx_sub = p_sqx.add_subparsers(dest="sqx_cmd", required=True)
@@ -549,6 +600,39 @@ def add_sqx_subparser(subparsers: argparse._SubParsersAction[argparse.ArgumentPa
         help="Evidence reference (e.g. path to the real .cfx config)",
     )
     p_verify.set_defaults(func=cmd_kb_verify)
+
+    # ── sqx kb reverify ──────────────────────────────────────────────────────
+    p_reverify = kb_sub.add_parser(
+        "reverify",
+        help="Re-verify the catalog against build XML (dry-run unless --apply)",
+        description=(
+            "Re-verify the SQX parameter KB against operator-supplied build XML. "
+            "Prints per-entry verdicts and per-outcome counts on stdout; the report "
+            "file is deferred, so stdout is the only report surface. Dry-run unless "
+            "--apply is passed. Exit codes: 0 the run happened, 1 the SQX version "
+            f"bucket was refused, {EXIT_EVIDENCE_UNREADABLE} the evidence could not be "
+            f"read (no entry classified, nothing written). Argparse keeps 2 for a "
+            "usage error such as omitting --evidence."
+        ),
+    )
+    _add_common(p_reverify)
+    p_reverify.add_argument(
+        "--evidence",
+        required=True,
+        help=(
+            "SQX build evidence: a .cfx/.sqx-template archive or a bare XML file "
+            "(e.g. assets/SQX_*/user/projects/Builder/project.cfx)"
+        ),
+    )
+    p_reverify.add_argument(
+        "--tab", choices=KB_TABS, help="Scope the population to one tab"
+    )
+    p_reverify.add_argument(
+        "--apply",
+        action="store_true",
+        help="Promote verified entries through verify() (default: dry-run)",
+    )
+    p_reverify.set_defaults(func=cmd_kb_reverify)
 
     # ── sqx kb status ────────────────────────────────────────────────────────
     p_status = kb_sub.add_parser("status", help="Show KB status counts")
