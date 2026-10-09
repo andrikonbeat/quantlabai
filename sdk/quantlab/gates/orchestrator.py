@@ -146,7 +146,63 @@ class HumanGateOrchestrator:
                 ctx,
             )
 
+        # Step 5: archive feedback (T9 4.2) — best-effort, never raises
+        await self._maybe_write_archive_feedback(gate_id, decision, ctx)
+
         return decision
+
+    async def _maybe_write_archive_feedback(
+        self,
+        gate_id: str,
+        decision: GateDecision,
+        ctx: dict[str, Any],
+    ) -> None:
+        """Persist pass-feedback when the archive gate approves.
+
+        Only fires for ``HUMAN_APPROVE_ARCHIVE`` with an approving
+        decision. Hypotheses are read from ``ctx["hypotheses"]`` (dicts
+        or ``HypothesisConfig``) or ``ctx["artifacts"]["hypotheses"]``.
+        Never raises — feedback must not break the gate protocol.
+        """
+        try:
+            if gate_id != "HUMAN_APPROVE_ARCHIVE":
+                return
+            if not getattr(decision, "is_approved", lambda: False)():
+                return
+            hypotheses = ctx.get("hypotheses") or []
+            if not hypotheses and isinstance(ctx.get("artifacts"), dict):
+                hypotheses = ctx["artifacts"].get("hypotheses") or []
+            if not hypotheses:
+                return
+
+            from quantlab.agents.feedback_writer import (
+                KnowledgeLakeFeedbackWriter,
+            )
+            from quantlab.knowledge.models import HypothesisFeedbackRecord
+
+            campaign_id = str(ctx.get("campaign_id", ""))
+            writer = KnowledgeLakeFeedbackWriter(
+                lake_root=ctx.get("knowledge_root", "knowledge")
+            )
+            reason = getattr(decision, "reason", "")
+            for hyp in hypotheses:
+                if isinstance(hyp, dict):
+                    name = str(hyp.get("name", ""))
+                else:
+                    name = str(getattr(hyp, "name", ""))
+                if not name:
+                    continue
+                await writer.write_feedback(
+                    HypothesisFeedbackRecord(
+                        campaign_id=campaign_id,
+                        hypothesis_id=name,
+                        feedback_type="pass",
+                        notes=f"archived via {gate_id}: {reason}",
+                        source="gate",
+                    )
+                )
+        except Exception as exc:
+            logger.warning("Archive feedback hook failed: %s", exc)
 
     # ── Fallback logic ──────────────────────────────────────────────────────────
 
