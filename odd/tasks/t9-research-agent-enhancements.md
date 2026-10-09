@@ -28,18 +28,18 @@
 | 2.7 | Prompt templates research-literature + sqx-catalog | ✅ | | 7 tests + fix g3 v6 |
 | 2.8 | Tests providers | ✅ | | 37 tests totales PR2 |
 
-## PR 3: LLM Intelligence
+## PR 3: LLM Intelligence — ✅ HECHO
 
 | Task | Descripción | Estado | Commit | Evidencia |
 |------|-------------|--------|--------|-----------|
-| 3.1 | DiversityEngine (variantes paramétricas, dedup, factor configurable) | ⏳ Pendiente | | |
-| 3.2 | PreValidator (indicador existe, rango, coherencia, dirección) | ⏳ Pendiente | | |
-| 3.3 | Integración DiversityEngine en formulate_hypotheses/parse_response | ⏳ Pendiente | | |
-| 3.4 | Integración PreValidator en generate_config (policy strict/lenient/off) | ⏳ Pendiente | | |
-| 3.5 | Exponer TagCalibrator per-tag stats en LLMResearchAgent.build_prompt() | ⏳ Pendiente | | |
-| 3.6 | HypothesisBuilder LLM mode: inyectar contexto semántico | ⏳ Pendiente | | |
-| 3.7 | HypothesisConfig: embedding + feedback fields (validation_warnings ya existe) | ⏳ Pendiente | | |
-| 3.8 | Tests: DiversityEngine, PreValidator, prompt injection | ⏳ Pendiente | | |
+| 3.1 | DiversityEngine (variantes paramétricas, dedup, factor configurable) | ✅ | f074994 | 8 tests |
+| 3.2 | PreValidator (indicador existe, rango, coherencia, dirección) | ✅ | 5c4a61a | 11 tests |
+| 3.3 | Integración DiversityEngine en formulate_hypotheses/parse_response | ✅ | 0906cbe | 4 tests (default off) |
+| 3.4 | Integración PreValidator en generate_config (policy strict/lenient/off) | ✅ | 91fc2e0 | 6 tests + 25 sin regresión |
+| 3.5 | Exponer TagCalibrator per-tag stats en LLMResearchAgent.build_prompt() | ✅ | 9cb212c | 6 tests (TAG_CALIBRATION) |
+| 3.6 | HypothesisBuilder LLM mode: inyectar contexto semántico | ✅ | 5d434d9 | 6 tests + 70 sin regresión |
+| 3.7 | HypothesisConfig: embedding + feedback fields (validation_warnings ya existe) | ✅ | 6fd7c5d | 5 tests |
+| 3.8 | Tests: DiversityEngine, PreValidator, prompt injection | ✅ | | 46 tests PR3 |
 
 ## PR 4: Integration + Feedback Loop
 

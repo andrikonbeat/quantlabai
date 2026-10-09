@@ -79,28 +79,28 @@
 ## Phase 3: LLM Intelligence (PR 3)
 
 ### 3.1 DiversityEngine (GREENFIELD)
-- [ ] 3.1 Crear `sdk/quantlab/agents/diversity_engine.py`: `DiversityEngine` con generación de variantes paramétricas, deduplicación por fingerprint, factor de diversidad configurable. Tests unitarios.
+- [x] 3.1 Crear `sdk/quantlab/agents/diversity_engine.py`: `DiversityEngine` con generación de variantes paramétricas, deduplicación por fingerprint, factor de diversidad configurable. Tests unitarios.
 
 ### 3.2 PreValidator (GREENFIELD)
-- [ ] 3.2 Crear `sdk/quantlab/agents/pre_validator.py`: `PreValidator` — existencia de indicador (via `SQXDocProvider`), rango de parámetros, coherencia semántica, consistencia direccional. `validation_policy`: `strict`/`lenient`/`off`. Tests unitarios.
+- [x] 3.2 Crear `sdk/quantlab/agents/pre_validator.py`: `PreValidator` — existencia de indicador (via `SQXDocProvider`), rango de parámetros, coherencia semántica, consistencia direccional. `validation_policy`: `strict`/`lenient`/`off`. Tests unitarios.
 
 ### 3.3 Integración DiversityEngine
-- [ ] 3.3 Integrar `DiversityEngine` en `ResearchAgent.formulate_hypotheses()` y `LLMResearchAgent.parse_response()` (variantes diversificadas antes de validar).
+- [x] 3.3 Integrar `DiversityEngine` en `ResearchAgent.formulate_hypotheses()` y `LLMResearchAgent.parse_response()` (variantes diversificadas antes de validar).
 
 ### 3.4 Integración PreValidator
-- [ ] 3.4 Integrar `PreValidator` en `ResearchAgent.generate_config()` con soporte de `validation_policy`. Tests: strict bloquea, lenient advierte, off pasa.
+- [x] 3.4 Integrar `PreValidator` en `ResearchAgent.generate_config()` con soporte de `validation_policy`. Tests: strict bloquea, lenient advierte, off pasa.
 
 ### 3.5 Exponer TagCalibrator al prompt LLM (CONSOLIDACIÓN — TRABAJO REAL)
-- [ ] 3.5 **TRABAJO REAL**: Actualizar `LLMResearchAgent.build_prompt()` en `llm_research_agent.py` para inyectar las estadísticas per-tag del `TagCalibrator` (ya computado en `formulate_hypotheses()` path rule-based). El path LLM **no lo usa hoy**. Añadir sección `TAG_CALIBRATION` al prompt con percentiles Sharpe por tag. Tests: LLM prompt incluye calibración cuando `query_results` existe.
+- [x] 3.5 **TRABAJO REAL**: Actualizar `LLMResearchAgent.build_prompt()` en `llm_research_agent.py` para inyectar las estadísticas per-tag del `TagCalibrator` (ya computado en `formulate_hypotheses()` path rule-based). El path LLM **no lo usa hoy**. Añadir sección `TAG_CALIBRATION` al prompt con percentiles Sharpe por tag. Tests: LLM prompt incluye calibración cuando `query_results` existe.
 
 ### 3.6 Semantic context en HypothesisBuilder LLM mode
-- [ ] 3.6 Actualizar `HypothesisBuilder` LLM mode (`llm.py`) para inyectar contexto semántico (similar hypotheses de `QueryBuilder.filter_by_similarity()`); actualizar `HypothesisBuilderStage` (si existe) para pasar `market_context`.
+- [x] 3.6 Actualizar `HypothesisBuilder` LLM mode (`llm.py`) para inyectar contexto semántico (similar hypotheses de `QueryBuilder.filter_by_similarity()`); actualizar `HypothesisBuilderStage` (si existe) para pasar `market_context`.
 
 ### 3.7 HypothesisConfig fields (CONSOLIDACIÓN)
-- [ ] 3.7 Extender `HypothesisConfig` en `sdk/quantlab/dsl/models.py` con campo opcional `embedding: list[float] | None` y `feedback: HypothesisFeedbackRecord | None`. `validation_warnings` ya existe (T7). `HypothesisFeedbackRecord` ya existe en `knowledge/models.py` (T7 F3).
+- [x] 3.7 Extender `HypothesisConfig` en `sdk/quantlab/dsl/models.py` con campo opcional `embedding: list[float] | None` y `feedback: HypothesisFeedbackRecord | None`. `validation_warnings` ya existe (T7). `HypothesisFeedbackRecord` ya existe en `knowledge/models.py` (T7 F3).
 
 ### 3.8 Tests LLM Intelligence
-- [ ] 3.8 Tests: `DiversityEngine`, `PreValidator`, inyección de prompt (3.5), inyección semántica (3.6).
+- [x] 3.8 Tests: `DiversityEngine`, `PreValidator`, inyección de prompt (3.5), inyección semántica (3.6).
 
 ---
 
