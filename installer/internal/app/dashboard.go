@@ -3,18 +3,34 @@ package app
 import (
 	"fmt"
 	"io"
+	"net"
 	"os/exec"
 	"runtime"
+	"time"
 )
 
-// dashboardURL is the default QuantLab web dashboard URL.
-const dashboardURL = "https://github.com/andrikonbeat/quantlabai"
+// dashboardURL is the local QuantLab web dashboard URL served by the SDK.
+const dashboardURL = "http://localhost:5000/dashboard"
 
-// cmdDashboard implements the `quantlab dashboard` command. It attempts to
-// open the QuantLab web dashboard in the default browser, or prints the URL
-// if the browser cannot be opened.
+// dashboardPort is the local port the SDK dashboard listens on.
+const dashboardPort = "5000"
+
+// cmdDashboard implements the `quantlab dashboard` command. It checks whether
+// the local SDK dashboard is reachable, opens it in the default browser when
+// it is, and otherwise prints instructions to start the SDK.
 func cmdDashboard(w io.Writer) error {
-	fmt.Fprintf(w, "\n📊 Opening QuantLab Dashboard...\n\n")
+	fmt.Fprintf(w, "\n📊 Opening QuantLab Dashboard (local)...\n\n")
+
+	if !dashboardReachable() {
+		fmt.Fprintf(w, "  ⚠ Dashboard not reachable at %s\n", dashboardURL)
+		fmt.Fprintf(w, "    The local SDK is not running.\n")
+		fmt.Fprintf(w, "\n  Start the SDK first, then re-run this command:\n")
+		fmt.Fprintf(w, "    quantlab-sdk start   (or your usual SDK startup command)\n")
+		fmt.Fprintf(w, "\n  Dashboard URL once running:\n")
+		fmt.Fprintf(w, "    %s\n", dashboardURL)
+		fmt.Fprintf(w, "\n")
+		return nil
+	}
 
 	opened, err := openURL(dashboardURL)
 	if err != nil {
@@ -28,13 +44,20 @@ func cmdDashboard(w io.Writer) error {
 		fmt.Fprintf(w, "    %s\n", dashboardURL)
 		fmt.Fprintf(w, "\n  Open this URL in your browser to access the QuantLab dashboard.\n")
 	}
-
-	fmt.Fprintf(w, "\n  The QuantLab SDK serves the dashboard at:\n")
-	fmt.Fprintf(w, "    http://localhost:5000/dashboard\n")
-	fmt.Fprintf(w, "  (Start the SDK to enable the local dashboard)\n")
 	fmt.Fprintf(w, "\n")
 
 	return nil
+}
+
+// dashboardReachable reports whether something is listening on the local
+// dashboard port within a short timeout.
+func dashboardReachable() bool {
+	conn, err := net.DialTimeout("tcp", "localhost:"+dashboardPort, 500*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
 }
 
 // openURL tries to open the given URL in the default browser using the
