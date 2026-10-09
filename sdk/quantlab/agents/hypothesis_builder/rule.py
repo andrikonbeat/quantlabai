@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from quantlab.agents.economic_sense.validator import EconomicSenseValidator
 from quantlab.agents.parameter_validator import ParameterValidator
 from quantlab.dsl.models import (
     BuildingBlock,
@@ -281,6 +282,7 @@ class RuleMode:
         # Cache indicator names already added to avoid duplicates
         self._indicator_names_seen: set[str] = set()
         self._parameter_validator = None
+        self._economic_validator = EconomicSenseValidator()
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -327,6 +329,14 @@ class RuleMode:
             direction=direction,
             building_blocks=[b.name for b in blocks],
         )
+
+        # Economic sense validation (F1-03: wired into RuleMode directly).
+        # EconomicSenseValidator is non-blocking by contract (never raises);
+        # attach warnings so callers outside ResearchAgent still see them.
+        warnings = self._economic_validator.validate(hyp)
+        if warnings:
+            existing = list(getattr(hyp, "validation_warnings", []) or [])
+            hyp.validation_warnings = existing + warnings
 
         return blocks, [strategy]
 

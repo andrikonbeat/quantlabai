@@ -785,6 +785,64 @@ class TestMergeValidatePropagates:
                 await builder.build([hyp])
 
 
+# ── F1-03 (2026-10-07): EconomicSenseValidator wired into both modes ────────
+
+class TestEconomicSenseValidatorWiring:
+    """EconomicSenseValidator runs directly in RuleMode and LLMMode.
+
+    Spec: ResearchAgent MUST run EconomicSenseValidator on all generated
+    hypotheses in BOTH modes; warnings SHALL attach to
+    HypothesisConfig.validation_warnings (validator never raises).
+    """
+
+    def test_rule_mode_attaches_range_warning(self) -> None:
+        """RuleMode.build() attaches out-of-range warnings to the hypothesis."""
+        rule = RuleMode()
+        hyp = HypothesisConfig(
+            name="bad-rsi",
+            description="rsi mean reversion",
+            parameters={"rsi_period": 500},
+        )
+        rule.build(hyp)
+
+        assert hyp.validation_warnings
+        assert any("RSI period" in w and "out of range" in w for w in hyp.validation_warnings)
+
+    @pytest.mark.asyncio
+    async def test_llm_mode_attaches_range_warning(self) -> None:
+        """LLMMode.build() attaches out-of-range warnings after parsing."""
+        llm_mode = LLMMode(LLMConfig(provider="openai"))
+        hyp = HypothesisConfig(
+            name="bad-rsi",
+            description="rsi mean reversion",
+            parameters={"rsi_period": 500},
+        )
+        mock_call = AsyncMock(return_value=json.dumps(
+            {
+                "building_blocks": [
+                    {
+                        "name": "RSI_500",
+                        "indicator": {"name": "RSI", "params": {"period": 500}},
+                        "entry": {"description": "oversold", "conditions": ["rsi(500) < 30"]},
+                        "exit": {"description": "overbought", "conditions": ["rsi(500) > 70"]},
+                    }
+                ],
+                "strategies": [
+                    {
+                        "name": "BadRsiStrategy",
+                        "direction": "LONG",
+                        "building_blocks": ["RSI_500"],
+                    }
+                ],
+            }
+        ))
+        with patch.object(llm_mode._llm_agent, "call_llm", mock_call):
+            await llm_mode.build(hyp)
+
+        assert hyp.validation_warnings
+        assert any("RSI period" in w and "out of range" in w for w in hyp.validation_warnings)
+
+
 # ── Task 2.4 / 2.7: S-1 LLM mode with rationale + per-call mode override ────
 
 

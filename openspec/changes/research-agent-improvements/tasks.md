@@ -25,17 +25,17 @@ Chain strategy: pending
 
 ## Phase 2 (F2) — Enrichment
 
-- [ ] 2.1 T-004 SQXDocProvider core — Create `sdk/quantlab/knowledge/sqX_doc_provider.py`. Reads YAML from `structured/sqx-kb/{ver}/parameters/{tab}/{param}.yaml`. Falls back to `_BUILD_CONFIG_MAP` with warning. Version isolation enforced.
-- [ ] 2.2 T-005 ParameterValidator — Create `sdk/quantlab/agents/parameter_validator.py`. Delegates to SQXDocProvider. Returns ValidationResult(valid, errors). Blocks unknown indicators, out-of-range values, type mismatches.
-- [ ] 2.3 T-006 SemanticSimilarityQuery — Extend `sdk/quantlab/knowledge/query.py` with `search_similar_campaigns(text, top_k=10)`. Uses sentence-transformers when available; token+char 3-gram cosine fallback.
-- [ ] 2.4 T-011 RuleMode + LLMMode F2 wiring — In `hypothesis_builder/rule.py`, validate overrides before defaults. In `hypothesis_builder/llm.py`, validate parsed JSON and drop invalid hypotheses.
-- [ ] 2.5 T-012 LLMResearchAgent prompt wiring — Inject SQX Reference section into `build_prompt()`. Validate parsed responses against SQXDocProvider in `parse_response()`.
-- [ ] 2.6 T-007 F2 integration tests — SQXDocProvider with temp YAML + fallback. ParameterValidator blocking invalid sets. SemanticSimilarityQuery with/without embeddings.
+- [x] 2.1 T-004 SQXDocProvider core — Create `sdk/quantlab/knowledge/sqX_doc_provider.py`. Reads YAML from `structured/sqx-kb/{ver}/parameters/{tab}/{param}.yaml`. Falls back to `_BUILD_CONFIG_MAP` with warning. Version isolation enforced.
+- [x] 2.2 T-005 ParameterValidator — Create `sdk/quantlab/agents/parameter_validator.py`. Delegates to SQXDocProvider. Returns ValidationResult(valid, errors). Blocks unknown indicators, out-of-range values, type mismatches.
+- [x] 2.3 T-006 SemanticSimilarityQuery — Extend `sdk/quantlab/knowledge/query.py` with `search_similar_campaigns(text, top_k=10)`. Uses sentence-transformers when available; token+char 3-gram cosine fallback.
+- [x] 2.4 T-011 RuleMode + LLMMode F2 wiring — In `hypothesis_builder/rule.py`, validate overrides before defaults. In `hypothesis_builder/llm.py`, validate parsed JSON and drop invalid hypotheses.
+- [x] 2.5 T-012 LLMResearchAgent prompt wiring — Inject SQX Reference section into `build_prompt()`. Validate parsed responses against SQXDocProvider in `parse_response()`.
+- [x] 2.6 T-007 F2 integration tests — SQXDocProvider with temp YAML + fallback. ParameterValidator blocking invalid sets. SemanticSimilarityQuery with/without embeddings.
 
 ## Phase 3 (F3) — Closed Loop
 
-- [ ] 3.1 T-008 KnowledgeLakeFeedbackWriter — Create `sdk/quantlab/agents/feedback_writer.py` and add `HypothesisFeedbackRecord` to `sdk/quantlab/knowledge/models.py`. Async `write_feedback()` appends to `structured/{campaign_id}/metadata.yaml` under `feedback:`. `auto_adjust` defaults to False.
-- [ ] 3.2 T-009 F3 integration tests — Async write path with temporary Knowledge Lake. Verify metadata.yaml append. Confirm read-only mode default blocks auto-adjust.
+- [x] 3.1 T-008 KnowledgeLakeFeedbackWriter — Create `sdk/quantlab/agents/feedback_writer.py` and add `HypothesisFeedbackRecord` to `sdk/quantlab/knowledge/models.py`. Async `write_feedback()` appends to `structured/{campaign_id}/metadata.yaml` under `feedback:`. `auto_adjust` defaults to False.
+- [x] 3.2 T-009 F3 integration tests — Async write path with temporary Knowledge Lake. Verify metadata.yaml append. Confirm read-only mode default blocks auto-adjust.
 
 ## Execution Order
 

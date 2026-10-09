@@ -2,12 +2,60 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 from typing import Any
 
 from quantlab.dsl.models import HypothesisConfig
 
 logger = logging.getLogger(__name__)
+
+
+@functools.lru_cache(maxsize=128)
+def _compute_tag_stats_helper(tag_key: frozenset[str], serialized: tuple) -> dict[str, dict[str, Any]]:
+    """Helper to compute tag stats - cached by frozenset(tags)."""
+    # Deserialize
+    query_results = []
+    for r in serialized:
+        if isinstance(r, dict):
+            query_results.append(r)
+        else:
+            query_results.append(
+                {
+                    "tags": r[0] if len(r) > 0 else [],
+                    "sharpe_ratio": r[1] if len(r) > 1 else None,
+                    "win_rate": r[2] if len(r) > 2 else None,
+                }
+            )
+    stats: dict[str, dict[str, Any]] = {}
+    for qr in query_results:
+        tags = qr.get("tags") or []
+        sharpe = qr.get("sharpe_ratio")
+        win_rate = qr.get("win_rate")
+        try:
+            sharpe_f = float(sharpe) if sharpe is not None else None
+        except (TypeError, ValueError):
+            sharpe_f = None
+        try:
+            win_rate_f = float(win_rate) if win_rate is not None else None
+        except (TypeError, ValueError):
+            win_rate_f = None
+        for tag in tags:
+            if tag not in stats:
+                stats[tag] = {"sharpes": [], "win_rates": [], "count": 0}
+            if sharpe_f is not None:
+                stats[tag]["sharpes"].append(sharpe_f)
+            if win_rate_f is not None:
+                stats[tag]["win_rates"].append(win_rate_f)
+            stats[tag]["count"] += 1
+    for tag, data in stats.items():
+        data["avg_sharpe"] = sum(data["sharpes"]) / len(data["sharpes"]) if data["sharpes"] else 0.0
+        data["avg_win_rate"] = sum(data["win_rates"]) / len(data["win_rates"]) if data["win_rates"] else 0.0
+        data["sample_count"] = data["count"]
+        del data["sharpes"]
+        del data["win_rates"]
+        del data["count"]
+    return stats
 
 
 class TagCalibrator:
@@ -40,20 +88,19 @@ class TagCalibrator:
         if not global_sharpes:
             return hypotheses
 
-        tag_stats = self._build_tag_stats(query_results)
         global_mean = sum(global_sharpes) / len(global_sharpes)
 
         for hyp in hypotheses:
             tags = getattr(hyp, "tags", None) or self._infer_tags(hyp)
+            tag_stats_for_hyp = self._build_tag_stats_with_key(query_results, frozenset(tags))
             tag_sharpes = [
-                tag_stats[tag]["avg_sharpe"] for tag in tags if tag in tag_stats
+                tag_stats_for_hyp[tag]["avg_sharpe"] for tag in tags if tag in tag_stats_for_hyp
             ]
 
             if tag_sharpes:
                 raw_mean = sum(tag_sharpes) / len(tag_sharpes)
-                # Apply Bayesian smoothing for sparse tags
                 smoothed = self._bayesian_smooth(
-                    raw_mean, global_mean, tag_sharpes, tag_stats, tags
+                    raw_mean, global_mean, tag_sharpes, tag_stats_for_hyp, tags
                 )
                 tag_mean = smoothed
             else:
@@ -81,52 +128,32 @@ class TagCalibrator:
         return sharpes
 
     @staticmethod
+    def _serialize_query_results(query_results: list[dict[str, Any]]) -> tuple:
+        return tuple(
+            (
+                tuple(r.get("tags") or []),
+                r.get("sharpe_ratio"),
+                r.get("win_rate"),
+            )
+            for r in query_results
+        )
+
+    @staticmethod
     def _build_tag_stats(
         query_results: list[dict[str, Any]],
     ) -> dict[str, dict[str, Any]]:
         """Build per-tag statistics from query results."""
-        stats: dict[str, dict[str, Any]] = {}
+        all_tags = []
         for r in query_results:
-            tags = r.get("tags") or []
-            sharpe = r.get("sharpe_ratio")
-            win_rate = r.get("win_rate")
-            try:
-                sharpe_f = float(sharpe) if sharpe is not None else None
-            except (TypeError, ValueError):
-                sharpe_f = None
-            try:
-                win_rate_f = float(win_rate) if win_rate is not None else None
-            except (TypeError, ValueError):
-                win_rate_f = None
+            all_tags.extend(r.get("tags") or [])
+        return _compute_tag_stats_helper(frozenset(all_tags), TagCalibrator._serialize_query_results(query_results))
 
-            for tag in tags:
-                if tag not in stats:
-                    stats[tag] = {
-                        "sharpes": [],
-                        "win_rates": [],
-                        "count": 0,
-                    }
-                if sharpe_f is not None:
-                    stats[tag]["sharpes"].append(sharpe_f)
-                if win_rate_f is not None:
-                    stats[tag]["win_rates"].append(win_rate_f)
-                stats[tag]["count"] += 1
-
-        for tag, data in stats.items():
-            data["avg_sharpe"] = (
-                sum(data["sharpes"]) / len(data["sharpes"]) if data["sharpes"] else 0.0
-            )
-            data["avg_win_rate"] = (
-                sum(data["win_rates"]) / len(data["win_rates"])
-                if data["win_rates"]
-                else 0.0
-            )
-            data["sample_count"] = data["count"]
-            del data["sharpes"]
-            del data["win_rates"]
-            del data["count"]
-
-        return stats
+    def _build_tag_stats_with_key(
+        self,
+        query_results: list[dict[str, Any]],
+        tag_key: frozenset[str],
+    ) -> dict[str, dict[str, Any]]:
+        return _compute_tag_stats_helper(tag_key, self._serialize_query_results(query_results))
 
     @staticmethod
     def _infer_tags(hyp: HypothesisConfig) -> list[str]:

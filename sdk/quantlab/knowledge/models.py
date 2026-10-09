@@ -156,3 +156,33 @@ class MaintenancePlan:
     disconnected_strategy_ids: list[str] = field(default_factory=list)
     notes: str | None = None
     updated_at: str | None = None
+
+
+@dataclass
+class HypothesisFeedbackRecord:
+    """Feedback record tied to a hypothesis for Knowledge Lake."""
+
+    campaign_id: str
+    hypothesis_id: str | None = None
+    strategy_id: str | None = None
+    feedback_type: str = "neutral"
+    notes: str = ""
+    metric_delta: dict[str, float] | None = None
+    parameter_deltas: list[dict[str, Any]] = field(default_factory=list)
+    detected_at: str | None = None
+    auto_adjust: bool = False
+    source: str = "manual"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "campaign_id": self.campaign_id,
+            "hypothesis_id": self.hypothesis_id,
+            "strategy_id": self.strategy_id,
+            "feedback_type": self.feedback_type,
+            "notes": self.notes,
+            "metric_delta": self.metric_delta,
+            "parameter_deltas": self.parameter_deltas,
+            "detected_at": self.detected_at,
+            "auto_adjust": self.auto_adjust,
+            "source": self.source,
+        }

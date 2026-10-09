@@ -15,6 +15,7 @@ import json
 import logging
 from typing import Any
 
+from quantlab.agents.economic_sense.validator import EconomicSenseValidator
 from quantlab.agents.llm_research_agent import LLMResearchAgent
 from quantlab.agents.parameter_validator import (
     ParameterValidator,
@@ -48,6 +49,7 @@ class LLMMode:
     def __init__(self, llm_config: LLMConfig) -> None:
         self._llm_config = llm_config
         self._llm_agent = LLMResearchAgent()
+        self._economic_validator = EconomicSenseValidator()
 
     # ── Public API ──────────────────────────────────────────────────────────
 
@@ -73,7 +75,15 @@ class LLMMode:
         """
         prompt = self._build_prompt(hyp)
         response_text = await self._llm_agent.call_llm(prompt, self._llm_config)
-        return self._parse_response(response_text)
+        blocks, strategies = self._parse_response(response_text)
+        # Economic sense validation (F1-03: wired into LLMMode directly).
+        # Non-blocking by contract (never raises); attach warnings so
+        # callers outside ResearchAgent still see them.
+        warnings = self._economic_validator.validate(hyp)
+        if warnings:
+            existing = list(getattr(hyp, "validation_warnings", []) or [])
+            hyp.validation_warnings = existing + warnings
+        return blocks, strategies
 
     # ── Prompt construction ─────────────────────────────────────────────────
 
