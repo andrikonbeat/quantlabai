@@ -1,4 +1,4 @@
-"""Tests for QuantLab KnowledgeStore v5 schema changes.
+"""Tests for QuantLab KnowledgeStore v6 schema changes.
 
 Covers:
 - KNOWLEDGE_DIRS includes 4 new directories
@@ -7,7 +7,7 @@ Covers:
 - index.yaml version is "5" after rebuild + read
 - rebuild_index() includes a ``docs`` section for SQX/JForex official docs
 - read_index() provides legacy default ``docs: {}``
-- _upgrade_index() upgrades legacy v1/v2/v3/v4 indexes to v5
+- _upgrade_index() upgrades legacy v1/v2/v3/v4 indexes to v6
 - Legacy data remains readable after upgrade
 - KnowledgeStore can save/load campaign-phase artifacts
 """
@@ -30,7 +30,7 @@ from quantlab.knowledge.store import (
 
 
 class TestKnowledgeStoreV5Constants:
-    """Verify v5 constants include new directories and layouts."""
+    """Verify v6 constants include new directories and layouts."""
 
     def test_knowledge_dirs_includes_new_directories(self) -> None:
         new_dirs = {"campaign-phases", "parameter-matrix", "guardian-feedback", "maintenance"}
@@ -49,7 +49,7 @@ class TestKnowledgeStoreV5Constants:
 
 
 class TestKnowledgeStoreV5Initialize:
-    """Verify initialize() creates v5 directory structure."""
+    """Verify initialize() creates v6 directory structure."""
 
     def test_initialize_creates_all_new_directories(self, tmp_path: Path) -> None:
         store = KnowledgeStore(root=tmp_path / "knowledge")
@@ -66,7 +66,7 @@ class TestKnowledgeStoreV5Initialize:
             gitkeep = tmp_path / "knowledge" / dir_name / ".gitkeep"
             assert gitkeep.is_file()
 
-    def test_initialize_rebuild_creates_v5_index(self, tmp_path: Path) -> None:
+    def test_initialize_rebuild_creates_v6_index(self, tmp_path: Path) -> None:
         store = KnowledgeStore(root=tmp_path / "knowledge")
         store.initialize()
         store.rebuild_index()
@@ -76,10 +76,10 @@ class TestKnowledgeStoreV5Initialize:
 
         raw = index_path.read_text(encoding="utf-8")
         data = yaml.safe_load(raw)
-        assert data["_version"] == "5"
+        assert data["_version"] == "6"
 
         index = store.read_index()
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
 
     def test_initialize_idempotent(self, tmp_path: Path) -> None:
         store = KnowledgeStore(root=tmp_path / "knowledge")
@@ -91,9 +91,9 @@ class TestKnowledgeStoreV5Initialize:
 
 
 class TestKnowledgeStoreV5Upgrade:
-    """Verify _upgrade_index() migrates legacy schemas to v5."""
+    """Verify _upgrade_index() migrates legacy schemas to v6."""
 
-    def test_upgrade_v4_to_v5_adds_new_keys(self) -> None:
+    def test_upgrade_v4_to_v6_adds_new_keys(self) -> None:
         legacy = {
             "_version": "4",
             "_generated": "2026-01-01T00:00:00",
@@ -103,38 +103,38 @@ class TestKnowledgeStoreV5Upgrade:
             "version_events": {},
         }
         upgraded = KnowledgeStore._upgrade_index(legacy)
-        assert upgraded["_version"] == "5"
+        assert upgraded["_version"] == "6"
         assert "campaign_phases" in upgraded
         assert "parameter_matrix" in upgraded
         assert "guardian_feedback" in upgraded
         assert "maintenance" in upgraded
 
-    def test_upgrade_v3_to_v5_adds_all_new_keys(self) -> None:
+    def test_upgrade_v3_to_v6_adds_all_new_keys(self) -> None:
         legacy = {"_version": "3", "_generated": "2026-01-01T00:00:00"}
         upgraded = KnowledgeStore._upgrade_index(legacy)
-        assert upgraded["_version"] == "5"
+        assert upgraded["_version"] == "6"
         assert upgraded["campaign_phases"] == {}
         assert upgraded["parameter_matrix"] == {}
         assert upgraded["guardian_feedback"] == {}
         assert upgraded["maintenance"] == {}
 
-    def test_upgrade_v2_to_v5_adds_new_keys(self) -> None:
+    def test_upgrade_v2_to_v6_adds_new_keys(self) -> None:
         legacy = {
             "_version": "2",
             "_generated": "2026-01-01T00:00:00",
             "directories": {"agent-memory": {"a/b/memory.yaml": {}}},
         }
         upgraded = KnowledgeStore._upgrade_index(legacy)
-        assert upgraded["_version"] == "5"
+        assert upgraded["_version"] == "6"
         assert "campaign_phases" in upgraded
         assert "parameter_matrix" in upgraded
         assert "guardian_feedback" in upgraded
         assert "maintenance" in upgraded
 
-    def test_upgrade_v1_to_v5_adds_all_keys(self) -> None:
+    def test_upgrade_v1_to_v6_adds_all_keys(self) -> None:
         legacy = {"_version": "1", "_generated": "2026-01-01T00:00:00"}
         upgraded = KnowledgeStore._upgrade_index(legacy)
-        assert upgraded["_version"] == "5"
+        assert upgraded["_version"] == "6"
         assert upgraded["campaign_phases"] == {}
         assert upgraded["parameter_matrix"] == {}
         assert upgraded["guardian_feedback"] == {}
@@ -150,7 +150,7 @@ class TestKnowledgeStoreV5Upgrade:
             "version_events": {"structured/sqx-version/1->2/checklist.yaml": {}},
         }
         upgraded = KnowledgeStore._upgrade_index(legacy)
-        assert upgraded["_version"] == "5"
+        assert upgraded["_version"] == "6"
         assert upgraded["directories"]["raw"]["raw/data.csv"]["size"] == 100
         assert upgraded["agent_memory"]["agent-memory/a/b/memory.yaml"]["agent_name"] == "a"
         assert "campaign_phases" in upgraded
@@ -158,14 +158,14 @@ class TestKnowledgeStoreV5Upgrade:
         assert "guardian_feedback" in upgraded
         assert "maintenance" in upgraded
 
-    def test_upgrade_v5_is_noop(self) -> None:
+    def test_upgrade_v6_is_noop(self) -> None:
         current = {
-            "_version": "5",
+            "_version": "6",
             "_generated": "2026-01-01T00:00:00",
             "campaign_phases": {"cp": 1},
         }
         upgraded = KnowledgeStore._upgrade_index(current)
-        assert upgraded["_version"] == "5"
+        assert upgraded["_version"] == "6"
         assert upgraded["campaign_phases"] == {"cp": 1}
 
 
@@ -183,7 +183,7 @@ class TestKnowledgeStoreV5ReadIndex:
         )
 
         index = store.read_index()
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
         assert "campaign_phases" in index
         assert "parameter_matrix" in index
         assert "guardian_feedback" in index
@@ -200,7 +200,7 @@ class TestKnowledgeStoreV5ReadIndex:
         )
 
         index = store.read_index()
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
 
 
 class TestKnowledgeStoreV5Artifacts:
@@ -299,10 +299,10 @@ class TestFailedPhaseEnvelope:
 
 
 class TestKnowledgeStoreV5RebuildKeys:
-    """Index v5 migration acceptance (G6, knowledge-store delta).
+    """Index v6 migration acceptance (G6, knowledge-store delta).
 
-    Spec "Index v5 Migration Acceptance": a stale v4 index MUST upgrade to 5
-    with the v5 keys present after rebuild; "Seed writes dataset files":
+    Spec "Index v6 Migration Acceptance": a stale v4 index MUST upgrade to 5
+    with the v6 keys present after rebuild; "Seed writes dataset files":
     datasets/ files MUST be recorded by ``rebuild_index``.
     """
 
@@ -321,7 +321,7 @@ class TestKnowledgeStoreV5RebuildKeys:
             encoding="utf-8",
         )
 
-    def test_rebuild_index_emits_v5_keys_and_upgrades_stale_v4(
+    def test_rebuild_index_emits_v6_keys_and_upgrades_stale_v4(
         self, tmp_path: Path
     ) -> None:
         store = KnowledgeStore(root=tmp_path / "knowledge")
@@ -330,14 +330,14 @@ class TestKnowledgeStoreV5RebuildKeys:
 
         index = store.rebuild_index()
 
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
         for key in ("campaign_phases", "parameter_matrix", "guardian_feedback", "maintenance"):
             assert key in index
 
         on_disk = yaml.safe_load(
             (store.root / "index.yaml").read_text(encoding="utf-8")
         )
-        assert on_disk["_version"] == "5"
+        assert on_disk["_version"] == "6"
         for key in ("campaign_phases", "parameter_matrix", "guardian_feedback", "maintenance"):
             assert key in on_disk
 
@@ -360,7 +360,7 @@ class TestKnowledgeStoreV5RebuildKeys:
 
         index = store.read_index()
 
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
         assert index["directories"]["raw"]["raw/data.csv"]["size"] == 100
         assert "kb_parameters" in index
         assert "version_events" in index
@@ -534,7 +534,7 @@ class TestSeedOhlc:
             ("EURUSD", "M1"), ("EURUSD", "M5"), ("EURUSD", "H1"),
         ]
         index = yaml.safe_load((lake / "index.yaml").read_text(encoding="utf-8"))
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
         datasets = index["directories"]["datasets"]
         for tf in ("M1", "M5", "H1"):
             assert f"datasets/EURUSD/{tf}.csv" in datasets
@@ -596,7 +596,7 @@ class TestSeedOhlc:
 
 
 class TestKnowledgeStoreV5DocsIndex:
-    """Verify v5 docs index for SQX/JForex official docs (REQ-403 delta)."""
+    """Verify v6 docs index for SQX/JForex official docs (REQ-403 delta)."""
 
     def test_rebuild_index_includes_docs_section(
         self, tmp_path: Path

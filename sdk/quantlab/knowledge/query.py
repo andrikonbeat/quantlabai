@@ -109,6 +109,31 @@ class QueryBuilder:
         self._filter.text_search = text
         return self
 
+    def filter_by_similarity(
+        self,
+        text: str,
+        top_k: int = 10,
+        threshold: float = 0.7,
+    ) -> QueryBuilder:
+        """Filter campaigns by semantic similarity to the given text.
+
+        Uses EmbeddingService (sentence-transformers when available, with
+        deterministic TF-IDF+3-gram fallback) to rank campaigns by
+        cosine similarity against the query text.
+
+        Args:
+            text: Free-text query to match against campaign descriptions/tags.
+            top_k: Maximum number of similar campaigns to keep.
+            threshold: Minimum cosine similarity [0, 1] to include.
+
+        Returns:
+            Self for chaining.
+        """
+        self._filter.similarity_text = text
+        self._filter.similarity_top_k = top_k
+        self._filter.similarity_threshold = threshold
+        return self
+
     def sort_by(self, field: str, ascending: bool = False) -> QueryBuilder:
         """Set sort field and order."""
         self._filter.sort_by = field
@@ -441,6 +466,11 @@ class QueryBuilder:
         index = store.read_index()
 
         campaigns = self._extract_campaigns(index)
+
+        # Apply semantic similarity filter first if requested
+        if self._filter.similarity_text:
+            campaigns = self._apply_similarity_filter(store, campaigns)
+
         filtered = self._apply_filters(campaigns)
         sorted_campaigns = self._sort_results(filtered)
 
@@ -456,27 +486,84 @@ class QueryBuilder:
             query_time_ms=(time.time() - start) * 1000,
         )
 
+    def _apply_similarity_filter(
+        self, store: KnowledgeStore, campaigns: list[CampaignSummary]
+    ) -> list[CampaignSummary]:
+        """Rank campaigns by semantic similarity and filter by threshold."""
+        if not self._filter.similarity_text or not campaigns:
+            return campaigns
+
+        try:
+            from quantlab.knowledge.embedding_service import EmbeddingService
+        except ImportError:
+            logger.warning(
+                "EmbeddingService not available; skipping similarity filter"
+            )
+            return campaigns
+
+        svc = EmbeddingService(fallback_enabled=True)
+
+        # Prepare campaign texts for embedding
+        campaign_texts = []
+        for c in campaigns:
+            searchable = f"{c.campaign_id} {' '.join(c.tags)}"
+            if c.market:
+                searchable += f" {c.market}"
+            if c.timeframe:
+                searchable += f" {c.timeframe}"
+            campaign_texts.append(searchable)
+
+        # Compute embeddings for all campaign texts + query
+        import asyncio
+
+        async def _compute() -> list[float]:
+            query_vec = (await svc.embed([self._filter.similarity_text]))[0]
+            cand_vecs = await svc.embed(campaign_texts)
+            return svc.similarity_batch(query_vec, cand_vecs)
+
+        # Run async computation in a thread to avoid event loop conflicts
+        # when called from a context with a running event loop (e.g., pytest-asyncio)
+        def _run_in_thread() -> list[float]:
+            return asyncio.run(_compute())
+
+        try:
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_run_in_thread)
+                scores = future.result()
+        except Exception as exc:
+            logger.warning(
+                "Similarity filter failed (%s); skipping", exc
+            )
+            return campaigns
+
+        # Filter by threshold and sort by score desc
+        scored = list(zip(campaigns, scores))
+        scored = [
+            (c, s)
+            for c, s in scored
+            if s >= self._filter.similarity_threshold
+        ]
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        # Apply top_k
+        top_k = self._filter.similarity_top_k
+        return [c for c, _ in scored[:top_k]]
+
     def _extract_campaigns(self, index: dict[str, Any]) -> list[CampaignSummary]:
         """Extract campaign summaries from index."""
         from quantlab.knowledge.models import (
             CampaignSummary,
         )
+        from quantlab.knowledge.store import KnowledgeStore
 
         campaigns: list[CampaignSummary] = []
 
-        for dir_name in ["results", "campaigns"]:
-            if dir_name not in index.get("directories", {}):
-                continue
-
-            for rel_path, info in (
-                index.get("directories", {}).get(dir_name, {}).items()
-            ):
-                campaign_id = (
-                    info.get("path", "").split("/")[-1]
-                    if "/" in info.get("path", "")
-                    else ""
-                )
-
+        # Prefer Indexer's campaigns index (v6+) which has metrics, tags, links
+        indexer_campaigns = index.get("campaigns", {})
+        if indexer_campaigns:
+            for campaign_id, info in indexer_campaigns.items():
                 metrics = info.get("metrics", {})
                 if metrics:
                     campaign_metrics = CampaignMetrics(
@@ -497,6 +584,53 @@ class QueryBuilder:
                         name=campaign_id,
                         metrics=campaign_metrics,
                         tags=info.get("tags", []),
+                        created=datetime.fromisoformat(info.get("created"))
+                        if info.get("created")
+                        else None,
+                        path=info.get("path", ""),
+                        market=info.get("market") or info.get("symbol"),
+                        timeframe=info.get("timeframe"),
+                        status=info.get("status"),
+                    )
+                )
+
+        # Fallback: read from directories (legacy)
+        if not campaigns:
+            # Create a temporary store to read tags from filesystem
+            tag_store = KnowledgeStore(self._root)
+
+            for dir_name in ["results", "campaigns"]:
+                if dir_name not in index.get("directories", {}):
+                    continue
+
+                for rel_path, info in (
+                    index.get("directories", {}).get(dir_name, {}).items()
+                ):
+                    parts = rel_path.split("/")
+                    campaign_id = parts[1] if len(parts) >= 2 else ""
+
+                    tags = tag_store.get_tags(campaign_id) if campaign_id else []
+
+                    metrics = info.get("metrics", {})
+                if metrics:
+                    campaign_metrics = CampaignMetrics(
+                        sharpe_ratio=metrics.get("sharpe_ratio"),
+                        profit_factor=metrics.get("profit_factor"),
+                        win_rate=metrics.get("win_rate"),
+                        max_drawdown=metrics.get("max_drawdown"),
+                        total_trades=metrics.get("total_trades"),
+                        net_profit=metrics.get("net_profit"),
+                        total_return=metrics.get("total_return"),
+                    )
+                else:
+                    campaign_metrics = None
+
+                campaigns.append(
+                    CampaignSummary(
+                        campaign_id=campaign_id,
+                        name=campaign_id,
+                        metrics=campaign_metrics,
+                        tags=tags,
                         created=datetime.fromisoformat(info.get("created"))
                         if info.get("created")
                         else None,

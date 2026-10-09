@@ -57,6 +57,9 @@ KNOWLEDGE_DIRS = [
     "datasets",
     "pipeline-runs",
     "agent-memory",
+    "campaigns",
+    "results",
+    "tags",
     "campaign-phases",
     "parameter-matrix",
     "guardian-feedback",
@@ -461,11 +464,11 @@ class KnowledgeStore:
             if entries:
                 directories[dir_name] = entries
 
-        # Build base index dict (v5 — reconciled layout, REQ-403; v5 adds
-        # campaign-phase, parameter-matrix, guardian-feedback, maintenance)
+        # Build base index dict (v6 — embeddings directory + vector index, REQ-501;
+        # v6 adds embeddings index and vector metadata)
         doc: dict[str, object] = {
             "_generated": now_iso,
-            "_version": "5",
+            "_version": "6",
             "directories": directories,
             "agent_memory": self._build_agent_memory_index(),
             "kb_parameters": self._build_kb_parameters_index(),
@@ -475,6 +478,7 @@ class KnowledgeStore:
             "guardian_feedback": {},
             "maintenance": {},
             "docs": self._build_docs_index(),
+            "embeddings": self._build_embeddings_index(),
         }
 
         # Enhance with campaign metrics/tags/links via Indexer (if available)
@@ -659,23 +663,31 @@ class KnowledgeStore:
 
     @staticmethod
     def _upgrade_index(data: dict[str, object]) -> dict[str, object]:
-        """Upgrade a legacy index schema to v5 with backward-compatible defaults."""
+        """Upgrade a legacy index schema to v6 with backward-compatible defaults."""
         version = str(data.get("_version", "1"))
-        if version == "5":
+        if version == "6":
             return data
 
-        # v4 → v5: add campaign-phase, parameter-matrix, guardian-feedback, maintenance
+        # v5 → v6: add embeddings index
+        if version == "5":
+            data["_version"] = "6"
+            data.setdefault("embeddings", {})
+            return data
+
+        # v4 → v6: add campaign-phase, parameter-matrix, guardian-feedback,
+        # maintenance (v5 areas) plus the v6 embeddings index
         if version == "4":
-            data["_version"] = "5"
+            data["_version"] = "6"
             data.setdefault("campaign_phases", {})
             data.setdefault("parameter_matrix", {})
             data.setdefault("guardian_feedback", {})
             data.setdefault("maintenance", {})
+            data.setdefault("embeddings", {})
             return data
 
-        # v3 → v5 (skip v4 intermediate)
+        # v3 → v6 (skip v4/v5 intermediates)
         if version == "3":
-            data["_version"] = "5"
+            data["_version"] = "6"
             data.setdefault("agent_memory", {})
             data.setdefault("kb_parameters", {})
             data.setdefault("version_events", {})
@@ -683,10 +695,11 @@ class KnowledgeStore:
             data.setdefault("parameter_matrix", {})
             data.setdefault("guardian_feedback", {})
             data.setdefault("maintenance", {})
+            data.setdefault("embeddings", {})
             return data
 
         if version == "2":
-            data["_version"] = "5"
+            data["_version"] = "6"
             _am_index = data.setdefault("agent_memory", {})
             for path, info in (
                 data.get("directories", {}).get("agent-memory", {}).items()  # type: ignore[union-attr]
@@ -704,11 +717,12 @@ class KnowledgeStore:
             data.setdefault("parameter_matrix", {})
             data.setdefault("guardian_feedback", {})
             data.setdefault("maintenance", {})
+            data.setdefault("embeddings", {})
             return data
 
-        # v1 → v5 (best-effort; every new area gets a default)
+        # v1 → v6 (best-effort; every new area gets a default)
         if version == "1":
-            data["_version"] = "5"
+            data["_version"] = "6"
             data.setdefault("directories", {})
             data.setdefault("agent_memory", {})
             data.setdefault("kb_parameters", {})
@@ -717,6 +731,7 @@ class KnowledgeStore:
             data.setdefault("parameter_matrix", {})
             data.setdefault("guardian_feedback", {})
             data.setdefault("maintenance", {})
+            data.setdefault("embeddings", {})
         return data
 
     def _build_agent_memory_index(self) -> dict[str, dict[str, object]]:
@@ -878,6 +893,45 @@ class KnowledgeStore:
                 "sha256": self._hash_file(file_path),
                 "kind": kind,
                 "version": version,
+            }
+
+        return entries  # type: ignore[return-value]
+
+    def _build_embeddings_index(self) -> dict[str, dict[str, object]]:
+        """Index embedding vectors and metadata under ``embeddings/``.
+
+        Maps each ``.npy`` vector file to ``{size, sha256, model, dimension,
+        fallback_used, created, meta}`` where ``meta`` is the parsed
+        ``.meta.json`` if present.
+
+        Returns:
+            Dict mapping embedding file path -> metadata.
+        """
+        embeddings_root = self.root / "embeddings"
+        if not embeddings_root.exists():
+            return {}
+
+        entries: dict[str, object] = {}
+        for npy_file in sorted(embeddings_root.glob("*.npy")):
+            rel = str(npy_file.relative_to(self.root))
+            meta_file = npy_file.with_suffix(".meta.json")
+
+            meta: dict[str, object] = {}
+            if meta_file.exists():
+                try:
+                    meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                except Exception:
+                    meta = {}
+
+            stat = npy_file.stat()
+            entries[rel] = {
+                "size": stat.st_size,
+                "sha256": self._hash_file(npy_file),
+                "model": meta.get("model", "unknown"),
+                "dimension": meta.get("dimension", 0),
+                "fallback_used": meta.get("fallback_used", False),
+                "created": meta.get("created", datetime.fromtimestamp(stat.st_mtime, UTC).isoformat()),
+                "meta": meta,
             }
 
         return entries  # type: ignore[return-value]

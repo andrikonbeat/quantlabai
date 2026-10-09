@@ -55,6 +55,10 @@ class QueryFilter:
     offset: int = 0
     agent_name: str | None = field(default=None)
     campaign_id: str | None = field(default=None)
+    # Semantic similarity filter (REQ-501)
+    similarity_text: str | None = field(default=None)
+    similarity_top_k: int = 10
+    similarity_threshold: float = 0.7
 
 
 @dataclass

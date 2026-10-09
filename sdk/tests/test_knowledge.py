@@ -111,7 +111,7 @@ class TestKnowledgeStoreIndex:
         # Should have a valid structure
         assert "directories" in index
         assert "_generated" in index
-        assert index["_version"] == "5"  # Post-Indexer version (REQ-403)
+        assert index["_version"] == "6"  # v6 adds embeddings index (REQ-501)
 
     def test_missing_index_is_rebuilt(self, tmp_path: Path) -> None:
         """If index.yaml doesn't exist, read_index rebuilds it."""
@@ -268,10 +268,10 @@ class TestKnowledgeStoreReconciledLayout:
         assert keep.read_text(encoding="utf-8") == "key: value\n"
 
 
-class TestKnowledgeStoreIndexV5:
-    """REQ-403: rebuild_index bumps to v5 and covers the reconciled areas."""
+class TestKnowledgeStoreIndexV6:
+    """REQ-501: rebuild_index bumps to v6 and adds embeddings index."""
 
-    def test_rebuild_index_is_v5_with_new_areas(self, tmp_path: Path) -> None:
+    def test_rebuild_index_is_v6_with_new_areas(self, tmp_path: Path) -> None:
         """GIVEN campaigns, agent-memory, and sqx-kb entries
         WHEN rebuild_index() runs
         THEN index.yaml is version 5 and includes entries for each area."""
@@ -299,7 +299,8 @@ class TestKnowledgeStoreIndexV5:
 
         index = store.rebuild_index()
 
-        assert index["_version"] == "5"
+        assert index["_version"] == "6"
+        assert "embeddings" in index  # v6 adds embeddings index
         assert "kb_parameters" in index
         assert "version_events" in index
         assert "campaign_phases" in index
