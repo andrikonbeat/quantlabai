@@ -11,6 +11,7 @@ import logging
 from typing import Any
 
 from quantlab.agents.economic_sense.validator import EconomicSenseValidator
+from quantlab.agents.pre_validator import PreValidator
 from quantlab.agents.tag_calibrator import TagCalibrator
 from quantlab.dsl.models import (
     AcceptanceCriterion,
@@ -53,6 +54,7 @@ class ResearchAgent:
         market_context: dict[str, Any] | None = None,
         capital_constraints: dict[str, Any] | None = None,
         broker_profile: dict[str, Any] | None = None,
+        validation_policy: str = "lenient",
     ) -> ResearchConfig:
         """Generate a validated ``ResearchConfig`` from high-level objectives.
 
@@ -70,13 +72,17 @@ class ResearchAgent:
             capital_constraints: Optional dict with capital-aware constraints
                 (e.g. ``{"max_drawdown": 0.12, "risk_per_trade_usd": 20.0}``).
             broker_profile: Optional dict with broker/platform metadata.
+            validation_policy: Pre-validation policy — ``"strict"`` raises
+                on any structural warning, ``"lenient"`` (default) attaches
+                warnings, ``"off"`` skips pre-validation.
 
         Returns:
             A fully validated ``ResearchConfig`` instance.
 
         Raises:
             ValueError: If no objectives provided or objectives reference
-                an unknown market.
+                an unknown market — or, under ``validation_policy="strict"``,
+                if any hypothesis has structural warnings.
         """
         if not objectives:
             raise ValueError("At least one objective is required")
@@ -95,6 +101,18 @@ class ResearchAgent:
 
         # Generate hypotheses
         hypotheses = self.formulate_hypotheses(objectives)
+
+        # Structural pre-validation (T9 3.4). Lenient attaches warnings
+        # (deduplicated against the economic warnings from formulate);
+        # strict raises on the first invalid hypothesis; off skips.
+        pre_validator = PreValidator(validation_policy=validation_policy)
+        for hypothesis in hypotheses:
+            new_warnings = pre_validator.validate(hypothesis)
+            if new_warnings:
+                merged = list(hypothesis.validation_warnings or [])
+                merged.extend(w for w in new_warnings if w not in merged)
+                hypothesis.validation_warnings = merged
+
         self._apply_capital_constraints(hypotheses, capital_constraints)
 
         # Build the complete config
