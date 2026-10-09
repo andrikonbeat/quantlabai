@@ -319,6 +319,10 @@ class QueryBuilder:
             query_time_ms=(time.time() - start) * 1000,
         )
 
+    # Aliases for backward compatibility with task spec naming (T9)
+    query_agent_memory = search_agent_memory
+    query_campaign_similarity = search_similar_campaigns
+
     def query_docs(
         self,
         text: str,
