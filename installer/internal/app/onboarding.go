@@ -12,11 +12,21 @@ import (
 	"github.com/andrikonbeat/quantlabai/internal/config"
 	"github.com/andrikonbeat/quantlabai/internal/opencode"
 	"github.com/andrikonbeat/quantlabai/internal/state"
-	"github.com/andrikonbeat/quantlabai/internal/tools"
 	"github.com/andrikonbeat/quantlabai/internal/tui/onboarding"
 )
 
-// cmdOnboarding runs the interactive onboarding flow.
+// runOnboardingProgram runs the interactive TUI and returns the collected
+// result. It is a package variable so tests can bypass the interactive loop.
+var runOnboardingProgram = func(m *onboarding.Model) (onboarding.Result, error) {
+	prog := tea.NewProgram(m)
+	if _, err := prog.Run(); err != nil {
+		return onboarding.Result{}, err
+	}
+	return m.Result(), nil
+}
+
+// cmdOnboarding runs the interactive onboarding flow. Tool installation is
+// owned by the TUI; this command only persists the resulting choices.
 func cmdOnboarding(w io.Writer, args []string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -30,13 +40,33 @@ func cmdOnboarding(w io.Writer, args []string) error {
 	}
 
 	model := onboarding.NewModel()
-	prog := tea.NewProgram(&model)
-	if _, err := prog.Run(); err != nil {
+	res, err := runOnboardingProgram(&model)
+	if err != nil {
 		return fmt.Errorf("onboarding TUI: %w", err)
 	}
-	res := model.Result()
 
-	// Write config if SQX/JForex were provided.
+	if err := applyOnboardingResult(w, home, res); err != nil {
+		return err
+	}
+
+	// Mark onboarding completed.
+	st.OnboardingCompleted = true
+	now := time.Now().UTC()
+	st.OnboardingCompletedAt = &now
+	st.MarkInstalled("onboarding", "complete")
+	if _, err := st.Save(); err != nil {
+		return fmt.Errorf("save state: %w", err)
+	}
+
+	fmt.Fprintf(w, "\n✅ Onboarding completado.\n")
+	fmt.Fprintf(w, "  Ahora ejecutá 'quantlab status' para verificar tu instalación.\n")
+	return nil
+}
+
+// applyOnboardingResult writes the collected config, prints tool readiness
+// from the TUI result, and applies the primary-agent selection. It no longer
+// installs tools — the TUI owns install execution.
+func applyOnboardingResult(w io.Writer, home string, res onboarding.Result) error {
 	cfg, err := config.ReadConfig(config.ConfigPath(home))
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
@@ -61,32 +91,9 @@ func cmdOnboarding(w io.Writer, args []string) error {
 		return fmt.Errorf("write config: %w", err)
 	}
 
-	// Install consented tools.
-	if res.Consent.OpenCode {
-		fmt.Fprintf(w, "\n📦 Instalando OpenCode...\n")
-		display, err := tools.InstallOpenCode(home)
-		if display != "" {
-			fmt.Fprintf(w, "  ⚠ %s\n", display)
-		}
-		if err != nil {
-			fmt.Fprintf(w, "  ⚠ OpenCode: %v\n", err)
-		} else {
-			fmt.Fprintf(w, "  ✓ OpenCode instalado\n")
-		}
-	}
-
-	if res.Consent.GentleAI {
-		fmt.Fprintf(w, "\n📦 Instalando gentle-ai...\n")
-		display, err := tools.InstallGentleAI(home)
-		if display != "" {
-			fmt.Fprintf(w, "  ⚠ %s\n", display)
-		}
-		if err != nil {
-			fmt.Fprintf(w, "  ⚠ gentle-ai: %v\n", err)
-		} else {
-			fmt.Fprintf(w, "  ✓ gentle-ai instalado\n")
-		}
-	}
+	fmt.Fprintf(w, "\nHerramientas:\n")
+	fmt.Fprintf(w, "  %s OpenCode\n", readinessMark(res.OpenCodeReady))
+	fmt.Fprintf(w, "  %s gentle-ai\n", readinessMark(res.GentleAIReady))
 
 	// Set primary agent if chosen.
 	if res.PrimaryAgent != "" && res.PrimaryAgent != "quantlab-orchestrator" {
@@ -102,17 +109,12 @@ func cmdOnboarding(w io.Writer, args []string) error {
 			}
 		}
 	}
-
-	// Mark onboarding completed.
-	st.OnboardingCompleted = true
-	now := time.Now().UTC()
-	st.OnboardingCompletedAt = &now
-	st.MarkInstalled("onboarding", "complete")
-	if _, err := st.Save(); err != nil {
-		return fmt.Errorf("save state: %w", err)
-	}
-
-	fmt.Fprintf(w, "\n✅ Onboarding completado.\n")
-	fmt.Fprintf(w, "  Ahora ejecutá 'quantlab status' para verificar tu instalación.\n")
 	return nil
+}
+
+func readinessMark(ready bool) string {
+	if ready {
+		return "✓"
+	}
+	return "⚠"
 }
