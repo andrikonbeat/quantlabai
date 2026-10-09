@@ -8,7 +8,7 @@ import (
 )
 
 // dashboardURL is the default QuantLab web dashboard URL.
-const dashboardURL = "https://quantlab-ai.com/dashboard"
+const dashboardURL = "https://github.com/andrikonbeat/quantlabai"
 
 // cmdDashboard implements the `quantlab dashboard` command. It attempts to
 // open the QuantLab web dashboard in the default browser, or prints the URL
