@@ -1,11 +1,13 @@
 // Package onboarding implements the `quantlab onboarding` TUI flow.
-// It is a standalone Bubbletea model with 5 steps, independent from the
-// install/configure wizard.
+// It is a standalone Bubbletea model, independent from the install/configure
+// wizard. The TUI owns consent collection and tool installation execution so
+// the CLI wrapper (internal/app) only consumes the resulting choices.
 package onboarding
 
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/andrikonbeat/quantlabai/internal/assets"
 	"github.com/andrikonbeat/quantlabai/internal/config"
+	"github.com/andrikonbeat/quantlabai/internal/sdk"
 	"github.com/andrikonbeat/quantlabai/internal/tools"
 )
 
@@ -22,21 +25,55 @@ type Step int
 
 const (
 	StepIntro Step = iota
-	StepConsent
+	StepConsentOpenCode
+	StepConsentGentleAI
+	StepInstalling
+	StepInstallFailed
+	StepInstallManual
 	StepSQX
 	StepJForex
+	StepVerify
 	StepPostInstall
 	stepCount
+)
+
+// maxInstallAttempts bounds consecutive install failures before the flow
+// forces manual mode.
+const maxInstallAttempts = 3
+
+// Tool identifiers used across consent, install queue and readiness.
+const (
+	toolOpenCode = "opencode"
+	toolGentleAI = "gentle-ai"
+)
+
+// Verification marks.
+const (
+	markOK      = "✓"
+	markMissing = "✗"
+	markWarn    = "⚠"
+)
+
+// Install and documentation copy shared by consent and manual steps.
+const (
+	openCodeInstallCommand = "npm install -g --ignore-scripts opencode-ai@latest"
+	openCodeDocsURL        = "https://opencode.ai/"
+	gentleAIInstallCommand = "Descargá el binario desde GitHub y movelo a ~/.local/bin"
+	gentleAIDocsURL        = "https://github.com/Gentleman-Programming/gentle-ai"
+	delegationSample       = "Instalá o actualizá OpenCode y gentle-ai, y verificá el entorno de QuantLab."
 )
 
 // Result captures the user's onboarding choices.
 type Result struct {
 	Consent struct {
-		OpenCode  bool
-		GentleAI  bool
-		SDK       bool
+		OpenCode bool
+		GentleAI bool
 	}
-	SQX struct {
+	// OpenCodeReady/GentleAIReady are true when the tool was detected at
+	// start or installed successfully during the flow.
+	OpenCodeReady bool
+	GentleAIReady bool
+	SQX           struct {
 		InstallPath string
 	}
 	JForex struct {
@@ -48,35 +85,66 @@ type Result struct {
 	PrimaryAgent string
 }
 
+// installDoneMsg is emitted when an install job finishes.
+type installDoneMsg struct {
+	tool    string
+	display string
+	err     error
+}
+
+// checkItem is one line of the functional verification checklist.
+type checkItem struct {
+	Label string
+	Mark  string
+}
+
 // Model is the Bubbletea model for the onboarding flow.
 type Model struct {
-	step              Step
-	width             int
-	height            int
-	err               error
-	quitting          bool
-	result            Result
-	steps             []PostInstallStep
+	step     Step
+	width    int
+	height   int
+	err      error
+	quitting bool
+	result   Result
+	steps    []PostInstallStep
 
 	// StepIntro
 	introScroll int
 
-	// StepConsent
+	// Consent steps
 	consentOpenCode   bool
 	consentGentleAI   bool
-	consentSDK        bool
 	openCodeInstalled bool
 	gentleAIInstalled bool
 
+	// Install execution — injectable for tests.
+	installOpenCodeFn func(home string) (string, error)
+	installGentleAIFn func(home string) (string, error)
+	homeFn            func() (string, error)
+	sdkDetectFn       func() (bool, error)
+
+	// Install queue / failure bookkeeping
+	installQueue    []string
+	installAttempts int
+	currentTool     string
+	installError    string
+	manualTool      string
+	manualDisplay   string
+	manualTools     map[string]bool
+
 	// StepSQX
-	sqxInput  textinput.Model
-	sqxError  string
+	sqxInput textinput.Model
+	sqxError string
 
 	// StepJForex
-	jforexPathInput   textinput.Model
-	jforexUserInput   textinput.Model
-	jforexPassInput   textinput.Model
-	accountModeIndex  int
+	jforexPathInput  textinput.Model
+	jforexUserInput  textinput.Model
+	jforexPassInput  textinput.Model
+	accountModeIndex int
+
+	// StepVerify
+	verifyItems []checkItem
+	verifyBuilt bool
 
 	// StepPostInstall
 	primaryAgentIndex int
@@ -114,19 +182,45 @@ func NewModel() Model {
 	jforexPassInput.CharLimit = 128
 	jforexPassInput.Width = 60
 
+	openCodeInstalled := tools.DetectOpenCode()
+	gentleAIInstalled := tools.DetectGentleAI()
+
 	return Model{
 		step:              StepIntro,
-		consentSDK:        true,
 		accountModeIndex:  0, // default demo
 		primaryAgentIndex: 0, // default quantlab-orchestrator
 		sqxInput:          sqxInput,
 		jforexPathInput:   jforexPathInput,
 		jforexUserInput:   jforexUserInput,
 		jforexPassInput:   jforexPassInput,
-		openCodeInstalled: tools.DetectOpenCode(),
-		gentleAIInstalled: tools.DetectGentleAI(),
+		openCodeInstalled: openCodeInstalled,
+		gentleAIInstalled: gentleAIInstalled,
+		installOpenCodeFn: tools.InstallOpenCode,
+		installGentleAIFn: tools.InstallGentleAI,
+		homeFn:            os.UserHomeDir,
+		sdkDetectFn:       detectSDKReady,
+		manualTools:       map[string]bool{},
 		steps:             loadPostInstallSteps(),
+		result: Result{
+			OpenCodeReady: openCodeInstalled,
+			GentleAIReady: gentleAIInstalled,
+		},
 	}
+}
+
+// detectSDKReady reports whether the QuantLab SDK is installed.
+func detectSDKReady() (bool, error) {
+	info, err := sdk.DetectInstalledSDK()
+	if err != nil {
+		return false, err
+	}
+	return info.Installed, nil
+}
+
+// postInstallGuide mirrors the embedded onboarding/steps.json envelope, which
+// wraps the guide list under a "steps" key.
+type postInstallGuide struct {
+	Steps []PostInstallStep `json:"steps"`
 }
 
 func loadPostInstallSteps() []PostInstallStep {
@@ -134,11 +228,11 @@ func loadPostInstallSteps() []PostInstallStep {
 	if err != nil {
 		return defaultPostInstallSteps()
 	}
-	var steps []PostInstallStep
-	if err := json.Unmarshal(b, &steps); err != nil {
+	var guide postInstallGuide
+	if err := json.Unmarshal(b, &guide); err != nil || len(guide.Steps) == 0 {
 		return defaultPostInstallSteps()
 	}
-	return steps
+	return guide.Steps
 }
 
 func defaultPostInstallSteps() []PostInstallStep {
@@ -157,12 +251,27 @@ func (m *Model) Init() tea.Cmd {
 
 // Update handles input for the current step.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.Type {
+	if done, ok := msg.(installDoneMsg); ok {
+		return m.handleInstallDone(done)
+	}
+
+	if key, ok := msg.(tea.KeyMsg); ok {
+		switch key.Type {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			m.quitting = true
 			return m, tea.Quit
+		}
+		switch m.step {
+		case StepConsentOpenCode, StepConsentGentleAI:
+			if handled, cmd := m.handleConsentKey(key); handled {
+				return m, cmd
+			}
+		case StepInstallFailed:
+			if handled, cmd := m.handleInstallFailedKey(key); handled {
+				return m, cmd
+			}
+		}
+		switch key.Type {
 		case tea.KeyEnter:
 			return m.handleEnter()
 		case tea.KeyTab:
@@ -195,15 +304,160 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleConsentKey handles the Sí/No prompt when a tool is missing. It returns
+// handled=false for keys the consent step does not own (e.g. Enter).
+func (m *Model) handleConsentKey(key tea.KeyMsg) (bool, tea.Cmd) {
+	detected := m.openCodeInstalled
+	if m.step == StepConsentGentleAI {
+		detected = m.gentleAIInstalled
+	}
+	if detected {
+		return false, nil
+	}
+	switch strings.ToLower(key.String()) {
+	case "s", "y":
+		if m.step == StepConsentOpenCode {
+			m.consentOpenCode = true
+		} else {
+			m.consentGentleAI = true
+		}
+		return true, m.advanceConsent()
+	case "n":
+		return true, m.advanceConsent()
+	}
+	return false, nil
+}
+
+// advanceConsent records the current consent decision and moves to the next
+// consent step, kicking off installs once both are collected.
+func (m *Model) advanceConsent() tea.Cmd {
+	if m.step == StepConsentOpenCode {
+		m.step = StepConsentGentleAI
+		return nil
+	}
+	if m.consentOpenCode || m.consentGentleAI {
+		m.step = StepInstalling
+		return m.beginInstalls()
+	}
+	m.step = StepSQX
+	return nil
+}
+
+// handleInstallFailedKey handles retry / manual / skip on the failure step.
+func (m *Model) handleInstallFailedKey(key tea.KeyMsg) (bool, tea.Cmd) {
+	switch strings.ToLower(key.String()) {
+	case "r":
+		if m.installAttempts >= maxInstallAttempts {
+			return true, nil
+		}
+		m.step = StepInstalling
+		return true, m.runInstall(m.currentTool)
+	case "m":
+		m.manualTool = m.currentTool
+		m.step = StepInstallManual
+		return true, nil
+	case "o":
+		m.step = StepInstalling
+		return true, m.nextInstall()
+	}
+	return false, nil
+}
+
+// handleInstallDone processes the result of one install job.
+func (m *Model) handleInstallDone(done installDoneMsg) (tea.Model, tea.Cmd) {
+	if done.err == nil && done.display == "" {
+		m.markReady(done.tool)
+		m.installError = ""
+		return m, m.nextInstall()
+	}
+	if done.err == nil {
+		// The tool could not be installed automatically and the installer
+		// returned manual instructions: treat it as a manual fallback.
+		m.manualTool = done.tool
+		m.manualTools[done.tool] = true
+		m.manualDisplay = done.display
+		m.step = StepInstallManual
+		return m, nil
+	}
+	m.installError = done.err.Error()
+	m.installAttempts++
+	if m.installAttempts >= maxInstallAttempts {
+		m.manualTool = done.tool
+		m.step = StepInstallManual
+		return m, nil
+	}
+	m.step = StepInstallFailed
+	return m, nil
+}
+
+func (m *Model) markReady(tool string) {
+	switch tool {
+	case toolOpenCode:
+		m.result.OpenCodeReady = true
+	case toolGentleAI:
+		m.result.GentleAIReady = true
+	}
+}
+
+// beginInstalls builds the install queue from consent and starts the first job.
+func (m *Model) beginInstalls() tea.Cmd {
+	m.installQueue = nil
+	if m.consentOpenCode {
+		m.installQueue = append(m.installQueue, toolOpenCode)
+	}
+	if m.consentGentleAI {
+		m.installQueue = append(m.installQueue, toolGentleAI)
+	}
+	return m.nextInstall()
+}
+
+// nextInstall pops the next job from the queue and runs it, one per command.
+// When the queue is empty it advances to the SQX step.
+func (m *Model) nextInstall() tea.Cmd {
+	if len(m.installQueue) == 0 {
+		m.step = StepSQX
+		return nil
+	}
+	tool := m.installQueue[0]
+	m.installQueue = m.installQueue[1:]
+	m.currentTool = tool
+	m.installAttempts = 0
+	return m.runInstall(tool)
+}
+
+// runInstall returns a tea.Cmd that executes the installer for the given tool.
+func (m *Model) runInstall(tool string) tea.Cmd {
+	runner := m.runnerFor(tool)
+	homeFn := m.homeFn
+	return func() tea.Msg {
+		if runner == nil {
+			return installDoneMsg{tool: tool, err: fmt.Errorf("no installer registered for %q", tool)}
+		}
+		home, err := homeFn()
+		if err != nil {
+			return installDoneMsg{tool: tool, err: fmt.Errorf("home dir: %w", err)}
+		}
+		display, err := runner(home)
+		return installDoneMsg{tool: tool, display: display, err: err}
+	}
+}
+
+func (m *Model) runnerFor(tool string) func(home string) (string, error) {
+	switch tool {
+	case toolOpenCode:
+		return m.installOpenCodeFn
+	case toolGentleAI:
+		return m.installGentleAIFn
+	}
+	return nil
+}
+
 func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.step {
 	case StepIntro:
-		m.step = StepConsent
-	case StepConsent:
-		m.result.Consent.OpenCode = m.consentOpenCode
-		m.result.Consent.GentleAI = m.consentGentleAI
-		m.result.Consent.SDK = m.consentSDK
-		m.step = StepSQX
+		m.step = StepConsentOpenCode
+	case StepConsentOpenCode, StepConsentGentleAI:
+		return m, m.advanceConsent()
 	case StepSQX:
 		m.result.SQX.InstallPath = strings.TrimSpace(m.sqxInput.Value())
 		if m.result.SQX.InstallPath != "" {
@@ -223,6 +477,13 @@ func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 		} else {
 			m.result.JForex.AccountMode = "live"
 		}
+		m.verifyBuilt = false
+		m.step = StepVerify
+	case StepInstallManual:
+		m.manualTools[m.manualTool] = true
+		m.step = StepInstalling
+		return m, m.nextInstall()
+	case StepVerify:
 		m.step = StepPostInstall
 	case StepPostInstall:
 		agents := []string{"quantlab-orchestrator", "guardian-orchestrator"}
@@ -256,12 +517,22 @@ func (m *Model) View() string {
 	switch m.step {
 	case StepIntro:
 		return m.viewIntro()
-	case StepConsent:
-		return m.viewConsent()
+	case StepConsentOpenCode:
+		return m.viewConsentTool("OpenCode", "orquestación de agentes", m.openCodeInstalled, openCodeDocsURL, openCodeInstallCommand)
+	case StepConsentGentleAI:
+		return m.viewConsentTool("gentle-ai", "skills y revisión de código", m.gentleAIInstalled, gentleAIDocsURL, gentleAIInstallCommand)
+	case StepInstalling:
+		return m.viewInstalling()
+	case StepInstallFailed:
+		return m.viewInstallFailed()
+	case StepInstallManual:
+		return m.viewInstallManual()
 	case StepSQX:
 		return m.viewSQX()
 	case StepJForex:
 		return m.viewJForex()
+	case StepVerify:
+		return m.viewVerify()
 	case StepPostInstall:
 		return m.viewPostInstall()
 	default:
@@ -273,29 +544,74 @@ func (m *Model) viewIntro() string {
 	return lipgloss.NewStyle().Padding(1).Render(
 		"QuantLab AI — Laboratorio de investigación cuantitativa\n\n" +
 			"Flujo: research → hypothesis → config → review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops\n\n" +
-			"Herramientas: OpenCode (orquestación LLM), gentle-ai (skills/revisión), StrategyQuantX (backtesting/optimización), JForex 4 (despliegue demo/real), Dukascopy (datos/ejecución).\n\n" +
+			"QuantLab orquesta un pipeline de investigación con dependencias propias (SDK de QuantLab, OpenCode como centro de control) y herramientas de terceros: OpenCode (orquestación LLM), gentle-ai (skills/revisión), StrategyQuantX (backtesting/optimización), JForex 4 (despliegue demo/real), Dukascopy (datos/ejecución).\n\n" +
 			"Presiona Enter para continuar.",
 	)
 }
 
-func (m *Model) viewConsent() string {
-	sdkStatus := "QuantLab SDK (ya instalado ✓)"
-	if !m.consentSDK {
-		sdkStatus = "QuantLab SDK (pendiente)"
+// viewConsentTool renders the consent step for one tool. Detected tools show
+// informational text plus how to delegate management to the OpenCode agent;
+// missing tools show an interactive Sí/No prompt.
+func (m *Model) viewConsentTool(name, role string, detected bool, docs, command string) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("%s — %s.\n\n", name, role))
+	if detected {
+		b.WriteString(fmt.Sprintf("%s ya está instalado ✓.\n\n", name))
+		b.WriteString("Podés delegar la gestión de herramientas al agente OpenCode:\n")
+	} else {
+		b.WriteString(fmt.Sprintf("¿Instalar %s automáticamente? [S/N]\n", name))
+		b.WriteString("  S = instalar ahora    N = omitir e instalarlo después\n\n")
+		b.WriteString("También podés delegarlo al agente OpenCode:\n")
 	}
-	ocStatus := "[ ] OpenCode — orquestación de agentes"
-	if m.openCodeInstalled {
-		ocStatus = "[✓] OpenCode — ya instalado"
+	b.WriteString("  Comando: " + command + "\n")
+	b.WriteString("  Instrucción de ejemplo: \"" + delegationSample + "\"\n")
+	b.WriteString("  Docs: " + docs + "\n")
+	if detected {
+		b.WriteString("\nEnter = siguiente")
 	}
-	gaStatus := "[ ] gentle-ai — skills y revisión de código"
-	if m.gentleAIInstalled {
-		gaStatus = "[✓] gentle-ai — ya instalado"
+	return lipgloss.NewStyle().Padding(1).Render(b.String())
+}
+
+func (m *Model) viewInstalling() string {
+	tool := m.currentTool
+	if tool == "" {
+		tool = "herramientas"
 	}
 	return lipgloss.NewStyle().Padding(1).Render(
-		"Seleccioná qué herramientas querés que configure el instalador.\n\n" +
-			fmt.Sprintf("%s\n%s\n[%s] %s\n\n", ocStatus, gaStatus, ternary(m.consentSDK, "x", " "), sdkStatus) +
-			"Enter = siguiente",
-	)
+		fmt.Sprintf("Instalando %s...\n\nPor favor esperá.", tool))
+}
+
+func (m *Model) viewInstallFailed() string {
+	base := fmt.Sprintf("✗ Falló la instalación de %s (intento %d/%d).\n\n%s\n\n",
+		m.currentTool, m.installAttempts, maxInstallAttempts, m.installError)
+	options := "[R] reintentar  |  [M] instalación manual  |  [O] omitir"
+	if m.installAttempts >= maxInstallAttempts {
+		options = "[M] instalación manual  |  [O] omitir"
+	}
+	return lipgloss.NewStyle().Padding(1).Render(base + options)
+}
+
+func (m *Model) viewInstallManual() string {
+	url, instruction := manualInstallInfo(m.manualTool)
+	body := fmt.Sprintf("Instalación manual de %s\n\n", m.manualTool) +
+		"Descargalo desde: " + url + "\n" +
+		"Instrucción: " + instruction + "\n"
+	if m.manualDisplay != "" {
+		body += "\nNota del instalador: " + m.manualDisplay + "\n"
+	}
+	body += "\nCuando termines (o si preferís continuar), Enter = siguiente"
+	return lipgloss.NewStyle().Padding(1).Render(body)
+}
+
+func manualInstallInfo(tool string) (url, instruction string) {
+	switch tool {
+	case toolOpenCode:
+		return openCodeDocsURL, openCodeInstallCommand
+	case toolGentleAI:
+		return gentleAIDocsURL, gentleAIInstallCommand
+	default:
+		return "", ""
+	}
 }
 
 func (m *Model) viewSQX() string {
@@ -324,6 +640,79 @@ func (m *Model) viewJForex() string {
 	)
 }
 
+// verifyChecklist builds (once) the functional verification checklist.
+func (m *Model) verifyChecklist() []checkItem {
+	if m.verifyBuilt {
+		return m.verifyItems
+	}
+	m.verifyItems = m.buildVerifyChecklist()
+	m.verifyBuilt = true
+	return m.verifyItems
+}
+
+func (m *Model) buildVerifyChecklist() []checkItem {
+	items := []checkItem{
+		m.toolCheck("OpenCode", toolOpenCode, m.openCodeInstalled || m.result.OpenCodeReady),
+		m.toolCheck("gentle-ai", toolGentleAI, m.gentleAIInstalled || m.result.GentleAIReady),
+	}
+
+	switch {
+	case m.result.SQX.InstallPath == "":
+		items = append(items, checkItem{"Ruta de SQX", markWarn})
+	case config.ValidateSQXPath(m.result.SQX.InstallPath) == nil:
+		items = append(items, checkItem{"Ruta de SQX", markOK})
+	default:
+		items = append(items, checkItem{"Ruta de SQX", markMissing})
+	}
+
+	if m.result.JForex.InstallPath != "" {
+		items = append(items, checkItem{"Ruta de JForex", markOK})
+	} else {
+		items = append(items, checkItem{"Ruta de JForex", markWarn})
+	}
+
+	ready, err := m.sdkDetectFn()
+	switch {
+	case err != nil:
+		items = append(items, checkItem{"SDK de QuantLab", markWarn})
+	case ready:
+		items = append(items, checkItem{"SDK de QuantLab", markOK})
+	default:
+		items = append(items, checkItem{"SDK de QuantLab", markMissing})
+	}
+	return items
+}
+
+func (m *Model) toolCheck(label, tool string, ready bool) checkItem {
+	switch {
+	case ready:
+		return checkItem{label, markOK}
+	case m.manualTools[tool]:
+		return checkItem{label + " (instalación manual pendiente)", markWarn}
+	default:
+		return checkItem{label, markMissing}
+	}
+}
+
+func (m *Model) viewVerify() string {
+	items := m.verifyChecklist()
+	var b strings.Builder
+	b.WriteString("Verificación funcional del entorno\n\n")
+	missing := false
+	for _, it := range items {
+		b.WriteString(fmt.Sprintf("%s %s\n", it.Mark, it.Label))
+		if it.Mark == markMissing {
+			missing = true
+		}
+	}
+	if missing {
+		b.WriteString("\n⚠ Faltan componentes. Recomendamos completar la instalación desde el agente OpenCode:\n")
+		b.WriteString("  Abrí OpenCode y pedile: \"" + delegationSample + "\"\n")
+	}
+	b.WriteString("\nEnter = continuar")
+	return lipgloss.NewStyle().Padding(1).Render(b.String())
+}
+
 func (m *Model) viewPostInstall() string {
 	agents := []string{"quantlab-orchestrator", "guardian-orchestrator"}
 	selected := agents[m.primaryAgentIndex]
@@ -334,9 +723,9 @@ func (m *Model) viewPostInstall() string {
 		ready := false
 		switch s.ID {
 		case "opencode":
-			ready = m.openCodeInstalled
+			ready = m.openCodeInstalled || m.result.OpenCodeReady
 		case "gentle-ai":
-			ready = m.gentleAIInstalled
+			ready = m.gentleAIInstalled || m.result.GentleAIReady
 		case "primary-agent":
 			ready = selected != ""
 		}
@@ -346,6 +735,10 @@ func (m *Model) viewPostInstall() string {
 		}
 		b.WriteString(fmt.Sprintf("%s %s: %s\n", mark, s.Title, s.Description))
 	}
+	b.WriteString("\nPara empezar:\n")
+	b.WriteString("  1) cd \"<campañas>/\" && opencode\n")
+	b.WriteString("  2) Elegí el agente " + selected + "\n")
+	b.WriteString("  3) Prompt de ejemplo: \"Comienza una campaña para un portafolio de 100USD\"\n")
 	b.WriteString("\nEnter = finalizar")
 	return lipgloss.NewStyle().Padding(1).Render(b.String())
 }
@@ -358,11 +751,4 @@ func (m *Model) Result() Result {
 // Steps returns the loaded post-install guide steps.
 func (m *Model) Steps() []PostInstallStep {
 	return m.steps
-}
-
-func ternary(cond bool, a, b string) string {
-	if cond {
-		return a
-	}
-	return b
 }
