@@ -10,6 +10,7 @@ the agent falls back transparently to the classic ``ResearchAgent``.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -46,6 +47,21 @@ try:
     from quantlab.data.news.rss import RSSNewsProvider
 except ImportError:  # pragma: no cover
     RSSNewsProvider = None  # type: ignore[assignment, misc]
+
+try:
+    from quantlab.data.literature.papers import AcademicPapersProvider
+except ImportError:  # pragma: no cover
+    AcademicPapersProvider = None  # type: ignore[assignment, misc]
+
+try:
+    from quantlab.data.literature.blogs import QuantBlogProvider
+except ImportError:  # pragma: no cover
+    QuantBlogProvider = None  # type: ignore[assignment, misc]
+
+try:
+    from quantlab.data.screening.screener import StockScreenerProvider
+except ImportError:  # pragma: no cover
+    StockScreenerProvider = None  # type: ignore[assignment, misc]
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +137,9 @@ class LLMResearchAgent:
         self._web_search: Any = None
         self._rss_news: Any = None
         self._dukascopy: DukascopyProvider | None = None
+        self._papers: Any = None
+        self._blogs: Any = None
+        self._screener: Any = None
 
     # ── Provider lazy init ─────────────────────────────────────────────────────
 
@@ -163,6 +182,53 @@ class LLMResearchAgent:
             except ImportError:  # pragma: no cover
                 self._rss_news = None
         return self._rss_news
+
+    def _get_papers(self) -> Any | None:
+        """Lazily initialize the AcademicPapersProvider singleton.
+
+        Returns ``None`` when the provider is unavailable, matching the
+        guarded-provider contract (NWS-01).
+        """
+        if self._papers is None:
+            try:
+                if AcademicPapersProvider is None:
+                    return None
+                self._papers = AcademicPapersProvider()
+            except ImportError:  # pragma: no cover
+                self._papers = None
+        return self._papers
+
+    def _get_blogs(self) -> Any | None:
+        """Lazily initialize the QuantBlogProvider singleton.
+
+        Returns ``None`` when the provider is unavailable, matching the
+        guarded-provider contract (NWS-01).
+        """
+        if self._blogs is None:
+            try:
+                if QuantBlogProvider is None:
+                    return None
+                self._blogs = QuantBlogProvider()
+            except ImportError:  # pragma: no cover
+                self._blogs = None
+        return self._blogs
+
+    def _get_screener(self) -> Any | None:
+        """Lazily initialize the StockScreenerProvider singleton.
+
+        Returns ``None`` when the provider is unavailable (or the API key
+        is missing — the screener raises ``ProviderError`` on use, which
+        the parallel fetch below isolates), matching the guarded-provider
+        contract (NWS-01).
+        """
+        if self._screener is None:
+            try:
+                if StockScreenerProvider is None:
+                    return None
+                self._screener = StockScreenerProvider()
+            except ImportError:  # pragma: no cover
+                self._screener = None
+        return self._screener
 
     # ── G3 Dukascopy market data ────────────────────────────────────────────
 
@@ -387,11 +453,78 @@ class LLMResearchAgent:
                 except Exception as exc:
                     logger.warning("RSS news fetch failed: %s", exc)
 
+        # Literature + screener: parallel execution, graceful degradation.
+        # Each provider is isolated — one failing never blocks the others
+        # and fetch_data never raises because of this section.
+        literature_data: list[dict[str, Any]] = []
+        screener_data: dict[str, Any] = {}
+
+        async def _fetch_papers() -> list[dict[str, Any]]:
+            provider = self._get_papers()
+            if provider is None:
+                return []
+            try:
+                items = await provider.fetch_papers(objective, max_results=5)
+                return [
+                    {
+                        "title": getattr(item, "title", ""),
+                        "url": getattr(item, "url", ""),
+                        "authors": list(getattr(item, "authors", []) or []),
+                        "categories": list(getattr(item, "categories", []) or []),
+                        "source": getattr(item, "source", ""),
+                        "arxiv_id": getattr(item, "arxiv_id", None),
+                    }
+                    for item in items
+                ]
+            except Exception as exc:
+                logger.warning("Literature papers fetch failed: %s", exc)
+                return []
+
+        async def _fetch_blogs() -> list[dict[str, Any]]:
+            provider = self._get_blogs()
+            if provider is None:
+                return []
+            try:
+                items = await provider.fetch_papers(objective, max_results=5)
+                return [
+                    {
+                        "title": getattr(item, "title", ""),
+                        "url": getattr(item, "url", ""),
+                        "authors": list(getattr(item, "authors", []) or []),
+                        "categories": list(getattr(item, "categories", []) or []),
+                        "source": getattr(item, "source", ""),
+                        "arxiv_id": getattr(item, "arxiv_id", None),
+                    }
+                    for item in items
+                ]
+            except Exception as exc:
+                logger.warning("Literature blogs fetch failed: %s", exc)
+                return []
+
+        async def _fetch_screener() -> dict[str, Any]:
+            provider = self._get_screener()
+            if provider is None:
+                return {}
+            try:
+                preset = str(context.get("screener_preset", "gainers"))
+                return await provider.fetch(preset, limit=5)
+            except Exception as exc:
+                logger.warning("Screener fetch failed: %s", exc)
+                return {}
+
+        papers_res, blogs_res, screener_res = await asyncio.gather(
+            _fetch_papers(), _fetch_blogs(), _fetch_screener()
+        )
+        literature_data = papers_res + blogs_res
+        screener_data = screener_res
+
         return {
             "ticker": ticker,
             "fundamental": fundamental_data,
             "macro": macro_formatted,
             "news": news_data,
+            "literature": literature_data,
+            "screener": screener_data,
         }
 
     # ── Task 2.5: build_prompt ──────────────────────────────────────────────────
