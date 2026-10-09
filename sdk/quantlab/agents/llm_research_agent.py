@@ -892,11 +892,16 @@ class LLMResearchAgent:
 
     # ── Task 2.3: parse_response ────────────────────────────────────────────────
 
-    def parse_response(self, response_text: str | None) -> ResearchConfig:
+    def parse_response(
+        self, response_text: str | None, diversify: bool = False
+    ) -> ResearchConfig:
         """Parse an LLM JSON response into a ``ResearchConfig``.
 
         Args:
             response_text: The raw JSON string from the LLM.
+            diversify: When True, expand hypotheses with parametric
+                variants via ``DiversityEngine`` (default False to
+                preserve output shape).
 
         Returns:
             A validated ``ResearchConfig`` instance.
@@ -958,6 +963,12 @@ class LLMResearchAgent:
             ]
         except Exception:
             pass
+
+        # Optional parametric diversification (off by default).
+        if diversify:
+            from quantlab.agents.diversity_engine import DiversityEngine
+
+            hypotheses = DiversityEngine().diversify(hypotheses)
 
         # Parse building blocks
         building_blocks = data.get("building_blocks", [])

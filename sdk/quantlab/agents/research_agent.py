@@ -420,6 +420,7 @@ class ResearchAgent:
         self,
         objectives: list[str],
         query_results: list[dict[str, Any]] | None = None,
+        diversify: bool = False,
     ) -> list[HypothesisConfig]:
         """Generate structured hypotheses from objectives and historical data.
 
@@ -430,6 +431,8 @@ class ResearchAgent:
             objectives: List of research objective strings.
             query_results: Optional list of query results from
                 ``query_knowledge_lake()`` to calibrate confidence.
+            diversify: When True, expand with parametric variants via
+                ``DiversityEngine`` (default False to preserve output shape).
 
         Returns:
             List of ``HypothesisConfig`` with unique IDs, descriptions,
@@ -564,6 +567,12 @@ class ResearchAgent:
         if query_results:
             calibrator = TagCalibrator()
             hypotheses = calibrator.calibrate(hypotheses, query_results)
+
+        # Optional parametric diversification (off by default).
+        if diversify:
+            from quantlab.agents.diversity_engine import DiversityEngine
+
+            hypotheses = DiversityEngine().diversify(hypotheses)
 
         return hypotheses
 
