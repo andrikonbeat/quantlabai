@@ -27,9 +27,25 @@ class KnowledgeLakeFeedbackWriter:
         self._lake_root = Path(lake_root) if lake_root is not None else Path("knowledge")
         self.auto_adjust = bool(auto_adjust)
 
-    async def write_feedback(self, record: HypothesisFeedbackRecord) -> None:
-        """Persist feedback record to the campaign's metadata.yaml file."""
+    async def write_feedback(
+        self, record: HypothesisFeedbackRecord, reindex: bool = True
+    ) -> None:
+        """Persist feedback record to the campaign's metadata.yaml file.
+
+        Args:
+            record: Feedback record to append.
+            reindex: When True (default), refresh the lake index afterwards
+                so the updated metadata is visible to queries. Best-effort
+                and never raises.
+        """
         await self._write_feedback_sync(record)
+        if reindex:
+            try:
+                from quantlab.knowledge.store import KnowledgeStore
+
+                KnowledgeStore(self._lake_root).rebuild_index()
+            except Exception as exc:
+                logger.debug("Feedback reindex skipped: %s", exc)
 
     async def _write_feedback_sync(self, record: HypothesisFeedbackRecord) -> None:
         campaign_dir = self._lake_root / "structured" / record.campaign_id
