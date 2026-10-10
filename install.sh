@@ -126,9 +126,19 @@ elif [ -d "$REPO_DIR" ] && [ -f "$REPO_DIR/sdk/pyproject.toml" ] && [ -f "$REPO_
     log "Using existing checkout at $REPO_DIR"
     cd "$REPO_DIR"
 else
-    # Fresh clone
+    # Fresh clone con reintentos (la red a veces corta el pack a mitad).
     log "Cloning repository..."
-    git clone --depth 1 "$REPO_URL" "$REPO_DIR"
+    cloned=false
+    for attempt in 1 2 3; do
+        rm -rf "$REPO_DIR"
+        if GIT_HTTP_VERSION=HTTP/1.1 git clone --depth 1 "$REPO_URL" "$REPO_DIR"; then
+            cloned=true
+            break
+        fi
+        warn "Clone falló (intento $attempt/3) — reintentando en 5s..."
+        sleep 5
+    done
+    [ "$cloned" = true ] || die "No se pudo clonar $REPO_URL tras 3 intentos. Revisá tu conexión o probá por SSH: git clone git@github.com:andrikonbeat/quantlabai.git"
     cd "$REPO_DIR"
 fi
 
