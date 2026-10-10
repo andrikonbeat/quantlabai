@@ -23,13 +23,13 @@
         },
         "write": {
           "*": "deny",
-          "openspec/**": "allow",
+          "sdd/**": "allow",
           "sdk/**": "allow",
           "installer/**": "allow"
         },
         "edit": {
           "*": "deny",
-          "openspec/**": "allow",
+          "sdd/**": "allow",
           "sdk/**": "allow",
           "installer/**": "allow"
         }

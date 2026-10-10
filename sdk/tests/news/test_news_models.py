@@ -1,7 +1,7 @@
 """Strict TDD — RED phase: NewsItem, WebResult models + NewsProvider ABC.
 
 Covers spec scenarios from:
-- openspec/specs/news-analysis/spec.md
+- sdd/specs/news-analysis/spec.md
 """
 
 from __future__ import annotations

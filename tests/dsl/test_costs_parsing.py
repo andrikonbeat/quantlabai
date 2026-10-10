@@ -1,8 +1,8 @@
 """Integration tests: DSL parsing with costs section, valid/invalid broker validation.
 
 Covers spec scenarios from:
-- openspec/specs/cost-pipeline-integration/spec.md (DSL Costs Section)
-- openspec/changes/broker-cost-engine/specs/research-dsl/spec.md (delta)
+- sdd/specs/cost-pipeline-integration/spec.md (DSL Costs Section)
+- sdd/changes/broker-cost-engine/specs/research-dsl/spec.md (delta)
 """
 
 import pytest

@@ -49,9 +49,9 @@ class TestAgentsMdContract:
         # 14-phase flow / REQ-37
         assert "14-phase" in text.lower() or "14 phase" in text.lower() or "REQ-37" in text
 
-    def test_agents_md_covers_openspec_workflow(self) -> None:
+    def test_agents_md_covers_sdd_workflow(self) -> None:
         text = _read(AGENTS)
-        assert "openspec" in text.lower()
+        assert "sdd" in text.lower()
         assert "apply-progress" in text.lower() or "apply progress" in text.lower()
 
     def test_agents_md_lists_all_14_phases_in_order(self) -> None:

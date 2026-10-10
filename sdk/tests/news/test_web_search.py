@@ -7,7 +7,7 @@ class RateLimitError(Exception):
 """Strict TDD — RED phase: WebSearchProvider tests.
 
 Covers spec scenarios from:
-- openspec/specs/news-analysis/spec.md
+- sdd/specs/news-analysis/spec.md
 """
 
 

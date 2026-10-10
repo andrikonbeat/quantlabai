@@ -90,7 +90,7 @@ assets/**/user/settings/wizard.txt
 # Anchored to the repo root with a leading slash. Unanchored, these two patterns
 # matched at EVERY depth and silently swallowed real source: `sdk/quantlab/analysis/`
 # (frame/indicators/regime/sentiment) and the OpenSpec capability dir
-# `openspec/changes/*/specs/deploy/`. Anchored, they mean what the comment says.
+# `sdd/changes/*/specs/deploy/`. Anchored, they mean what the comment says.
 /deploy/
 notifications.jsonl
 /analysis/

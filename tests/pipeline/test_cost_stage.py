@@ -1,8 +1,8 @@
 """Tests for CostInjectionStage I/O contract and execution.
 
 Covers spec scenarios from:
-- openspec/changes/broker-cost-engine/specs/pipeline-core/spec.md (CostInjectionStage)
-- openspec/specs/cost-pipeline-integration/spec.md (CostInjectionStage)
+- sdd/changes/broker-cost-engine/specs/pipeline-core/spec.md (CostInjectionStage)
+- sdd/specs/cost-pipeline-integration/spec.md (CostInjectionStage)
 """
 
 import pytest

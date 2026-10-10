@@ -1,7 +1,7 @@
 """Strict TDD — RED phase: LLMConfig validation + HypothesisConfig extension.
 
 Covers spec scenarios from:
-- openspec/changes/llm-research-agent/specs/research-dsl/spec.md
+- sdd/changes/llm-research-agent/specs/research-dsl/spec.md
 """
 
 from __future__ import annotations
