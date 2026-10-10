@@ -435,7 +435,7 @@ python -m mypy quantlab --strict
 ```bash
 cd installer
 go build ./...
-go test ./... -short
+go test -short ./...
 ```
 
 ### Dry-Run Walkthrough (No SQX Required)
