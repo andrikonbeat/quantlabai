@@ -74,6 +74,40 @@ Three independent build units live in this repository:
 > it is the complete, ordered procedure for cloning, installing, configuring,
 > and verifying this project from scratch.
 
+### One-command install (recommended)
+
+**Guided (TUI).** Prepares the machine and drops you into the installation
+wizard, then the onboarding guide. Manual or autonomous — the TUI walks you
+through API key, model, SDK path, StrategyQuant X path, and verification:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh)"
+```
+
+> Why not `curl ... | bash`? A pipe steals stdin, so the TUI has no keyboard
+> and skips itself. `bash -c "$(curl ...)"` keeps your terminal attached, so
+> the wizard can open. If you must pipe, the script reattaches `/dev/tty`
+> when available, otherwise it continues autonomously and tells you how to
+> reopen the guide with `./installer/build/quantlab onboarding`.
+
+**Autonomous (no TUI).** For CI or unattended installs — same preparation,
+skipped wizards, tests still run unless `--skip-tests`:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh | bash -s -- --no-wizard
+```
+
+What the one-liner does, in order: checks Python >= 3.11 / git (Go >= 1.23
+optional) → clones or reuses the checkout → creates `./.venv` and installs
+`sdk[dev]` → builds `installer/build/quantlab` when Go exists → runs
+`quantlab install` (config wizard + SDK in `~/.quantlab/venv` + OpenCode
+agents/skills/prompts + `~/.quantlab/state.json` with rollback) → runs
+`quantlab onboarding` when interactive → syncs repo prompts/skills to
+`~/.config/opencode/` (repo-wins) → verifies with `SQX_FORCE_MOCK=1 pytest`.
+
+Flags: `--no-wizard` / `--yes` (skip TUIs), `--onboarding` / `--no-onboarding`
+(force or skip the guide), `--skip-tests`, `--dev`, `--no-mock`.
+
 ### Prerequisites
 
 - **Python 3.11+** (CI pins 3.11; the project is developed and verified on 3.14)
@@ -353,8 +387,7 @@ quantlab-ai/
 │   ├── index.yaml
 │   ├── raw/ structured/ graph/ embeddings/ datasets/
 │   └── pipeline-runs/ agent-memory/ campaign-phases/ …
-├── openspec/             # Spec-driven development artifacts
-├── sdd/                  # SDD change planning artifacts
+├── sdd/                  # SDD artifacts: PROJECT_STATE.md, changes/, specs/, config.yaml
 ├── pipelines/            # Pipeline YAML definitions
 ├── strategies/
 │   └── HelloWorldStrategy.java # JForex 4 strategy template

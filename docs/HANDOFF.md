@@ -4,7 +4,22 @@ Everything needed to go from an empty computer to a working, verified
 development environment. Follow the sections in order; each one assumes the
 previous ones are done.
 
-If you only want the short version:
+If you only want the short version, pick one:
+
+**Guided (TUI)** — one command, prepares everything and drops you into the
+installation wizard + onboarding guide:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh)"
+```
+
+**Autonomous** — same preparation, wizards skipped (CI / unattended):
+
+```bash
+curl -sSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh | bash -s -- --no-wizard
+```
+
+**Manual** — the five lines the one-liner runs for the Python side:
 
 ```bash
 git clone git@github.com:andrikonbeat/quantlabai.git
@@ -279,9 +294,9 @@ Read these before changing anything.
 ### Working on a change
 
 This project uses **SDD** (spec-driven development): work is tracked as a
-change under `openspec/changes/<name>/` carrying a proposal, specs, design, and
-tasks, and archived under `openspec/changes/archive/YYYY-MM-DD-<slug>/` when
-done. `openspec/specs/` is the normative contract layer that `tests/` assert
+change under `sdd/changes/<name>/` carrying a proposal, specs, design, and
+tasks, and archived under `sdd/changes/archive/YYYY-MM-DD-<slug>/` when
+done. `sdd/specs/` is the normative contract layer that `tests/` assert
 against.
 
 Keep changes reviewable: **≤400 changed lines** per work unit, one logical
@@ -347,7 +362,7 @@ quantlabai/
 │   ├── HANDOFF.md       This file
 │   ├── STATE.md         Point-in-time project status
 │   └── index.md         Index of every doc
-├── openspec/            SDD artifacts
+├── sdd/            SDD artifacts
 │   ├── specs/           Normative capability specs (the contract layer)
 │   └── changes/         Active changes; archive/ holds completed history
 ├── ai/opencode/         Repo-canonical agent prompts + skills (source of truth)
@@ -379,7 +394,7 @@ points at `git log` and CI for live truth.
 2. Read [guides/running-campaigns.md](guides/running-campaigns.md) for the
    operational path.
 3. Get the suite green on your machine **before** changing anything.
-4. Pick an active change from `openspec/changes/`, or open a new one with a
+4. Pick an active change from `sdd/changes/`, or open a new one with a
    proposal before writing code.
 5. Keep the 14-phase order and the gate contracts intact — both are enforced by
    tests, not by convention.

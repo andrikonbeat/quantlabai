@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # QuantLab AI — One-command installer
-# Usage: curl -sSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh | bash
-#        or: bash install.sh [--no-wizard] [--dev] [--skip-tests]
+#
+# GUIADA (TUI, recomendada — te deja dentro de la guía de instalación):
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh)"
+#
+# AUTONOMA (sin wizard, para CI o instalación desatendida):
+#   curl -sSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh | bash -s -- --no-wizard
+#
+# Local: bash install.sh [--no-wizard|--yes] [--onboarding|--no-onboarding] [--dev] [--skip-tests]
 
 set -euo pipefail
 
@@ -14,6 +20,7 @@ GO_MIN_VERSION="1.23"
 
 # Flags
 NO_WIZARD=false
+RUN_ONBOARDING="auto"
 DEV_MODE=false
 SKIP_TESTS=false
 FORCE_MOCK=true
@@ -40,13 +47,22 @@ check_cmd() {
 # Parse args
 for arg in "$@"; do
     case "$arg" in
-        --no-wizard)  NO_WIZARD=true ;;
+        --no-wizard|--skip-wizard|--yes) NO_WIZARD=true ;;
+        --onboarding)    RUN_ONBOARDING=true ;;
+        --no-onboarding) RUN_ONBOARDING=false ;;
         --dev)        DEV_MODE=true ;;
         --skip-tests) SKIP_TESTS=true ;;
         --no-mock)    FORCE_MOCK=false ;;
-        *) die "Unknown flag: $arg (use --no-wizard|--dev|--skip-tests|--no-mock)" ;;
+        *) die "Unknown flag: $arg (use --no-wizard|--yes|--onboarding|--no-onboarding|--dev|--skip-tests|--no-mock)" ;;
     esac
 done
+
+# Si la entrada viene de un pipe (curl | bash) no hay TTY para el wizard.
+# Se sigue en modo autónomo salvo que se pueda reabrir /dev/tty más abajo.
+if [ "$NO_WIZARD" = false ] && [ ! -t 0 ] && [ ! -c /dev/tty ]; then
+    warn "Sin terminal interactiva (entrada por pipe) — el wizard TUI se salteará."
+    warn "Para la guía TUI usá: bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh)\""
+fi
 
 # ──────────────────────────────────────────────────────────────────────
 log "QuantLab AI — One-command installer"
@@ -144,13 +160,41 @@ if [ "$HAS_GO" = true ]; then
 fi
 
 # ──────────────────────────────────────────────────────────────────────
-# Run Go installer (optional, runs full onboarding + sync)
+# Run Go installer + TUI guide (install wizard, then onboarding guide).
+# El binario decide solo si abre el wizard (terminal interactiva y sin
+# --no-wizard). Como install.sh puede venir pipeado, reabrimos /dev/tty
+# para que la TUI tenga teclado aunque stdin sea el pipe de curl.
+run_quantlab_tui() {
+    # $1 = subcomando (install u onboarding), resto = args
+    local sub="$1"; shift
+    if [ ! -t 0 ] && [ -c /dev/tty ]; then
+        ./installer/build/quantlab "$sub" "$@" < /dev/tty || ./installer/build/quantlab "$sub" "$@"
+    else
+        ./installer/build/quantlab "$sub" "$@"
+    fi
+}
+
 if [ "$HAS_GO" = true ] && [ -f installer/build/quantlab ]; then
     log "Running QuantLab installer (full setup: SDK + OpenCode agents + skills + prompts)..."
     INSTALL_ARGS=()
     [ "$NO_WIZARD" = true ] && INSTALL_ARGS+=(--no-wizard)
-    ./installer/build/quantlab install "${INSTALL_ARGS[@]}"
+    run_quantlab_tui install "${INSTALL_ARGS[@]}"
     ok "QuantLab installer completed"
+    # Guía TUI post-instalación: manual por defecto si hay terminal.
+    # --onboarding la fuerza, --no-onboarding (o --no-wizard) la salta.
+    if [ "$RUN_ONBOARDING" = "auto" ]; then
+        if [ "$NO_WIZARD" = true ]; then
+            RUN_ONBOARDING=false
+        elif [ -t 0 ] || [ -c /dev/tty ]; then
+            RUN_ONBOARDING=true
+        else
+            RUN_ONBOARDING=false
+        fi
+    fi
+    if [ "$RUN_ONBOARDING" = true ]; then
+        log "Abriendo la guía TUI de instalación (onboarding)..."
+        run_quantlab_tui onboarding || warn "Onboarding cancelado — podés retomarlo con: ./installer/build/quantlab onboarding"
+    fi
 else
     log "Skipping Go installer (not built). Python SDK is ready."
     log "To sync OpenCode agents/skills/prompts later, run:"
