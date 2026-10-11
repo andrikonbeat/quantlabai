@@ -1,6 +1,11 @@
 # Changelog
 
-All notable changes to QuantLab AI will be documented in this file.
+> **Frozen historical record.** New history lives in
+> [`sdd/PROJECT_STATE.md`](../sdd/PROJECT_STATE.md) and
+> `sdd/changes/archive/*/archive-report.md`. Do not add new entries here —
+> old entries below are never rewritten.
+
+All notable changes to QuantLab AI were documented in this file.
 
 ## [Unreleased] — Multi-Agent Research System
 

@@ -52,6 +52,20 @@ if you also install the StrategyQuant distribution.
 
 ## 2. Install
 
+### One-command install (recommended)
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/andrikonbeat/quantlabai/main/install.sh)"
+# Local clone alternative: ./install.sh [--no-wizard] [--dev] [--skip-tests]
+```
+
+The installer detects the OS, explains QuantLab and its dependencies,
+guides OpenCode/SQX/JForex setup, verifies components, and leaves the
+tree ready for the `quantlab-orchestrator` agent. (Absorbed from the
+former `docs/INSTALL_INTERACTIVE.md`, 2026-10-10.)
+
+### Manual install
+
 ```bash
 git clone git@github.com:andrikonbeat/quantlabai.git
 cd quantlabai
@@ -238,11 +252,12 @@ docker compose build                # API + SQX + Postgres + Redis
 Verified on this machine against the commit recorded in
 [STATE.md](STATE.md):
 
-- **Full Python suite green** — 4135 passed / 18 skipped on a machine with the
-  SQX data bundle, 4134 passed / 19 skipped on a clean clone, 0 failures either
-  way, with `SQX_FORCE_MOCK=1`.
-- **Go installer green** — `go build ./...` clean, `go test ./... -short` all
-  packages passing.
+- **Full Python suite** — 4380 passed / 37 failed / 29 skipped / 4 errors
+  (measured 2026-10-10 on `d0c5299`, `SQX_FORCE_MOCK=1`; triage in
+  [PROJECT_STATE.md](../sdd/PROJECT_STATE.md) §3 — 23 live-config drift, the rest
+  environmental or pre-existing on HEAD, none from doc/SDD changes).
+- **Go installer green** — `go build ./...` clean, `go test -short ./...`
+  363 passed in 19 packages (network integration skips under `-short`).
 - **Lint and types** — `ruff`, `mypy --strict`, and `pytest-asyncio` are all
   declared and installed; the CI `lint` job can actually report a verdict.
 - **14-phase campaign flow** — enforced at runtime by

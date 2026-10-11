@@ -2,6 +2,13 @@
 
 Guide to configuring and using human gate checkpoints in the Multi-Agent Research System.
 
+> **Scope**: this guide covers the pipeline-YAML gates of the multi-agent
+> `PipelineRunner` (`gate_research_complete`, …). The dispatch-blocking
+> contract of the 14-phase campaign is the nine `HUMAN_*` policies in
+> `sdk/quantlab/gates/models.py` (`DEFAULT_GATE_POLICIES`), fail-closed —
+> see [Running Multi-Agent Campaigns](../guides/running-campaigns.md) and
+> `sdd/PROJECT_STATE.md` §4.
+
 ## Overview
 
 Human gates are intentional pause points in the research pipeline where human expertise is required to review progress, make decisions, or provide guidance before proceeding to the next phase. The Multi-Agent Research System includes 5 standard human gates that align with key decision points in the research workflow.
