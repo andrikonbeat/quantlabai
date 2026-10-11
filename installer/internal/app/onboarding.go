@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"time"
+		"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -18,7 +17,7 @@ import (
 // runOnboardingProgram runs the interactive TUI and returns the collected
 // result. It is a package variable so tests can bypass the interactive loop.
 var runOnboardingProgram = func(m *onboarding.Model) (onboarding.Result, error) {
-	prog := tea.NewProgram(m)
+	prog := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := prog.Run(); err != nil {
 		return onboarding.Result{}, err
 	}
@@ -32,7 +31,8 @@ func cmdOnboarding(w io.Writer, args []string) error {
 	if err != nil {
 		return fmt.Errorf("home dir: %w", err)
 	}
-	qlDir := filepath.Join(home, ".quantlab")
+	stateDir := stateDirFlag(args)
+	qlDir := config.StateDir(home, stateDir)
 
 	st, err := state.LoadOrInit(qlDir)
 	if err != nil {
@@ -45,7 +45,7 @@ func cmdOnboarding(w io.Writer, args []string) error {
 		return fmt.Errorf("onboarding TUI: %w", err)
 	}
 
-	if err := applyOnboardingResult(w, home, res); err != nil {
+	if err := applyOnboardingResult(w, home, stateDir, res); err != nil {
 		return err
 	}
 
@@ -66,8 +66,8 @@ func cmdOnboarding(w io.Writer, args []string) error {
 // applyOnboardingResult writes the collected config, prints tool readiness
 // from the TUI result, and applies the primary-agent selection. It no longer
 // installs tools — the TUI owns install execution.
-func applyOnboardingResult(w io.Writer, home string, res onboarding.Result) error {
-	cfg, err := config.ReadConfig(config.ConfigPath(home))
+func applyOnboardingResult(w io.Writer, home, stateDir string, res onboarding.Result) error {
+	cfg, err := config.ReadConfig(config.ConfigPath(home, stateDir))
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
 	}
@@ -87,7 +87,7 @@ func applyOnboardingResult(w io.Writer, home string, res onboarding.Result) erro
 	if res.JForex.Password != "" {
 		cfg.JForex.Password = res.JForex.Password
 	}
-	if err := config.WriteConfig(config.ConfigPath(home), cfg); err != nil {
+	if err := config.WriteConfig(config.ConfigPath(home, stateDir), cfg); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}
 
