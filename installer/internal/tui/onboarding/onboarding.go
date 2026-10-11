@@ -63,7 +63,7 @@ const (
 const (
 	openCodeInstallCommand = "curl -fsSL https://opencode.ai/install | bash"
 	openCodeDocsURL        = "https://opencode.ai/docs/"
-	gentleAIInstallCommand = "Descargá el binario desde GitHub y movelo a ~/.local/bin"
+	gentleAIInstallCommand = "curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash"
 	gentleAIDocsURL        = "https://github.com/Gentleman-Programming/gentle-ai"
 	delegationSample       = "Instalá o actualizá OpenCode y gentle-ai, y verificá el entorno de QuantLab."
 )
@@ -78,6 +78,7 @@ type Result struct {
 	// start or installed successfully during the flow.
 	OpenCodeReady bool
 	GentleAIReady bool
+	EngramReady   bool
 	SQX           struct {
 		InstallPath string
 	}
@@ -121,6 +122,7 @@ type Model struct {
 	consentGentleAI   bool
 	openCodeInstalled bool
 	gentleAIInstalled bool
+	engramInstalled   bool
 
 	// Install execution — injectable for tests.
 	installOpenCodeFn func(home string) (string, error)
@@ -212,6 +214,7 @@ func NewModel() Model {
 		jforexPassInput:   jforexPassInput,
 		openCodeInstalled: openCodeInstalled,
 		gentleAIInstalled: gentleAIInstalled,
+	engramInstalled:   tools.DetectEngram(),
 		installOpenCodeFn: tools.InstallOpenCode,
 		installGentleAIFn: tools.InstallGentleAI,
 		homeFn:            os.UserHomeDir,
@@ -222,6 +225,7 @@ func NewModel() Model {
 		result: Result{
 			OpenCodeReady: openCodeInstalled,
 			GentleAIReady: gentleAIInstalled,
+			EngramReady:   tools.DetectEngram(),
 		},
 	}
 }
@@ -715,6 +719,7 @@ func (m *Model) buildVerifyChecklist() []checkItem {
 	items := []checkItem{
 		m.toolCheck("OpenCode", toolOpenCode, m.openCodeInstalled || m.result.OpenCodeReady),
 		m.toolCheck("gentle-ai", toolGentleAI, m.gentleAIInstalled || m.result.GentleAIReady),
+		m.toolCheck("Engram (memoria persistente)", "engram", m.engramInstalled || m.result.EngramReady),
 	}
 
 	switch {
