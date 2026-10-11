@@ -139,6 +139,9 @@ type Model struct {
 	manualDisplay   string
 	manualTools     map[string]bool
 
+	// Agent-driven mode
+	agentDriven     bool
+
 	// StepSQX
 	sqxInput textinput.Model
 	sqxError string
@@ -168,7 +171,9 @@ type PostInstallStep struct {
 }
 
 // NewModel creates the onboarding model with default values.
-func NewModel() Model {
+// If agentDriven is true, auto-consents to auto-installable tools and
+// starts at the consent/installing phase, skipping OS detection and intro.
+func NewModel(agentDriven bool) Model {
 	sqxInput := textinput.New()
 	sqxInput.Placeholder = "/opt/SQX o ruta a la carpeta descomprimida"
 	sqxInput.Focus()
@@ -210,8 +215,19 @@ func NewModel() Model {
 	// OS detection for pre-check
 	osInfo := detectOSInfo()
 
+	// Agent-driven mode: pre-consent to auto-installable tools, skip intro
+	consentOpenCode := agentDriven && !openCodeInstalled
+	consentGentleAI := agentDriven && !gentleAIInstalled
+	initialStep := StepOSDetect
+	if agentDriven {
+		initialStep = StepConsentOpenCode
+	}
+
 	return Model{
-		step:              StepOSDetect,
+		step:              initialStep,
+		agentDriven:       agentDriven,
+		consentOpenCode:   consentOpenCode,
+		consentGentleAI:   consentGentleAI,
 		accountModeIndex:  0, // default demo
 		primaryAgentIndex: 0, // default quantlab-orchestrator
 		sqxInput:          sqxInput,

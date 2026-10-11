@@ -39,7 +39,16 @@ func cmdOnboarding(w io.Writer, args []string) error {
 		return fmt.Errorf("load state: %w", err)
 	}
 
-	model := onboarding.NewModel()
+	// Parse --agent-driven flag
+	agentDriven := false
+	for _, arg := range args {
+		if arg == "--agent-driven" {
+			agentDriven = true
+			break
+		}
+	}
+
+	model := onboarding.NewModel(agentDriven)
 	res, err := runOnboardingProgram(&model)
 	if err != nil {
 		return fmt.Errorf("onboarding TUI: %w", err)

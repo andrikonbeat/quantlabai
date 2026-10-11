@@ -48,7 +48,7 @@ func runMsg(t *testing.T, m *Model, msg tea.Msg) (*Model, tea.Cmd) {
 // configured result.
 func newTestModel(t *testing.T) *Model {
 	t.Helper()
-	m := NewModel()
+	m := NewModel(false)
 	m.openCodeInstalled = false
 	m.gentleAIInstalled = false
 	m.result.OpenCodeReady = false
@@ -435,7 +435,7 @@ func TestInstallFallbackDisplayGoesManual(t *testing.T) {
 }
 
 func TestStepsAssetLoadsEmbeddedGuide(t *testing.T) {
-	m := NewModel()
+	m := NewModel(false)
 	found := false
 	for _, s := range m.Steps() {
 		if s.ID == "gentle-ai" {
