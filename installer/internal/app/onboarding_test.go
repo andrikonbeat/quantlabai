@@ -62,7 +62,7 @@ func TestApplyOnboardingResult_PrintsReadinessAndWritesConfig(t *testing.T) {
 	res.PrimaryAgent = "quantlab-orchestrator"
 
 	var buf bytes.Buffer
-	if err := applyOnboardingResult(&buf, home, res); err != nil {
+	if err := applyOnboardingResult(&buf, home, "", res); err != nil {
 		t.Fatalf("applyOnboardingResult: %v", err)
 	}
 
@@ -74,7 +74,7 @@ func TestApplyOnboardingResult_PrintsReadinessAndWritesConfig(t *testing.T) {
 		t.Errorf("expected readiness output to mention gentle-ai; got:\n%s", out)
 	}
 
-	cfg, err := config.ReadConfig(config.ConfigPath(home))
+	cfg, err := config.ReadConfig(config.ConfigPath(home, ""))
 	if err != nil {
 		t.Fatalf("read config: %v", err)
 	}
