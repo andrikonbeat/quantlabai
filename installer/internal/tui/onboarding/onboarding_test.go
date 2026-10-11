@@ -66,8 +66,16 @@ func TestOnboarding_Flow(t *testing.T) {
 	m.openCodeInstalled = true
 	m.gentleAIInstalled = true
 
-	// Intro -> Enter -> ConsentOpenCode
+	// OSDetect -> Enter -> Intro
 	m, cmd := runEnter(t, m)
+	if m.step != StepIntro {
+		t.Fatalf("step = %d, want %d", m.step, StepIntro)
+	}
+	if cmd != nil {
+		t.Fatalf("expected nil cmd after os detect enter")
+	}
+	// Intro -> Enter -> ConsentOpenCode
+	m, cmd = runEnter(t, m)
 	if m.step != StepConsentOpenCode {
 		t.Fatalf("step = %d, want %d", m.step, StepConsentOpenCode)
 	}

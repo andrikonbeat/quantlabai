@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"path/filepath"
 
@@ -27,7 +28,8 @@ import (
 type Step int
 
 const (
-	StepIntro Step = iota
+	StepOSDetect Step = iota
+	StepIntro
 	StepConsentOpenCode
 	StepConsentGentleAI
 	StepInstalling
@@ -151,6 +153,9 @@ type Model struct {
 
 	// StepPostInstall
 	primaryAgentIndex int
+
+	// StepOSDetect
+	osInfo string
 }
 
 // PostInstallStep describes one bullet in the post-install guide.
@@ -194,8 +199,11 @@ func NewModel() Model {
 		jforexPathInput.SetValue(jforexPath)
 	}
 
+	// OS detection for pre-check
+	osInfo := detectOSInfo()
+
 	return Model{
-		step:              StepIntro,
+		step:              StepOSDetect,
 		accountModeIndex:  0, // default demo
 		primaryAgentIndex: 0, // default quantlab-orchestrator
 		sqxInput:          sqxInput,
@@ -210,6 +218,7 @@ func NewModel() Model {
 		sdkDetectFn:       detectSDKReady,
 		manualTools:       map[string]bool{},
 		steps:             loadPostInstallSteps(),
+		osInfo:            osInfo,
 		result: Result{
 			OpenCodeReady: openCodeInstalled,
 			GentleAIReady: gentleAIInstalled,
@@ -224,6 +233,29 @@ func detectSDKReady() (bool, error) {
 		return false, err
 	}
 	return info.Installed, nil
+}
+
+// detectOSInfo returns a human-readable string with OS, architecture, and
+// Linux distribution (when applicable).
+func detectOSInfo() string {
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+	var distro string
+	if goos == "linux" {
+		if data, err := os.ReadFile("/etc/os-release"); err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				if strings.HasPrefix(line, "PRETTY_NAME=") {
+					distro = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
+					break
+				}
+			}
+		}
+	}
+	parts := []string{fmt.Sprintf("OS: %s/%s", goos, goarch)}
+	if distro != "" {
+		parts = append(parts, fmt.Sprintf("Distro: %s", distro))
+	}
+	return strings.Join(parts, "  |  ")
 }
 
 // postInstallGuide mirrors the embedded onboarding/steps.json envelope, which
@@ -463,6 +495,8 @@ func (m *Model) runnerFor(tool string) func(home string) (string, error) {
 
 func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.step {
+	case StepOSDetect:
+		m.step = StepIntro
 	case StepIntro:
 		m.step = StepConsentOpenCode
 	case StepConsentOpenCode, StepConsentGentleAI:
@@ -524,6 +558,8 @@ func (m *Model) View() string {
 		return lipgloss.NewStyle().Padding(1).Render(theme.SuccessStyle.Render("Onboarding completado."))
 	}
 	switch m.step {
+	case StepOSDetect:
+		return m.viewOSDetect()
 	case StepIntro:
 		return m.viewIntro()
 	case StepConsentOpenCode:
@@ -547,6 +583,15 @@ func (m *Model) View() string {
 	default:
 		return ""
 	}
+}
+
+func (m *Model) viewOSDetect() string {
+	return lipgloss.NewStyle().Padding(1).Render(
+		theme.TitleStyle.Render("Detección del entorno") + "\n\n" +
+		theme.SubtextStyle.Render(m.osInfo) + "\n\n" +
+		theme.UnselectedStyle.Render("Verificá que el sistema operativo sea compatible con QuantLab AI.") + "\n\n" +
+		theme.HelpStyle.Render("Presiona Enter para continuar."),
+	)
 }
 
 func (m *Model) viewIntro() string {
