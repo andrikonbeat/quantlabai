@@ -61,8 +61,8 @@ const (
 
 // Install and documentation copy shared by consent and manual steps.
 const (
-	openCodeInstallCommand = "npm install -g --ignore-scripts opencode-ai@latest"
-	openCodeDocsURL        = "https://opencode.ai/"
+	openCodeInstallCommand = "curl -fsSL https://opencode.ai/install | bash"
+	openCodeDocsURL        = "https://opencode.ai/docs/"
 	gentleAIInstallCommand = "Descargá el binario desde GitHub y movelo a ~/.local/bin"
 	gentleAIDocsURL        = "https://github.com/Gentleman-Programming/gentle-ai"
 	delegationSample       = "Instalá o actualizá OpenCode y gentle-ai, y verificá el entorno de QuantLab."
