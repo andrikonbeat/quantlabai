@@ -201,6 +201,12 @@ func NewModel() Model {
 		jforexPathInput.SetValue(jforexPath)
 	}
 
+	// Auto-detect SQX installation
+	sqxPath := tools.DetectSQX()
+	if sqxPath != "" {
+		sqxInput.SetValue(sqxPath)
+	}
+
 	// OS detection for pre-check
 	osInfo := detectOSInfo()
 

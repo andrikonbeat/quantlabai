@@ -50,3 +50,23 @@ func DetectNpmWritable() bool {
 	os.Remove(tmp)
 	return true
 }
+
+// DetectSQX tries to find the StrategyQuantX installation in common locations.
+// Returns empty string if not found.
+func DetectSQX() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	candidates := []string{
+		"/opt/StrategyQuantX",
+		filepath.Join(home, "StrategyQuantX"),
+		filepath.Join(home, "Applications", "StrategyQuantX"),
+	}
+	for _, p := range candidates {
+		if info, err := os.Stat(p); err == nil && info.IsDir() {
+			return p
+		}
+	}
+	return ""
+}
