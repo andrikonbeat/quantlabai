@@ -31,8 +31,8 @@ func cmdOnboarding(w io.Writer, args []string) error {
 	if err != nil {
 		return fmt.Errorf("home dir: %w", err)
 	}
-	stateDir := stateDirFlag(args)
-	qlDir := config.StateDir(home, stateDir)
+	stateDir := ".quantlab" // default state dir
+	qlDir := config.StateDir(home)
 
 	st, err := state.LoadOrInit(qlDir)
 	if err != nil {
@@ -76,7 +76,7 @@ func cmdOnboarding(w io.Writer, args []string) error {
 // from the TUI result, and applies the primary-agent selection. It no longer
 // installs tools — the TUI owns install execution.
 func applyOnboardingResult(w io.Writer, home, stateDir string, res onboarding.Result) error {
-	cfg, err := config.ReadConfig(config.ConfigPath(home, stateDir))
+	cfg, err := config.ReadConfig(config.ConfigPath(home))
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
 	}
@@ -96,7 +96,7 @@ func applyOnboardingResult(w io.Writer, home, stateDir string, res onboarding.Re
 	if res.JForex.Password != "" {
 		cfg.JForex.Password = res.JForex.Password
 	}
-	if err := config.WriteConfig(config.ConfigPath(home, stateDir), cfg); err != nil {
+	if err := config.WriteConfig(config.ConfigPath(home), cfg); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}
 
