@@ -33,7 +33,7 @@ func TestOnboardingHelpSummaryContainsOnboarding(t *testing.T) {
 }
 
 func TestOnboardingStepsAssetLoaded(t *testing.T) {
-	m := onboarding.NewModel()
+	m := onboarding.NewModel(false)
 	steps := m.Steps()
 	if len(steps) == 0 {
 		t.Fatal("expected onboarding steps to be loaded from asset, got empty")
@@ -74,7 +74,7 @@ func TestApplyOnboardingResult_PrintsReadinessAndWritesConfig(t *testing.T) {
 		t.Errorf("expected readiness output to mention gentle-ai; got:\n%s", out)
 	}
 
-	cfg, err := config.ReadConfig(config.ConfigPath(home, ""))
+	cfg, err := config.ReadConfig(config.ConfigPath(home))
 	if err != nil {
 		t.Fatalf("read config: %v", err)
 	}

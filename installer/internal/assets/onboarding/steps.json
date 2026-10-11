@@ -27,7 +27,7 @@
     {
       "id": "example-prompt",
       "title": "Ejemplo de prompt",
-      "description": "Ejecuta una campaña completa para EURUSD M5 con riesgo 1%.",
+      "description": "Comienza una campaña para un portafolio de 100USD.",
       "always": true
     }
   ]

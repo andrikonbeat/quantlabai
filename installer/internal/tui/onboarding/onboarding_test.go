@@ -48,7 +48,7 @@ func runMsg(t *testing.T, m *Model, msg tea.Msg) (*Model, tea.Cmd) {
 // configured result.
 func newTestModel(t *testing.T) *Model {
 	t.Helper()
-	m := NewModel()
+	m := NewModel(false)
 	m.openCodeInstalled = false
 	m.gentleAIInstalled = false
 	m.result.OpenCodeReady = false
@@ -66,8 +66,16 @@ func TestOnboarding_Flow(t *testing.T) {
 	m.openCodeInstalled = true
 	m.gentleAIInstalled = true
 
-	// Intro -> Enter -> ConsentOpenCode
+	// OSDetect -> Enter -> Intro
 	m, cmd := runEnter(t, m)
+	if m.step != StepIntro {
+		t.Fatalf("step = %d, want %d", m.step, StepIntro)
+	}
+	if cmd != nil {
+		t.Fatalf("expected nil cmd after os detect enter")
+	}
+	// Intro -> Enter -> ConsentOpenCode
+	m, cmd = runEnter(t, m)
 	if m.step != StepConsentOpenCode {
 		t.Fatalf("step = %d, want %d", m.step, StepConsentOpenCode)
 	}
@@ -427,7 +435,7 @@ func TestInstallFallbackDisplayGoesManual(t *testing.T) {
 }
 
 func TestStepsAssetLoadsEmbeddedGuide(t *testing.T) {
-	m := NewModel()
+	m := NewModel(false)
 	found := false
 	for _, s := range m.Steps() {
 		if s.ID == "gentle-ai" {
