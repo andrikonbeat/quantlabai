@@ -390,13 +390,211 @@ def render_goto_task(task: CustomProjectTask) -> BuildTask:
     return bt
 
 
+def render_create_portfolio(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    max_strategies = task.params.get("maxStrategies", "100")
+    bt.unknown_sections.append(
+        RawXmlSection(
+            name="CreatePortfolio",
+            raw_xml=f"<CreatePortfolio><MaxStrategies>{escape(max_strategies)}</MaxStrategies></CreatePortfolio>",
+        )
+    )
+    return bt
+
+
+def render_custom_analysis(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    fields = [
+        ("PerStrategy1", task.params.get("perStrategy1", "")),
+        ("PerStrategy2", task.params.get("perStrategy2", "")),
+        ("FullDatabank1", task.params.get("fullDatabank1", "")),
+        ("FullDatabank2", task.params.get("fullDatabank2", "")),
+        ("Filter", task.params.get("filter", "")),
+        ("InputArgsPerStrategy1", task.params.get("inputArgsPerStrategy1", "")),
+        ("InputArgsPerStrategy2", task.params.get("inputArgsPerStrategy2", "")),
+        ("InputArgsFullDatabank1", task.params.get("inputArgsFullDatabank1", "")),
+        ("InputArgsFullDatabank2", task.params.get("inputArgsFullDatabank2", "")),
+    ]
+    inner = "\n".join(f"    <{name}>{escape(val)}</{name}>" for name, val in fields if val)
+    bt.unknown_sections.append(
+        RawXmlSection(name="CustomAnalysis", raw_xml=f"<CustomAnalysis>\n{inner}\n</CustomAnalysis>")
+    )
+    return bt
+
+
+def render_log_databank_stats(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    databank = task.params.get("databank", "Results")
+    log_stats_list = task.params.get("logStats", [])
+    parts = [f"    <Databank>{escape(databank)}</Databank>"]
+    for ls in log_stats_list:
+        if not isinstance(ls, dict):
+            continue
+        ls_type = ls.get("type", "sum")
+        column = ls.get("column", "")
+        conditions = ls.get("conditions", "")
+        col_xml = f"<Column>{escape(column)}</Column>" if column else ""
+        cond_xml = f"<Conditions>{escape(conditions)}</Conditions>" if conditions else ""
+        parts.append(f"    <LogStats type=\"{escape(ls_type)}\">{col_xml}{cond_xml}</LogStats>")
+    inner = "\n".join(parts)
+    bt.unknown_sections.append(
+        RawXmlSection(name="LogDatabankStats", raw_xml=f"<LogDatabankStats>\n{inner}\n</LogDatabankStats>")
+    )
+    return bt
+
+
+def render_save_to_files(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    # Simple child text fields
+    simple_fields = [
+        "destDirectorySqx",
+        "destDirectoryStr",
+        "destDirectoryDatabank",
+        "destDirectoryTrades",
+        "destDirectoryHtml",
+        "destDirectoryPdf",
+        "destDirectorySC",
+        "saveInSqxFormat",
+        "saveInStrFormat",
+        "exportDatabank",
+        "exportTrades",
+        "saveInHtmlFormat",
+        "saveInPdfFormat",
+        "overwriteFiles",
+        "mnActive",
+        "mnValue",
+        "data",
+        "format",
+        "useComma",
+        "setNoteActive",
+        "setNoteType",
+        "setNoteCustom",
+    ]
+    # Mapping from param key to XML element name (per harvest evidence)
+    key_to_xml = {
+        "destDirectorySqx": "DestDirectorySqx",
+        "destDirectoryStr": "DestDirectoryStr",
+        "destDirectoryDatabank": "DestDirectoryDatabank",
+        "destDirectoryTrades": "DestDirectoryTrades",
+        "destDirectoryHtml": "DestDirectoryHtml",
+        "destDirectoryPdf": "DestDirectoryPdf",
+        "destDirectorySC": "DestDirectorySC",
+        "saveInSqxFormat": "SaveInSqxFormat",
+        "saveInStrFormat": "SaveInStrFormat",
+        "exportDatabank": "ExportDatabank",
+        "exportTrades": "ExportTrades",
+        "saveInHtmlFormat": "SaveInHtmlFormat",
+        "saveInPdfFormat": "SaveInPdfFormat",
+        "overwriteFiles": "OverwriteFiles",
+        "mnActive": "MNActive",
+        "mnValue": "MNValue",
+        "data": "Data",
+        "format": "Format",
+        "useComma": "UseComma",
+        "setNoteActive": "SetNoteActive",
+        "setNoteType": "SetNoteType",
+        "setNoteCustom": "SetNoteCustom",
+    }
+    parts = []
+    for key, xml_name in key_to_xml.items():
+        val = task.params.get(key)
+        if val is not None:
+            parts.append(f"    <{xml_name}>{escape(str(val))}</{xml_name}>")
+    # SaveSourceCode with attributes
+    ssc_val = task.params.get("saveSourceCode")
+    if ssc_val is not None:
+        ssc_type = task.params.get("saveSourceCodeType", "source")
+        ssc_format = task.params.get("saveSourceCodeFormat", "text")
+        parts.append(
+            f'    <SaveSourceCode type=\"{escape(ssc_type)}\" format=\"{escape(ssc_format)}\">{escape(str(ssc_val))}</SaveSourceCode>'
+        )
+    inner = "\n".join(parts)
+    bt.unknown_sections.append(
+        RawXmlSection(name="SaveToFiles", raw_xml=f"<SaveToFiles>\n{inner}\n</SaveToFiles>")
+    )
+    return bt
+
+
+def render_load_from_files(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    key_to_xml = {
+        "sourceDirectory": "SourceDirectory",
+        "includeSubdirectories": "IncludeSubdirectories",
+        "unrecognizedInstrumentAction": "UnrecognizedInstrumentAction",
+        "unrecognizedInstrumentValue": "UnrecognizedInstrumentValue",
+    }
+    parts = []
+    for key, xml_name in key_to_xml.items():
+        val = task.params.get(key)
+        if val is not None:
+            parts.append(f"    <{xml_name}>{escape(str(val))}</{xml_name}>")
+    inner = "\n".join(parts)
+    bt.unknown_sections.append(
+        RawXmlSection(name="LoadFromFiles", raw_xml=f"<LoadFromFiles>\n{inner}\n</LoadFromFiles>")
+    )
+    return bt
+
+
+def render_update_data(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    type_val = task.params.get("type", "project")
+    bt.unknown_sections.append(
+        RawXmlSection(
+            name="UpdateData",
+            raw_xml=f"<UpdateData><Type>{escape(type_val)}</Type></UpdateData>",
+        )
+    )
+    return bt
+
+
+def render_wait_for(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    file_val = task.params.get("file", "")
+    action_val = task.params.get("action", "user")
+    parts = []
+    if file_val:
+        parts.append(f"    <File>{escape(file_val)}</File>")
+    parts.append(f"    <Action>{escape(action_val)}</Action>")
+    inner = "\n".join(parts)
+    bt.unknown_sections.append(
+        RawXmlSection(name="WaitFor", raw_xml=f"<WaitFor>\n{inner}\n</WaitFor>")
+    )
+    return bt
+
+
+def render_delete_file(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    file_val = task.params.get("file", "")
+    bt.unknown_sections.append(
+        RawXmlSection(
+            name="DeleteFile",
+            raw_xml=f"<DeleteFile><File>{escape(file_val)}</File></DeleteFile>",
+        )
+    )
+    return bt
+
+
+def render_notification(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    type_val = task.params.get("type", "email")
+    email_val = task.params.get("email", "")
+    wait_val = task.params.get("wait", "false")
+    bt.unknown_sections.append(
+        RawXmlSection(
+            name="Notification",
+            raw_xml=f"<Notification><Type>{escape(type_val)}</Type><Email>{escape(email_val)}</Email><Wait>{escape(wait_val)}</Wait></Notification>",
+        )
+    )
+    return bt
+
+
 def render_generic(task: CustomProjectTask) -> BuildTask:
-    """Generic catalog task: typed section name + minimal settings (AD-2)."""
+    """Fallback for types not yet implemented (NeuralNetworkTrainer, ApplyMassConfig, etc.)."""
     bt = _base_task(task)
     bt.unknown_sections.append(
         RawXmlSection(
             name=task.type,
-            raw_xml=f'<{task.type} enabled="true" />',
+            raw_xml=f'<{task.type} />',
         )
     )
     return bt
@@ -405,20 +603,11 @@ def render_generic(task: CustomProjectTask) -> BuildTask:
 # Task types without a dedicated renderer use the generic one.
 _GENERIC_TYPES = frozenset(
     {
-        "LoadFromFiles",
-        "SaveToFiles",
-        "ClearDatabanks",
-        "CreatePortfolio",
-        "CustomAnalysis",
-        "DeleteFile",
-        "CallExternalScript",
-        "LogDatabankStats",
         "NeuralNetworkTrainer",
-        "Notification",
-        "StopAndStart",
-        "UpdateData",
-        "WaitFor",
         "ApplyMassConfig",
+        "StopAndStart",
+        "ClearDatabanks",
+        "CallExternalScript",
     }
 )
 
@@ -430,6 +619,15 @@ RENDERERS: dict[str, Callable[[CustomProjectTask], BuildTask]] = {
     "AutomaticPortfolioBuilder": render_automatic_portfolio_builder,
     "Filtering": render_filtering,
     "GoToTask": render_goto_task,
+    "CreatePortfolio": render_create_portfolio,
+    "CustomAnalysis": render_custom_analysis,
+    "LogDatabankStats": render_log_databank_stats,
+    "SaveToFiles": render_save_to_files,
+    "LoadFromFiles": render_load_from_files,
+    "UpdateData": render_update_data,
+    "WaitFor": render_wait_for,
+    "DeleteFile": render_delete_file,
+    "Notification": render_notification,
 }
 
 for _t in _GENERIC_TYPES:
