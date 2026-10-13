@@ -227,7 +227,28 @@ def render_advanced_rankings(
 
 def render_retest(task: CustomProjectTask) -> BuildTask:
     bt = _base_task(task)
-    bt.cross_checks_section = _crosschecks_section(task)
+    # CrossChecks with WalkForward and MonteCarlo (per harvest: SettingsCrossChecks)
+    cc_parts = ["<CrossChecks>"]
+    
+    mc_runs = task.params.get("monte_carlo_runs")
+    mc_attr = 'enabled="false"'
+    if mc_runs is not None:
+        mc_attr = f'enabled="true" simulations="{mc_runs}"'
+    cc_parts.append(f"<MonteCarlo {mc_attr} />")
+    
+    opt = task.params.get("optimize_params")
+    if opt is not None:
+        cc_parts.append(f'<Parameters enabled="true" {_param_attrs(opt)} />')
+    else:
+        cc_parts.append('<Parameters enabled="false" />')
+    
+    enabled = "true" if "walkforward_cycles" in task.params else "false"
+    cycles = task.params.get("walkforward_cycles", "5")
+    cc_parts.append(f'<WalkForward enabled="{enabled}" cycles="{cycles}" />')
+    
+    cc_parts.append("</CrossChecks>")
+    bt.cross_checks_section = CrossChecksConfig(raw_xml="".join(cc_parts))
+    
     if task.advanced_ranking_filters:
         bt.rankings_section = render_advanced_rankings(task.advanced_ranking_filters)
     return bt
@@ -235,6 +256,79 @@ def render_retest(task: CustomProjectTask) -> BuildTask:
 
 def render_optimize(task: CustomProjectTask) -> BuildTask:
     bt = _base_task(task)
+    p = task.params
+    
+    # Build Optimization element with full dialect
+    opt_attrs = [
+        f'type="{escape(p.get("optimizationType", "0"))}"',
+        f'maxOptimizations="{escape(p.get("maxOptimizations", "1000"))}"',
+    ]
+    
+    # Source
+    source_type = p.get("sourceType", "0")
+    source_rel = p.get("sourceRelativePath", "true")
+    source_path = p.get("sourcePath", "")
+    source_xml = f'<Source type="{escape(source_type)}" relativePath="{escape(source_rel)}">{escape(source_path)}</Source>'
+    
+    # SimpleOptimization
+    so_attrs = [
+        f'type="{escape(p.get("simpleOptimizationType", "0"))}"',
+        f'pctToPass="{escape(p.get("pctToPass", "50"))}"',
+        f'resultsCount="{escape(p.get("resultsCount", "100"))}"',
+        f'stabilityRange="{escape(p.get("stabilityRange", "10"))}"',
+    ]
+    so_xml = f'<SimpleOptimization {" ".join(so_attrs)} />'
+    
+    # WalkForward
+    wf_type = p.get("walkforwardType", "1")
+    wf_period = p.get("walkforwardPeriod", "20")
+    wf_opt = p.get("walkforwardOptimization", "15")
+    wf_p1 = p.get("walkforwardParam1", "")
+    wf_p2 = p.get("walkforwardParam2", "")
+    if wf_p1 or wf_p2:
+        wf_inner = f'<Param1 value="{escape(wf_p1)}" /><Param2 value="{escape(wf_p2)}" />'
+    else:
+        wf_inner = f'<Param1 start="{escape(p.get("walkforwardParam1Start", "0"))}" stop="{escape(p.get("walkforwardParam1Stop", "1"))}" step="{escape(p.get("walkforwardParam1Step", "0.1"))}" />'
+        wf_inner += f'<Param2 start="{escape(p.get("walkforwardParam2Start", "0"))}" stop="{escape(p.get("walkforwardParam2Stop", "1"))}" step="{escape(p.get("walkforwardParam2Step", "0.1"))}" />'
+    wf_xml = f'<WalkForward type="{escape(wf_type)}" period="{escape(wf_period)}" optimization="{escape(wf_opt)}">{wf_inner}</WalkForward>'
+    
+    # OptimizationMethod
+    om_settings = p.get("optimizationMethod", "genetic")
+    om_sym = p.get("optimizationSymmetricVariables", "false")
+    om_sym_dis = p.get("optimizationSymmetryDisabled", "false")
+    om_xml = f'<OptimizationMethod settings="{escape(om_settings)}" symmetricVariables="{escape(om_sym)}" symmetryDisabled="{escape(om_sym_dis)}">{source_xml}</OptimizationMethod>'
+    
+    # AutomaticSettings
+    as_xml = f'<AutomaticSettings distributionUp="{escape(p.get("autoDistUp", "10"))}" distributionDown="{escape(p.get("autoDistDown", "10"))}" maxSteps="{escape(p.get("autoMaxSteps", "10"))}" />'
+    
+    # WhatToParametrize
+    wtp_parts = [
+        f'<Recommended>{escape(str(p.get("whatToParametrizeRecommended", "true")).lower())}</Recommended>',
+        f'<Periods>{escape(str(p.get("whatToParametrizePeriods", "true")).lower())}</Periods>',
+        f'<Shifts>{escape(str(p.get("whatToParametrizeShifts", "false")).lower())}</Shifts>',
+        f'<Constants>{escape(str(p.get("whatToParametrizeConstants", "false")).lower())}</Constants>',
+        f'<OtherParams>{escape(str(p.get("whatToParametrizeOtherParams", "false")).lower())}</OtherParams>',
+        f'<EntryParams>{escape(str(p.get("whatToParametrizeEntryParams", "false")).lower())}</EntryParams>',
+        f'<EntryLogic>{escape(str(p.get("whatToParametrizeEntryLogic", "false")).lower())}</EntryLogic>',
+        f'<ExitParamsUsed>{escape(str(p.get("whatToParametrizeExitParamsUsed", "false")).lower())}</ExitParamsUsed>',
+        f'<ExitParamsUnused>{escape(str(p.get("whatToParametrizeExitParamsUnused", "false")).lower())}</ExitParamsUnused>',
+        f'<BooleanParams>{escape(str(p.get("whatToParametrizeBooleanParams", "false")).lower())}</BooleanParams>',
+        f'<TradingOptions>{escape(str(p.get("whatToParametrizeTradingOptions", "false")).lower())}</TradingOptions>',
+    ]
+    wtp_xml = f'<WhatToParametrize type="{escape(p.get("whatToParametrizeType", "0"))}">\n' + '\n'.join(wtp_parts) + '\n</WhatToParametrize>'
+    
+    # ManualSettings
+    manual_xml = '<ManualSettings><Params /></ManualSettings>'
+    
+    # Combine all
+    inner = f"{source_xml}\n{so_xml}\n{wf_xml}\n{om_xml}\n{as_xml}\n{wtp_xml}\n{manual_xml}"
+    opt_xml = f'<Optimization {' '.join(opt_attrs)}>\n{inner}\n</Optimization>'
+    
+    bt.unknown_sections.append(
+        RawXmlSection(name="Optimization", raw_xml=opt_xml)
+    )
+    
+    # Also keep cross_checks for compatibility (MonteCarlo/WalkForward)
     bt.cross_checks_section = _crosschecks_section(task)
     return bt
 
