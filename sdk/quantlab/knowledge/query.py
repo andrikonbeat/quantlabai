@@ -616,34 +616,34 @@ class QueryBuilder:
                     tags = tag_store.get_tags(campaign_id) if campaign_id else []
 
                     metrics = info.get("metrics", {})
-                if metrics:
-                    campaign_metrics = CampaignMetrics(
-                        sharpe_ratio=metrics.get("sharpe_ratio"),
-                        profit_factor=metrics.get("profit_factor"),
-                        win_rate=metrics.get("win_rate"),
-                        max_drawdown=metrics.get("max_drawdown"),
-                        total_trades=metrics.get("total_trades"),
-                        net_profit=metrics.get("net_profit"),
-                        total_return=metrics.get("total_return"),
-                    )
-                else:
-                    campaign_metrics = None
+                    if metrics:
+                        campaign_metrics = CampaignMetrics(
+                            sharpe_ratio=metrics.get("sharpe_ratio"),
+                            profit_factor=metrics.get("profit_factor"),
+                            win_rate=metrics.get("win_rate"),
+                            max_drawdown=metrics.get("max_drawdown"),
+                            total_trades=metrics.get("total_trades"),
+                            net_profit=metrics.get("net_profit"),
+                            total_return=metrics.get("total_return"),
+                        )
+                    else:
+                        campaign_metrics = None
 
-                campaigns.append(
-                    CampaignSummary(
-                        campaign_id=campaign_id,
-                        name=campaign_id,
-                        metrics=campaign_metrics,
-                        tags=tags,
-                        created=datetime.fromisoformat(info.get("created"))
-                        if info.get("created")
-                        else None,
-                        path=info.get("path", ""),
-                        market=info.get("market") or info.get("symbol"),
-                        timeframe=info.get("timeframe"),
-                        status=info.get("status"),
+                    campaigns.append(
+                        CampaignSummary(
+                            campaign_id=campaign_id,
+                            name=campaign_id,
+                            metrics=campaign_metrics,
+                            tags=tags,
+                            created=datetime.fromisoformat(info.get("created"))
+                            if info.get("created")
+                            else None,
+                            path=info.get("path", ""),
+                            market=info.get("market") or info.get("symbol"),
+                            timeframe=info.get("timeframe"),
+                            status=info.get("status"),
+                        )
                     )
-                )
 
         # Agent-memory entries
         for rel_path, info in index.get("agent_memory", {}).items():
