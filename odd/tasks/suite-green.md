@@ -110,8 +110,8 @@ S11. The user's checkout MUST stay on `feature/gap-remediation`. All work happen
 | T3 | S5  | Fix the stale patch target in `test_windows_binary_naming` (test-side) → 1 failure | inline | `7b8cd08` |
 | T4 | S6  | Fix the `_extract_campaigns` fallback indentation → 1 failure | inline | `05ceefa` |
 | T5 | S7  | Sync the `LiveOpsStage.provides` expectation → 1 failure | inline | `85d00e2` |
-| T6 | S2, S9 | Declare `scikit-learn`; make the `pytest.ini` env block live → environment/CI parity | inline | pending |
-| T7 | S8  | Register the 14 phase agents + guardian family in the overlay and regenerate the live config → 23 failures | inline | pending |
+| T6 | S2, S9 | Declare `scikit-learn`; make the `pytest.ini` env block live → environment/CI parity | inline | `f1980bb` + `9d859a3` |
+| T7 | S8  | Register the 14 phase agents + guardian family in the overlay and regenerate the live config → 23 failures | inline | `20c6fda` |
 | T8 | S1  | Final full-suite gate under `.venv`; record the delta against baseline | inline | pending |
 
 Measured baseline: **64 failed / 4584 passed / 60 skipped** under `/usr/bin/python3`
@@ -273,3 +273,76 @@ reports `F821 Undefined name 'KnowledgeStore'` at `query.py:494`. It is byte-ide
 `HEAD~1` and after T4, so T4 did not introduce it and neither did this feature. Recorded
 for the user's disposition rather than fixed, because S1 keeps unrelated remediation out
 of this feature.
+
+L16 (T6 closed — `f1980bb` + `9d859a3`): `f1980bb build(sdk): declare scikit-learn in
+the dev extra` — `optimization/surrogate.py` imports sklearn function-local under
+`except ImportError` with no skip marker (surrogate.py:108,116,148,151,261,264), so the
+whole `sdk/tests/optimization/` suite fails without sklearn, and CI installs only
+`pip install -e "sdk[dev]"` (`ci.yml:97`), so CI fails too — the local `.venv` merely
+masked it (sklearn 1.9.1 installed by hand). `9d859a3 build(sdk): declare pytest-env so
+the pytest.ini env block is live` — without the plugin `pytest-env`, the `env` block of
+`pytest.ini` is an unknown config option and dead config; with it loaded, the three vars
+(`SQX_FORCE_MOCK=1`, `QUANTLAB_SQX_USE_HTTP=1`, `QUANTLAB_JFOREX_BRIDGE=1`) apply on a
+bare `pytest`, matching CI's "Run Tests" step (`ci.yml:108-113`). Job-8 measured the
+blast radius: under the env block the suite reports `23 failed, 4619 passed, 62 skipped,
+4 errors` — the 23 reds are exactly the T7 set, and the 4 errors were one missing
+untracked 247-byte fixture `assets/SQX_144_2953_linux_20260601/user/settings/Configs/DJ
+CFD H1.cfx` (the `assets/SQX_*` `.gitignore:59` entry is meant to be a symlink whose real
+target does not exist), fixed by copying the fixture from the main checkout → `128
+passed`. So the env block introduces no new failures (parity-safe with CI). Verified with
+`--trace-config` (plugin loaded) and a grep (warning count 0).
+
+L17 (T7 closed — `20c6fda`): registered the 14 `quantlab-phase-*` agents and the guardian
+family in the installer overlay and regenerated the live config. Chain, in order of
+evidence:
+
+- Overlay contract was pre-verified on the overlay JSON itself (a script replicating all
+  23 assertions) *before* any live mutation: 20 agents, all keys present, deny-first
+  everywhere, prompt refs exact, no legacy agents, no dangling refs.
+- **Core defect found**: the overlay wrote permissions under `permissions` (plural) and
+  an `edit` rule under `write`. OpenCode's schema
+  (`https://opencode.ai/config.json` → `$defs.AgentConfig.properties`) declares
+  `permission` and `edit` and nothing else, so a clean install silently wrote agent
+  entries with *no effective permissions* — deny-first never applied. Only
+  `tests/test_orchestrator_prompt.py:723` read the plural; fixed to singular with a
+  schema comment.
+- **`guardian.md` wiring**: `TestGuardianAgentRegistration` requires
+  `quantlab-guardian.prompt` to contain `guardian.md`; `ai/opencode/agents/guardian.md`
+  is that prompt (header: "Bind this to the `quantlab-guardian` subagent only").
+  `sync_prompts.py` keeps `guardian.md` non-managed by contract (REQ-821,
+  `test_guardian_live_prompt_never_synced`), and the Go installer's `InstallPrompts`
+  writes only *top-level* embedded `prompts/*` into `DefaultPromptsDir()` =
+  `~/.config/opencode/prompts/quantlab`. So the reproducible fix is to embed
+  `installer/internal/assets/prompts/guardian.md` (a copy of the repo canonical). The
+  live file was created through the installer's own primitives (`WriteFileAtomic` +
+  `RecordManagedPrompts`) and verified byte-identical (2900 B).
+- Live config was regenerated with the real API, not a hand-edit: a throwaway Go program
+  ran `ReadSettings → RemoveAgents → MergeAgents → WriteSettings` on
+  `~/.config/opencode/opencode.json` (backed up to /tmp first). `RemoveAgents` is
+  mandatory because `MergeAgents` is insert-if-missing and would never update the stale
+  `quantlab-campaign` (standard/primary) or the inert permission blocks. Result: 6 → 20
+  agents; `default_agent` preserved (absent before and after).
+- Result: `tests/test_orchestrator_prompt.py` **70 passed** (was 23 failed); neighbors
+  `tests/campaign/test_prompt_sync.py` + `tests/test_model_assignments.py` **22 passed**.
+  `go build ./...` clean; `internal/opencode` Go tests pass.
+- A fresh install is now coherent: the overlay references `quantlab/guardian.md`, which
+  the installer now creates from the embedded asset; the 14 phase prompts come from
+  `sync_prompts.py`.
+
+L18 (out-of-scope findings / T7 surroundings, not tasks):
+- `go test ./...` has two pre-existing build failures, both stale tests vs evolved
+  source, unrelated to T7 (no Go file in the T7 diff): `internal/app/install_test.go:215`
+  (`buildInstallPlan` arity — new `*journal.Journal` parameter) and
+  `internal/tui/wizard/wizard_test.go` (`StepWelcome` removed; `Result()` now returns 7
+  values). `internal/opencode` passes. No local CI job runs Go tests.
+- The installer embeds `prompts/quantlab/guardian-orchestrator.md` (a nested directory
+  entry), which `InstallPrompts` skips (`entry.IsDir() -> continue`): dead weight. Its
+  flat sibling `prompts/guardian-orchestrator.md` (1536 B) is what actually reaches
+  `~/.config/opencode/prompts/quantlab/`, and it can override the sync-managed repo
+  prompt (6.6 KB) whenever the Go installer runs without a following `sync_prompts.py`.
+  Pre-existing conflict; left untouched.
+- Live `~/.config/opencode/prompts/quantlab/quantlab/guardian-orchestrator.md` (plus a
+  nested `.quantlab-managed.json`) is an orphan of an older installer semantics; owned
+  and removable through the manifest once recorded.
+- The live config has no `default_agent`; install does not set one and no test asserts
+  it. Noted, not changed.
