@@ -40,9 +40,24 @@ S4. `run_javac` MUST return a `CompileReport` when javac exits non-zero, so that
     `subprocess.CalledProcessError`. Today `sdk/quantlab/compiler/compiler.py:106`
     passes `check=True`, making the structured-report path at line 189 dead code.
 
-S5. `quantlab.cli.runner.get_sqcli_binary` MUST exist as a patchable symbol.
-    Today `sdk/tests/test_cli.py:363` fails with
-    `AttributeError: <module 'quantlab.cli.runner'> does not have the attribute 'get_sqcli_binary'`.
+S5. `sdk/tests/test_cli.py::TestCrossPlatform::test_windows_binary_naming` MUST patch the
+    symbol `sdk/quantlab/cli/runner.py` actually resolves the binary with —
+    `quantlab.cli.runner.resolve_sqcli_path` — and MUST assert an observable effect.
+    It currently patches `quantlab.cli.runner.get_sqcli_binary`, which only works if
+    `runner.py` re-exports an unrelated helper.
+    Evidence that the test, not the code, is stale:
+    - `73acf01`, which created `runner.py`, imported both `get_sqcli_binary` and
+      `resolve_sqcli_path` but only ever called the latter.
+    - `ae4ef3f` ("lint cleanup + env normalization + 4 product decisions") dropped the
+      unused `get_sqcli_binary` import as dead code (F401). That is the correct change:
+      `get_sqcli_binary()` returns the binary *name* and belongs to
+      `quantlab.tools.platform`, where it is already covered by
+      `sdk/tests/test_platform.py:37,41`.
+    - The eight other patch sites in the same file (lines 115, 122, 130, 147, 162, 201,
+      218, 316) already patch `quantlab.cli.runner.resolve_sqcli_path`.
+    - The failing assertion is a no-op: `assert platform.system() or True`.
+    Re-adding `get_sqcli_binary` to `runner.py` would restore a dead import to satisfy an
+    assertion that checks nothing, so this task fixes the test instead of the code.
 
 S6. The `_extract_campaigns` legacy fallback in `sdk/quantlab/knowledge/query.py` MUST
     append one `CampaignSummary` per indexed entry. Today the `if metrics:` block and
@@ -90,11 +105,11 @@ S11. The user's checkout MUST stay on `feature/gap-remediation`. All work happen
 
 | ID | Spec | Task | Route | Commit |
 |----|------|------|-------|--------|
-| T1 | S3  | Remove the fabricated Python 3.14 guard (`cli/main.py`, `sqx/validator.py`, `sqx/sections.py` sentinel) → 14 failures | inline | pending |
-| T2 | S4  | Restore the compiler error path (`check=False` in `run_javac`) → 9 failures | inline | pending |
-| T3 | S5  | Restore `get_sqcli_binary` in `sdk/quantlab/cli/runner.py` → 1 failure | inline | pending |
-| T4 | S6  | Fix the `_extract_campaigns` fallback indentation → 1 failure | inline | pending |
-| T5 | S7  | Sync the `LiveOpsStage.provides` expectation → 1 failure | inline | pending |
+| T1 | S3  | Remove the fabricated Python 3.14 guard (`cli/main.py`, `sqx/validator.py`, `sqx/sections.py` sentinel) → 14 failures | inline | `6b4474e` |
+| T2 | S4  | Restore the compiler error path (`check=False` in `run_javac`) → 9 failures | inline | `4b0e989` |
+| T3 | S5  | Fix the stale patch target in `test_windows_binary_naming` (test-side) → 1 failure | inline | `7b8cd08` |
+| T4 | S6  | Fix the `_extract_campaigns` fallback indentation → 1 failure | inline | `05ceefa` |
+| T5 | S7  | Sync the `LiveOpsStage.provides` expectation → 1 failure | inline | `85d00e2` |
 | T6 | S2, S9 | Declare `scikit-learn`; make the `pytest.ini` env block live → environment/CI parity | inline | pending |
 | T7 | S8  | Register the 14 phase agents + guardian family in the overlay and regenerate the live config → 23 failures | inline | pending |
 | T8 | S1  | Final full-suite gate under `.venv`; record the delta against baseline | inline | pending |
@@ -141,7 +156,7 @@ on `main`, and 34 failures are common. The 34 common ones decompose exactly:
 |---|---|---|---|
 | 6 — installer overlay registration | fails | fails | 23 |
 | 2 — `run_javac(check=True)` | fails | fails | 9 |
-| 3 — missing `get_sqcli_binary` | fails | fails | 1 |
+| 3 — stale test patch target (`get_sqcli_binary`) | fails | fails | 1 |
 | 4 — `_extract_campaigns` indentation | fails | fails | 1 |
 | 1 — Python 3.14 guard | **passes** | fails | — |
 | 5 — stale `LiveOpsStage.provides` expectation | **passes** | fails | — |
@@ -162,9 +177,99 @@ verified 0 remaining deletions. Lost: only untracked, regenerable test output. L
 never treat `git status --porcelain` presence as proof of untracked status when the check
 command's output is being interpreted by hand.
 
+L9 (T1 closed — code `6b4474e`, plan `c8dada1`): removed the guard from
+`sdk/quantlab/cli/main.py` (`main()`), `sdk/quantlab/sqx/validator.py`
+(`validate_spec_json()`), and the dead `_MISSING` sentinel plus its misleading
+`parse_stop` docstring note in `sdk/quantlab/sqx/sections.py`.
+
+RED observed first: `tests/phase4/test_cli_main.py sdk/tests/test_kb.py
+sdk/tests/test_version.py tests/knowledge/test_kb_reverify_cli.py` → `14 failed,
+78 passed`. After the fix, the same set plus `sdk/tests/sqx/test_sections.py` →
+`115 passed, 1 skipped`.
+
+Checked before editing: no test expects the guard (the only `3.14` matches under
+tests are an unrelated float literal, `3.14159` in `test_project_builder.py`, and
+unrelated docstrings about `Path.__new__` and ABC registration), and `_MISSING`
+had exactly one occurrence in the whole tree — its own definition.
+
+The `PytestConfigWarning: Unknown config option: env` from S9/T6 reproduced in this
+run and is still open.
+
+L10 (T2 closed — `4b0e989`): `run_javac` now passes `check=False`, so a failing javac
+returns `CompileReport(exit_code=1, ...)` instead of raising `CalledProcessError`
+before the report existed. RED: `tests/compiler/` → `9 failed, 40 passed`. GREEN:
+`49 passed`.
+
+Cross-cutting finding, outside this feature's scope (S1): the same `check=True` defect
+is repeated four times in `sdk/quantlab/jforex/strategy_bridge.py` (lines 57, 76, 94,
+112). That is precisely the module whose untracked T9 RED tests fail at import with
+`ImportError: cannot import name 'BridgeError'`, so T9 is likely the same fix shape —
+surface a structured error type instead of letting `CalledProcessError` escape.
+Handoff note for the T9 owner; not a task here.
+
 L8 (coordination): the user committed the T5 WIP concurrently during this session
 (`f7b2247 feat(campaign): wire LLM generation monitor into run-flow`,
 `ce3e882 docs(odd): record T5 closure, gate certification and the gap-2 drift measurement`)
 and is actively editing `sdk/quantlab/exploration/params_schema.py`. HEAD moved from
 `a1098af` to `ce3e882` mid-session. The remediation therefore branches from `ce3e882`
 and runs in an isolated worktree (S11).
+
+L11 (T3 closed — `7b8cd08`): the failure was test-side. `test_windows_binary_naming`
+patched `quantlab.cli.runner.get_sqcli_binary`, a name that was only ever an incidental
+re-export in that module: `73acf01` imported it alongside `resolve_sqcli_path` but called
+only the latter, and `ae4ef3f` removed the unused import as dead code (F401).
+`get_sqcli_binary()` returns the binary *name* and lives in `quantlab.tools.platform`,
+covered by `sdk/tests/test_platform.py:37,41`. The eight other patch sites in
+`test_cli.py` (lines 115, 122, 130, 147, 162, 201, 218, 316) all use
+`resolve_sqcli_path`.
+
+The test also asserted nothing at all (`assert platform.system() or True`), so restoring
+the import would have recreated a dead symbol to satisfy a no-op. Fixed the test:
+it now patches `resolve_sqcli_path` and asserts the observable effect — the resolved
+path becomes argv[0] of the sqcli subprocess.
+
+RED: the exact node failed with `AttributeError: <module 'quantlab.cli.runner'> does not
+have the attribute 'get_sqcli_binary'`. GREEN: `sdk/tests/test_cli.py` → `25 passed`;
+`sdk/tests/test_platform.py` → `11 passed` (unchanged, still owns the name helper).
+
+L12 (T4 closed — `05ceefa`): in the legacy fallback of `_extract_campaigns`, the
+`if metrics:` block and `campaigns.append(...)` were dedented to the level of the outer
+`for dir_name` loop instead of the inner `for rel_path, info in ...` loop, so the block
+ran once per directory using the last iteration's `campaign_id`/`tags`/`info`/`metrics`
+and emitted a single campaign — the last one. The primary v6+ indexer path
+(`index["campaigns"]`) is indented correctly, which is why only the legacy
+`directories` fallback was affected.
+
+`tests/dashboard/seed.py:13` writes exclusively to `directories.results` and never to
+`campaigns`, which is what routes the dashboard through that fallback. Observed
+`sharpe_mean == 2.0` (campaign-b alone) instead of `1.5`. GREEN after the fix:
+`tests/dashboard/` + `sdk/tests/knowledge/` → `109 passed`, satisfying all six
+aggregate assertions (1.5, 0.7071, -12.0, 0.55, 300, 2 campaigns).
+
+L13 (T5 closed — `85d00e2`): `LiveOpsStage.execute()` publishes `live_pool_status` in
+every return path — both the fail-closed branch with no `archive_bundle`
+(`live_ops_stage.py:145,148`) and the normal branch (`:166,170`) — and `1168916`
+extended `provides` to declare it. `main` still carries the pre-C10 single-item list, so
+the stage is right and the expectation is stale. Also corrected the class docstring,
+which advertised only `live_ops_status` two lines above a `provides` field listing both.
+GREEN: `tests/pipeline/` + `tests/campaign/` → `281 passed`.
+
+L14 (T6 evidence — `scikit-learn` is declared nowhere). `sdk/tests/optimization/`
+exercises `optimization/surrogate.py`, whose sklearn imports are function-local and
+guarded by `except ImportError` raising "scikit-learn is required ... Install with: pip
+install scikit-learn" (`surrogate.py:108,116,148,151,261,264`). Those tests carry **no**
+skip marker, so the canonical suite fails without sklearn. `grep` over
+`.github/`, `sdk/pyproject.toml`, `pyproject.toml` and any `requirements*.txt` finds no
+sklearn declaration at all, and CI's test job installs only `pip install -e "sdk[dev]"`
+(`ci.yml:97`), so those tests fail in CI too — the local `.venv` merely masks it by
+having sklearn 1.9.1 installed by hand. This is the same defect class the `dev` extra
+already documents for `flask` and `plotly` ("`pip install -e "sdk[dev]"` produced an
+environment that could not run the suite it was meant to enable"), so scikit-learn goes
+in `dev`, not in the base dependencies: `surrogate.py` keeps degrading gracefully for end
+users who never run the optimization phase.
+
+L15 (out-of-scope finding, not a task): `ruff check sdk/quantlab/knowledge/query.py`
+reports `F821 Undefined name 'KnowledgeStore'` at `query.py:494`. It is byte-identical at
+`HEAD~1` and after T4, so T4 did not introduce it and neither did this feature. Recorded
+for the user's disposition rather than fixed, because S1 keeps unrelated remediation out
+of this feature.
