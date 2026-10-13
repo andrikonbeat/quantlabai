@@ -464,6 +464,63 @@ async def cmd_kb_table(args: argparse.Namespace) -> int:
         return 1
 
 
+async def cmd_sqx_validate(args: argparse.Namespace) -> int:
+    """Validate an SQX project spec via the spec engine + live validation.
+
+    Pipeline: spec JSON -> strict parse -> .cfx generation (surgical edits
+    on shipped defaults) -> optional live validation against a running SQX
+    (taskmanager/validateProject, side-effect-free).
+    """
+    import json as _json
+
+    try:
+        if args.spec == "-":
+            spec_json = sys.stdin.read()
+        else:
+            with open(args.spec, "r", encoding="utf-8") as f:
+                spec_json = f.read()
+
+        # 1. strict parse (fails fast on unknown keys)
+        from quantlab.sqx.spec import parse_spec, SpecValidationError
+        try:
+            spec = parse_spec(spec_json)
+        except SpecValidationError as e:
+            print_error(f"Spec validation failed: {e}")
+            return 1
+        except Exception as e:
+            print_error(f"Invalid spec JSON: {e}")
+            return 2
+
+        # 2. generate .cfx
+        from quantlab.sqx.builder import build_cfx_from_spec
+        import tempfile
+        out = Path(args.out) if args.out else Path(tempfile.mktemp(suffix=".cfx"))
+        build_cfx_from_spec(spec, out)
+        print_human(f"OK {out} ({out.stat().st_size} bytes)")
+
+        if args.no_verify:
+            print_human("SKIPPED live validation (--no-verify)")
+            return 0
+
+        # 3. live validation (only works where the endpoint exists, e.g. 144)
+        from quantlab.sqx.oracle import validate_cfx
+        import asyncio
+        result = await validate_cfx(out, args.url)
+        if result.get("validate_json", {}).get("verdict") in ("PASS", "VALIDATE_PASS") or result.get("ok"):
+            print_human("VALIDATE PASS")
+        else:
+            err = result.get("validate_json", {}).get("error") or result.get("validate_json", {}).get("raw", "Unknown error")[:200]
+            print_error(f"VALIDATE FAIL: {err}")
+        for w in result.get("warnings", []):
+            print_human(f"WARN {w}")
+        if result.get("validate_json"):
+            print_human(f"VALIDATE_JSON {_json.dumps(result['validate_json'])[:2000]}")
+        return result.get("exit_code", 0)
+    except Exception as e:  # pragma: no cover - defensive
+        print_error(f"SQX validate failed: {e}")
+        return 1
+
+
 async def cmd_sqx_check_version(args: argparse.Namespace) -> int:
     """Print installed build vs pinned build and status (REQ-304).
 
@@ -670,3 +727,29 @@ def add_sqx_subparser(subparsers: argparse._SubParsersAction) -> None:
         help="Knowledge Lake root for the drift checklist (default: knowledge)",
     )
     p_check.set_defaults(func=cmd_sqx_check_version)
+
+    # ── sqx validate ─────────────────────────────────────────────────────────
+    p_spec_validate = sqx_sub.add_parser(
+        "validate",
+        help="Validate an SQX project spec (spec JSON -> .cfx + live validation)",
+    )
+    p_spec_validate.add_argument(
+        "spec",
+        help="Path to spec JSON file, or '-' for stdin",
+    )
+    p_spec_validate.add_argument(
+        "--url",
+        default="http://127.0.0.1:5050",
+        help="SQX base URL for live validation (default: http://127.0.0.1:5050)",
+    )
+    p_spec_validate.add_argument(
+        "--out",
+        default=None,
+        help="Write generated .cfx to this path (default: temp file)",
+    )
+    p_spec_validate.add_argument(
+        "--no-verify",
+        action="store_true",
+        help="Skip live validation (only generate .cfx)",
+    )
+    p_spec_validate.set_defaults(func=cmd_sqx_validate)
