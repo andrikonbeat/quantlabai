@@ -112,7 +112,7 @@ S11. The user's checkout MUST stay on `feature/gap-remediation`. All work happen
 | T5 | S7  | Sync the `LiveOpsStage.provides` expectation → 1 failure | inline | `85d00e2` |
 | T6 | S2, S9 | Declare `scikit-learn`; make the `pytest.ini` env block live → environment/CI parity | inline | `f1980bb` + `9d859a3` |
 | T7 | S8  | Register the 14 phase agents + guardian family in the overlay and regenerate the live config → 23 failures | inline | `20c6fda` |
-| T8 | S1  | Final full-suite gate under `.venv`; record the delta against baseline | inline | pending |
+| T8 | S1  | Final full-suite gate under `.venv`; record the delta against baseline | inline | see L19 |
 
 Measured baseline: **64 failed / 4584 passed / 60 skipped** under `/usr/bin/python3`
 (3.14.7, no `scikit-learn`); **49 failed / 272 passed** for the failing subset under the
@@ -346,3 +346,19 @@ L18 (out-of-scope findings / T7 surroundings, not tasks):
   and removable through the manifest once recorded.
 - The live config has no `default_agent`; install does not set one and no test asserts
   it. Noted, not changed.
+
+L19 (T8 closed — full-suite gate, log `/tmp/gentle-jobs-e6nbzr/job-11.log`): the committed
+suite in the isolated worktree is now **fully green**: `4646 passed, 62 skipped, 131
+warnings in 444.13s`, **0 failed, 0 errors** (grep of the full log: 0 `FAILED`, 0 `ERROR`),
+run under the project `.venv` with `SQX_FORCE_MOCK=1 -p no:randomly -p no:cacheprovider`.
+
+Delta vs the post-T6 `.venv` baseline (job-8: `23 failed, 4619 passed, 62 skipped, 4
+errors`): failures 23→0 (the T7 overlay/registration set — all 70 assertions in
+`tests/test_orchestrator_prompt.py` are green); errors 4→0 (the missing 247-byte `.cfx`
+fixture copied from the main checkout — the 4 collection-error modules now pass); passed
+4619→4646, and 23 + 4 = 27 recovered items exactly. The 62 skips and the warning class
+are unchanged in kind. The 2 `BridgeError` collection errors (T9's RED) do not appear
+here by construction: their test files live untracked in the main checkout
+(`sdk/tests/quantlab/jforex/test_strategy_bridge{,_integration}.py`) and are not part of
+the committed worktree suite — out of scope, recorded for T9 (full run in the main
+checkout would still show them while the WIP stays uncommitted).
