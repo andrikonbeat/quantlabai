@@ -119,7 +119,8 @@ Every gap below was verified by reading the working tree; `path:line` is the cit
 | 1 | Renderers read only 3 params; `render_build` emits empty `Options`/`Data`; `map_exploration_to_task_params` returns `{}` | `sdk/quantlab/customproject/renderers.py:86-96,114-118`; `sdk/quantlab/exploration/params_schema.py:1001-1011`; write site `sdk/quantlab/customproject/param_mapper.py:81` |
 | 1 | Legacy path hardcodes `AccountSize=10000`; Custom Project path writes no money management at all | `sdk/quantlab/translate/translator.py:176-184`; `grep -rn 'money\|Money' sdk/quantlab/customproject/` → 0 matches |
 | 1 | Production default is the Custom Project dialect | `sdk/quantlab/agents/builder_agent.py:482-493` |
-| 2 | Schema covers 14 task types vs 21 in the catalog; 7 types have no schema; duplicate key redefinitions in the dict literal | `sdk/quantlab/exploration/params_schema.py:148-164,173+`; `sdk/quantlab/customproject/catalog.py:35` |
+| 2 | Schema covers 14 task types vs 21 in the catalog. The 7 types with no schema are `ApplyMassConfig`, `CallExternalScript`, `ClearDatabanks`, `DeleteFile`, `NeuralNetworkTrainer`, `Notification`, `StopAndStart` | `sdk/quantlab/customproject/catalog.py:35` (`CATALOG_TYPES` = 21); `sdk/quantlab/exploration/params_schema.py:148-164` |
+| 2 | The `TASK_PARAM_SCHEMAS` dict literal declares 23 keys but the runtime dict has 14 entries: 9 keys are repeated verbatim, so the later definition silently overwrites the earlier one for those 9 types | `sdk/quantlab/exploration/params_schema.py:173+`; measured via `ast` (23 literal keys, 9 repeated) and `len(TASK_PARAM_SCHEMAS)` == 14 |
 | 2 | No drift test: nothing under `tests/` imports `params_schema`; only count invariant is `assert len(RENDERERS) == 21` | `sdk/quantlab/customproject/renderers.py:438` |
 | 3 | Dead `async def execute` calls undefined `self._compare_results`; overriding `execute` returns hardcoded `{"similar": True, "correlation": 0.98}`; `phase_id` outside `PHASES` | `sdk/quantlab/pipeline/stages/backtest_comparator_stage.py:65,79,113,121,130,138` |
 | 4 | `backtest_analyzer` exists only as a prompt; no stage implementation; no `knowledge/structured/backtest_discrepancies/` | `ai/opencode/agents/backtest_analyzer.md`; `backtest_comparator_stage.py:131` |
@@ -144,10 +145,10 @@ files stay untracked, by design. Test-first policy applies: each task observes R
 |----|------|------|-------|--------|
 | T0 | Create this feature document and task breakdown | — | inline | — |
 | T1 | Define the module logger in the JForex deploy stage KB write path (Gap 10) | S17 | inline | landed in `1168916` (checkpoint C07 of the WIP split — the logger and the KB write path it serves are one file and cannot be separated) |
-| T2 | Complete `TASK_PARAM_SCHEMAS` to all 21 catalog task types, remove duplicate key redefinitions, add a schema-vs-catalog drift test (Gap 2) | S3 | worker + verify | `feat(config): complete task param schema with catalog drift test` |
+| T2 | Complete `TASK_PARAM_SCHEMAS` to all 21 catalog task types, remove the 9 repeated keys that shadow 9 types, add a schema-vs-catalog drift test (Gap 2) | S3 | worker + verify | `feat(config): complete task param schema with catalog drift test` |
 | T3 | Serialize the full mapped parameter set into the task CFX (money management, capital, SL/PT, sessions, complexity, broker) (Gap 1) | S1, S2, S4, S5, S6, S8 | worker + verify | `feat(customproject): serialize full param set into task CFX` |
 | T4 | Align `generate_cfx_archive` arity and either register the stage or delete it (Gap 9) | S2 | inline | `fix(pipeline): align config builder stage with generator signature` |
-| T5 | Wire `llm_config` into `campaign run-flow` so the LLM generation monitor actually runs (Gap 8) | S9, S10, S11 | worker + verify | `feat(campaign): wire LLM generation monitor into run-flow` |
+| T5 | Wire `llm_config` into `campaign run-flow` so the LLM generation monitor actually runs (Gap 8) | S9, S10, S11 | worker + verify | landed in `f7b2247` (`feat(campaign): wire LLM generation monitor into run-flow`) — independent chain trace verified, gate certified against L15 |
 | T6 | Replace the stubbed comparator with a real SQX-vs-JForex backtest comparison and a valid `phase_id` (Gap 3) | S6, S7, S8, S18 | worker + verify | `feat(pipeline): implement real backtest comparator` |
 | T7 | Implement `BacktestAnalyzerStage` behind the existing analyzer prompt (Gap 4) | S7, S8, S18, S19 | worker + verify | `feat(pipeline): add backtest discrepancy analyzer stage` |
 | T8 | Expose `/orders` and `/positions` on the JForex bridge and consume them on the Python side (Gap 6) | S9, S16 | worker + verify | `feat(jforex-bridge): expose orders and positions endpoints` |
@@ -352,3 +353,28 @@ in-flight WIP rather than regressions from this feature, and no task claims them
 failures are consistent with the WIP adding agents that `opencode.json` does not register. Raw output:
 `/tmp/gentle-jobs-y1bZMg/baseline-suite.txt`. Criteria 3 and 5 were reworded to a delta gate against this figure
 for that reason.
+
+**L16** — T5 landed (commit `f7b2247`, `feat(campaign): wire LLM generation monitor into run-flow`). The single
+broken link was the CLI: `cmd_campaign_run_flow` built `ctx.config` without `llm_config` while
+`ResearchConfig.llm_config`, `DispatchStage`, `BuilderAgent._dispatch_single`, `dispatch_campaign` and
+`_spawn_llm_monitor` already accepted it end to end. The fix seeds the key only when the config declares it, so a
+config without the block spawns no LLM calls and stays byte-identical to the orchestrated default. RED was
+observed first (`tests/campaign/test_run_flow_llm_wiring.py`: 1 passed / 1 failed), then GREEN (2 passed); 54
+focused tests passed in total. Independent verification by `gentle-ai-verify` traced all eight links with
+`path:line` evidence, found no regression (nothing serialises, hashes, snapshots or freezes the `ctx.config` key
+set, and every consumer reads it with `.get`), and confirmed the new test is a genuine regression guard; it also
+surfaced the pre-existing contract guard `tests/builder/test_dispatch_hooks.py`. Gate against L15, invoked
+identically: `65 failed, 4583 passed, 60 skipped`. The failure-set diff by node id is exactly `72 - 7 + 0 new`:
+seven baseline failures, all in `tests/substrate/`, now pass, and no baseline failure regressed. The cause of
+those seven is not established here — they exercise the mock/substrate parity path the in-flight WIP touches, and
+the WIP split is the only tree change between the two runs. Collection grew from 4675 to 4708 with T12's
+collection fix; `60 skipped` is unchanged.
+
+**L16a** — Gate instrumentation defect (parent, corrected in process). The first gate run (`job-6`, `64 failed,
+4584 passed`) was captured with `| tail -50`, so only 49 of its `FAILED` lines survived and the comparison was
+unprovable; `.pytest_cache/v/cache/lastfailed` is not a substitute because it is a historical union (283 entries,
+including collection errors from a dead run — a sampled entry passed 10/10 on re-run). Re-running with a full-file
+capture (`job-7`, `/tmp/gentle-jobs-y1bZMg/suite-t5-full.log`) produced the certified diff above. A one-test
+difference between the two identical runs (64 vs 65 failures) is a pre-existing flaky baseline failure rather than
+a T5 regression: both failure sets are subsets of L15. Rule adopted for every later gate: capture the suite to a
+file, never through `tail`, and diff failure sets by node id.
