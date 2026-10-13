@@ -162,6 +162,14 @@ class TaskType(str, Enum):
     LOAD_FROM_FILES = "LoadFromFiles"
     UPDATE_DATA = "UpdateData"
     WAIT_FOR = "WaitFor"
+    # The 7 catalog types previously missing from the enum
+    APPLY_MASS_CONFIG = "ApplyMassConfig"
+    CALL_EXTERNAL_SCRIPT = "CallExternalScript"
+    CLEAR_DATABANKS = "ClearDatabanks"
+    DELETE_FILE = "DeleteFile"
+    NEURAL_NETWORK_TRAINER = "NeuralNetworkTrainer"
+    NOTIFICATION = "Notification"
+    STOP_AND_START = "StopAndStart"
 
 
 # ── Parameter Schemas per Task Type ───────────────────────────────────────
@@ -789,129 +797,138 @@ TASK_PARAM_SCHEMAS: dict[TaskType, dict[str, ParamSpec]] = {
         ),
     },
 
-    # AutomaticRetest (duplicate in catalog - alias)
-    TaskType.AUTOMATIC_RETEST: {
-        "retest_with_higher_precision": ParamSpec(
-            name="retest_with_higher_precision",
+    # ── Catalog types completed by (T2 / Gap 2) ──────────────────────────
+    # Parameters for CallExternalScript, ClearDatabanks, DeleteFile,
+    # Notification and StopAndStart come from the real SQX 144/2953 install:
+    # internal/plugins/<Task>/task.xml (default settings) and
+    # simpleSettings/simpleSettings.html (the UI binding that names each
+    # field). No parameter below is guessed from the catalog name.
+
+    TaskType.APPLY_MASS_CONFIG: {
+        # TODO(gap-2): no readable parameter source. task.xml ships an empty
+        # <ApplyMassConfig/> and simpleSettings.html only hosts a custom
+        # component; the settings live in TaskApplyMassConfig.jar. Do not
+        # invent parameter names until that source can be read.
+    },
+
+    TaskType.CALL_EXTERNAL_SCRIPT: {
+        "file": ParamSpec(
+            name="file",
+            param_type=ParamType.STRING,
+            default="",
+            description="Script or executable to run",
+            group="Options",
+        ),
+        "params": ParamSpec(
+            name="params",
+            param_type=ParamType.STRING,
+            default="",
+            description="Arguments passed to the script",
+            group="Options",
+        ),
+        "type": ParamSpec(
+            name="type",
+            param_type=ParamType.STRING,
+            default="",
+            description="Script type (UI field CallExternalScriptType)",
+            group="Options",
+        ),
+        "waitfor": ParamSpec(
+            name="waitfor",
             param_type=ParamType.BOOLEAN,
             default=False,
-            description="Enable retest with higher precision",
-            group="MonteCarloRetest",
-        ),
-        "precision": ParamSpec(
-            name="precision",
-            param_type=ParamType.INTEGER,
-            default=4,
-            constraint=ParamConstraint(min_value=1, max_value=10),
-            description="Precision for higher precision retest",
-            group="MonteCarloRetest",
-        ),
-        "spread": ParamSpec(
-            name="spread",
-            param_type=ParamType.INTEGER,
-            default=2,
-            constraint=ParamConstraint(min_value=0, max_value=100),
-            description="Spread for higher precision retest",
-            group="MonteCarloRetest",
-        ),
-    },
-
-    TaskType.AUTOMATIC_PORTFOLIO_BUILDER: {
-        "search_type": ParamSpec(
-            name="search_type",
-            param_type=ParamType.ENUM,
-            default="bruteforce",
-            constraint=ParamConstraint(allowed_values=["bruteforce", "genetic", "random"]),
-            description="Portfolio search algorithm",
+            description="Wait for the script to finish before continuing",
             group="Options",
         ),
-        "min_strategies": ParamSpec(
-            name="min_strategies",
+        "hours": ParamSpec(
+            name="hours",
             param_type=ParamType.INTEGER,
-            default=2,
-            constraint=ParamConstraint(min_value=1, max_value=50),
-            description="Minimum strategies in portfolio",
+            default=0,
+            constraint=ParamConstraint(min_value=0, max_value=999),
+            description="Hours to wait for the script (used with waitfor)",
             group="Options",
         ),
-        "max_strategies": ParamSpec(
-            name="max_strategies",
+        "minutes": ParamSpec(
+            name="minutes",
             param_type=ParamType.INTEGER,
-            default=8,
-            constraint=ParamConstraint(min_value=1, max_value=50),
-            description="Maximum strategies in portfolio",
+            default=0,
+            constraint=ParamConstraint(min_value=0, max_value=59),
+            description="Minutes to wait for the script (used with waitfor)",
             group="Options",
         ),
     },
 
-    TaskType.CREATE_PORTFOLIO: {
-        "portfolio_name": ParamSpec(
-            name="portfolio_name",
+    TaskType.CLEAR_DATABANKS: {
+        "databank": ParamSpec(
+            name="databank",
             param_type=ParamType.STRING,
-            default="Portfolio",
-            description="Portfolio name",
+            default="Results",
+            description="Databank to clear (default settings clear Results)",
+            group="Data",
+        ),
+    },
+
+    TaskType.DELETE_FILE: {
+        "file": ParamSpec(
+            name="file",
+            param_type=ParamType.STRING,
+            default="",
+            description="File to delete",
             group="Options",
         ),
     },
 
-    TaskType.CUSTOM_ANALYSIS: {
-        "analysis_type": ParamSpec(
-            name="analysis_type",
-            param_type=ParamType.ENUM,
-            default="full",
-            constraint=ParamConstraint(allowed_values=["full", "quick", "custom"]),
-            description="Analysis depth",
-            group="Options",
-        ),
+    TaskType.NEURAL_NETWORK_TRAINER: {
+        # TODO(gap-2): no readable parameter source. The task ships no
+        # task.xml settings beyond <Databanks/> and has no simpleSettings
+        # directory; the training parameters live in
+        # TaskNeuralNetworkTrainer.jar. Do not invent names.
     },
 
-    TaskType.LOG_DATABANK_STATS: {
-        "log_details": ParamSpec(
-            name="log_details",
+    TaskType.NOTIFICATION: {
+        "type": ParamSpec(
+            name="type",
+            param_type=ParamType.STRING,
+            default="email",
+            description="Notification type (SQX default: email)",
+            group="Options",
+        ),
+        "email": ParamSpec(
+            name="email",
+            param_type=ParamType.STRING,
+            default="",
+            description="Recipient email address",
+            group="Options",
+        ),
+        "wait": ParamSpec(
+            name="wait",
             param_type=ParamType.BOOLEAN,
-            default=True,
-            description="Log detailed databank statistics",
+            default=False,
+            description="Wait for the notification before continuing",
             group="Options",
         ),
     },
 
-    TaskType.SAVE_TO_FILES: {
-        "save_path": ParamSpec(
-            name="save_path",
+    TaskType.STOP_AND_START: {
+        "startAnother": ParamSpec(
+            name="startAnother",
+            param_type=ParamType.BOOLEAN,
+            default=False,
+            description="Start another project after stopping",
+            group="Options",
+        ),
+        "projectName": ParamSpec(
+            name="projectName",
             param_type=ParamType.STRING,
             default="",
-            description="Save directory path",
+            description="Custom project to start (from the available projects)",
             group="Options",
         ),
-    },
-
-    TaskType.LOAD_FROM_FILES: {
-        "load_path": ParamSpec(
-            name="load_path",
-            param_type=ParamType.STRING,
-            default="",
-            description="Load directory path",
-            group="Options",
-        ),
-    },
-
-    TaskType.UPDATE_DATA: {
-        "update_mode": ParamSpec(
-            name="update_mode",
-            param_type=ParamType.ENUM,
-            default="append",
-            constraint=ParamConstraint(allowed_values=["append", "replace", "merge"]),
-            description="Data update mode",
-            group="Options",
-        ),
-    },
-
-    TaskType.WAIT_FOR: {
-        "wait_seconds": ParamSpec(
-            name="wait_seconds",
-            param_type=ParamType.INTEGER,
-            default=60,
-            constraint=ParamConstraint(min_value=1, max_value=86400),
-            description="Wait time in seconds",
+        "skipToFirstProject": ParamSpec(
+            name="skipToFirstProject",
+            param_type=ParamType.BOOLEAN,
+            default=False,
+            description="Restart from the first project in the list",
             group="Options",
         ),
     },
