@@ -241,10 +241,47 @@ def render_optimize(task: CustomProjectTask) -> BuildTask:
 
 def render_automatic_portfolio_builder(task: CustomProjectTask) -> BuildTask:
     bt = _base_task(task)
+    p = task.params
+    # Simple scalar children
+    scalar_fields = [
+        "searchType", "genPopulationSize", "genGenerations", "genRunContinually",
+        "genRestartAfterStagnation", "genGenerationLimit", "minStrategies",
+        "maxStrategies", "maxStrategiesDatabank", "maxStrategiesSector",
+        "dateRange", "dateRangeFrom", "dateRangeTo", "dateRangeIsPct",
+        "dateRangeReverse", "fitnessType", "corrMax", "corrType",
+        "corrSampleType", "corrPeriod", "corrAllowNegative", "corrAddEmptyPeriods",
+    ]
+    parts = []
+    for key in scalar_fields:
+        val = p.get(key)
+        if val is not None:
+            xml_name = key[:1].upper() + key[1:]
+            parts.append(f"    <{xml_name}>{escape(str(val))}</{xml_name}>")
+    # MoneyManagement inside APB
+    initial_capital = p.get("initialCapital", "10000")
+    mm_method = p.get("mmMethod", "")
+    mm_params_raw = p.get("mmParams", "")
+    mm_parts = [f"    <InitialCapital>{escape(initial_capital)}</InitialCapital>"]
+    if mm_method:
+        mm_attrs = [f'type="{escape(mm_method)}"', 'use="true"']
+        mm_param_parts = []
+        if mm_params_raw:
+            for chunk in mm_params_raw.split(","):
+                chunk = chunk.strip()
+                if not chunk:
+                    continue
+                if "=" in chunk:
+                    key, _, value = chunk.partition("=")
+                    key = key.strip()
+                    value = value.strip()
+                    mm_param_parts.append(f'    <Param key="{escape(key)}" className="{escape(key)}">{escape(value)}</Param>')
+        mm_params_xml = "\n".join(mm_param_parts) if mm_param_parts else ""
+        mm_parts.append(f'    <Method type="{escape(mm_method)}" use="true"><Params>\n{mm_params_xml}\n</Params></Method>')
+    mm_xml = "\n".join(mm_parts)
+    parts.append(f"    <MoneyManagement>\n{mm_xml}\n</MoneyManagement>")
+    inner = "\n".join(parts)
     bt.automatic_portfolio_builder = AutomaticPortfolioBuilderConfig(
-        raw_xml="<AutomaticPortfolioBuilder><SearchType>bruteforce</SearchType>"
-        "<MinStrategies>2</MinStrategies><MaxStrategies>8</MaxStrategies>"
-        "</AutomaticPortfolioBuilder>"
+        raw_xml=f"<AutomaticPortfolioBuilder>\n{inner}\n</AutomaticPortfolioBuilder>"
     )
     return bt
 
@@ -457,10 +494,28 @@ def render_automatic_retest(task: CustomProjectTask) -> BuildTask:
 def render_filtering(task: CustomProjectTask) -> BuildTask:
     bt = _base_task(task)
     conditions = task.filters.conditions if task.filters else []
-    inner = "\n".join(f'  <Condition value="{escape(c)}" />' for c in conditions)
+    cond_parts = []
+    for c in conditions:
+        import re
+        match = re.match(r'([^<>!]+)([<>]=?|!=)(.+)', c)
+        if match:
+            left, op, right = match.groups()
+            left = left.strip()
+            right = right.strip()
+        else:
+            left, op, right = c, ">", "0"
+        cond_parts.append(
+            f'    <Condition use="true">'
+            f'<Left-Side><Column-Value column="{escape(left)}" format="Decimal2PL" resultType="Filter" sampleType="127" plType="10" confidenceLevel="50" market="1" subresult="30" pctRatio="0" class="{escape(left)}" /></Left-Side>'
+            f'<Comparator value="{escape(op)}" />'
+            f'<Right-Side><Numeric-Value value="{escape(right)}" /></Right-Side>'
+            f'</Condition>'
+        )
+    inner = "\n".join(cond_parts)
     bt.unknown_sections.append(
         RawXmlSection(
-            name="Conditions", raw_xml=f"<Conditions>\n{inner}\n</Conditions>"
+            name="Filtering",
+            raw_xml=f"<Filtering>\n    <ActionType>1</ActionType>\n    <MaxStrategies>10</MaxStrategies>\n    <ConditionsType>1</ConditionsType>\n    <Conditions>\n{inner}\n    </Conditions>\n</Filtering>",
         )
     )
     return bt
@@ -469,11 +524,16 @@ def render_filtering(task: CustomProjectTask) -> BuildTask:
 def render_goto_task(task: CustomProjectTask) -> BuildTask:
     bt = _base_task(task)
     goto: GoToTask = task.goto or GoToTask(target="")
-    attrs = f'target="{escape(goto.target)}"'
+    reset_eval = task.params.get("resetEvaluatedCycles", "false")
+    reset_act = task.params.get("resetActivatedCycles", "false")
+    attrs = f'task="{escape(goto.target)}" resetEvaluatedCycles="{escape(reset_eval)}" resetActivatedCycles="{escape(reset_act)}"'
+    # Always include <Conditions> per SQX dialect (SettingsGoToTaskService.js)
     if goto.condition:
-        attrs += f' condition="{escape(goto.condition)}"'
+        cond_inner = f'\n    <Conditions>\n        <Condition use="true"><Left-Side><Column-Value column="{escape(goto.condition)}" format="Decimal2PL" resultType="Filter" sampleType="127" plType="10" confidenceLevel="50" market="1" subresult="30" pctRatio="0" class="{escape(goto.condition)}" /></Left-Side><Comparator value="true" /><Right-Side><Numeric-Value value="1" /></Right-Side></Condition>\n    </Conditions>'
+    else:
+        cond_inner = '\n    <Conditions />'
     bt.unknown_sections.append(
-        RawXmlSection(name="GoToTask", raw_xml=f"<GoToTask {attrs} />")
+        RawXmlSection(name="GoToTask", raw_xml=f"<GoToTask {attrs}>{cond_inner}\n</GoToTask>")
     )
     return bt
 

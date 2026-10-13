@@ -138,8 +138,17 @@ class TestGoToTaskConditionalLoop:
 
         goto_section = goto_xml.find("GoToTask")
         assert goto_section is not None
-        assert goto_section.get("target") == "Filtering"
-        assert goto_section.get("condition") == "retest_failed"
+        # Per SQX 144/2953 dialect (SettingsGoToTaskService.js): attribute is 'task', not 'target'
+        assert goto_section.get("task") == "Filtering"
+        cond = goto_section.find("Conditions")
+        assert cond is not None
+        cond_cond = cond.find("Condition")
+        assert cond_cond is not None
+        left = cond_cond.find("Left-Side")
+        assert left is not None
+        col = left.find("Column-Value")
+        assert col is not None
+        assert "retest_failed" in col.get("column", "")
 
     def test_gototask_without_condition_renders_empty_condition(self):
         project = CustomProject(
@@ -159,8 +168,11 @@ class TestGoToTaskConditionalLoop:
         goto_xml = _task_xml(archive, "GoToTask-Task1.xml")
         goto_section = goto_xml.find("GoToTask")
         assert goto_section is not None
-        assert goto_section.get("target") == "Build"
-        assert goto_section.get("condition", "") == ""
+        # Per SQX dialect: 'task' attribute, condition in <Conditions> child
+        assert goto_section.get("task") == "Build"
+        cond = goto_section.find("Conditions")
+        assert cond is not None
+        assert len(list(cond)) == 0
 
 
 class TestPerTaskDatabankRouting:
