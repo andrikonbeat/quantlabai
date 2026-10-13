@@ -1,0 +1,10 @@
+{
+  "campaign_id": "bayesopt_1fde9e99",
+  "best_value": 0.0,
+  "best_parameters": {
+    "x": 0.0,
+    "y": 0.0
+  },
+  "num_evaluations": 2,
+  "updated_at": "2026-10-12T07:52:24.909629+00:00"
+}
