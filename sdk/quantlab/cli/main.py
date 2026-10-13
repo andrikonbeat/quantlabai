@@ -1276,13 +1276,6 @@ async def cmd_api(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """Synchronous entry point — bridges to async command handler."""
-    # Fail fast on Python 3.14 (compiler bug: inverted conditional jumps)
-    import sys
-    if sys.version_info[:2] == (3, 14):
-        print("Error: Python 3.14 not supported — compiler bug inverts conditional jumps", file=sys.stderr)
-        print("Use Python <= 3.13 instead.", file=sys.stderr)
-        return 1
-
     parser = build_parser()
     try:
         args = parser.parse_args(argv)

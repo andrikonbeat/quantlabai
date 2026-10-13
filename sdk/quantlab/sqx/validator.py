@@ -145,17 +145,6 @@ def validate_spec_json(
     session_id: str | None = None,
 ) -> ValidationResult:
     """Validate a spec JSON string synchronously."""
-    # Fail fast on Python 3.14 (compiler bug: inverted conditional jumps)
-    import sys
-    if sys.version_info[:2] == (3, 14):
-        return ValidationResult(
-            ok=False,
-            cfx_path=Path(""),
-            verdict="FAIL",
-            validate_json={"error": "Python 3.14 not supported: compiler bug inverts conditional jumps (POP_JUMP_IF_NOT_NONE, POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE). Use Python <=3.13."},
-            warnings=["Python 3.14 detected - validation disabled"],
-            exit_code=1,
-        )
     # 1. Parse and validate spec
     try:
         from .spec import validate_spec as spec_validate
