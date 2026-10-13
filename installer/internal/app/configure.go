@@ -63,7 +63,7 @@ func cmdConfigure(w io.Writer, args []string) error {
 		return fmt.Errorf("unexpected model type: %T", final)
 	}
 
-	apiKey, modelChoice, sdkPath, _, _, _ := finalModel.Result()
+	apiKey, modelChoice, sdkPath, _, _, _, _ := finalModel.Result()
 	if apiKey == "" && modelChoice == "" {
 		fmt.Fprintf(w, "\nWizard cancelled. No changes made.\n")
 		return nil
