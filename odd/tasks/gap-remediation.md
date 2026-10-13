@@ -145,7 +145,7 @@ files stay untracked, by design. Test-first policy applies: each task observes R
 |----|------|------|-------|--------|
 | T0 | Create this feature document and task breakdown | — | inline | — |
 | T1 | Define the module logger in the JForex deploy stage KB write path (Gap 10) | S17 | inline | landed in `1168916` (checkpoint C07 of the WIP split — the logger and the KB write path it serves are one file and cannot be separated) |
-| T2 | Complete `TASK_PARAM_SCHEMAS` to all 21 catalog task types, remove the 9 repeated keys that shadow 9 types, add a schema-vs-catalog drift test (Gap 2) | S3 | worker + verify | `feat(config): complete task param schema with catalog drift test` |
+| T2 | Complete `TASK_PARAM_SCHEMAS` to all 21 catalog task types, remove the 9 repeated keys that shadow 9 types, add a schema-vs-catalog drift test (Gap 2) | S3 | worker + verify | landed in `92c04e9` (`feat(config): complete task param schema for all 21 catalog types`) — TaskType 21/21, literal keys 21 with 0 duplicates, 88 parameters; focused 384 passed, gate 72 → 64 with 0 new failures (L17) |
 | T3 | Serialize the full mapped parameter set into the task CFX (money management, capital, SL/PT, sessions, complexity, broker) (Gap 1) | S1, S2, S4, S5, S6, S8 | worker + verify | `feat(customproject): serialize full param set into task CFX` |
 | T4 | Align `generate_cfx_archive` arity and either register the stage or delete it (Gap 9) | S2 | inline | `fix(pipeline): align config builder stage with generator signature` |
 | T5 | Wire `llm_config` into `campaign run-flow` so the LLM generation monitor actually runs (Gap 8) | S9, S10, S11 | worker + verify | landed in `f7b2247` (`feat(campaign): wire LLM generation monitor into run-flow`) — independent chain trace verified, gate certified against L15 |
@@ -378,3 +378,32 @@ capture (`job-7`, `/tmp/gentle-jobs-y1bZMg/suite-t5-full.log`) produced the cert
 difference between the two identical runs (64 vs 65 failures) is a pre-existing flaky baseline failure rather than
 a T5 regression: both failure sets are subsets of L15. Rule adopted for every later gate: capture the suite to a
 file, never through `tail`, and diff failure sets by node id.
+
+**L17** — T2 closed (Gap 2, commit `92c04e9`). The assigned worker timed out after extending `TaskType` from 14 to 21
+members but before touching a single schema, leaving no report and no evidence; the parent completed the unit
+inline over the worker's own (good) drift test, which is why the route column still reads worker + verify: the
+worker's RED and its test survived, the parent wrote the fix. Measured before the fix: `TASK_PARAM_SCHEMAS`
+declared 23 literal keys but only 14 reached runtime because 9 keys were repeated verbatim, so the later
+definition shadowed the earlier one, and 7 of the 21 catalog types had no schema at all. Now: `TaskType` = 21
+members, literal keys = 21 with 0 duplicates, 88 parameters. Method worth reusing: the duplicate block was
+deleted only after confirming the two blocks were byte-identical in content, and the **first** block was kept
+because re-assigning an existing dict key preserves its insertion position, so the runtime key order is unchanged;
+keeping the second block instead would have silently moved those 9 keys. The independent verifier re-derived all
+of this against `HEAD` and confirmed the order claim, that the 9 previously shadowed types keep their parameter
+sets (Build 54, Filtering 1, Retest 2, GoToTask 2, Optimize 2), that no consumer assumes a non-empty schema — two
+entries are now legitimately empty — and that the drift test genuinely fails on a removed entry or a re-added
+duplicate key rather than being a tautology. The 7 new entries are evidence-backed for CallExternalScript
+(`file`, `params`, `type`, `waitfor`, `hours`, `minutes`), ClearDatabanks (`databank`), DeleteFile (`file`),
+Notification (`type`, `email`, `wait`) and StopAndStart (`startAnother`, `projectName`, `skipToFirstProject`),
+extracted from the SQX 144/2953 install (`internal/plugins/<Task>/task.xml` default settings plus the
+`simpleSettings.html` UI bindings). ApplyMassConfig and NeuralNetworkTrainer are declared empty with an explicit
+TODO naming the task JARs, because their settings are compiled and no readable source names their parameters;
+the rule that no parameter may be invented is enforced by a test, not by a comment. Two facts to keep:
+`sdd/specs/custom-project-generator/spec.md:76` already required all 21 catalog types, so this closed a
+code-vs-spec drift rather than changing a requirement; and `ruff` on the touched module improved from 7 findings
+at `HEAD` to 4, the remaining 4 being pre-existing (`F401` at :21, `F841` at :952, :1024, :1025 — the last two
+sitting in the still-dead `map_exploration_to_task_params` body that T3 has to bring to life). RED/GREEN: the
+drift test failed 2 of its 4 cases before the change and passes 7 of 7 after, with focused suites at 384 passed /
+23 skipped. Gate (`job-8`, `/tmp/gentle-jobs-y1bZMg/suite-t2-full.log`): 64 failed / 4591 passed / 60 skipped,
+nodeid-set diff against L15 = 72 − 8 + 0, 0 new failures, 8 recoveries all in `tests/substrate/` (the same flaky
+family L16 recorded), collection 4675 → 4715 with the 7 new drift tests among the additions.
