@@ -1,7 +1,8 @@
 """Ciclo 5 tests — JForex pipeline integration (REQ-06).
 
-Covers T5.1 (JForexDeployStage), T5.2 (jforex_progress_fn used by
-ExecutionMonitor), and T5.3 (end-to-end compile → deploy → monitor flow).
+Covers T5.1 (JForexDeployStage) including its Knowledge Lake failure path,
+T5.2 (jforex_progress_fn used by ExecutionMonitor), and T5.3 (end-to-end
+compile → deploy → monitor flow).
 
 Strict TDD: written first — FAIL (RED) until the Ciclo 5 code exists.
 """
@@ -9,7 +10,12 @@ Strict TDD: written first — FAIL (RED) until the Ciclo 5 code exists.
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from quantlab.pipeline.base import PipelineContext
 
@@ -71,6 +77,90 @@ class TestJForexDeployStage:
 
         assert result["deployment_result"]["GammaM30"]["status"] == "FAILED"
         assert "jforex unavailable" in result["deployment_result"]["GammaM30"]["errors"]
+
+    def test_knowledge_lake_write_failure_is_logged_not_raised(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """GIVEN Knowledge Lake is unreachable WHEN a deploy fails THEN the
+        FAILED result is still returned and the KB error is logged, not raised."""
+        from quantlab.pipeline.stages.jforex_deploy_stage import JForexDeployStage
+
+        jfx = tmp_path / "KbDown_M15.jfx"
+        jfx.write_bytes(b"pk")
+
+        class BrokenBridge:
+            def deploy(self, jfx_path: Path) -> None:
+                raise RuntimeError("jforex unavailable")
+
+        class UnreachableStore:
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                pass
+
+            async def write(self, path: str, content: str) -> None:
+                raise OSError("knowledge lake unreachable")
+
+        ctx = PipelineContext(
+            config={},
+            artifacts={"compiled_strategies": {"KbDown_M15": jfx}},
+        )
+        stage = JForexDeployStage(bridge=BrokenBridge())
+
+        with (
+            caplog.at_level(logging.WARNING),
+            patch("quantlab.knowledge.store.KnowledgeStore", UnreachableStore),
+        ):
+            result = asyncio.run(stage.execute(ctx))
+
+        # The deploy failure is reported, not masked by the KB failure.
+        assert result["deployment_result"]["KbDown_M15"]["status"] == "FAILED"
+        assert "jforex unavailable" in result["deployment_result"]["KbDown_M15"]["errors"]
+        assert ctx.artifacts["deployment_result"] == result["deployment_result"]
+        # The KB failure is observable to the operator, never silent.
+        warnings = [
+            record.getMessage()
+            for record in caplog.records
+            if record.levelno >= logging.WARNING
+        ]
+        assert any("knowledge lake unreachable" in message for message in warnings), (
+            f"expected a logged warning naming the KB error, got {warnings}"
+        )
+
+    def test_deploy_failure_is_written_to_knowledge_lake(self, tmp_path: Path) -> None:
+        """GIVEN Knowledge Lake is reachable WHEN a deploy fails THEN the
+        failure is recorded under ``deployment_failures``."""
+        from quantlab.pipeline.stages.jforex_deploy_stage import JForexDeployStage
+
+        jfx = tmp_path / "KbOk_M15.jfx"
+        jfx.write_bytes(b"pk")
+        written: list[tuple[str, str]] = []
+
+        class BrokenBridge:
+            def deploy(self, jfx_path: Path) -> None:
+                raise RuntimeError("jforex unavailable")
+
+        class RecordingStore:
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                pass
+
+            async def write(self, path: str, content: str) -> None:
+                written.append((path, content))
+
+        ctx = PipelineContext(
+            config={},
+            artifacts={"compiled_strategies": {"KbOk_M15": jfx}},
+        )
+        stage = JForexDeployStage(bridge=BrokenBridge())
+
+        with patch("quantlab.knowledge.store.KnowledgeStore", RecordingStore):
+            asyncio.run(stage.execute(ctx))
+
+        assert len(written) == 1
+        path, content = written[0]
+        assert path.startswith("deployment_failures/")
+        entry = json.loads(content)
+        assert entry["strategy_id"] == "KbOk_M15"
+        assert entry["type"] == "deployment_failure"
+        assert entry["error"] == "jforex unavailable"
 
     def test_empty_compiled_yields_empty_result(self) -> None:
         """GIVEN no compiled_strategies WHEN stage runs THEN empty result."""

@@ -56,6 +56,12 @@ from quantlab.pipeline.stages.archive_stage import ArchiveStage
 from quantlab.pipeline.stages.compile_stage import CompileStage
 
 # Re-export orchestrated flow stages (PR 3): config review, dispatch, retest, optimize
+from quantlab.pipeline.stages.advanced_analysis_stage import AdvancedAnalysisStage
+from quantlab.pipeline.stages.bayesian_optimizer_stage import (
+    BayesianOptimizerFeedbackStage,
+    BayesianOptimizerStage,
+    BayesianOptimizerStageConfig,
+)
 from quantlab.pipeline.stages.config_review_stage import ConfigReviewStage
 from quantlab.pipeline.stages.demo_stage import DemoStage
 from quantlab.pipeline.stages.deploy_stage import DeployStage
@@ -81,6 +87,10 @@ __all__ = [  # Original SQX stages
     "HUMAN_GATE_IDS",  # Monte Carlo
     "AnalysisStage",
     "ArchiveStage",  # Canonical live-ops phase (REQ-01 phase 14)
+    "AdvancedAnalysisStage",  # Advanced analysis pipeline
+    "BayesianOptimizerFeedbackStage",  # Bayesian optimization feedback
+    "BayesianOptimizerStage",  # Bayesian optimization
+    "BayesianOptimizerStageConfig",  # Bayesian optimization config
     "BuilderStage",
     "CampaignStage",
     "CompileStage",
