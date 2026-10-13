@@ -110,3 +110,4 @@ class CustomProject:
     phase_type: str | None = None
     checkpoint_metadata: dict[str, Any] | None = None
     template_name: str | None = None
+    guardian_state: dict[str, Any] | None = field(default_factory=dict)
