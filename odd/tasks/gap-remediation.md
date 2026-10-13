@@ -146,7 +146,7 @@ files stay untracked, by design. Test-first policy applies: each task observes R
 | T0 | Create this feature document and task breakdown | — | inline | — |
 | T1 | Define the module logger in the JForex deploy stage KB write path (Gap 10) | S17 | inline | landed in `1168916` (checkpoint C07 of the WIP split — the logger and the KB write path it serves are one file and cannot be separated) |
 | T2 | Complete `TASK_PARAM_SCHEMAS` to all 21 catalog task types, remove the 9 repeated keys that shadow 9 types, add a schema-vs-catalog drift test (Gap 2) | S3 | worker + verify | landed in `92c04e9` (`feat(config): complete task param schema for all 21 catalog types`) — TaskType 21/21, literal keys 21 with 0 duplicates, 88 parameters; focused 384 passed, gate 72 → 64 with 0 new failures (L17) |
-| T3 | Serialize the full mapped parameter set into the task CFX (money management, capital, SL/PT, sessions, complexity, broker) (Gap 1) | S1, S2, S4, S5, S6, S8 | worker + verify | `feat(customproject): serialize full param set into task CFX` |
+| T3 | Serialize the full mapped parameter set into the task CFX (Gap 1) — **split into T3-0..T3-5 per family** (evidence from `odd/notes/sqx-task-xml-dialect.md`) | S1, S2, S4, S5, S6, S8 | inline (T3-0) + worker + verify (T3-1..5) | T3-0: `fix(config): correct drift + harvest notes`; T3-1..5: `feat(customproject): serialize <family>`
 | T4 | Align `generate_cfx_archive` arity and either register the stage or delete it (Gap 9) | S2 | inline | `fix(pipeline): align config builder stage with generator signature` |
 | T5 | Wire `llm_config` into `campaign run-flow` so the LLM generation monitor actually runs (Gap 8) | S9, S10, S11 | worker + verify | landed in `f7b2247` (`feat(campaign): wire LLM generation monitor into run-flow`) — independent chain trace verified, gate certified against L15 |
 | T6 | Replace the stubbed comparator with a real SQX-vs-JForex backtest comparison and a valid `phase_id` (Gap 3) | S6, S7, S8, S18 | worker + verify | `feat(pipeline): implement real backtest comparator` |
@@ -169,7 +169,7 @@ Risk items follow the orchestrator's high-risk list (1 data/irreversible, 2 secu
 |------|------|--------|
 | T1 | none | Adds a logger; no behavior change beyond removing a `NameError`. |
 | T2 | 3, 6 | The schema is the contract every mapper and validator reads. |
-| T3 | 1, 3 | Changes the `.cfx` byte content SQX consumes; wrong values are hard to detect downstream. |
+| T3 | 1, 3 | Changes the `.cfx` byte content SQX consumes; wrong values are hard to detect downstream. Split into T3-0..T3-5 limits review surface per family; T3-0 corrects schema drift (authoritative evidence).
 | T4 | 6 | Touches the CFX build path that no test currently exercises. |
 | T5 | 6 | Enables LLM calls inside the production loop; a regression is invisible without a test. |
 | T6 | 1, 6 | A wrong "similar" verdict is silent and sends unvalidated strategies to demo. |
@@ -407,3 +407,5 @@ drift test failed 2 of its 4 cases before the change and passes 7 of 7 after, wi
 23 skipped. Gate (`job-8`, `/tmp/gentle-jobs-y1bZMg/suite-t2-full.log`): 64 failed / 4591 passed / 60 skipped,
 nodeid-set diff against L15 = 72 − 8 + 0, 0 new failures, 8 recoveries all in `tests/substrate/` (the same flaky
 family L16 recorded), collection 4675 → 4715 with the 7 new drift tests among the additions.
+
+**L18** — T3 scope split (parent). The harvest of the SQX 144/2953 task XML dialect (via `gentle-ai-explore` task `mv6h4gxa-5-r5qz` and parent reads of `internal/plugins/Settings*/Settings*Service.js`) resolved the blocking question: the dialect is **not** uniform attributes but per-type children/lists/attrs. Corrected prior claims: (1) only NeuralNetworkTrainer lacks a readable Settings* plugin; CallExternalScript, DeleteFile, WaitFor, UpdateData, StopAndStart, ApplyMassConfig all have authoritative serializers in `Settings*/Settings*Service.js`. (2) `render_generic` emits invented `enabled="true"` — no such attribute exists in the dialect. (3) Drift in T2 schema: CallExternalScript declared invented `type` param and boolean `waitfor`; authoritative config has `waitfor` as ENUM `end|time` and no `type`. ClearDatabanks declared scalar `databank`; authoritative XML is a LIST of `<Databank name="..."/>`. **User decision (A · Slice por familias)**: T3 splits into T3-0 (drift + notes doc), T3-1 (simple text/scalar types), T3-2 (attributes/nested), T3-3 (Build), T3-4 (Filtering/GoToTask/APB), T3-5 (Retest/Optimize). Each slice: RED test → renderer → GREEN → commit; verify independent on T3-3..5. Evidence cited in `odd/notes/sqx-task-xml-dialect.md`.
