@@ -112,9 +112,97 @@ def _base_task(task: CustomProjectTask) -> BuildTask:
 
 
 def render_build(task: CustomProjectTask) -> BuildTask:
+    """Render Build task with full SQX 144/2953 dialect."""
     bt = _base_task(task)
-    bt.options = SettingsSection(name="Options", settings={})
-    bt.data = SettingsSection(name="Data", settings={})
+    
+    # Calibration inside Blocks
+    cal_parts = []
+    cal_attrs = []
+    cal_attrs.append(f'calibrateBeforeStart=\"{escape(task.params.get("calibrateBeforeStart", "false"))}\"')
+    cal_attrs.append(f'useMaxSteps=\"{escape(task.params.get("useMaxSteps", "false"))}\"')
+    cal_attrs.append(f'maxSteps=\"{escape(task.params.get("maxSteps", "0"))}\"')
+    cal_xml = f"<Blocks><Calibration {' '.join(cal_attrs)} /></Blocks>"
+    
+    # Options -> BuildTradingOptions -> Params
+    options_raw = task.params.get("options", "")
+    if options_raw:
+        param_parts = []
+        for chunk in options_raw.split(","):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            if "=" in chunk:
+                key, _, value = chunk.partition("=")
+                key = key.strip()
+                value = value.strip()
+                param_parts.append(f'    <Param key=\"{escape(key)}\" className=\"{escape(key)}\">{escape(value)}</Param>')
+        params_xml = "\n".join(param_parts)
+        options_xml = f"<Options><BuildTradingOptions><Params>\n{params_xml}\n</Params></BuildTradingOptions></Options>"
+    else:
+        options_xml = "<Options><BuildTradingOptions><Params /></BuildTradingOptions></Options>"
+    
+    # WhatToBuild
+    wtb_attrs = []
+    # Map strategyType param to type attribute
+    strategy_type = task.params.get("strategyType", "")
+    if strategy_type:
+        wtb_attrs.append(f'type=\"{escape(strategy_type)}\"')
+    for attr in ["additionalCharts", "templateFile", "improveType", "strategyFile", "improveDatabank"]:
+        val = task.params.get(attr, "")
+        if val:
+            wtb_attrs.append(f'{attr}=\"{escape(val)}\"')
+    wtb_xml = f"<WhatToBuild><StrategyType {' '.join(wtb_attrs)} /></WhatToBuild>" if wtb_attrs else "<WhatToBuild><StrategyType /></WhatToBuild>"
+    
+    # RiskMoneyManagement
+    initial_capital = task.params.get("initialCapital", "10000")
+    mm_method = task.params.get("moneyManagementMethod", "")
+    mm_params_raw = task.params.get("moneyManagementParams", "")
+    rm_method = task.params.get("riskManagementMethod", "")
+    rm_params_raw = task.params.get("riskManagementParams", "")
+    
+    mm_parts = [f"    <InitialCapital>{escape(initial_capital)}</InitialCapital>"]
+    if mm_method:
+        mm_attrs = [f'type=\"{escape(mm_method)}\"', 'use=\"true\"']
+        mm_param_parts = []
+        if mm_params_raw:
+            for chunk in mm_params_raw.split(","):
+                chunk = chunk.strip()
+                if not chunk:
+                    continue
+                if "=" in chunk:
+                    key, _, value = chunk.partition("=")
+                    key = key.strip()
+                    value = value.strip()
+                    mm_param_parts.append(f'    <Param key=\"{escape(key)}\" className=\"{escape(key)}\">{escape(value)}</Param>')
+        mm_params_xml = "\n".join(mm_param_parts) if mm_param_parts else ""
+        mm_parts.append(f"    <Method {' '.join(mm_attrs)}><Params>\n{mm_params_xml}\n</Params></Method>")
+    mm_xml = "\n".join(mm_parts)
+    
+    rm_parts = []
+    if rm_method:
+        rm_attrs = [f'type=\"{escape(rm_method)}\"', 'use=\"true\"']
+        rm_param_parts = []
+        if rm_params_raw:
+            for chunk in rm_params_raw.split(","):
+                chunk = chunk.strip()
+                if not chunk:
+                    continue
+                if "=" in chunk:
+                    key, _, value = chunk.partition("=")
+                    key = key.strip()
+                    value = value.strip()
+                    rm_param_parts.append(f'    <Param key=\"{escape(key)}\" className=\"{escape(key)}\">{escape(value)}</Param>')
+        rm_params_xml = "\n".join(rm_param_parts) if rm_param_parts else ""
+        rm_parts.append(f"    <Method {' '.join(rm_attrs)}><Params>\n{rm_params_xml}\n</Params></Method>")
+    rm_xml = "\n".join(rm_parts) if rm_parts else ""
+    
+    rmm_xml = f"<RiskMoneyManagement><MoneyManagement>\n{mm_xml}\n</MoneyManagement>\n<RiskManagement>\n{rm_xml}\n</RiskManagement></RiskMoneyManagement>"
+    
+    # Combine all sections into Build unknown_section
+    inner = f"{cal_xml}\n{options_xml}\n{wtb_xml}\n{rmm_xml}"
+    bt.unknown_sections.append(
+        RawXmlSection(name="Build", raw_xml=f"<Build>\n{inner}\n</Build>")
+    )
     return bt
 
 
