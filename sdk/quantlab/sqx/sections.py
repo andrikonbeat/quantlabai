@@ -20,11 +20,6 @@ from xml.etree import ElementTree as ET
 
 # ── Cross-checks constants (mirror sections.pyc) ───────────────────────────
 
-# Module-level sentinel for parse_stop workaround (Python 3.14 compiler bug)
-_MISSING = object()
-
-# ── Cross-checks constants (mirror sections.pyc) ───────────────────────────
-
 CROSS_CHECKS = frozenset({
     "monte_carlo_retest", "MonteCarloRetest", "mc_retest",
     "monte_carlo_manipulation", "MonteCarloManipulation", "mc_manipulation",
@@ -249,10 +244,6 @@ def parse_what_to_build(wtb_dict: dict) -> dict:
 
 def parse_stop(stop_dict: dict) -> dict:
     """Parse stop section from spec dict.
-    
-    Note: Python 3.14 has a compiler bug that inverts conditional jumps
-    (POP_JUMP_IF_NOT_NONE, POP_JUMP_IF_FALSE, POP_JUMP_IF_TRUE).
-    This function uses a module-level sentinel to work around the bug.
     """
     if stop_dict is None:
         return {}

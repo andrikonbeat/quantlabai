@@ -720,7 +720,11 @@ class TestG4InstallerOverlaySync:
 
     def test_overlay_campaign_agent_is_deny_first(self) -> None:
         overlay = json.loads(INSTALLER_OVERLAY.read_text(encoding="utf-8"))
-        bash = overlay["agents"]["quantlab-campaign"]["permissions"]["bash"]
+        # `permission` (singular) is the OpenCode schema key -- see
+        # https://opencode.ai/config.json $defs.AgentConfig.properties.permission.
+        # The overlay previously spelled it `permissions`, which OpenCode ignores
+        # entirely, so a fresh install silently wrote no effective permissions.
+        bash = overlay["agents"]["quantlab-campaign"]["permission"]["bash"]
         assert bash.get("*") == "deny", "overlay campaign bash wildcard MUST deny"
         for pattern in CAMPAIGN_BASH_ALLOWS:
             assert bash.get(pattern) == "allow", (

@@ -360,5 +360,22 @@ class TestCrossPlatform:
         assert result.platform in ("linux", "windows", "darwin")
 
     def test_windows_binary_naming(self) -> None:
-        with patch("quantlab.cli.runner.get_sqcli_binary", return_value="sqcli.exe"):
-            assert platform.system() or True  # just confirming patch works
+        """RealExecutor forwards the resolver's binary path as argv[0].
+
+        The resolver is the symbol ``cli.runner`` actually uses; the binary
+        *name* helper (``get_sqcli_binary``) lives in ``quantlab.tools.platform``.
+        """
+        binary = "C:/StrategyQuant/sqcli.exe"
+        captured = {}
+
+        def _fake_run(*args, **kwargs):
+            captured["cmd"] = args[0]
+            return subprocess.CompletedProcess(args, 0, stdout="ok", stderr="")
+
+        with patch("quantlab.cli.runner.resolve_sqcli_path", return_value=binary):
+            executor = RealExecutor()
+
+        with patch("quantlab.cli.runner.subprocess.run", side_effect=_fake_run):
+            executor.execute("-license action=info")
+
+        assert captured["cmd"][0] == binary

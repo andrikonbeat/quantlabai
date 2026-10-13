@@ -108,7 +108,7 @@ class LiveOpsStage(Stage):
     """Start live-ops monitoring for the archived campaign (REQ-6).
 
     **Requires**: archive_bundle
-    **Provides**: live_ops_status
+    **Provides**: live_ops_status, live_pool_status
 
     Extended with live-ops pool management (C10): tracks candidate strategies
     promoted to live demo, monitors their performance, and coordinates with

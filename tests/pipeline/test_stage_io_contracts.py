@@ -97,7 +97,9 @@ class TestLiveOpsStageContract:
         assert LiveOpsStage.requires == ["archive_bundle"]
 
     def test_provides_live_ops_status(self) -> None:
-        assert LiveOpsStage.provides == ["live_ops_status"]
+        # C10 extended the stage with live-ops pool management, so it publishes
+        # the candidate-pool status alongside the live-ops status.
+        assert LiveOpsStage.provides == ["live_ops_status", "live_pool_status"]
 
     def test_is_a_stage(self) -> None:
         assert issubclass(LiveOpsStage, Stage)
