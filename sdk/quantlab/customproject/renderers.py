@@ -588,8 +588,76 @@ def render_notification(task: CustomProjectTask) -> BuildTask:
     return bt
 
 
+def render_call_external_script(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    file_val = task.params.get("file", "")
+    params_val = task.params.get("params", "")
+    waitfor_val = task.params.get("waitfor", "end")
+    hours_val = task.params.get("hours", "0")
+    minutes_val = task.params.get("minutes", "0")
+    bt.unknown_sections.append(
+        RawXmlSection(
+            name="CallExternalScript",
+            raw_xml=f"<CallExternalScript><File params=\"{escape(params_val)}\">{escape(file_val)}</File><WaitFor hours=\"{escape(hours_val)}\" minutes=\"{escape(minutes_val)}\">{escape(waitfor_val)}</WaitFor></CallExternalScript>",
+        )
+    )
+    return bt
+
+
+def render_stop_and_start(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    project_name = task.params.get("projectName", "")
+    start_another = task.params.get("startAnother", "false")
+    skip_to_first = task.params.get("skipToFirstProject", "true")
+    bt.unknown_sections.append(
+        RawXmlSection(
+            name="StopAndStart",
+            raw_xml=f"<StopAndStart><StartProject use=\"{escape(start_another)}\" skipToFirstProject=\"{escape(skip_to_first)}\">{escape(project_name)}</StartProject><Conditions /></StopAndStart>",
+        )
+    )
+    return bt
+
+
+def render_clear_databanks(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    databanks = task.params.get("databanks", ["Results"])
+    if isinstance(databanks, str):
+        databanks = [d.strip() for d in databanks.split(",") if d.strip()]
+    parts = [f'    <Databank name=\"{escape(db)}\" />' for db in databanks]
+    inner = "\n".join(parts)
+    bt.unknown_sections.append(
+        RawXmlSection(name="ClearDatabanks", raw_xml=f"<ClearDatabanks>\n{inner}\n</ClearDatabanks>")
+    )
+    return bt
+
+
+def render_apply_mass_config(task: CustomProjectTask) -> BuildTask:
+    bt = _base_task(task)
+    load_from_type = task.params.get("loadFromType", "project")
+    load_from_file = task.params.get("loadFromFile", "")
+    load_from_task = task.params.get("loadFromTask", "")
+    what_to_apply = task.params.get("whatToApply", {})
+    target_tasks = task.params.get("targetTasks", "")
+    
+    load_from_xml = f"<LoadFrom><Type>{escape(load_from_type)}</Type><File>{escape(load_from_file)}</File><Task>{escape(load_from_task)}</Task></LoadFrom>"
+    
+    wta_parts = []
+    if isinstance(what_to_apply, dict):
+        for key, val in what_to_apply.items():
+            # Capitalize first letter for XML element name per SQX dialect
+            xml_name = key[:1].upper() + key[1:] if key else key
+            wta_parts.append(f"    <{xml_name}>{escape(str(val))}</{xml_name}>")
+    what_to_apply_xml = "<WhatToApply>\n" + "\n".join(wta_parts) + "\n</WhatToApply>" if wta_parts else "<WhatToApply />"
+    
+    inner = f"{load_from_xml}\n{what_to_apply_xml}\n    <TargetTasks>{escape(target_tasks)}</TargetTasks>"
+    bt.unknown_sections.append(
+        RawXmlSection(name="ApplyMassConfig", raw_xml=f"<ApplyMassConfig>\n{inner}\n</ApplyMassConfig>")
+    )
+    return bt
+
+
 def render_generic(task: CustomProjectTask) -> BuildTask:
-    """Fallback for types not yet implemented (NeuralNetworkTrainer, ApplyMassConfig, etc.)."""
+    """Fallback for types not yet implemented (NeuralNetworkTrainer)."""
     bt = _base_task(task)
     bt.unknown_sections.append(
         RawXmlSection(
@@ -604,10 +672,6 @@ def render_generic(task: CustomProjectTask) -> BuildTask:
 _GENERIC_TYPES = frozenset(
     {
         "NeuralNetworkTrainer",
-        "ApplyMassConfig",
-        "StopAndStart",
-        "ClearDatabanks",
-        "CallExternalScript",
     }
 )
 
@@ -628,6 +692,10 @@ RENDERERS: dict[str, Callable[[CustomProjectTask], BuildTask]] = {
     "WaitFor": render_wait_for,
     "DeleteFile": render_delete_file,
     "Notification": render_notification,
+    "CallExternalScript": render_call_external_script,
+    "StopAndStart": render_stop_and_start,
+    "ClearDatabanks": render_clear_databanks,
+    "ApplyMassConfig": render_apply_mass_config,
 }
 
 for _t in _GENERIC_TYPES:
