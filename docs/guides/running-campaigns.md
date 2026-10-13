@@ -36,6 +36,27 @@ stage; `research` is likewise satisfied by `research` or `research_llm`.
 corresponding DSL block is present in your config. Every other phase must be
 present.
 
+## The optional LLM generation monitor
+
+The `monitor` phase always runs a heuristic `CampaignMonitor`. Add an
+`llm_config` block to the config and the `dispatch` phase also starts an
+`LLMGenerationMonitor`: on a slow cadence it asks the model for a verdict over
+the live snapshot, and a `stop` verdict is only executed when it clears the
+confidence threshold and a human confirms it. Every LLM failure degrades to
+"log and continue" — heuristic monitoring is never disrupted. With no
+`llm_config` block, no LLM call is made at all.
+
+```yaml
+llm_config:
+  provider: openai          # openai | opencode
+  model: gpt-4o-mini
+  temperature: 0.2
+  max_tokens: 1024
+```
+
+The monitor runs inside the dispatch task, so it can only observe a campaign
+that is actually executing: a run that stops earlier never reaches it.
+
 ## Flow integrity is checked before anything runs
 
 Before the first stage executes, the built pipeline is checked against the

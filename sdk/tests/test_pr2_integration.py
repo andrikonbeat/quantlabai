@@ -428,3 +428,7 @@ risk:
             assert len(config.hypotheses) >= 1
             assert config.iteration_config.max_iterations > 0
             assert len(config.gate_policies) >= 1
+            # T5: the documented llm_config block drives the LLM generation
+            # monitor in `campaign run-flow`, so the example must carry it.
+            assert config.llm_config is not None
+            assert config.llm_config.provider in {"openai", "opencode"}
