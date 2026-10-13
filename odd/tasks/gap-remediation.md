@@ -135,14 +135,15 @@ not what it did. Gap 4 is inert without Gap 3: there is nothing to classify whil
 
 ## Tasks
 
-Branch: `feature/gap-remediation` (created from `c02e103`, carrying 119 in-flight entries untouched).
-Commits are path-scoped to the files each task owns, so the pre-existing installer WIP is never mixed in.
-Test-first policy applies: each task observes RED before its fix.
+Branch: `feature/gap-remediation` (created from `c02e103`; T12 landed on it as `0848c61`). The 275-entry
+in-flight WIP that was sitting on the working tree has since been committed as 21 path-scoped checkpoints on
+this same branch (L14), so a task's commit is no longer entangled with unrelated work. Only T9's two RED test
+files stay untracked, by design. Test-first policy applies: each task observes RED before its fix.
 
 | ID | Task | Spec | Route | Commit |
 |----|------|------|-------|--------|
 | T0 | Create this feature document and task breakdown | — | inline | — |
-| T1 | Define the module logger in the JForex deploy stage KB write path (Gap 10) | S17 | inline | `fix(jforex): define module logger for deployment failure KB write` |
+| T1 | Define the module logger in the JForex deploy stage KB write path (Gap 10) | S17 | inline | landed in `1168916` (checkpoint C07 of the WIP split — the logger and the KB write path it serves are one file and cannot be separated) |
 | T2 | Complete `TASK_PARAM_SCHEMAS` to all 21 catalog task types, remove duplicate key redefinitions, add a schema-vs-catalog drift test (Gap 2) | S3 | worker + verify | `feat(config): complete task param schema with catalog drift test` |
 | T3 | Serialize the full mapped parameter set into the task CFX (money management, capital, SL/PT, sessions, complexity, broker) (Gap 1) | S1, S2, S4, S5, S6, S8 | worker + verify | `feat(customproject): serialize full param set into task CFX` |
 | T4 | Align `generate_cfx_archive` arity and either register the stage or delete it (Gap 9) | S2 | inline | `fix(pipeline): align config builder stage with generator signature` |
@@ -153,7 +154,7 @@ Test-first policy applies: each task observes RED before its fix.
 | T9 | Drive deploy/start/stop through the real `QuantLabBridge` subprocess and retire the fictional CLI path (Gap 5) — recover the frozen implementation if it is intact, never rewrite from scratch by default | S16, S17, S20 | worker + verify | `feat(jforex): drive deploy through QuantLabBridge subprocess` |
 | T10 | Implement an authenticated inbound control channel and a real ops surface (Gap 7) | S11, S12, S19 | worker + security review | `feat(ops): add authenticated inbound control channel` |
 | T11 | Add verdict classification and campaign-outcome knowledge ingestion (Gap 7) | S13, S14, S15 | worker + verify | `feat(knowledge): add verdict classifier and outcome ingestion` |
-| T12 | Restore full-suite collection: package `sdk/tests/sqx/` and resolve the duplicate test module basenames the in-flight WIP introduced (acceptance criterion 5) | — | inline (landed first, prerequisite) | `test: restore full-suite collection` — `0848c61` |
+| T12 | Restore full-suite collection: package `sdk/tests/sqx/` and resolve the duplicate test module basenames the in-flight WIP introduced (acceptance criterion 5) | — | inline (landed first, prerequisite) | `test: restore full-suite collection` — `0848c61` — **done**, verified at 4704 collected / 2 errors (T9's RED imports) |
 
 T9 defers its Java-side tasks to `odd/tasks/jforex-bridge-architecture.md` (tasks 3-9 pending) and owns only the
 Python-side rewiring plus the README correction for the nonexistent `bridge_jar` parameter.
@@ -182,9 +183,9 @@ Risk items follow the orchestrator's high-risk list (1 data/irreversible, 2 secu
 
 1. Each fixed behavior has one RED test per `S#` it covers, asserting the rule's observable effects, and one test proving the previously existing behavior still holds for each command or option touched.
 2. Tests exercise the public interface only, never internal storage; mutating tests run against isolated state.
-3. No task closes while its focused test or the suite fails.
+3. No task closes while its focused tests fail, and no task may raise the full-suite failure count above the baseline recorded in L15. A green suite is not achievable yet: the in-flight WIP arrives with 72 pre-existing failures. The gate is therefore "no new failures and no lost collection", reported as an explicit delta.
 4. Help text and docs describing any changed command, option, or message are updated in the same commit.
-5. `SQX_FORCE_MOCK=1 python3 -m pytest -q` passes at the close of every task once T12 has restored collection. Until T12 lands, record each full-suite run with the four collection-blocking files explicitly ignored and report it as a count plus a delta against the baseline in L10 — never as a green suite.
+5. `SQX_FORCE_MOCK=1 python3 -m pytest -q` closes every task with the collection-blocking files ignored, and is reported as a delta against the L15 baseline (`72 failed, 4543 passed, 60 skipped`; 4704 collected). T12 restored collection, so the only ignored files until T9 lands are T9's two RED modules. Never report the suite as green while that baseline is red.
 
 ## Rollback
 
@@ -299,4 +300,55 @@ call site that writes them under `deployment_failures`. RED observed by removing
 pre-fix state the gap recorded. GREEN after restoring the line: `sdk/tests/pipeline/test_jforex_pipeline_e2e.py`
 13 passed, covering the four pre-existing deploy behaviours plus the two Gap 10 behaviours. The commit for T1
 necessarily carries the whole `jforex_deploy_stage.py` path, including the Knowledge Lake write that arrived with
-the in-flight WIP; the two cannot be separated because the logger only exists to serve that write path.
+the in-flight WIP; the two cannot be separated because the logger only exists to serve that write path. After the split (L14) that commit is `1168916`.
+
+**L14** — In-flight WIP split, executed (user decision, parent). The user chose thematic checkpoints plus one
+labeled snapshot commit over a single rescue commit. Executed in three steps.
+
+1. Safety net first, verified rather than declared: annotated tag `wip-snapshot-20261013-040034` on `0848c61`
+   (the pre-split HEAD), a full-tree archive `.git/wip-backups/wip-20261013-040034.tar.gz` (378 MiB, 29 385
+   entries) and a manifest of 267 paths with one `sha256` each. Verification extracted all 267 files from the
+   archive and compared them hash by hash against the working tree: 267/267 identical, and all 267 still present.
+   The archive lives under `.git/`, so `git status` never sees it. `.gitignore` does not delete files; nothing was
+   deleted by this work.
+2. Every path assigned before anything was committed: 275 entries (256 untracked + 19 modified) sorted into 19
+   checkpoint groups with zero unassigned paths (`split-plan.txt` and `split-paths.txt` sit in the same backup
+   directory).
+3. 21 path-scoped commits on `feature/gap-remediation`, each staged with explicit paths and each verified by
+   comparing `HEAD` before and after. Order: C01 installer → C02/C03/C04 sqx → C05 exploration → C06
+   customproject → C07 pipeline → C08 optimization → C09 analysis → C10 agents → C11/C12 `jforex_bridge` →
+   C13 bridge (QuantLabBridge) → C14 strategies → C15 cli → C17 odd docs → C16a/b/c CI, pytest config and docs →
+   C-LAST labeled snapshot → this document. Commits: `b13b598`, `9f3f31d`, `60a27a3`, `80e9cd0`, `05ca0e9`,
+   `5e1cc61`, `1168916`, `fb0bb13`, `5083569`, `122b597`, `855a4bb`, `fa163d1`, `874c794`, `a84bd5b`, `725f2c6`,
+   `738bce5`, `8431fbb`, `7faa206`, `57c31de`, `0006134`, `72361bc`.
+
+Where the doubtful artifacts went: `knowledge/deployment_failures/*` and `knowledge/structured/bayesopt_*/*`
+(135 of the 275 paths) landed in the single labeled commit `0006134 chore(repo): snapshot runtime artifacts,
+third-party metadata and tooling`, together with `bridge-jars/` (extracted Dukascopy JAR metadata) and `tools/`
+(TUI logo generators). Evidence that these are runtime output rather than authored work: new files appeared in
+those directories with 08:01-08:02 timestamps *after* the safety-net archive was taken, written by this session's
+suite runs. Nothing was discarded and nothing was mixed into a code checkpoint. Git emitted a CRLF
+normalization warning for three `bridge-jars` files as they were committed; the exact original bytes are
+preserved in the archive.
+
+Left untracked on purpose: `sdk/tests/quantlab/jforex/test_strategy_bridge.py` and
+`test_strategy_bridge_integration.py` — T9's RED tests, which must arrive with T9's implementation.
+
+Branch placement: the checkpoints landed on `feature/gap-remediation` itself, on top of `0848c61`, rather than on
+`feature/installer-block-a`. That keeps one linear history and removes the rebase step the plan originally
+carried (old T16, dropped). Consequence: the branch name no longer describes its whole content, and
+`feature/installer-block-a` still sits at `c02e103` while its WIP now lives one branch over. Renaming or
+re-splitting that arrangement is left to the user. State after the split: working tree clean except T9's two RED
+files; `import quantlab...` OK; collection unchanged at 4704 collected / 2 errors.
+
+**L15** — Full-suite baseline for acceptance criteria 3 and 5 (parent). One clean run on the post-T12 tree with
+`-p no:randomly --tb=no -rf` and T9's two RED files ignored: `72 failed, 4543 passed, 60 skipped, 56 warnings in
+588.67s`. Distribution of the 72: `tests/test_orchestrator_prompt.py` 24 (phase-agent registration in
+`opencode.json`), `sdk/tests/optimization/` 15 (surrogate and bayesian optimiser), `tests/compiler/` 9,
+`tests/substrate/` 9, `sdk/tests/test_kb.py` 8, `sdk/tests/test_version.py` 3, `tests/phase4/test_cli_main.py` 2,
+`tests/knowledge/test_kb_reverify_cli.py` 2, `tests/dashboard/test_api.py` 1,
+`tests/pipeline/test_stage_io_contracts.py` 1, `sdk/tests/test_cli.py` 1. These are pre-existing failures in the
+in-flight WIP rather than regressions from this feature, and no task claims them yet; the 24 registration
+failures are consistent with the WIP adding agents that `opencode.json` does not register. Raw output:
+`/tmp/gentle-jobs-y1bZMg/baseline-suite.txt`. Criteria 3 and 5 were reworded to a delta gate against this figure
+for that reason.
