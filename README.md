@@ -164,6 +164,35 @@ export SQX_PORT=5050
 your shell profile. Without a valid install, keep `SQX_FORCE_MOCK=1` for tests
 and dry runs.
 
+### SQX HTTP API (new architecture)
+
+QuantLab now communicates with the SQX daemon via its native HTTP API
+(`http://localhost:5050/call?cmd=<command>`) instead of shelling out to `sqcli`
+for every command. This provides:
+
+- **Typed async client** (`quantlab.sqx.http_client.SQXHttpClient`) with one
+  namespace per `sqcli` command category (`project`, `databank`, `symbol`,
+  `instrument`, `data`, `session`, `ai`, `portfolio`, `stockgroup`,
+  `brokerprofile`, `tools`, `license`, `run`, `deletefile`, `waitfor`,
+  `execute`, `exit`)
+- **Pydantic response models** for every command category — no more fragile
+  text parsing
+- **Structured error hierarchy** (`SQXError`, `SQXCommandError`, `SQXTimeout`,
+  `SQXNotReady`, `SQXParseError`) with full context
+- **Retry with exponential backoff** for transient failures (`CLI not ready`,
+  network errors)
+- **Feature-flagged migration** via `QUANTLAB_SQX_USE_HTTP=1` — enables HTTP
+  path while preserving subprocess fallback
+
+Enable the HTTP path (now default in CI/tests):
+
+```bash
+export QUANTLAB_SQX_USE_HTTP=1
+```
+
+When the flag is **disabled** (default), the legacy subprocess path is used
+for full backward compatibility.
+
 > **Repo layout note (HGN-02):** the StrategyQuant distribution is a
 > machine-local tool dependency and is **never committed**. `.gitignore` excludes
 > `assets/SQX_*`. Anything under `assets/` in your working copy is local-only and
