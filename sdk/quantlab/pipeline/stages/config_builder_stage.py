@@ -15,11 +15,8 @@ from pathlib import Path
 from typing import Any
 
 from quantlab.campaign.delegation import PhaseResult
-from quantlab.customproject.param_mapper import (
-    CustomProjectParamMapper,
-    create_customproject_param_mapper,
-)
-from quantlab.customproject.generator import generate_cfx_archive
+from quantlab.customproject.param_mapper import create_customproject_param_mapper
+from quantlab.customproject.templates import PortfolioState
 from quantlab.exploration.models import ExplorationDecision
 from quantlab.pipeline.base import PipelineContext, Stage
 from quantlab.pipeline.config import StageConfig
@@ -70,9 +67,8 @@ class ConfigBuilderStage(Stage):
     def _get_param_mapper(self):
         """Lazy initialization of param mapper."""
         if self._param_mapper is None:
-            from quantlab.customproject.param_mapper import create_customproject_param_mapper
             self._param_mapper = create_customproject_param_mapper(
-                template_name=self.config.template_name,
+                portfolio_state=PortfolioState.NORMAL,
                 custom_rules=self.config.custom_rules,
             )
         return self._param_mapper
@@ -101,9 +97,10 @@ class ConfigBuilderStage(Stage):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            from quantlab.customproject.param_mapper import create_customproject_param_mapper
             from quantlab.customproject.templates import TemplateSelector, TemplateParams
             from quantlab.customproject.models import DatabankSpec
+            from quantlab.cfx.writer import CfxWriter
+            from quantlab.customproject.generator import generate_cfx_archive
 
             param_mapper = self._get_param_mapper()
 
@@ -117,7 +114,7 @@ class ConfigBuilderStage(Stage):
             base_project = template_class.build(template_params)
 
             # Map exploration to task parameters
-            task_params = self._get_param_mapper().param_mapper.map(exploration, base_project.tasks)
+            task_params = param_mapper.param_mapper.map(exploration, base_project.tasks)
 
             # Apply mapped parameters to project tasks
             for task in base_project.tasks:
@@ -133,15 +130,15 @@ class ConfigBuilderStage(Stage):
             cfx_path = Path(self.config.output_dir) / exploration.exploration_id / f"{exploration.exploration_id}.cfx"
             cfx_path.parent.mkdir(parents=True, exist_ok=True)
 
-            from quantlab.customproject.generator import generate_cfx_archive
-            generate_cfx_archive(base_project, cfx_path)
+            archive = generate_cfx_archive(base_project)
+            CfxWriter.write(archive, cfx_path)
 
             logger.info("CFX generated at %s", cfx_path)
 
             return {
                 "cfx_path": str(cfx_path),
                 "project_name": exploration.exploration_id,
-                "template": self.config.template_name,
+                "template_name": self.config.template_name,
                 "task_params": task_params,
             }
 
@@ -150,9 +147,9 @@ class ConfigBuilderStage(Stage):
             return {"error": str(exc)}
 
     def _get_template_class(self, template_name: str):
-        """Get template class by name."""
-        from quantlab.customproject.templates import TemplateSelector
-        return TemplateSelector.select(template_name)
+        """Get template class by registered name."""
+        from quantlab.phase4.template_registry import registry
+        return registry.resolve(template_name).template_class
 
     def _build_template_params(self, exploration) -> 'TemplateParams':
         """Build TemplateParams from ExplorationDecision."""
@@ -178,7 +175,6 @@ class ConfigBuilderStage(Stage):
         result = await self._execute_impl(ctx)
 
         if "error" in result:
-            from quantlab.campaign.delegation import PhaseResult
             return PhaseResult(
                 phase_id="config",
                 status="failed",
