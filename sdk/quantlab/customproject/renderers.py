@@ -74,6 +74,20 @@ def _param_attrs(raw: str) -> str:
     return " ".join(parts)
 
 
+def _text(value: object) -> str:
+    """Format a params value as SQX child text.
+
+    ``coerce_params`` materialises typed values (bool/int), while ``escape``
+    requires a ``str`` and the SQX dialect writes booleans lowercase. Without
+    this, a declared BOOLEAN or INTEGER parameter crashes the serializer
+    (``'bool' object has no attribute 'replace'``) whenever the value arrives
+    through ParamMapper instead of as hand-written text (T13).
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    return str(value)
+
+
 def _crosschecks_section(task: CustomProjectTask) -> CrossChecksConfig:
     """CrossChecks for Retest/Optimize (REQ-25, REQ-43/44).
 
@@ -638,7 +652,7 @@ def render_create_portfolio(task: CustomProjectTask) -> BuildTask:
     bt.unknown_sections.append(
         RawXmlSection(
             name="CreatePortfolio",
-            raw_xml=f"<CreatePortfolio><MaxStrategies>{escape(max_strategies)}</MaxStrategies></CreatePortfolio>",
+            raw_xml=f"<CreatePortfolio><MaxStrategies>{escape(_text(max_strategies))}</MaxStrategies></CreatePortfolio>",
         )
     )
     return bt
@@ -745,8 +759,13 @@ def render_save_to_files(task: CustomProjectTask) -> BuildTask:
     # SaveSourceCode with attributes
     ssc_val = task.params.get("saveSourceCode")
     if ssc_val is not None:
-        ssc_type = task.params.get("saveSourceCodeType", "source")
-        ssc_format = task.params.get("saveSourceCodeFormat", "text")
+        # ``or`` rather than ``.get(key, fallback)``: the schema now declares
+        # these keys, so an unset caller value arrives as None instead of being
+        # an absent key, and ``escape(None)`` would crash. The fallback belongs
+        # to this composition rule (it only applies once SaveSourceCode is set),
+        # not to the parameter's own default.
+        ssc_type = task.params.get("saveSourceCodeType") or "source"
+        ssc_format = task.params.get("saveSourceCodeFormat") or "text"
         parts.append(
             f'    <SaveSourceCode type=\"{escape(ssc_type)}\" format=\"{escape(ssc_format)}\">{escape(str(ssc_val))}</SaveSourceCode>'
         )
@@ -824,7 +843,7 @@ def render_notification(task: CustomProjectTask) -> BuildTask:
     bt.unknown_sections.append(
         RawXmlSection(
             name="Notification",
-            raw_xml=f"<Notification><Type>{escape(type_val)}</Type><Email>{escape(email_val)}</Email><Wait>{escape(wait_val)}</Wait></Notification>",
+            raw_xml=f"<Notification><Type>{escape(type_val)}</Type><Email>{escape(email_val)}</Email><Wait>{escape(_text(wait_val))}</Wait></Notification>",
         )
     )
     return bt
@@ -840,7 +859,7 @@ def render_call_external_script(task: CustomProjectTask) -> BuildTask:
     bt.unknown_sections.append(
         RawXmlSection(
             name="CallExternalScript",
-            raw_xml=f"<CallExternalScript><File params=\"{escape(params_val)}\">{escape(file_val)}</File><WaitFor hours=\"{escape(hours_val)}\" minutes=\"{escape(minutes_val)}\">{escape(waitfor_val)}</WaitFor></CallExternalScript>",
+            raw_xml=f"<CallExternalScript><File params=\"{escape(params_val)}\">{escape(file_val)}</File><WaitFor hours=\"{escape(_text(hours_val))}\" minutes=\"{escape(_text(minutes_val))}\">{escape(waitfor_val)}</WaitFor></CallExternalScript>",
         )
     )
     return bt
@@ -854,7 +873,7 @@ def render_stop_and_start(task: CustomProjectTask) -> BuildTask:
     bt.unknown_sections.append(
         RawXmlSection(
             name="StopAndStart",
-            raw_xml=f"<StopAndStart><StartProject use=\"{escape(start_another)}\" skipToFirstProject=\"{escape(skip_to_first)}\">{escape(project_name)}</StartProject><Conditions /></StopAndStart>",
+            raw_xml=f"<StopAndStart><StartProject use=\"{escape(_text(start_another))}\" skipToFirstProject=\"{escape(_text(skip_to_first))}\">{escape(project_name)}</StartProject><Conditions /></StopAndStart>",
         )
     )
     return bt

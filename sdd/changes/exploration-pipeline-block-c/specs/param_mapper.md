@@ -127,13 +127,26 @@ Each task type has default parameters applied before exploration mapping:
 | Optimize | walkforward_cycles=10, optimize_params="maxOptimizations=100" |
 | AutomaticRetest | retest_with_higher_precision=False, precision=4, spread=2 |
 | AutomaticPortfolioBuilder | search_type="bruteforce", min_strategies=2, max_strategies=8 |
-| CreatePortfolio | portfolio_name="Portfolio" |
-| CustomAnalysis | analysis_type="full" |
-| LogDatabankStats | log_details=True |
-| SaveToFiles | save_path="" |
-| LoadFromFiles | load_path="" |
-| UpdateData | update_mode="append" |
-| WaitFor | wait_seconds=60 |
+| CreatePortfolio | — (moved to TASK_PARAM_SCHEMAS: maxStrategies=100) |
+| CustomAnalysis | — (no documented default; the 9 declared keys default to None) |
+| LogDatabankStats | — (moved to TASK_PARAM_SCHEMAS: databank="Results") |
+| SaveToFiles | — (no documented default; the 25 declared keys default to None) |
+| LoadFromFiles | — (no documented default; the 4 declared keys default to None) |
+| UpdateData | — (moved to TASK_PARAM_SCHEMAS: type="project") |
+| WaitFor | — (moved to TASK_PARAM_SCHEMAS: action="user") |
+
+> Since T13 the seven single-parameter types above no longer appear here at all:
+> their defaults live in `TASK_PARAM_SCHEMAS`
+> (`sdk/quantlab/exploration/params_schema.py`). The schema is what decides
+> which keys survive `coerce_params`, so a second copy in this module is exactly
+> what let the two vocabularies drift apart: this table declared
+> `portfolio_name`, `analysis_type`, `log_details`, `save_path`, `load_path`,
+> `update_mode` and `wait_seconds`, and no serializer reads any of them — a
+> caller could set them and the value never reached the `.cfx`. The serializer
+> vocabulary harvested from SQX 144/2953 is authoritative
+> (`odd/notes/sqx-task-xml-dialect.md`), and
+> `tests/customproject/test_t13_param_vocabulary_reaches_the_cfx.py` proves every
+> declared key changes the generated task XML.
 
 ---
 
@@ -141,8 +154,8 @@ Each task type has default parameters applied before exploration mapping:
 
 | Scenario | Expected |
 |---------|----------|
-| Valid ExplorationDecision + standard template | Returns dict with all 14 task types, params coerced to schema |
-| Missing optional fields | Uses TASK_DEFAULTS for missing params |
+| Valid ExplorationDecision + standard template | Returns dict with all 21 catalog task types, params coerced to schema |
+| Missing optional fields | Uses the `TASK_PARAM_SCHEMAS` default for the missing param |
 | Invalid param value | validate_task_params() returns error list |
 | Custom rules injected | Custom rules applied after built-in rules |
 | Deterministic | Same input → byte-identical output dict |

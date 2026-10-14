@@ -276,27 +276,15 @@ TASK_DEFAULTS: dict[str, dict[str, Any]] = {
         "min_strategies": 2,
         "max_strategies": 8,
     },
-    "CreatePortfolio": {
-        "portfolio_name": "Portfolio",
-    },
-    "CustomAnalysis": {
-        "analysis_type": "full",
-    },
-    "LogDatabankStats": {
-        "log_details": True,
-    },
-    "SaveToFiles": {
-        "save_path": "",
-    },
-    "LoadFromFiles": {
-        "load_path": "",
-    },
-    "UpdateData": {
-        "update_mode": "append",
-    },
-    "WaitFor": {
-        "wait_seconds": 60,
-    },
+    # CreatePortfolio, CustomAnalysis, LogDatabankStats, SaveToFiles,
+    # LoadFromFiles, UpdateData and WaitFor are deliberately absent: their
+    # defaults live in TASK_PARAM_SCHEMAS (quantlab.exploration.params_schema),
+    # which is also what decides whether a mapped key survives
+    # ``coerce_params``. A second copy here is what let the two vocabularies
+    # drift apart (T13, odd/tasks/gap-remediation.md L19b): these entries
+    # declared names such as ``portfolio_name`` and ``wait_seconds`` that no
+    # serializer reads, so a caller could set them and the value never reached
+    # the .cfx.
 }
 
 

@@ -80,18 +80,23 @@ def test_task_param_schemas_no_duplicate_literal_keys() -> None:
     pytest.fail("Could not find TASK_PARAM_SCHEMAS dict literal in source")
 
 
-def test_existing_type_parameter_count_preserved() -> None:
-    """Pin a representative existing type's parameter count to catch silent drops.
+def test_type_parameter_counts_are_pinned() -> None:
+    """Pin each declared type's parameter count.
 
-    This test ensures that the deduplication of the 9 repeated keys does not
-    lose any parameters from the 14 types that were already declared.
+    The counts are the reconciled serializer vocabulary: T13 replaced the
+    invented keys of the seven single-parameter types with the keys their
+    serializers actually read, so CustomAnalysis, SaveToFiles, LoadFromFiles
+    and WaitFor now hold more parameters than before.
+    tests/customproject/test_t13_param_vocabulary_reaches_the_cfx.py proves that
+    every one of these keys changes the generated task XML; this test only pins
+    the literal schema so an accidental deletion is visible.
     """
     # Build is the most complex existing type - pin its parameter count
     build_schema = TASK_PARAM_SCHEMAS[TaskType.BUILD]
-    # The original Build schema had 54 parameters (counted from source)
+    # The Build schema declares 54 parameters
     assert len(build_schema) == 54, (
         f"Build schema parameter count changed: expected 54, got {len(build_schema)}. "
-        "Deduplication must not drop parameters from existing types."
+        "Reconciling the vocabulary must not drop parameters from existing types."
     )
 
     # Also verify a few other types to ensure their params weren't lost
@@ -102,12 +107,12 @@ def test_existing_type_parameter_count_preserved() -> None:
     assert len(TASK_PARAM_SCHEMAS[TaskType.AUTOMATIC_RETEST]) == 3
     assert len(TASK_PARAM_SCHEMAS[TaskType.AUTOMATIC_PORTFOLIO_BUILDER]) == 3
     assert len(TASK_PARAM_SCHEMAS[TaskType.CREATE_PORTFOLIO]) == 1
-    assert len(TASK_PARAM_SCHEMAS[TaskType.CUSTOM_ANALYSIS]) == 1
+    assert len(TASK_PARAM_SCHEMAS[TaskType.CUSTOM_ANALYSIS]) == 9
     assert len(TASK_PARAM_SCHEMAS[TaskType.LOG_DATABANK_STATS]) == 1
-    assert len(TASK_PARAM_SCHEMAS[TaskType.SAVE_TO_FILES]) == 1
-    assert len(TASK_PARAM_SCHEMAS[TaskType.LOAD_FROM_FILES]) == 1
+    assert len(TASK_PARAM_SCHEMAS[TaskType.SAVE_TO_FILES]) == 25
+    assert len(TASK_PARAM_SCHEMAS[TaskType.LOAD_FROM_FILES]) == 4
     assert len(TASK_PARAM_SCHEMAS[TaskType.UPDATE_DATA]) == 1
-    assert len(TASK_PARAM_SCHEMAS[TaskType.WAIT_FOR]) == 1
+    assert len(TASK_PARAM_SCHEMAS[TaskType.WAIT_FOR]) == 2
 
 
 def test_gap_types_declare_no_invented_parameters() -> None:

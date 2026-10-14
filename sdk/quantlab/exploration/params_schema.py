@@ -750,75 +750,365 @@ TASK_PARAM_SCHEMAS: dict[TaskType, dict[str, ParamSpec]] = {
     },
 
     TaskType.CREATE_PORTFOLIO: {
-        # Minimal params - mostly uses portfolio from previous stage
-        "portfolio_name": ParamSpec(
-            name="portfolio_name",
-            param_type=ParamType.STRING,
-            default="Portfolio",
-            description="Portfolio name",
+        # Vocabulary reconciled with renderers.render_create_portfolio (T13):
+        # the serializer always emits <MaxStrategies> and reads exactly this
+        # key, so the default it documents is the declared one. The former
+        # ``portfolio_name`` had no reader and was dropped silently.
+        "maxStrategies": ParamSpec(
+            name="maxStrategies",
+            param_type=ParamType.INTEGER,
+            default=100,
+            constraint=ParamConstraint(min_value=1),
+            description="Strategies to keep in the created portfolio",
             group="Options",
         ),
     },
 
     TaskType.CUSTOM_ANALYSIS: {
-        "analysis_type": ParamSpec(
-            name="analysis_type",
-            param_type=ParamType.ENUM,
-            default="full",
-            constraint=ParamConstraint(allowed_values=["full", "quick", "custom"]),
-            description="Analysis depth",
-            group="Options",
+        # Vocabulary reconciled with renderers.render_custom_analysis (T13):
+        # the serializer emits one text child per key and omits empty ones. It
+        # reads exactly these nine; the former ``analysis_type`` had no reader.
+        #
+        # The harvest (odd/notes/sqx-task-xml-dialect.md) records these as child
+        # text without enumerating their defaults, so every default is None:
+        # the serializer skips None and no undocumented value is materialised.
+        "perStrategy1": ParamSpec(
+            name="perStrategy1",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <PerStrategy1> element",
+            group="Data",
+        ),
+        "perStrategy2": ParamSpec(
+            name="perStrategy2",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <PerStrategy2> element",
+            group="Data",
+        ),
+        "fullDatabank1": ParamSpec(
+            name="fullDatabank1",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <FullDatabank1> element",
+            group="Data",
+        ),
+        "fullDatabank2": ParamSpec(
+            name="fullDatabank2",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <FullDatabank2> element",
+            group="Data",
+        ),
+        "filter": ParamSpec(
+            name="filter",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <Filter> element",
+            group="Data",
+        ),
+        "inputArgsPerStrategy1": ParamSpec(
+            name="inputArgsPerStrategy1",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <InputArgsPerStrategy1> element",
+            group="Data",
+        ),
+        "inputArgsPerStrategy2": ParamSpec(
+            name="inputArgsPerStrategy2",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <InputArgsPerStrategy2> element",
+            group="Data",
+        ),
+        "inputArgsFullDatabank1": ParamSpec(
+            name="inputArgsFullDatabank1",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <InputArgsFullDatabank1> element",
+            group="Data",
+        ),
+        "inputArgsFullDatabank2": ParamSpec(
+            name="inputArgsFullDatabank2",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <InputArgsFullDatabank2> element",
+            group="Data",
         ),
     },
 
     TaskType.LOG_DATABANK_STATS: {
-        "log_details": ParamSpec(
-            name="log_details",
-            param_type=ParamType.BOOLEAN,
-            default=True,
-            description="Log detailed databank statistics",
-            group="Options",
+        # Vocabulary reconciled with renderers.render_log_databank_stats (T13):
+        # the serializer always emits <Databank> and then one <LogStats> per
+        # entry of ``logStats``. The former ``log_details`` had no reader.
+        #
+        # ``logStats`` is deliberately NOT declared here: each entry is a nested
+        # mapping (type/column/conditions) and ParamType.LIST normalises every
+        # item with str(), which would turn the mapping into text and make the
+        # serializer skip it. Undeclared keys pass through coerce_params intact,
+        # so the structured payload reaches the serializer.
+        "databank": ParamSpec(
+            name="databank",
+            param_type=ParamType.STRING,
+            default="Results",
+            description="Databank to report statistics for (SQX default: Results)",
+            group="Data",
         ),
     },
 
     TaskType.SAVE_TO_FILES: {
-        "save_path": ParamSpec(
-            name="save_path",
+        # Vocabulary reconciled with renderers.render_save_to_files (T13): the
+        # serializer writes one text child per key and skips None, so every key
+        # is declared here with default None. Declaring them is what makes the
+        # accepted vocabulary discoverable; declaring a default would materialise
+        # a value the .cfx does not document (the harvest records element names
+        # and the child-text contract, not default values).
+        #
+        # ``saveSourceCode`` carries the text and ``saveSourceCodeType`` /
+        # ``saveSourceCodeFormat`` become its attributes; all three are read only
+        # when ``saveSourceCode`` itself is set.
+        "destDirectorySqx": ParamSpec(
+            name="destDirectorySqx",
             param_type=ParamType.STRING,
-            default="",
-            description="Save directory path",
+            default=None,
+            description="Text of the SQX <DestDirectorySqx> element",
+            group="Options",
+        ),
+        "destDirectoryStr": ParamSpec(
+            name="destDirectoryStr",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <DestDirectoryStr> element",
+            group="Options",
+        ),
+        "destDirectoryDatabank": ParamSpec(
+            name="destDirectoryDatabank",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <DestDirectoryDatabank> element",
+            group="Options",
+        ),
+        "destDirectoryTrades": ParamSpec(
+            name="destDirectoryTrades",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <DestDirectoryTrades> element",
+            group="Options",
+        ),
+        "destDirectoryHtml": ParamSpec(
+            name="destDirectoryHtml",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <DestDirectoryHtml> element",
+            group="Options",
+        ),
+        "destDirectoryPdf": ParamSpec(
+            name="destDirectoryPdf",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <DestDirectoryPdf> element",
+            group="Options",
+        ),
+        "destDirectorySC": ParamSpec(
+            name="destDirectorySC",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <DestDirectorySC> element",
+            group="Options",
+        ),
+        "saveInSqxFormat": ParamSpec(
+            name="saveInSqxFormat",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <SaveInSqxFormat> element",
+            group="Options",
+        ),
+        "saveInStrFormat": ParamSpec(
+            name="saveInStrFormat",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <SaveInStrFormat> element",
+            group="Options",
+        ),
+        "exportDatabank": ParamSpec(
+            name="exportDatabank",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <ExportDatabank> element",
+            group="Options",
+        ),
+        "exportTrades": ParamSpec(
+            name="exportTrades",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <ExportTrades> element",
+            group="Options",
+        ),
+        "saveInHtmlFormat": ParamSpec(
+            name="saveInHtmlFormat",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <SaveInHtmlFormat> element",
+            group="Options",
+        ),
+        "saveInPdfFormat": ParamSpec(
+            name="saveInPdfFormat",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <SaveInPdfFormat> element",
+            group="Options",
+        ),
+        "overwriteFiles": ParamSpec(
+            name="overwriteFiles",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <OverwriteFiles> element",
+            group="Options",
+        ),
+        "mnActive": ParamSpec(
+            name="mnActive",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <MNActive> element",
+            group="Options",
+        ),
+        "mnValue": ParamSpec(
+            name="mnValue",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <MNValue> element",
+            group="Options",
+        ),
+        "data": ParamSpec(
+            name="data",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <Data> element",
+            group="Data",
+        ),
+        "format": ParamSpec(
+            name="format",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <Format> element",
+            group="Data",
+        ),
+        "useComma": ParamSpec(
+            name="useComma",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <UseComma> element",
+            group="Data",
+        ),
+        "setNoteActive": ParamSpec(
+            name="setNoteActive",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <SetNoteActive> element",
+            group="Data",
+        ),
+        "setNoteType": ParamSpec(
+            name="setNoteType",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <SetNoteType> element",
+            group="Data",
+        ),
+        "setNoteCustom": ParamSpec(
+            name="setNoteCustom",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <SetNoteCustom> element",
+            group="Data",
+        ),
+        "saveSourceCode": ParamSpec(
+            name="saveSourceCode",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <SaveSourceCode> element; unset omits the element",
+            group="Options",
+        ),
+        "saveSourceCodeType": ParamSpec(
+            name="saveSourceCodeType",
+            param_type=ParamType.STRING,
+            default=None,
+            description="SQX type attribute of <SaveSourceCode> (serializer default: source)",
+            group="Options",
+        ),
+        "saveSourceCodeFormat": ParamSpec(
+            name="saveSourceCodeFormat",
+            param_type=ParamType.STRING,
+            default=None,
+            description="SQX format attribute of <SaveSourceCode> (serializer default: text)",
             group="Options",
         ),
     },
 
     TaskType.LOAD_FROM_FILES: {
-        "load_path": ParamSpec(
-            name="load_path",
+        # Vocabulary reconciled with renderers.render_load_from_files (T13). The
+        # serializer writes one text child per key and skips None, so the
+        # defaults stay None (no documented value is materialised). The former
+        # ``load_path`` had no reader.
+        "sourceDirectory": ParamSpec(
+            name="sourceDirectory",
             param_type=ParamType.STRING,
-            default="",
-            description="Load directory path",
+            default=None,
+            description="Text of the SQX <SourceDirectory> element",
+            group="Options",
+        ),
+        "includeSubdirectories": ParamSpec(
+            name="includeSubdirectories",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <IncludeSubdirectories> element",
+            group="Options",
+        ),
+        "unrecognizedInstrumentAction": ParamSpec(
+            name="unrecognizedInstrumentAction",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <UnrecognizedInstrumentAction> element",
+            group="Options",
+        ),
+        "unrecognizedInstrumentValue": ParamSpec(
+            name="unrecognizedInstrumentValue",
+            param_type=ParamType.STRING,
+            default=None,
+            description="Text of the SQX <UnrecognizedInstrumentValue> element",
             group="Options",
         ),
     },
 
     TaskType.UPDATE_DATA: {
-        "update_mode": ParamSpec(
-            name="update_mode",
-            param_type=ParamType.ENUM,
-            default="append",
-            constraint=ParamConstraint(allowed_values=["append", "replace", "merge"]),
-            description="Data update mode",
+        # Vocabulary reconciled with renderers.render_update_data (T13): the
+        # serializer always emits <Type> and reads exactly this key. The former
+        # ``update_mode`` enum had no reader.
+        "type": ParamSpec(
+            name="type",
+            param_type=ParamType.STRING,
+            default="project",
+            description="Data to update (serializer default: project)",
             group="Options",
         ),
     },
 
     TaskType.WAIT_FOR: {
-        "wait_seconds": ParamSpec(
-            name="wait_seconds",
-            param_type=ParamType.INTEGER,
-            default=60,
-            constraint=ParamConstraint(min_value=1, max_value=86400),
-            description="Wait time in seconds",
+        # Vocabulary reconciled with renderers.render_wait_for (T13): the
+        # serializer emits <File> only when set and always emits <Action>. The
+        # former ``wait_seconds`` had no reader, so a configured wait silently
+        # did nothing.
+        "file": ParamSpec(
+            name="file",
+            param_type=ParamType.STRING,
+            default=None,
+            description="File whose appearance ends the wait; unset omits <File>",
+            group="Options",
+        ),
+        "action": ParamSpec(
+            name="action",
+            param_type=ParamType.STRING,
+            default="user",
+            description="Action SQX performs while waiting (serializer default: user)",
             group="Options",
         ),
     },
