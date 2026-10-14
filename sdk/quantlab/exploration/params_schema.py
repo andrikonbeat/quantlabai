@@ -31,6 +31,18 @@ class ParamType(str, Enum):
     STRING = "string"
     BOOLEAN = "boolean"
     ENUM = "enum"
+    LIST = "list"
+
+
+def _as_list(value: Any) -> list[str]:
+    """Normalize a list-typed parameter to a list of stripped strings.
+
+    Accepts either a real sequence or the comma-separated string form the SQX
+    config uses for list fields (e.g. ApplyMassConfig's TargetTasks).
+    """
+    if isinstance(value, str):
+        return [part.strip() for part in value.split(",") if part.strip()]
+    return [str(item).strip() for item in value]
 
 
 @dataclass(frozen=True)
@@ -86,6 +98,16 @@ class ParamSpec:
         elif self.param_type == ParamType.STRING:
             if not isinstance(value, str):
                 value = str(value)
+        elif self.param_type == ParamType.LIST:
+            # A list has no scalar ordering to constrain, so apply only the
+            # element-wise allowed_values check and return before the scalar
+            # constraint block below (which would compare value < min_value).
+            if not isinstance(value, (list, tuple, str)):
+                return False
+            items = _as_list(value)
+            if self.constraint and self.constraint.allowed_values:
+                return all(item in self.constraint.allowed_values for item in items)
+            return True
 
         # Constraint check
         if self.constraint:
@@ -105,6 +127,8 @@ class ParamSpec:
     def coerce(self, value: Any) -> Any:
         """Coerce a value to the correct type, applying default if needed."""
         if value is None:
+            if self.param_type == ParamType.LIST:
+                return list(self.default) if self.default is not None else []
             return self.default
 
         if self.param_type == ParamType.INTEGER:
@@ -117,6 +141,8 @@ class ParamSpec:
             return bool(value)
         elif self.param_type == ParamType.STRING:
             return str(value)
+        elif self.param_type == ParamType.LIST:
+            return _as_list(value)
         return value
 
 
@@ -826,18 +852,12 @@ TASK_PARAM_SCHEMAS: dict[TaskType, dict[str, ParamSpec]] = {
             description="Arguments passed to the script",
             group="Options",
         ),
-        "type": ParamSpec(
-            name="type",
-            param_type=ParamType.STRING,
-            default="",
-            description="Script type (UI field CallExternalScriptType)",
-            group="Options",
-        ),
         "waitfor": ParamSpec(
             name="waitfor",
-            param_type=ParamType.BOOLEAN,
-            default=False,
-            description="Wait for the script to finish before continuing",
+            param_type=ParamType.ENUM,
+            default="end",
+            constraint=ParamConstraint(allowed_values=["end", "time"]),
+            description="Wait for the script to finish (end) or a fixed time (time)",
             group="Options",
         ),
         "hours": ParamSpec(
@@ -859,11 +879,11 @@ TASK_PARAM_SCHEMAS: dict[TaskType, dict[str, ParamSpec]] = {
     },
 
     TaskType.CLEAR_DATABANKS: {
-        "databank": ParamSpec(
-            name="databank",
-            param_type=ParamType.STRING,
-            default="Results",
-            description="Databank to clear (default settings clear Results)",
+        "databanks": ParamSpec(
+            name="databanks",
+            param_type=ParamType.LIST,
+            default=["Results"],
+            description="Databanks to clear (default settings clear Results)",
             group="Data",
         ),
     },

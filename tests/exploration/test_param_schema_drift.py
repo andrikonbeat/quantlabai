@@ -13,7 +13,13 @@ from pathlib import Path
 
 import pytest
 from quantlab.customproject.catalog import CATALOG_TYPES
-from quantlab.exploration.params_schema import TASK_PARAM_SCHEMAS, TaskType
+from quantlab.exploration.params_schema import (
+    TASK_PARAM_SCHEMAS,
+    ParamType,
+    TaskType,
+    coerce_params,
+    validate_task_params,
+)
 
 
 def test_tasktype_covers_all_catalog_types() -> None:
@@ -121,12 +127,11 @@ def test_evidence_backed_types_declare_the_extracted_parameters() -> None:
     assert set(TASK_PARAM_SCHEMAS[TaskType.CALL_EXTERNAL_SCRIPT]) == {
         "file",
         "params",
-        "type",
         "waitfor",
         "hours",
         "minutes",
     }
-    assert set(TASK_PARAM_SCHEMAS[TaskType.CLEAR_DATABANKS]) == {"databank"}
+    assert set(TASK_PARAM_SCHEMAS[TaskType.CLEAR_DATABANKS]) == {"databanks"}
     assert set(TASK_PARAM_SCHEMAS[TaskType.DELETE_FILE]) == {"file"}
     assert set(TASK_PARAM_SCHEMAS[TaskType.NOTIFICATION]) == {"type", "email", "wait"}
     assert set(TASK_PARAM_SCHEMAS[TaskType.STOP_AND_START]) == {
@@ -143,6 +148,54 @@ def test_every_type_outside_the_documented_gaps_declares_parameters() -> None:
         if task_type in gaps:
             continue
         assert schema, f"{task_type.value} declares no parameters"
+
+
+def test_clear_databanks_declares_a_list_of_databank_names() -> None:
+    """ClearDatabanks serializes a LIST of <Databank name="..."/> elements.
+
+    Authoritative shape (odd/notes/sqx-task-xml-dialect.md, harvested from
+    TaskClearDatabanksService.js:34-40):
+
+        <ClearDatabanks><Databank name="X"/><Databank name="Y"/></ClearDatabanks>
+
+    The schema must use the plural key render_clear_databanks reads, and LIST is
+    what lets a multi-databank value survive coerce_params instead of collapsing
+    to the hardcoded default.
+    """
+    spec = TASK_PARAM_SCHEMAS[TaskType.CLEAR_DATABANKS]["databanks"]
+    assert spec.param_type is ParamType.LIST
+    assert spec.coerce(None) == ["Results"]
+    assert spec.coerce("Results, Last generation") == ["Results", "Last generation"]
+    assert spec.validate(["Results", "Last generation"]) is True
+    assert spec.validate(42) is False
+
+
+def test_clear_databanks_params_survive_the_mapper_schema_pipeline() -> None:
+    """The plural key must pass validation and coercion, or the mapping is lost."""
+    params = {"databanks": ["A", "B"]}
+    assert validate_task_params(TaskType.CLEAR_DATABANKS, params) == []
+    coerced = coerce_params(TaskType.CLEAR_DATABANKS, params)
+    assert coerced["databanks"] == ["A", "B"]
+    assert "databank" not in coerced
+
+
+def test_call_external_script_matches_the_authoritative_dialect() -> None:
+    """No invented `type` param; waitfor is the ENUM end|time, not a boolean.
+
+    Authoritative shape (odd/notes/sqx-task-xml-dialect.md, harvested from
+    SettingsCallExternalScriptService.js:5-9, :15-21):
+
+        <CallExternalScript><File params="...">path</File>
+          <WaitFor hours="0" minutes="0">end|time</WaitFor></CallExternalScript>
+    """
+    spec = TASK_PARAM_SCHEMAS[TaskType.CALL_EXTERNAL_SCRIPT]
+    assert "type" not in spec
+    waitfor = spec["waitfor"]
+    assert waitfor.param_type is ParamType.ENUM
+    assert set(waitfor.constraint.allowed_values) == {"end", "time"}
+    assert waitfor.default == "end"
+    assert waitfor.coerce("time") == "time"
+    assert waitfor.validate("bogus") is False
 
 
 if __name__ == "__main__":
