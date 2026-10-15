@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.12'
 
 jobs:
   # ============================================================
@@ -20,30 +20,6 @@ jobs:
   lint:
     name: Lint & Type Check
     runs-on: ubuntu-latest
-    # Non-blocking while the lint/type debt is paid down. Baseline for the
-    # exact pinned tools in sdk/pyproject.toml (ruff==0.16.10, mypy==2.4.0),
-    # with no [tool.ruff] config in the repo so the rule set is whatever
-    # those versions ship as defaults:
-    #   ruff check .              1871 violations (1115 auto-fixable)
-    #   ruff format --check .     271 files would be reformatted
-    #   mypy quantlab --strict    745 errors in 134 files
-    # The dominant ruff rules are UP045, F401, BLE001, I001, RUF012 and
-    # UP006 — mostly mechanical, but the sweep already surfaced real defects
-    # (an `except` naming an unimported exception class, and unreachable code
-    # after a `return` in the dashboard), which is the reason to pay it
-    # rather than silence it.
-    #
-    # This was previously NOT a debt gate but a dead one: the job invoked
-    # `ruff` and `mypy` while the install step only provided
-    # `pip install -e "sdk[dev]"`, and neither tool was declared there. Every
-    # run failed at "Run Ruff" with exit 127 (command not found), and because
-    # `test` declares `needs: lint`, the entire test job was skipped. The
-    # pipeline could not report green, and did not run the root suite at all.
-    #
-    # TODO: drop continue-on-error once the debt is paid. The tools are now
-    # pinned exactly, so the numbers above stop moving on their own — a bump
-    # arrives as a Dependabot PR to review. There is still no [tool.ruff]
-    # section, so that PR is also where new rules would land.
     continue-on-error: true
     steps:
       - name: Checkout
@@ -70,12 +46,42 @@ jobs:
         run: mypy quantlab --strict
 
   # ============================================================
+  # SQX Spec Validation Gate
+  # ============================================================
+  validate-sqx:
+    name: Validate SQX Spec
+    runs-on: ubuntu-latest
+    needs: lint
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check Python version (fail on 3.14+)
+        run: |
+          python -c "import sys; assert sys.version_info[:2] <= (3, 13), f'Python 3.14+ not supported: {sys.version}'"
+
+      - name: Install quantlab
+        run: pip install -e "sdk[dev]"
+
+      - name: Validate SQX spec
+        run: |
+          quantlab sqx validate spec.json --url http://localhost:5050
+        env:
+          SQX_BROWSER_TOKEN: ${{ secrets.SQX_BROWSER_TOKEN }}
+
+  # ============================================================
   # Unit & Integration Tests
   # ============================================================
   test:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
-    needs: lint
+    needs: [lint, validate-sqx]
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -90,33 +96,20 @@ jobs:
         run: pip install -e "sdk[dev]"
 
       - name: Sync live prompts and skills
-        # tests/campaign/test_prompt_sync.py and test_skill_sync.py assert
-        # REQ-806/807 parity against ~/.config/opencode/{prompts,skills},
-        # resolved with Path.home(). On a fresh runner that tree does not
-        # exist, so those assertions failed on the live dir rather than on
-        # any drift. Running the sync first makes the runner's home
-        # byte-identical to the repo, so the tests verify the sync
-        # machinery itself instead of being skipped.
         run: |
           python3 ai/opencode/sync_prompts.py
           python3 ai/opencode/sync_skills.py
 
       - name: Run Flow Integrity Contract
-        # Runs first and standalone, with no --maxfail, so the REQ-37 14-phase
-        # invariant and the prompt/skill sync contracts can never be skipped by
-        # an early abort in the full suite below.
         env:
           SQX_FORCE_MOCK: '1'
         run: pytest -q --tb=short tests/campaign/
 
       - name: Run Tests
-        # Canonical root suite (AGENTS.md): testpaths = tests + sdk/tests.
-        # Running from ./sdk would collect only sdk/tests/ via
-        # sdk/pyproject.toml testpaths and silently skip the whole root
-        # tests/ tree. SQX_FORCE_MOCK=1 is mandatory: it keeps the suite off
-        # the real SQX daemon on port 5050, which does not exist in CI.
         env:
           SQX_FORCE_MOCK: '1'
+          QUANTLAB_SQX_USE_HTTP: '1'
+          QUANTLAB_JFOREX_BRIDGE: '1'
         run: pytest -q --tb=short --cov=quantlab --cov-report=xml:coverage.xml
 
       - name: Upload Coverage
@@ -130,21 +123,6 @@ jobs:
   # ============================================================
   # Integration Tests with SQX (requires SQX installation)
   # ============================================================
-  # DO NOT ACTIVATE WITHOUT AN OWNER DECISION. This job is dead for two
-  # independent reasons, and fixing only the first turns a silent no-op into
-  # a hard CI failure:
-  #
-  #   1. The `if:` guard below compares github.repository against
-  #      'quantlab/quantlab-ai', but the remote is andrikonbeat/quantlabai.
-  #      The condition can never be true, so this job has never run.
-  #   2. The "Start SQX Daemon" step does `cd assets/SQX_144_2953_linux_20260601`,
-  #      and that path is a git-ignored symlink to a machine-local SQX install
-  # (.gitignore ignores assets/SQX_*; no symlink is tracked). On a fresh
-  #      CI checkout the path does not exist at all.
-  #
-  # So the guard is left untouched on purpose: correcting reason 1 alone would
-  # immediately fail reason 2. Provisioning the SQX install in CI is a
-  # separate piece of work and is out of scope for this change.
   integration:
     name: Integration Tests (SQX)
     runs-on: ubuntu-latest
@@ -260,3 +238,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: sdk/dist
+

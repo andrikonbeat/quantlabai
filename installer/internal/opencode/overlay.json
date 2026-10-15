@@ -3,33 +3,31 @@
     "quantlab-orchestrator": {
       "description": "QuantLab orchestrator: research → hypothesis → config → review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops.",
       "mode": "primary",
-      "permissions": {
+      "permission": {
         "question": "allow",
         "bash": {
           "*": "deny",
           "sqcli": "allow",
           "python": "allow",
           "pytest": "allow",
-          "git": "allow"
+          "git": "allow",
+          "sdk/quantlab/pipeline/*": "allow"
         },
         "task": {
           "*": "deny",
           "sdd-*": "allow",
           "quantlab-*": "allow",
-          "gentle-*": "allow"
+          "gentle-*": "allow",
+          "quantlab-campaign": "allow",
+          "quantlab-guardian": "allow",
+          "guardian-orchestrator": "allow"
         },
         "read": {
           "*": "allow"
         },
-        "write": {
-          "*": "deny",
-          "openspec/**": "allow",
-          "sdk/**": "allow",
-          "installer/**": "allow"
-        },
         "edit": {
           "*": "deny",
-          "openspec/**": "allow",
+          "sdd/**": "allow",
           "sdk/**": "allow",
           "installer/**": "allow"
         }
@@ -43,8 +41,8 @@
     },
     "quantlab-campaign": {
       "description": "QuantLab campaign executor: runs the 14-phase campaign lifecycle under orchestrator direction.",
-      "mode": "standard",
-      "permissions": {
+      "mode": "subagent",
+      "permission": {
         "question": "allow",
         "bash": {
           "*": "deny",
@@ -61,11 +59,6 @@
         "read": {
           "*": "allow"
         },
-        "write": {
-          "*": "deny",
-          "campaigns/**": "allow",
-          "sdk/**": "allow"
-        },
         "edit": {
           "*": "deny",
           "campaigns/**": "allow",
@@ -80,26 +73,27 @@
     "guardian-orchestrator": {
       "description": "QuantLab guardian: live-ops, monitoring, alerts, retest, optimize, deploy, archive.",
       "mode": "primary",
-      "permissions": {
+      "permission": {
         "question": "allow",
         "bash": {
           "*": "deny",
           "sqcli": "allow",
           "python": "allow",
-          "pytest": "allow"
+          "pytest": "allow",
+          "sdk/quantlab/*": "allow",
+          "knowledge/*": "allow",
+          "/tmp/opencode/*": "allow"
         },
         "task": {
           "*": "deny",
           "quantlab-*": "allow",
-          "gentle-*": "allow"
+          "gentle-*": "allow",
+          "quantlab-guardian": "allow",
+          "quantlab-guardian-alert": "allow",
+          "quantlab-replacement": "allow"
         },
         "read": {
           "*": "allow"
-        },
-        "write": {
-          "*": "deny",
-          "campaigns/**": "allow",
-          "sdk/**": "allow"
         },
         "edit": {
           "*": "deny",
@@ -116,7 +110,7 @@
       "description": "QuantLab guardian subagent: live-ops monitoring.",
       "mode": "subagent",
       "hidden": true,
-      "permissions": {
+      "permission": {
         "question": "allow",
         "bash": {
           "*": "deny",
@@ -131,18 +125,13 @@
         "read": {
           "*": "allow"
         },
-        "write": {
-          "*": "deny",
-          "campaigns/**": "allow",
-          "sdk/**": "allow"
-        },
         "edit": {
           "*": "deny",
           "campaigns/**": "allow",
           "sdk/**": "allow"
         }
       },
-      "prompt": "{file:~/.config/opencode/prompts/quantlab/guardian-orchestrator.md}",
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/guardian.md}",
       "skills": [
         "quantlab-run-campaign"
       ]
@@ -151,7 +140,7 @@
       "description": "QuantLab guardian alert subagent.",
       "mode": "subagent",
       "hidden": true,
-      "permissions": {
+      "permission": {
         "question": "allow",
         "bash": {
           "*": "deny",
@@ -166,18 +155,13 @@
         "read": {
           "*": "allow"
         },
-        "write": {
-          "*": "deny",
-          "campaigns/**": "allow",
-          "sdk/**": "allow"
-        },
         "edit": {
           "*": "deny",
           "campaigns/**": "allow",
           "sdk/**": "allow"
         }
       },
-      "prompt": "{file:~/.config/opencode/prompts/quantlab/guardian-orchestrator.md}",
+      "prompt": "You are the QuantLab guardian alert subagent. You triage ONE live-ops alert raised by the Guardian loop: classify its severity, identify the affected campaign and live strategy, and cite the evidence behind the classification. Read-only: never modify a campaign, strategy, or deployment. Answer with severity, affected campaign, evidence paths, and the recommended next gate (retest, optimize, or replacement review).",
       "skills": [
         "quantlab-run-campaign"
       ]
@@ -186,7 +170,7 @@
       "description": "QuantLab replacement subagent.",
       "mode": "subagent",
       "hidden": true,
-      "permissions": {
+      "permission": {
         "question": "allow",
         "bash": {
           "*": "deny",
@@ -201,10 +185,33 @@
         "read": {
           "*": "allow"
         },
-        "write": {
+        "edit": {
           "*": "deny",
           "campaigns/**": "allow",
           "sdk/**": "allow"
+        }
+      },
+      "prompt": "You are the QuantLab replacement subagent. When a live strategy degrades you prepare the replacement decision: candidate strategy, the evidence that justifies replacing, and the rollback boundary. You never approve it: HUMAN_APPROVE_REPLACEMENT is a human gate, an unanswered request aborts the Guardian loop, and an unanswered gate fails closed. Answer with the decision-file payload and the risks of replacing.",
+      "skills": [
+        "quantlab-run-campaign"
+      ]
+    },
+    "quantlab-phase-research": {
+      "description": "QuantLab research phase subagent: executes the research phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
         },
         "edit": {
           "*": "deny",
@@ -212,10 +219,332 @@
           "sdk/**": "allow"
         }
       },
-      "prompt": "{file:~/.config/opencode/prompts/quantlab/guardian-orchestrator.md}",
-      "skills": [
-        "quantlab-run-campaign"
-      ]
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-research.md}"
+    },
+    "quantlab-phase-hypothesis": {
+      "description": "QuantLab hypothesis phase subagent: executes the hypothesis phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-hypothesis.md}"
+    },
+    "quantlab-phase-config": {
+      "description": "QuantLab config phase subagent: executes the config phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-config.md}"
+    },
+    "quantlab-phase-review": {
+      "description": "QuantLab review phase subagent: executes the review phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-review.md}"
+    },
+    "quantlab-phase-dispatch": {
+      "description": "QuantLab dispatch phase subagent: executes the dispatch phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-dispatch.md}"
+    },
+    "quantlab-phase-monitor": {
+      "description": "QuantLab monitor phase subagent: executes the monitor phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-monitor.md}"
+    },
+    "quantlab-phase-retest": {
+      "description": "QuantLab retest phase subagent: executes the retest phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-retest.md}"
+    },
+    "quantlab-phase-optimize": {
+      "description": "QuantLab optimize phase subagent: executes the optimize phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-optimize.md}"
+    },
+    "quantlab-phase-portfolio": {
+      "description": "QuantLab portfolio phase subagent: executes the portfolio phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-portfolio.md}"
+    },
+    "quantlab-phase-compile": {
+      "description": "QuantLab compile phase subagent: executes the compile phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-compile.md}"
+    },
+    "quantlab-phase-deploy": {
+      "description": "QuantLab deploy phase subagent: executes the deploy phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-deploy.md}"
+    },
+    "quantlab-phase-demo": {
+      "description": "QuantLab demo phase subagent: executes the demo phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-demo.md}"
+    },
+    "quantlab-phase-archive": {
+      "description": "QuantLab archive phase subagent: executes the archive phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-archive.md}"
+    },
+    "quantlab-phase-live-ops": {
+      "description": "QuantLab live-ops phase subagent: executes the live-ops phase of the 14-phase campaign lifecycle.",
+      "mode": "subagent",
+      "permission": {
+        "question": "allow",
+        "bash": {
+          "*": "deny",
+          "sdk/quantlab/pipeline/*": "allow",
+          "sdk/quantlab/campaign/*": "allow"
+        },
+        "task": {
+          "*": "deny",
+          "quantlab-*": "allow"
+        },
+        "read": {
+          "*": "allow"
+        },
+        "edit": {
+          "*": "deny",
+          "campaigns/**": "allow",
+          "sdk/**": "allow"
+        }
+      },
+      "prompt": "{file:~/.config/opencode/prompts/quantlab/phase-live-ops.md}"
     }
   },
   "skills": {

@@ -1,0 +1,11 @@
+Manifest-Version: 1.0
+Application-Name: JForex API
+Implementation-Title: JForex API
+Implementation-Version: 2.13.88
+Built-By: artur.fyodorov
+Permissions: all-permissions
+Codebase: *
+Implementation-Vendor-Id: com.dukascopy.api
+Created-By: Apache Maven 3.6.2
+Build-Jdk: 1.8.0_202
+

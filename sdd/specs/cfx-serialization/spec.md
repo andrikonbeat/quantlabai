@@ -1,10 +1,10 @@
 # CFX Serialization — Delta for `fix-flat-lane-settings-projection`
 
 > Proposal marks `cfx-serialization` modified, but no main spec exists (parent
-> domain: `cfx-editor`). Archive creates `openspec/specs/cfx-serialization/spec.md`.
+> domain: `cfx-editor`). Archive creates `sdd/specs/cfx-serialization/spec.md`.
 >
 > **Relationship to `cfx-editor`**: this is the narrow codec capability spec of
-> the `cfx-editor` umbrella domain (`openspec/specs/cfx-editor/spec.md`).
+> the `cfx-editor` umbrella domain (`sdd/specs/cfx-editor/spec.md`).
 > Read/write/patch behavior outside the flat-lane key grammar lives there; this
 > spec exists as a sibling capability, not a duplicate.
 

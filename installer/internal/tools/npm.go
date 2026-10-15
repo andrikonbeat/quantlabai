@@ -5,11 +5,10 @@ import (
 	"os/exec"
 )
 
-// InstallOpenCode installs OpenCode via npm if writable. If npm is not
-// writable or not available, it returns a display-only fallback message.
-func InstallOpenCode(home string) (string, error) {
+// InstallOpenCodeViaNpm installs OpenCode via npm. Used as a fallback.
+func InstallOpenCodeViaNpm(home string) (string, error) {
 	if !DetectNpmWritable() {
-		return displayFallback("opencode", "npm install -g --ignore-scripts opencode-ai@latest"), nil
+		return "", fmt.Errorf("npm global not writable")
 	}
 	cmd := exec.Command("npm", "install", "-g", "--ignore-scripts", "opencode-ai@latest")
 	out, err := cmd.CombinedOutput()

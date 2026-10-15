@@ -33,7 +33,7 @@ func TestOnboardingHelpSummaryContainsOnboarding(t *testing.T) {
 }
 
 func TestOnboardingStepsAssetLoaded(t *testing.T) {
-	m := onboarding.NewModel()
+	m := onboarding.NewModel(false)
 	steps := m.Steps()
 	if len(steps) == 0 {
 		t.Fatal("expected onboarding steps to be loaded from asset, got empty")
@@ -62,7 +62,7 @@ func TestApplyOnboardingResult_PrintsReadinessAndWritesConfig(t *testing.T) {
 	res.PrimaryAgent = "quantlab-orchestrator"
 
 	var buf bytes.Buffer
-	if err := applyOnboardingResult(&buf, home, res); err != nil {
+	if err := applyOnboardingResult(&buf, home, "", res); err != nil {
 		t.Fatalf("applyOnboardingResult: %v", err)
 	}
 

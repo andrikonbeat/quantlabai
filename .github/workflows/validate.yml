@@ -1,0 +1,29 @@
+name: Validate SQX Spec
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      
+      - name: Check Python version (fail on 3.14+)
+        run: |
+          python -c "import sys; assert sys.version_info[:2] <= (3, 13), f'Python 3.14+ not supported: {sys.version}'"
+      
+      - name: Install quantlab
+        run: pip install -e ./sdk
+      
+      - name: Validate SQX spec
+        run: |
+          quantlab sqx validate spec.json --url http://localhost:5050
+        env:
+          SQX_BROWSER_TOKEN: ${{ secrets.SQX_BROWSER_TOKEN }}

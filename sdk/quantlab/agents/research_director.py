@@ -20,6 +20,7 @@ from quantlab.dsl.models import (
     HypothesisConfig,
     ResearchConfig,
 )
+from quantlab.exploration.models import ExplorationDecision
 from quantlab.sqx.project_builder import BuildConfig
 
 logger = logging.getLogger(__name__)
@@ -190,6 +191,62 @@ class ResearchDirector:
             agent=agent,
         )
 
+    def _apply_exploration_decision(
+        self,
+        config: ResearchConfig,
+        exploration: ExplorationDecision,
+    ) -> ResearchConfig:
+        """Apply exploration decision fields to ResearchConfig.
+
+        The exploration decision provides concrete values for market,
+        timeframe, instruments, hypothesis, capital limits, etc.
+        These override or supplement the ResearchConfig fields.
+        """
+        # Create a copy of the config to avoid mutating the original
+        from copy import deepcopy
+        config = deepcopy(config)
+
+        # Apply exploration decision fields to ResearchConfig
+        # Note: ResearchConfig doesn't have leverage field; leverage is handled by SQX project config
+        config.market = exploration.market
+        config.timeframe = exploration.timeframe
+
+        # Apply exploration decision fields to ResearchConfig
+        # Note: ResearchConfig doesn't have leverage field; leverage is handled by SQX project config
+        config.market = exploration.market
+        config.timeframe = exploration.timeframe
+
+        # Store all exploration data in guardian_state (dict) for downstream stages
+        # guardian_state is a dict[str, Any] | None field in ResearchConfig
+        guardian_state = config.guardian_state or {}
+        guardian_state["instruments"] = exploration.instruments
+        guardian_state["capital_limits"] = exploration.capital_limits
+        guardian_state["operational_restrictions"] = exploration.operational_restrictions
+        guardian_state["risk_management"] = exploration.risk_management
+        guardian_state["money_management"] = exploration.money_management
+        guardian_state["prior_observations"] = exploration.prior_observations
+        guardian_state["statistical_edge"] = exploration.statistical_edge
+        guardian_state["broker_info"] = exploration.broker_info.model_dump()
+        guardian_state["exploration_decision"] = exploration.model_dump()
+        config.guardian_state = guardian_state
+
+        # Add hypothesis from exploration
+        if exploration.hypothesis:
+            from quantlab.dsl.models import HypothesisConfig
+            hyp = HypothesisConfig(
+                name="exploration_hypothesis",
+                description=exploration.hypothesis,
+                parameters={},
+                expected_outcome="Validate exploration hypothesis",
+                confidence=0.8,
+                llm_rationale="Derived from exploration pipeline E1-E11",
+                source_urls=[],
+                data_sources=["exploration-pipeline"],
+            )
+            config.hypotheses = [hyp] + config.hypotheses
+
+        return config
+
     def _get_registry(self) -> Any:
         """Lazy-import and return StageRegistry."""
         from quantlab.pipeline.registry import StageRegistry
@@ -231,6 +288,7 @@ class ResearchDirector:
         config: ResearchConfig,
         agent_config: Any = None,
         orchestrated: bool = False,
+        exploration_decision: ExplorationDecision | None = None,
     ) -> Any:
         """Build the full pipeline from a config.
 
@@ -275,6 +333,10 @@ class ResearchDirector:
         """
         runner = self._get_runner()
         _registry = self._get_registry()
+
+        # Incorporate exploration decision into config if provided
+        if exploration_decision is not None:
+            config = self._apply_exploration_decision(config, exploration_decision)
 
         # Resolve research stage name based on AgentConfig.model
         research_stage = "research"

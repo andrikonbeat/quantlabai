@@ -171,6 +171,10 @@ agents:
 
 The `gates` section defines human decision checkpoints:
 
+> **Scope**: pipeline-YAML gates for the multi-agent `PipelineRunner`. The
+> campaign dispatch contract (nine fail-closed `HUMAN_*` policies) lives in
+> `sdk/quantlab/gates/models.py` — see [Running Multi-Agent Campaigns](../guides/running-campaigns.md).
+
 ```yaml
 gates:
   - id: gate_research_complete
@@ -345,4 +349,4 @@ This checks:
 
 - [Agent Reference](agents.md) - Detailed agent specifications
 - [Running Multi-Agent Campaigns](../guides/running-campaigns.md) - Execution guide
-- [Research Configuration Reference](../../openspec/specs/research-dsl/spec.md) - DSL configuration
+- [Research Configuration Reference](../../sdd/specs/research-dsl/spec.md) - DSL configuration

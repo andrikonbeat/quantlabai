@@ -12,7 +12,7 @@ wired from the OpenCode config (``~/.config/opencode/``).  These tests assert:
   as primary and stdin as headless fallback;
 - ``opencode.json`` registers ``quantlab-campaign`` by ``{file:...}``
   reference and the orchestrator's task allowlist includes it (REQ-02, REQ-16);
-- ``openspec/config.yaml`` routing gains the campaign row (REQ-16);
+- ``sdd/config.yaml`` routing gains the campaign row (REQ-16);
 - guardian intents route to ``quantlab-guardian`` while non-guardian intents
   stay with the orchestrator (REQ-642, PR 2);
 - ``opencode.json`` registers ``quantlab-guardian`` deny-first and the
@@ -52,7 +52,7 @@ OPENCODE_JSON = OPENCODE_DIR / "opencode.json"
 CAMPAIGN_AGENT_PROMPT = REPO_ROOT / "ai" / "opencode" / "agents" / "campaign.md"
 GUARDIAN_ORCHESTRATOR_PROMPT = REPO_ROOT / "ai" / "opencode" / "agents" / "guardian-orchestrator.md"
 CAMPAIGN_SKILL = REPO_ROOT / "ai" / "opencode" / "skills" / "quantlab-run-campaign" / "SKILL.md"
-CONFIG_YAML = REPO_ROOT / "openspec" / "config.yaml"
+CONFIG_YAML = REPO_ROOT / "sdd" / "config.yaml"
 
 SDD_SKILLS = ["sdd-spec", "sdd-design", "sdd-tasks", "sdd-apply", "sdd-verify", "sdd-archive"]
 CAMPAIGN_PHASES = [
@@ -193,7 +193,7 @@ class TestOpencodeJsonRegistration:
 
 
 class TestOpenSpecConfigRouting:
-    """REQ-16: openspec/config.yaml routing gains the campaign row."""
+    """REQ-16: sdd/config.yaml routing gains the campaign row."""
 
     def test_config_routes_campaign_to_quantlab_campaign(self) -> None:
         text = _read(CONFIG_YAML)
@@ -720,7 +720,11 @@ class TestG4InstallerOverlaySync:
 
     def test_overlay_campaign_agent_is_deny_first(self) -> None:
         overlay = json.loads(INSTALLER_OVERLAY.read_text(encoding="utf-8"))
-        bash = overlay["agents"]["quantlab-campaign"]["permissions"]["bash"]
+        # `permission` (singular) is the OpenCode schema key -- see
+        # https://opencode.ai/config.json $defs.AgentConfig.properties.permission.
+        # The overlay previously spelled it `permissions`, which OpenCode ignores
+        # entirely, so a fresh install silently wrote no effective permissions.
+        bash = overlay["agents"]["quantlab-campaign"]["permission"]["bash"]
         assert bash.get("*") == "deny", "overlay campaign bash wildcard MUST deny"
         for pattern in CAMPAIGN_BASH_ALLOWS:
             assert bash.get(pattern) == "allow", (

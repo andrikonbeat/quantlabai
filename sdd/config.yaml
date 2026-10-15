@@ -1,13 +1,16 @@
-# openspec/config.yaml
+# sdd/config.yaml
 schema: spec-driven
 
 context: |
-  Tech stack: Brand-new project, no code yet. Quantitative research lab for
-    algorithmic trading. Tools: StrategyQuant X (SQX) via sqcli CLI and .cfx
-    config files, JForex 4 platform, Dukascopy broker, JCloud deployment.
-    Potential Python for SDK/automation layer.
+  Tech stack: Python 3.11+ SDK (pydantic, pandas, numpy, httpx, MCP, OpenAI),
+    Go 1.23 installer (Bubbletea TUI), Kotlin app_movil. Tools: StrategyQuant X
+    (SQX) via sqcli CLI and .cfx config files, JForex 4 platform, Dukascopy-only
+    market data, JCloud deployment.
   Architecture: AI-directed research engine — OpenCode as research director,
-    SQX as computation engine. Custom Projects + Template Mode + CLI.
+    SQX as computation engine. 14-phase campaign lifecycle with fail-closed
+    human gates. SDD change backlog empty (53 archived, 0 active); normative
+    capability specs under sdd/specs/ (107). Canonical state: sdd/PROJECT_STATE.md.
+  Workflow: ODD (Organic Driven Development) for execution; SDD specs as contracts.
   Testing: pytest, strict_tdd: true. Run the suite with
     `SQX_FORCE_MOCK=1 python3 -m pytest -q` (the env var keeps the real SQX
     daemon off port 5050).

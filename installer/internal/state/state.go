@@ -31,6 +31,7 @@ type State struct {
 
 	// Installer dependencies
 	SQXPath         string `json:"sqx_path,omitempty"`
+	JForexPath      string `json:"jforex_path,omitempty"`
 	GentleAIPresent bool   `json:"gentle_ai_present,omitempty"`
 	DepsVerified    bool   `json:"deps_verified,omitempty"`
 }

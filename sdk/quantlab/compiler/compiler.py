@@ -103,7 +103,7 @@ def run_javac(
         cmd += ["-cp", os.pathsep.join(str(p) for p in classpath)]
     cmd.append(str(src))
     logger.debug("javac %s", " ".join(cmd))
-    proc = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
+    proc = subprocess.run(cmd, check=False, capture_output=True, text=True, timeout=timeout)
     return CompileReport(
         exit_code=proc.returncode, stdout=proc.stdout, stderr=proc.stderr
     )

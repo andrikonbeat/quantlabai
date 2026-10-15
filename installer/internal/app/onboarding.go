@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"time"
+		"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -18,7 +17,7 @@ import (
 // runOnboardingProgram runs the interactive TUI and returns the collected
 // result. It is a package variable so tests can bypass the interactive loop.
 var runOnboardingProgram = func(m *onboarding.Model) (onboarding.Result, error) {
-	prog := tea.NewProgram(m)
+	prog := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := prog.Run(); err != nil {
 		return onboarding.Result{}, err
 	}
@@ -32,20 +31,30 @@ func cmdOnboarding(w io.Writer, args []string) error {
 	if err != nil {
 		return fmt.Errorf("home dir: %w", err)
 	}
-	qlDir := filepath.Join(home, ".quantlab")
+	stateDir := ".quantlab" // default state dir
+	qlDir := config.StateDir(home)
 
 	st, err := state.LoadOrInit(qlDir)
 	if err != nil {
 		return fmt.Errorf("load state: %w", err)
 	}
 
-	model := onboarding.NewModel()
+	// Parse --agent-driven flag
+	agentDriven := false
+	for _, arg := range args {
+		if arg == "--agent-driven" {
+			agentDriven = true
+			break
+		}
+	}
+
+	model := onboarding.NewModel(agentDriven)
 	res, err := runOnboardingProgram(&model)
 	if err != nil {
 		return fmt.Errorf("onboarding TUI: %w", err)
 	}
 
-	if err := applyOnboardingResult(w, home, res); err != nil {
+	if err := applyOnboardingResult(w, home, stateDir, res); err != nil {
 		return err
 	}
 
@@ -66,7 +75,7 @@ func cmdOnboarding(w io.Writer, args []string) error {
 // applyOnboardingResult writes the collected config, prints tool readiness
 // from the TUI result, and applies the primary-agent selection. It no longer
 // installs tools — the TUI owns install execution.
-func applyOnboardingResult(w io.Writer, home string, res onboarding.Result) error {
+func applyOnboardingResult(w io.Writer, home, stateDir string, res onboarding.Result) error {
 	cfg, err := config.ReadConfig(config.ConfigPath(home))
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)

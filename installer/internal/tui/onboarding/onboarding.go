@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
+	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -17,6 +19,8 @@ import (
 	"github.com/andrikonbeat/quantlabai/internal/assets"
 	"github.com/andrikonbeat/quantlabai/internal/config"
 	"github.com/andrikonbeat/quantlabai/internal/sdk"
+	"github.com/andrikonbeat/quantlabai/internal/tui/screens"
+	"github.com/andrikonbeat/quantlabai/internal/tui/theme"
 	"github.com/andrikonbeat/quantlabai/internal/tools"
 )
 
@@ -24,7 +28,8 @@ import (
 type Step int
 
 const (
-	StepIntro Step = iota
+	StepOSDetect Step = iota
+	StepIntro
 	StepConsentOpenCode
 	StepConsentGentleAI
 	StepInstalling
@@ -56,9 +61,9 @@ const (
 
 // Install and documentation copy shared by consent and manual steps.
 const (
-	openCodeInstallCommand = "npm install -g --ignore-scripts opencode-ai@latest"
-	openCodeDocsURL        = "https://opencode.ai/"
-	gentleAIInstallCommand = "Descargá el binario desde GitHub y movelo a ~/.local/bin"
+	openCodeInstallCommand = "curl -fsSL https://opencode.ai/install | bash"
+	openCodeDocsURL        = "https://opencode.ai/docs/"
+	gentleAIInstallCommand = "curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash"
 	gentleAIDocsURL        = "https://github.com/Gentleman-Programming/gentle-ai"
 	delegationSample       = "Instalá o actualizá OpenCode y gentle-ai, y verificá el entorno de QuantLab."
 )
@@ -73,6 +78,7 @@ type Result struct {
 	// start or installed successfully during the flow.
 	OpenCodeReady bool
 	GentleAIReady bool
+	EngramReady   bool
 	SQX           struct {
 		InstallPath string
 	}
@@ -116,6 +122,7 @@ type Model struct {
 	consentGentleAI   bool
 	openCodeInstalled bool
 	gentleAIInstalled bool
+	engramInstalled   bool
 
 	// Install execution — injectable for tests.
 	installOpenCodeFn func(home string) (string, error)
@@ -131,6 +138,9 @@ type Model struct {
 	manualTool      string
 	manualDisplay   string
 	manualTools     map[string]bool
+
+	// Agent-driven mode
+	agentDriven     bool
 
 	// StepSQX
 	sqxInput textinput.Model
@@ -148,6 +158,9 @@ type Model struct {
 
 	// StepPostInstall
 	primaryAgentIndex int
+
+	// StepOSDetect
+	osInfo string
 }
 
 // PostInstallStep describes one bullet in the post-install guide.
@@ -158,7 +171,9 @@ type PostInstallStep struct {
 }
 
 // NewModel creates the onboarding model with default values.
-func NewModel() Model {
+// If agentDriven is true, auto-consents to auto-installable tools and
+// starts at the consent/installing phase, skipping OS detection and intro.
+func NewModel(agentDriven bool) Model {
 	sqxInput := textinput.New()
 	sqxInput.Placeholder = "/opt/SQX o ruta a la carpeta descomprimida"
 	sqxInput.Focus()
@@ -185,8 +200,34 @@ func NewModel() Model {
 	openCodeInstalled := tools.DetectOpenCode()
 	gentleAIInstalled := tools.DetectGentleAI()
 
+	// Auto-detect JForex 4 installation
+	jforexPath := autoDetectJForex()
+	if jforexPath != "" {
+		jforexPathInput.SetValue(jforexPath)
+	}
+
+	// Auto-detect SQX installation
+	sqxPath := tools.DetectSQX()
+	if sqxPath != "" {
+		sqxInput.SetValue(sqxPath)
+	}
+
+	// OS detection for pre-check
+	osInfo := detectOSInfo()
+
+	// Agent-driven mode: pre-consent to auto-installable tools, skip intro
+	consentOpenCode := agentDriven && !openCodeInstalled
+	consentGentleAI := agentDriven && !gentleAIInstalled
+	initialStep := StepOSDetect
+	if agentDriven {
+		initialStep = StepConsentOpenCode
+	}
+
 	return Model{
-		step:              StepIntro,
+		step:              initialStep,
+		agentDriven:       agentDriven,
+		consentOpenCode:   consentOpenCode,
+		consentGentleAI:   consentGentleAI,
 		accountModeIndex:  0, // default demo
 		primaryAgentIndex: 0, // default quantlab-orchestrator
 		sqxInput:          sqxInput,
@@ -195,15 +236,18 @@ func NewModel() Model {
 		jforexPassInput:   jforexPassInput,
 		openCodeInstalled: openCodeInstalled,
 		gentleAIInstalled: gentleAIInstalled,
+	engramInstalled:   tools.DetectEngram(),
 		installOpenCodeFn: tools.InstallOpenCode,
 		installGentleAIFn: tools.InstallGentleAI,
 		homeFn:            os.UserHomeDir,
 		sdkDetectFn:       detectSDKReady,
 		manualTools:       map[string]bool{},
 		steps:             loadPostInstallSteps(),
+		osInfo:            osInfo,
 		result: Result{
 			OpenCodeReady: openCodeInstalled,
 			GentleAIReady: gentleAIInstalled,
+			EngramReady:   tools.DetectEngram(),
 		},
 	}
 }
@@ -215,6 +259,29 @@ func detectSDKReady() (bool, error) {
 		return false, err
 	}
 	return info.Installed, nil
+}
+
+// detectOSInfo returns a human-readable string with OS, architecture, and
+// Linux distribution (when applicable).
+func detectOSInfo() string {
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+	var distro string
+	if goos == "linux" {
+		if data, err := os.ReadFile("/etc/os-release"); err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				if strings.HasPrefix(line, "PRETTY_NAME=") {
+					distro = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
+					break
+				}
+			}
+		}
+	}
+	parts := []string{fmt.Sprintf("OS: %s/%s", goos, goarch)}
+	if distro != "" {
+		parts = append(parts, fmt.Sprintf("Distro: %s", distro))
+	}
+	return strings.Join(parts, "  |  ")
 }
 
 // postInstallGuide mirrors the embedded onboarding/steps.json envelope, which
@@ -454,6 +521,8 @@ func (m *Model) runnerFor(tool string) func(home string) (string, error) {
 
 func (m *Model) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.step {
+	case StepOSDetect:
+		m.step = StepIntro
 	case StepIntro:
 		m.step = StepConsentOpenCode
 	case StepConsentOpenCode, StepConsentGentleAI:
@@ -512,9 +581,11 @@ func (m *Model) handleTab() {
 // View renders the current step.
 func (m *Model) View() string {
 	if m.quitting {
-		return lipgloss.NewStyle().Padding(1).Render("Onboarding completado.")
+		return lipgloss.NewStyle().Padding(1).Render(theme.SuccessStyle.Render("Onboarding completado."))
 	}
 	switch m.step {
+	case StepOSDetect:
+		return m.viewOSDetect()
 	case StepIntro:
 		return m.viewIntro()
 	case StepConsentOpenCode:
@@ -540,12 +611,21 @@ func (m *Model) View() string {
 	}
 }
 
+func (m *Model) viewOSDetect() string {
+	return lipgloss.NewStyle().Padding(1).Render(
+		theme.TitleStyle.Render("Detección del entorno") + "\n\n" +
+		theme.SubtextStyle.Render(m.osInfo) + "\n\n" +
+		theme.UnselectedStyle.Render("Verificá que el sistema operativo sea compatible con QuantLab AI.") + "\n\n" +
+		theme.HelpStyle.Render("Presiona Enter para continuar."),
+	)
+}
+
 func (m *Model) viewIntro() string {
 	return lipgloss.NewStyle().Padding(1).Render(
-		"QuantLab AI — Laboratorio de investigación cuantitativa\n\n" +
-			"Flujo: research → hypothesis → config → review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops\n\n" +
-			"QuantLab orquesta un pipeline de investigación con dependencias propias (SDK de QuantLab, OpenCode como centro de control) y herramientas de terceros: OpenCode (orquestación LLM), gentle-ai (skills/revisión), StrategyQuantX (backtesting/optimización), JForex 4 (despliegue demo/real), Dukascopy (datos/ejecución).\n\n" +
-			"Presiona Enter para continuar.",
+		theme.TitleStyle.Render("QuantLab AI — Laboratorio de investigación cuantitativa") + "\n\n" +
+			theme.SubtextStyle.Render("Flujo: research → hypothesis → config → review → dispatch → monitor → retest → optimize → portfolio → compile → deploy → demo → archive → live-ops") + "\n\n" +
+			theme.UnselectedStyle.Render("QuantLab orquesta un pipeline de investigación con dependencias propias (SDK de QuantLab, OpenCode como centro de control) y herramientas de terceros: OpenCode (orquestación LLM), gentle-ai (skills/revisión), StrategyQuantX (backtesting/optimización), JForex 4 (despliegue demo/real), Dukascopy (datos/ejecución).") + "\n\n" +
+			theme.HelpStyle.Render("Presiona Enter para continuar."),
 	)
 }
 
@@ -554,20 +634,20 @@ func (m *Model) viewIntro() string {
 // missing tools show an interactive Sí/No prompt.
 func (m *Model) viewConsentTool(name, role string, detected bool, docs, command string) string {
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("%s — %s.\n\n", name, role))
+	b.WriteString(theme.TitleStyle.Render(name) + " — " + theme.SubtextStyle.Render(role) + ".\n\n")
 	if detected {
-		b.WriteString(fmt.Sprintf("%s ya está instalado ✓.\n\n", name))
-		b.WriteString("Podés delegar la gestión de herramientas al agente OpenCode:\n")
+		b.WriteString(theme.SuccessStyle.Render(name+" ya está instalado ✓.") + "\n\n")
+		b.WriteString(theme.UnselectedStyle.Render("Podés delegar la gestión de herramientas al agente OpenCode:") + "\n")
 	} else {
-		b.WriteString(fmt.Sprintf("¿Instalar %s automáticamente? [S/N]\n", name))
+		b.WriteString(theme.WarningStyle.Render("¿Instalar "+name+" automáticamente? [S/N]") + "\n")
 		b.WriteString("  S = instalar ahora    N = omitir e instalarlo después\n\n")
-		b.WriteString("También podés delegarlo al agente OpenCode:\n")
+		b.WriteString(theme.UnselectedStyle.Render("También podés delegarlo al agente OpenCode:") + "\n")
 	}
-	b.WriteString("  Comando: " + command + "\n")
-	b.WriteString("  Instrucción de ejemplo: \"" + delegationSample + "\"\n")
-	b.WriteString("  Docs: " + docs + "\n")
+	b.WriteString("  " + theme.HelpStyle.Render("Comando: ") + command + "\n")
+	b.WriteString("  " + theme.HelpStyle.Render("Instrucción de ejemplo: \"") + delegationSample + "\"\n")
+	b.WriteString("  " + theme.HelpStyle.Render("Docs: ") + docs + "\n")
 	if detected {
-		b.WriteString("\nEnter = siguiente")
+		b.WriteString("\n" + theme.HelpStyle.Render("Enter = siguiente"))
 	}
 	return lipgloss.NewStyle().Padding(1).Render(b.String())
 }
@@ -578,29 +658,34 @@ func (m *Model) viewInstalling() string {
 		tool = "herramientas"
 	}
 	return lipgloss.NewStyle().Padding(1).Render(
-		fmt.Sprintf("Instalando %s...\n\nPor favor esperá.", tool))
+		screens.RenderOperationRunning("Instalando "+tool+"...", "Por favor esperá.", "◐") + "\n")
 }
 
 func (m *Model) viewInstallFailed() string {
-	base := fmt.Sprintf("✗ Falló la instalación de %s (intento %d/%d).\n\n%s\n\n",
-		m.currentTool, m.installAttempts, maxInstallAttempts, m.installError)
 	options := "[R] reintentar  |  [M] instalación manual  |  [O] omitir"
 	if m.installAttempts >= maxInstallAttempts {
 		options = "[M] instalación manual  |  [O] omitir"
 	}
-	return lipgloss.NewStyle().Padding(1).Render(base + options)
+	return lipgloss.NewStyle().Padding(1).Render(screens.RenderComplete(screens.CompletePayload{
+		FailedSteps: []screens.FailedStep{{
+			ID:    fmt.Sprintf("Instalación de %s (intento %d/%d)", m.currentTool, m.installAttempts, maxInstallAttempts),
+			Error: m.installError,
+		}},
+		NextSteps: []string{options},
+	}))
 }
 
 func (m *Model) viewInstallManual() string {
 	url, instruction := manualInstallInfo(m.manualTool)
-	body := fmt.Sprintf("Instalación manual de %s\n\n", m.manualTool) +
-		"Descargalo desde: " + url + "\n" +
-		"Instrucción: " + instruction + "\n"
+	var b strings.Builder
+	b.WriteString(theme.TitleStyle.Render("Instalación manual de "+m.manualTool) + "\n\n")
+	b.WriteString(theme.UnselectedStyle.Render("Descargalo desde: ") + url + "\n")
+	b.WriteString(theme.UnselectedStyle.Render("Instrucción: ") + instruction + "\n")
 	if m.manualDisplay != "" {
-		body += "\nNota del instalador: " + m.manualDisplay + "\n"
+		b.WriteString("\n" + theme.WarningStyle.Render("Nota del instalador: "+m.manualDisplay) + "\n")
 	}
-	body += "\nCuando termines (o si preferís continuar), Enter = siguiente"
-	return lipgloss.NewStyle().Padding(1).Render(body)
+	b.WriteString("\n" + theme.HelpStyle.Render("Cuando termines (o si preferís continuar), Enter = siguiente"))
+	return lipgloss.NewStyle().Padding(1).Render(b.String())
 }
 
 func manualInstallInfo(tool string) (url, instruction string) {
@@ -615,28 +700,30 @@ func manualInstallInfo(tool string) (url, instruction string) {
 }
 
 func (m *Model) viewSQX() string {
-	base := "StrategyQuantX (SQX) — motor de backtesting y generación de estrategias.\n" +
-		"Descargalo manualmente desde https://strategyquant.com/ y descomprimilo.\n\n" +
-		"Carpeta de instalación de SQX:\n" + m.sqxInput.View() + "\n\n" +
-		"Enter = siguiente  |  Tab = siguiente campo"
+	var b strings.Builder
+	b.WriteString(theme.TitleStyle.Render("StrategyQuantX (SQX)") + " — " + theme.SubtextStyle.Render("motor de backtesting y generación de estrategias.") + "\n")
+	b.WriteString(theme.UnselectedStyle.Render("Descargalo manualmente desde https://strategyquant.com/ y descomprimilo.") + "\n\n")
+	b.WriteString(theme.HeadingStyle.Render("Carpeta de instalación de SQX:") + "\n" + m.sqxInput.View() + "\n\n")
+	b.WriteString(theme.HelpStyle.Render("Enter = siguiente  |  Tab = siguiente campo"))
+	body := b.String()
 	if m.sqxError != "" {
-		base = "⚠ " + m.sqxError + "\n\n" + base
+		body = theme.ErrorStyle.Render("⚠ "+m.sqxError) + "\n\n" + body
 	}
-	return lipgloss.NewStyle().Padding(1).Render(base)
+	return lipgloss.NewStyle().Padding(1).Render(body)
 }
 
 func (m *Model) viewJForex() string {
 	modes := []string{"demo", "live"}
 	mode := modes[m.accountModeIndex]
 	return lipgloss.NewStyle().Padding(1).Render(
-		"JForex 4 — plataforma de trading de Dukascopy.\n" +
-			"Descargala manualmente desde https://www.dukascopy.com/downloads/bank/jforex/\n" +
-			"Cuenta demo: registro por email, 14 días. Cuenta live: requiere verificación.\n\n" +
-			"Carpeta de instalación:\n" + m.jforexPathInput.View() + "\n\n" +
-			"Usuario: " + m.jforexUserInput.View() + "\n" +
-			"Contraseña: " + m.jforexPassInput.View() + "\n" +
-			fmt.Sprintf("Modo: %s (Tab para cambiar)\n\n", mode) +
-			"Enter = siguiente  |  Tab = siguiente campo",
+		theme.TitleStyle.Render("JForex 4") + " — " + theme.SubtextStyle.Render("plataforma de trading de Dukascopy.") + "\n" +
+			theme.UnselectedStyle.Render("Descargala manualmente desde https://www.dukascopy.com/downloads/bank/jforex/") + "\n" +
+			theme.SubtextStyle.Render("Cuenta demo: registro por email, 14 días. Cuenta live: requiere verificación.") + "\n\n" +
+			theme.HeadingStyle.Render("Carpeta de instalación:") + "\n" + m.jforexPathInput.View() + "\n\n" +
+			theme.HeadingStyle.Render("Usuario: ") + m.jforexUserInput.View() + "\n" +
+			theme.HeadingStyle.Render("Contraseña: ") + m.jforexPassInput.View() + "\n" +
+			theme.HeadingStyle.Render(fmt.Sprintf("Modo: %s (Tab para cambiar)", mode)) + "\n\n" +
+			theme.HelpStyle.Render("Enter = siguiente  |  Tab = siguiente campo"),
 	)
 }
 
@@ -654,6 +741,7 @@ func (m *Model) buildVerifyChecklist() []checkItem {
 	items := []checkItem{
 		m.toolCheck("OpenCode", toolOpenCode, m.openCodeInstalled || m.result.OpenCodeReady),
 		m.toolCheck("gentle-ai", toolGentleAI, m.gentleAIInstalled || m.result.GentleAIReady),
+		m.toolCheck("Engram (memoria persistente)", "engram", m.engramInstalled || m.result.EngramReady),
 	}
 
 	switch {
@@ -694,31 +782,51 @@ func (m *Model) toolCheck(label, tool string, ready bool) checkItem {
 	}
 }
 
+// verifyItems maps the internal checklist to the shared render model. The
+// warning mark maps to a non-OK, non-blocking optional item.
+func (m *Model) verifyRenderItems(items []checkItem) []screens.CheckItem {
+	out := make([]screens.CheckItem, 0, len(items))
+	for _, it := range items {
+		out = append(out, screens.CheckItem{
+			Label:    it.Label,
+			OK:       it.Mark == markOK,
+			Optional: it.Mark == markWarn,
+		})
+	}
+	return out
+}
+
 func (m *Model) viewVerify() string {
 	items := m.verifyChecklist()
-	var b strings.Builder
-	b.WriteString("Verificación funcional del entorno\n\n")
 	missing := false
 	for _, it := range items {
-		b.WriteString(fmt.Sprintf("%s %s\n", it.Mark, it.Label))
 		if it.Mark == markMissing {
 			missing = true
 		}
 	}
+
+	var notes []string
 	if missing {
-		b.WriteString("\n⚠ Faltan componentes. Recomendamos completar la instalación desde el agente OpenCode:\n")
-		b.WriteString("  Abrí OpenCode y pedile: \"" + delegationSample + "\"\n")
+		notes = append(notes,
+			"⚠ Faltan componentes. Recomendamos completar la instalación desde el agente OpenCode:",
+			"  Abrí OpenCode y pedile: \""+delegationSample+"\"",
+		)
 	}
-	b.WriteString("\nEnter = continuar")
-	return lipgloss.NewStyle().Padding(1).Render(b.String())
+
+	return lipgloss.NewStyle().Padding(1).Render(
+		screens.RenderDetection(
+			"Verificación funcional del entorno",
+			m.verifyRenderItems(items),
+			notes,
+			theme.HelpStyle.Render("Enter = continuar"),
+		))
 }
 
 func (m *Model) viewPostInstall() string {
 	agents := []string{"quantlab-orchestrator", "guardian-orchestrator"}
 	selected := agents[m.primaryAgentIndex]
 
-	var b strings.Builder
-	b.WriteString("¡Listo! Ahora usá QuantLab:\n\n")
+	checklist := make([]screens.CompleteCheckItem, 0, len(m.steps))
 	for _, s := range m.steps {
 		ready := false
 		switch s.ID {
@@ -729,18 +837,35 @@ func (m *Model) viewPostInstall() string {
 		case "primary-agent":
 			ready = selected != ""
 		}
-		mark := "☐"
-		if ready {
-			mark = "✓"
-		}
-		b.WriteString(fmt.Sprintf("%s %s: %s\n", mark, s.Title, s.Description))
+		checklist = append(checklist, screens.CompleteCheckItem{Label: s.Title, Done: ready})
 	}
-	b.WriteString("\nPara empezar:\n")
-	b.WriteString("  1) cd \"<campañas>/\" && opencode\n")
-	b.WriteString("  2) Elegí el agente " + selected + "\n")
-	b.WriteString("  3) Prompt de ejemplo: \"Comienza una campaña para un portafolio de 100USD\"\n")
-	b.WriteString("\nEnter = finalizar")
-	return lipgloss.NewStyle().Padding(1).Render(b.String())
+
+	var manual []string
+	for _, tool := range []string{toolOpenCode, toolGentleAI} {
+		if m.manualTools[tool] {
+			manual = append(manual, "Completá la instalación manual de "+tool)
+		}
+	}
+
+	ready := 0
+	for _, c := range checklist {
+		if c.Done {
+			ready++
+		}
+	}
+
+	return lipgloss.NewStyle().Padding(1).Render(screens.RenderComplete(screens.CompletePayload{
+		ConfiguredAgents:    len(agents),
+		InstalledComponents: ready,
+		Checklist:           checklist,
+		ManualActions:       manual,
+		NextSteps: []string{
+			`1) cd "<campañas>/" && opencode`,
+			"2) Elegí el agente " + selected,
+			`3) Prompt de ejemplo: "Comienza una campaña para un portafolio de 100USD"`,
+		},
+		Footer: theme.HelpStyle.Render("Enter = finalizar"),
+	}))
 }
 
 // Result returns the user's onboarding choices.
@@ -751,4 +876,27 @@ func (m *Model) Result() Result {
 // Steps returns the loaded post-install guide steps.
 func (m *Model) Steps() []PostInstallStep {
 	return m.steps
+}
+
+// autoDetectJForex tries to find the JForex 4 installation in common locations.
+func autoDetectJForex() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	candidates := []string{
+		"/opt/JForex4",
+		filepath.Join(home, "JForex4"),
+		filepath.Join(home, "Applications", "JForex4"),
+		filepath.Join(home, ".jforex4"),
+	}
+	for _, p := range candidates {
+		if info, err := os.Stat(p); err == nil && info.IsDir() {
+			strategies := filepath.Join(p, "Strategies")
+			if _, err := os.Stat(strategies); err == nil {
+				return p
+			}
+		}
+	}
+	return ""
 }

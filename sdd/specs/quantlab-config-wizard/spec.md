@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Bubbletea TUI wizard for collecting and validating QuantLab configuration. Invoked by `quantlab configure` or as part of `quantlab install` first-run. Refer to `openspec/specs/quantlab-installer/spec.md` for the full installer context.
+Bubbletea TUI wizard for collecting and validating QuantLab configuration. Invoked by `quantlab configure` or as part of `quantlab install` first-run. Refer to `sdd/specs/quantlab-installer/spec.md` for the full installer context.
 
 ## Requirements
 

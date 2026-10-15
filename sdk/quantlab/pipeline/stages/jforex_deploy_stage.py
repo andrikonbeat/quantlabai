@@ -9,10 +9,14 @@ state into the pipeline.
 
 from __future__ import annotations
 
+import logging
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from quantlab.pipeline.base import PipelineContext, Stage
+
+logger = logging.getLogger(__name__)
 
 
 class JForexDeployStage(Stage):
@@ -55,12 +59,25 @@ class JForexDeployStage(Stage):
 
         pairs = self._resolve_pairs(compiled)
         results: dict[str, Any] = {}
+        kb_entries = []
         for sid, jfx_path in pairs:
             try:
                 bridge.deploy(Path(jfx_path))
                 results[sid] = {"status": "OK"}
             except Exception as exc:
+                error_info = {
+                    "strategy_id": sid,
+                    "jfx_path": str(jfx_path),
+                    "error": str(exc),
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "type": "deployment_failure",
+                }
                 results[sid] = {"status": "FAILED", "errors": [str(exc)]}
+                kb_entries.append(error_info)
+
+        # Write failures to Knowledge Lake
+        if kb_entries:
+            await self._write_to_kb(kb_entries, "deployment_failures")
 
         ctx.artifacts["deployment_result"] = results
         return {"deployment_result": results}
@@ -84,3 +101,16 @@ class JForexDeployStage(Stage):
             (str(idx), item.path if hasattr(item, "path") else item)
             for idx, item in enumerate(items)
         ]
+
+    async def _write_to_kb(self, entries: list[dict], category: str) -> None:
+        """Write entries to Knowledge Lake."""
+        try:
+            from quantlab.knowledge.store import KnowledgeStore
+            store = KnowledgeStore()
+            for entry in entries:
+                import json
+                content = json.dumps(entry, default=str)
+                path = f"{category}/{datetime.now(UTC).isoformat().replace(':', '-')}.json"
+                await store.write(path, content)
+        except Exception as exc:
+            logger.warning("Failed to write to Knowledge Lake: %s", exc)

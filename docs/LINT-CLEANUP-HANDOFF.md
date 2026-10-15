@@ -1,5 +1,11 @@
 # Handoff — Lint & Type-Cleanup Campaign
 
+> **Frozen campaign log.** The four blocking product decisions now live in
+> [`sdd/PROJECT_STATE.md`](../sdd/PROJECT_STATE.md) §8 (Known debt and blocked
+> decisions). Do not extend this doc — record new lint/type state in
+> `sdd/PROJECT_STATE.md`. What follows is the frozen 2026-10-06 campaign
+> record, kept for its verification discipline and gotchas.
+
 Status document for the `--strict` mypy + Ruff cleanup on `main`.
 Written at commit `5b1e4e6` (verify with `git log --oneline -1`; the
 campaign is committed in slices, so the exact hash moves).

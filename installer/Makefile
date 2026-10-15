@@ -7,14 +7,14 @@
 #   clean     — Remove build artifacts
 #   tidy      — Tidy go modules
 
-VERSION ?= dev
+VERSION ?= 0.1.0
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "unknown")
 
 LDFLAGS := -ldflags="\
-	-X github.com/ogzuz/quantlab/internal/app.version=$(VERSION) \
-	-X github.com/ogzuz/quantlab/internal/app.commit=$(COMMIT) \
-	-X github.com/ogzuz/quantlab/internal/app.date=$(DATE)"
+	-X github.com/andrikonbeat/quantlabai/internal/app.version=$(VERSION) \
+	-X github.com/andrikonbeat/quantlabai/internal/app.commit=$(COMMIT) \
+	-X github.com/andrikonbeat/quantlabai/internal/app.date=$(DATE)"
 
 OUTPUT_DIR := build
 BINARY     := quantlab

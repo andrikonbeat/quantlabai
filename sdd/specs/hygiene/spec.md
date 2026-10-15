@@ -35,7 +35,7 @@ The SQX zip (`assets/SQX_144_2953_linux_20260601.zip`, 1224.5M) MUST be removed 
 
 ### Requirement: HGN-03 Untracked triage committed
 
-Untracked specs (`sdd/`, `openspec/`) and refutation work MUST be committed in their own commits; deletions in their own commits.
+Untracked specs (`sdd/`, `sdd/`) and refutation work MUST be committed in their own commits; deletions in their own commits.
 
 #### Scenario: Triage commits land cleanly
 - GIVEN the triage

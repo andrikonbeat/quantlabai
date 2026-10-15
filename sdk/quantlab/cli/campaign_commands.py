@@ -289,16 +289,26 @@ async def cmd_campaign_run_flow(args: argparse.Namespace) -> int:
     gate_timeout = getattr(args, "gate_timeout", None)
     decisions_file = getattr(args, "gate_decisions_file", None)
 
-    ctx = PipelineContext(
-        config={
-            "campaign_id": campaign_id,
-            # The archive stage (WU-4) wires its internal HUMAN_APPROVE_ARCHIVE
-            # gate_fn from these keys — same channel as the pipeline gates.
-            "gate_event_dir": gate_event_dir,
-            "gate_decisions_file": decisions_file,
-            "gate_timeout": gate_timeout,
-        }
-    )
+    # Gap 8 (LLM generation monitor): seed the dispatch hook channel with the
+    # campaign's own LLM config. DispatchStage reads ``llm_config`` from
+    # ``ctx.config`` and forwards it to the builder's dispatch boundary
+    # (``builder._dispatch_single`` → ``cli_wrapper.dispatch_campaign``), which
+    # only spawns the LLM generation monitor when it is present — without it
+    # ``_spawn_llm_monitor`` returns ``None`` and the monitor never runs.
+    # ``ResearchConfig.llm_config`` stays the single source of truth; absent, no
+    # hook key is forwarded, so the orchestrated default stays byte-identical.
+    ctx_config: dict[str, Any] = {
+        "campaign_id": campaign_id,
+        # The archive stage (WU-4) wires its internal HUMAN_APPROVE_ARCHIVE
+        # gate_fn from these keys — same channel as the pipeline gates.
+        "gate_event_dir": gate_event_dir,
+        "gate_decisions_file": decisions_file,
+        "gate_timeout": gate_timeout,
+    }
+    if config.llm_config is not None:
+        ctx_config["llm_config"] = config.llm_config
+
+    ctx = PipelineContext(config=ctx_config)
 
     # Run-Flow Gate Execution (REQ) + Headless Gate Decisions (REQ): register
     # a callback per HUMAN_* gate — the interactive decision-file channel

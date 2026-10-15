@@ -1,126 +1,97 @@
+// Package tools provides tool detection and installation for the QuantLab
+// onboarding flow.
 package tools
 
 import (
-	"archive/tar"
-	"compress/gzip"
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
-
-	"github.com/andrikonbeat/quantlabai/internal/update"
 )
 
-// InstallGentleAI installs gentle-ai from the latest GitHub release. If the
-// install is not writable or the platform has no release, it returns a
-// display-only fallback message.
+// InstallGentleAI installs gentle-ai using the official install script.
+// Falls back to go install if Go is available.
 func InstallGentleAI(home string) (string, error) {
-	if !DetectNpmWritable() {
-		return displayFallback("gentle-ai", "visit https://github.com/Gentleman-Programming/gentle-ai"), nil
-	}
-
-	release, err := update.LatestGitHubRelease("gentleman-programming", "gentle-ai")
-	if err != nil {
-		return displayFallback("gentle-ai", "visit https://github.com/Gentleman-Programming/gentle-ai"), nil
-	}
-
-	assetName, assetURL, _, ok := release.FindAssetForPlatform()
-	if !ok {
-		return displayFallback("gentle-ai", fmt.Sprintf("no release asset for %s/%s", runtime.GOOS, runtime.GOARCH)), nil
-	}
-
-	data, err := downloadBytes(assetURL)
-	if err != nil {
-		return displayFallback("gentle-ai", "visit https://github.com/Gentleman-Programming/gentle-ai"), nil
-	}
-
-	expected := ""
-	if checksumURL, checksumContent, ok := release.FindChecksumAsset(assetName); ok {
-		if checksumContent != "" {
-			expected, err = update.ParseChecksum(checksumContent, assetName)
-			if err != nil {
-				return displayFallback("gentle-ai", "checksum parse failed"), nil
-			}
-		} else {
-			checksumBytes, err := downloadBytes(checksumURL)
-			if err != nil {
-				return displayFallback("gentle-ai", "visit https://github.com/Gentleman-Programming/gentle-ai"), nil
-			}
-			expected, err = update.ParseChecksum(string(checksumBytes), assetName)
-			if err != nil {
-				return displayFallback("gentle-ai", "checksum parse failed"), nil
-			}
+	// Try official install script first (Unix-like systems)
+	if runtime.GOOS != "windows" {
+		if err := runOfficialGentleAIInstall(); err == nil {
+			return "", nil
 		}
 	}
 
-	binaryData, err := extractBinaryFromTarGz(data, assetName)
-	if err != nil {
-		return displayFallback("gentle-ai", fmt.Sprintf("extract failed: %v", err)), nil
-	}
-
-	binDir := filepath.Join(home, ".local", "bin")
-	if err := os.MkdirAll(binDir, 0o755); err != nil {
-		return displayFallback("gentle-ai", fmt.Sprintf("mkdir bin dir: %v", err)), nil
-	}
-	binPath := filepath.Join(binDir, "gentle-ai")
-
-	if expected != "" {
-		if err := update.ApplyUpdate(binaryData, binPath, expected); err != nil {
-			return displayFallback("gentle-ai", fmt.Sprintf("atomic swap failed: %v", err)), nil
-		}
-	} else {
-		// No checksum available; write directly (degraded, but not blocked)
-		if err := os.WriteFile(binPath, binaryData, 0o755); err != nil {
-			return displayFallback("gentle-ai", fmt.Sprintf("write binary: %v", err)), nil
+	// Fallback: go install if Go is available
+	if DetectCommand("go") {
+		if err := runGoInstall(); err == nil {
+			return "", nil
 		}
 	}
 
-	return "", nil
+	// All automated methods failed; return manual instructions
+	return manualGentleAIInstructions(), nil
 }
 
-func downloadBytes(url string) ([]byte, error) {
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("download %s: %w", url, err)
+func runOfficialGentleAIInstall() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "sh", "-c", "curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("official gentle-ai install script: %w: %s", err, string(out))
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download %s: HTTP %d", url, resp.StatusCode)
-	}
-	return io.ReadAll(resp.Body)
+	return nil
 }
 
-func extractBinaryFromTarGz(data []byte, assetName string) ([]byte, error) {
-	gr, err := gzip.NewReader(strings.NewReader(string(data)))
-	if err != nil {
-		return nil, fmt.Errorf("gzip reader: %w", err)
+func runGoInstall() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "go", "install", "github.com/gentleman-programming/gentle-ai/v4/cmd/gentle-ai@latest")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("go install gentle-ai: %w: %s", err, string(out))
 	}
-	defer gr.Close()
-
-	tr := tar.NewReader(gr)
-	for {
-		header, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, fmt.Errorf("tar read: %w", err)
-		}
-		if header.Typeflag == tar.TypeReg {
-			name := header.Name
-			if strings.Contains(name, "gentle-ai") || strings.Contains(name, "gentle_ai") {
-				return io.ReadAll(tr)
-			}
-		}
-	}
-	return nil, fmt.Errorf("no binary found in tar.gz")
+	return nil
 }
 
-func displayFallback(name, cmd string) string {
-	return fmt.Sprintf("%s no se instaló automáticamente. Ejecutá manualmente: %s", name, cmd)
+func manualGentleAIInstructions() string {
+	var b strings.Builder
+	b.WriteString("gentle-ai no se instaló automáticamente.\n\n")
+	b.WriteString("Métodos oficiales:\n")
+	b.WriteString("  1) curl -fsSL https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/scripts/install.sh | bash  (Linux/macOS/WSL)\n")
+	b.WriteString("  2) go install github.com/gentleman-programming/gentle-ai/v4/cmd/gentle-ai@latest  (requiere Go 1.25+)\n")
+	b.WriteString("  3) brew install gentleman-programming/tap/gentle-ai  (macOS/Linux con Homebrew)\n")
+	b.WriteString("  4) Descargá el binario desde https://github.com/Gentleman-Programming/gentle-ai/releases\n\n")
+	b.WriteString("Documentación: https://github.com/Gentleman-Programming/gentle-ai")
+	return b.String()
+}
+
+// DetectEngram checks whether the Engram memory system is available.
+// Engram is installed by gentle-ai and provides persistent memory for agents.
+func DetectEngram() bool {
+	// Check for engram binary in PATH
+	if DetectCommand("engram") {
+		return true
+	}
+	// Check for engram config/data in common locations
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	commonPaths := []string{
+		filepath.Join(home, ".config", "engram"),
+		filepath.Join(home, ".local", "share", "engram"),
+		filepath.Join(home, ".engram"),
+	}
+	for _, p := range commonPaths {
+		if info, err := os.Stat(p); err == nil && info.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+// DetectGentleAIWithEngram checks both gentle-ai and engram presence.
+func DetectGentleAIWithEngram() (gentleAI, engram bool) {
+	return DetectGentleAI(), DetectEngram()
 }

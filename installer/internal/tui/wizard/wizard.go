@@ -1,9 +1,13 @@
+// Package wizard provides a Bubbletea TUI for collecting QuantLab SDK
+// configuration (API key, model, SDK path) during first-run setup.
 package wizard
 
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -30,11 +34,13 @@ func ValidOpenCodeAPIKey(key string) error {
 type Step int
 
 const (
-	StepWelcome Step = iota
+	StepIntroduction Step = iota
+	StepOpenCode
+	StepGentleAI
+	StepJForex
 	StepAPIKey
 	StepModel
 	StepSDKPath
-	StepGentleAI
 	StepSQX
 	StepVerify
 	StepSummary
@@ -44,15 +50,17 @@ const (
 
 // stepTitles maps each step to its display title.
 var stepTitles = map[Step]string{
-	StepWelcome:  "Welcome",
-	StepAPIKey:   "API Key",
-	StepModel:    "Model Selection",
-	StepSDKPath:  "SDK Path",
-	StepGentleAI: "Gentle AI",
-	StepSQX:      "StrategyQuant X",
-	StepVerify:   "Verification",
-	StepSummary:  "Summary",
-	StepConfirm:  "Ready",
+	StepIntroduction: "Introduction",
+	StepOpenCode:     "OpenCode",
+	StepGentleAI:     "Gentle AI",
+	StepJForex:       "JForex 4",
+	StepAPIKey:       "API Key",
+	StepModel:        "Model Selection",
+	StepSDKPath:      "SDK Path",
+	StepSQX:          "StrategyQuant X",
+	StepVerify:       "Verification",
+	StepSummary:      "Summary",
+	StepConfirm:      "Ready",
 }
 
 // modelItem is a list.Item for the model selection step.
@@ -64,27 +72,65 @@ func (i modelItem) Title() string       { return i.title }
 func (i modelItem) Description() string { return i.desc }
 func (i modelItem) FilterValue() string { return i.title }
 
-// Model is the Bubbletea model for the configuration wizard.
-type Model struct {
-	step          Step
-	apiKeyInput   textinput.Model
-	modelList     list.Model
-	sdkPathInput  textinput.Model
-	sqxPathInput  textinput.Model
-	apiKey        string
-	selectedModel string
-	sdkPath       string
-	sqxPath       string
-	gentleAIPresent bool
-	depsVerified  bool
-	verifyItems   []verifyItem
-	err           error
-	width         int
-	height        int
+// openCodeItem represents an OpenCode installation option.
+type openCodeItem struct {
+	id, title, desc string
 }
 
-// NewModel creates a wizard model with default values and auto-detected SDK
-// path.
+func (i openCodeItem) Title() string       { return i.title }
+func (i openCodeItem) Description() string { return i.desc }
+func (i openCodeItem) FilterValue() string { return i.title }
+
+// gentleAIItem represents a Gentle AI installation option.
+type gentleAIItem struct {
+	id, title, desc string
+}
+
+func (i gentleAIItem) Title() string       { return i.title }
+func (i gentleAIItem) Description() string { return i.desc }
+func (i gentleAIItem) FilterValue() string { return i.title }
+
+// jforexItem represents a JForex installation option.
+type jforexItem struct {
+	id, title, desc string
+}
+
+func (i jforexItem) Title() string       { return i.title }
+func (i jforexItem) Description() string { return i.desc }
+func (i jforexItem) FilterValue() string { return i.title }
+
+// Model is the Bubbletea model for the configuration wizard.
+type Model struct {
+	step           Step
+	apiKeyInput    textinput.Model
+	modelList      list.Model
+	sdkPathInput   textinput.Model
+	sqxPathInput   textinput.Model
+	jforexPathInput textinput.Model
+	openCodeList   list.Model
+	gentleAIList   list.Model
+	jforexList     list.Model
+	apiKey         string
+	selectedModel  string
+	sdkPath        string
+	sqxPath        string
+	jforexPath     string
+	opencodeChoice string
+	gentleAIChoice string
+	jforexChoice   string
+	gentleAIPresent bool
+	depsVerified   bool
+	verifyItems    []verifyItem
+	err            error
+	width          int
+	height         int
+	opencodeInstalled bool
+	gentleAIInstalled bool
+	jforexDetected    bool
+	sqxDetected       bool
+}
+
+// NewModel creates a wizard model with default values and auto-detected paths.
 func NewModel() Model {
 	// API Key input (masked)
 	apiInput := textinput.New()
@@ -97,7 +143,7 @@ func NewModel() Model {
 	apiInput.CharLimit = 128
 
 	// Model selection list
-	items := []list.Item{
+	modelItems := []list.Item{
 		modelItem{title: "deepseek-v4-flash-free", desc: "DeepSeek V4 Flash (free tier)"},
 		modelItem{title: "gpt-4o", desc: "OpenAI GPT-4o"},
 		modelItem{title: "claude-4-sonnet", desc: "Anthropic Claude 4 Sonnet"},
@@ -106,7 +152,7 @@ func NewModel() Model {
 		modelItem{title: "gpt-4.1", desc: "OpenAI GPT-4.1"},
 	}
 
-	l := list.New(items, list.NewDefaultDelegate(), 0, 0)
+	l := list.New(modelItems, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Select Default Model"
 	l.SetShowStatusBar(false)
 	l.SetFilteringEnabled(false)
@@ -129,24 +175,83 @@ func NewModel() Model {
 	sqxInput.TextStyle = FocusStyle
 	sqxInput.CharLimit = 256
 
-	// Try to auto-detect the SDK path
+	// JForex Path input
+	jfxInput := textinput.New()
+	jfxInput.Placeholder = "Auto-detect (e.g. /opt/JForex4)"
+	jfxInput.Width = 60
+	jfxInput.PromptStyle = FocusStyle
+	jfxInput.TextStyle = FocusStyle
+	jfxInput.CharLimit = 256
+
+	// OpenCode installation options
+	opencodeItems := []list.Item{
+		openCodeItem{id: "auto", title: "Install OpenCode automatically", desc: "Run official installer (curl -fsSL https://opencode.dev/install.sh | sh)"},
+		openCodeItem{id: "manual", title: "Install OpenCode manually", desc: "I'll install it myself from https://opencode.dev"},
+		openCodeItem{id: "skip", title: "Skip OpenCode", desc: "Continue without OpenCode (limited functionality)"},
+	}
+	ocList := list.New(opencodeItems, list.NewDefaultDelegate(), 0, 0)
+	ocList.Title = "OpenCode Installation"
+	ocList.SetShowStatusBar(false)
+	ocList.SetFilteringEnabled(false)
+	ocList.Styles.Title = TitleStyle
+	ocList.DisableQuitKeybindings()
+
+	// Gentle AI installation options
+	gentleItems := []list.Item{
+		gentleAIItem{id: "auto", title: "Install Gentle AI automatically", desc: "Run installer (same method as OpenCode)"},
+		gentleAIItem{id: "manual", title: "Install Gentle AI manually", desc: "Follow manual steps from gentle-ai docs"},
+		gentleAIItem{id: "skip", title: "Skip Gentle AI", desc: "Continue without Gentle AI (compatibility layer only)"},
+	}
+	gaList := list.New(gentleItems, list.NewDefaultDelegate(), 0, 0)
+	gaList.Title = "Gentle AI Installation"
+	gaList.SetShowStatusBar(false)
+	gaList.SetFilteringEnabled(false)
+	gaList.Styles.Title = TitleStyle
+	gaList.DisableQuitKeybindings()
+
+	// JForex installation options
+	jfxItems := []list.Item{
+		jforexItem{id: "auto", title: "Auto-detect JForex 4 installation", desc: "Search common paths (/opt/JForex4, ~/JForex4, etc.)"},
+		jforexItem{id: "manual", title: "Enter JForex 4 path manually", desc: "Specify the JForex 4 desktop platform installation directory"},
+		jforexItem{id: "skip", title: "Skip JForex 4 for now", desc: "Configure later (needed for demo/live deployment)"},
+	}
+	jfxList := list.New(jfxItems, list.NewDefaultDelegate(), 0, 0)
+	jfxList.Title = "JForex 4 Deployment Layer"
+	jfxList.SetShowStatusBar(false)
+	jfxList.SetFilteringEnabled(false)
+	jfxList.Styles.Title = TitleStyle
+	jfxList.DisableQuitKeybindings()
+
+	// Try to auto-detect paths
 	sdkPath := autoDetectSDK()
 	sqxPath := autoDetectSQX()
+	jforexPath := autoDetectJForex()
+	opencodeInstalled := detectOpenCode()
 	gentlePresent := detectGentleAI()
+	jforexDetected := jforexPath != "" && jforexPath != "auto"
 
-	vitems := buildVerifyItems(sdkPath, sqxPath, gentlePresent)
+	vitems := buildVerifyItems(sdkPath, sqxPath, jforexPath, gentlePresent, opencodeInstalled)
 
 	return Model{
-		step:            StepWelcome,
-		apiKeyInput:     apiInput,
-		sdkPathInput:    sdkInput,
-		sqxPathInput:    sqxInput,
-		sdkPath:         sdkPath,
-		sqxPath:         sqxPath,
-		gentleAIPresent: gentlePresent,
-		verifyItems:     vitems,
-		selectedModel:   "deepseek-v4-flash-free",
-		modelList:       l,
+		step:              StepIntroduction,
+		apiKeyInput:       apiInput,
+		sdkPathInput:      sdkInput,
+		sqxPathInput:      sqxInput,
+		jforexPathInput:   jfxInput,
+		modelList:         l,
+		openCodeList:      ocList,
+		gentleAIList:      gaList,
+		jforexList:        jfxList,
+		sdkPath:           sdkPath,
+		sqxPath:           sqxPath,
+		jforexPath:        jforexPath,
+		gentleAIPresent:   gentlePresent,
+		opencodeInstalled: opencodeInstalled,
+		gentleAIInstalled: gentlePresent,
+		jforexDetected:    jforexDetected,
+		sqxDetected:       sqxPath != "" && sqxPath != "auto",
+		verifyItems:       vitems,
+		selectedModel:     "deepseek-v4-flash-free",
 	}
 }
 
@@ -157,7 +262,6 @@ func autoDetectSDK() string {
 		return "auto"
 	}
 
-	// Common locations relative to the project
 	candidates := []string{
 		filepath.Join(home, "Proyectos", "QuantLab AI", "sdk"),
 		filepath.Join(home, "quantlab", "sdk"),
@@ -166,7 +270,6 @@ func autoDetectSDK() string {
 
 	for _, p := range candidates {
 		if info, err := os.Stat(p); err == nil && info.IsDir() {
-			// Check if it looks like a Python package
 			setupPy := filepath.Join(p, "pyproject.toml")
 			if _, err := os.Stat(setupPy); err == nil {
 				return p
@@ -195,6 +298,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			listHeight = 10
 		}
 		m.modelList.SetSize(listWidth, listHeight)
+		m.openCodeList.SetSize(listWidth, listHeight)
+		m.gentleAIList.SetSize(listWidth, listHeight)
+		m.jforexList.SetSize(listWidth, listHeight)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -206,7 +312,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleEnter()
 
 		case "shift+tab":
-			if m.step == StepWelcome || m.step == StepSummary || m.step == StepConfirm {
+			if m.step == StepIntroduction || m.step == StepSummary || m.step == StepConfirm {
 				return m, nil
 			}
 			return m, nil
@@ -224,7 +330,63 @@ type errMsg struct{ error }
 
 func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 	switch m.step {
-	case StepWelcome:
+	case StepIntroduction:
+		m.step = StepOpenCode
+		if !m.opencodeInstalled {
+			// Focus on the list for selection
+		}
+		m.err = nil
+		return m, nil
+
+	case StepOpenCode:
+		if selected, ok := m.openCodeList.SelectedItem().(openCodeItem); ok {
+			m.opencodeChoice = selected.id
+			if m.opencodeChoice == "auto" {
+				// TODO: Execute auto-install
+				// For now, mark as done and continue
+				m.opencodeInstalled = true
+			}
+		}
+		if m.opencodeChoice == "" && m.openCodeList.SelectedItem() != nil {
+			if selected, ok := m.openCodeList.SelectedItem().(openCodeItem); ok {
+				m.opencodeChoice = selected.id
+			}
+		}
+		m.step = StepGentleAI
+		m.err = nil
+		return m, nil
+
+	case StepGentleAI:
+		if selected, ok := m.gentleAIList.SelectedItem().(gentleAIItem); ok {
+			m.gentleAIChoice = selected.id
+			if m.gentleAIChoice == "auto" {
+				m.gentleAIInstalled = true
+			}
+		}
+		if m.gentleAIChoice == "" && m.gentleAIList.SelectedItem() != nil {
+			if selected, ok := m.gentleAIList.SelectedItem().(gentleAIItem); ok {
+				m.gentleAIChoice = selected.id
+			}
+		}
+		m.step = StepJForex
+		m.err = nil
+		return m, nil
+
+	case StepJForex:
+		if selected, ok := m.jforexList.SelectedItem().(jforexItem); ok {
+			m.jforexChoice = selected.id
+			if m.jforexChoice == "auto" && m.jforexDetected {
+				// Already detected
+			} else if m.jforexChoice == "manual" {
+				m.jforexPathInput.Focus()
+				return m, textinput.Blink
+			}
+		}
+		if m.jforexChoice == "" && m.jforexList.SelectedItem() != nil {
+			if selected, ok := m.jforexList.SelectedItem().(jforexItem); ok {
+				m.jforexChoice = selected.id
+			}
+		}
 		m.step = StepAPIKey
 		m.apiKeyInput.Focus()
 		m.err = nil
@@ -238,7 +400,6 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		}
 		m.err = nil
 		m.step = StepModel
-		// Select first item if nothing selected
 		if m.modelList.SelectedItem() == nil {
 			m.modelList.Select(0)
 		}
@@ -264,11 +425,6 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 		} else {
 			m.sdkPath = val
 		}
-		m.step = StepGentleAI
-		return m, nil
-
-	case StepGentleAI:
-		m.gentleAIPresent = detectGentleAI()
 		m.step = StepSQX
 		if m.sqxPath != "" && m.sqxPath != "auto" {
 			m.sqxPathInput.SetValue(m.sqxPath)
@@ -299,7 +455,7 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.err = nil
-		m.verifyItems = buildVerifyItems(m.sdkPath, m.sqxPath, m.gentleAIPresent)
+		m.verifyItems = buildVerifyItems(m.sdkPath, m.sqxPath, m.jforexPath, m.gentleAIPresent, m.opencodeInstalled)
 		m.depsVerified = verifyAllOK(m.verifyItems)
 		m.step = StepVerify
 		return m, nil
@@ -326,6 +482,18 @@ func (m Model) handleEnter() (tea.Model, tea.Cmd) {
 
 func (m Model) handleUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.step {
+	case StepOpenCode:
+		var cmd tea.Cmd
+		m.openCodeList, cmd = m.openCodeList.Update(msg)
+		return m, cmd
+	case StepGentleAI:
+		var cmd tea.Cmd
+		m.gentleAIList, cmd = m.gentleAIList.Update(msg)
+		return m, cmd
+	case StepJForex:
+		var cmd tea.Cmd
+		m.jforexList, cmd = m.jforexList.Update(msg)
+		return m, cmd
 	case StepAPIKey:
 		var cmd tea.Cmd
 		m.apiKeyInput, cmd = m.apiKeyInput.Update(msg)
@@ -348,34 +516,37 @@ func (m Model) handleUpdate(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-
 func (m Model) View() string {
 	progress := m.progressBar()
 
 	switch m.step {
-	case StepWelcome:
-		return progress + "\n" + m.welcomeView()
+	case StepIntroduction:
+		return progress + "\n" + m.introductionView()
+	case StepOpenCode:
+		return progress + "\n" + m.openCodeView()
+	case StepGentleAI:
+		return progress + "\n" + m.gentleAIView()
+	case StepJForex:
+		return progress + "\n" + m.jforexView()
 	case StepAPIKey:
 		return progress + "\n" + m.apiKeyView()
 	case StepModel:
 		return progress + "\n" + m.modelView()
 	case StepSDKPath:
 		return progress + "\n" + m.sdkPathView()
-	case StepSummary:
-		return progress + "\n" + m.summaryView()
-	case StepGentleAI:
-		return progress + "\n" + m.gentleAIView()
 	case StepSQX:
 		return progress + "\n" + m.sqxView()
 	case StepVerify:
 		return progress + "\n" + m.verifyView()
+	case StepSummary:
+		return progress + "\n" + m.summaryView()
 	case StepConfirm:
 		return progress + "\n" + m.confirmView()
 	}
 	return ""
 }
 
-// progressBar renders a simple step indicator (● Step 2/5 ○○○○).
+// progressBar renders a simple step indicator.
 func (m Model) progressBar() string {
 	total := int(stepCount)
 	current := int(m.step)
@@ -403,24 +574,105 @@ func (m Model) progressBar() string {
 	return lipgloss.NewStyle().Padding(0, 1).Render(strings.Join(dots, " "))
 }
 
-func (m Model) welcomeView() string {
+func (m Model) introductionView() string {
 	var b strings.Builder
 	b.WriteString(BoxStyle.Render(
-		TitleStyle.Render("QuantLab AI — Setup Wizard") + "\n\n" +
-			SubtitleStyle.Render("This wizard will help you configure your QuantLab AI") + "\n" +
-			SubtitleStyle.Render("SDK connection. You'll need:") + "\n\n" +
-			"  " + FocusStyle.Render("•") + " An OpenCode API key\n" +
-			"  " + FocusStyle.Render("•") + " A default AI model\n" +
-			"  " + FocusStyle.Render("•") + " The SDK installation path\n\n" +
+		TitleStyle.Render("QuantLab AI — Installation Wizard") + "\n\n" +
+			SubtitleStyle.Render("QuantLab AI is an AI-directed quantitative research engine.") + "\n" +
+			SubtitleStyle.Render("OpenCode acts as the research director; StrategyQuant X is the computation engine.") + "\n\n" +
+			HeaderStyle.Render("What you'll install:") + "\n" +
+			"  " + FocusStyle.Render("•") + " QuantLab SDK (Python) — core library, agents, campaigns, exploration\n" +
+			"  " + FocusStyle.Render("•") + " OpenCode — AI coding agent that runs the research campaigns\n" +
+			"  " + FocusStyle.Render("•") + " Gentle AI — environment config & compatibility layer (includes Engram memory)\n" +
+			"  " + FocusStyle.Render("•") + " StrategyQuant X — strategy generation & backtesting (external, licensed)\n" +
+			"  " + FocusStyle.Render("•") + " JForex 4 — deployment platform for demo/live trading (Dukascopy)\n\n" +
+			HeaderStyle.Render("How they work together:") + "\n" +
+			"  1. OpenCode (QuantLab-Orchestrator agent) directs the 14-phase campaign lifecycle\n" +
+			"  2. Exploration pipeline (E1–E11) produces a decision artifact\n" +
+			"  3. Configuration pipeline maps decisions → CustomProject parameters (deterministic)\n" +
+			"  4. SQX runs the CustomProject: generate → robust test → optimize → portfolio\n" +
+			"  5. Strategies compile to JForex for demo validation → live deployment\n\n" +
 			BlurStyle.Render("Press Enter to begin · Esc to cancel"),
 	))
 	return b.String() + "\n"
 }
 
+func (m Model) openCodeView() string {
+	var b strings.Builder
+	status := "✓ Detected"
+	if !m.opencodeInstalled {
+		status = "✗ Not detected"
+	}
+	b.WriteString(TitleStyle.Render("OpenCode — AI Coding Agent") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("QuantLab uses OpenCode as the research director. It runs the campaign agents.") + "\n\n")
+	b.WriteString(BoxStyle.Render(fmt.Sprintf("Status: %s\n\n", status) +
+		"If OpenCode is not installed, you can:\n" +
+		"  • Install automatically (official installer)\n" +
+		"  • Install manually from https://opencode.dev\n" +
+		"  • Skip (limited functionality — no agent orchestration)\n"))
+	if m.err != nil {
+		b.WriteString("\n" + ErrorStyle.Render("✗ "+m.err.Error()) + "\n")
+	}
+	b.WriteString("\n" + BlurStyle.Render("↑/↓ to navigate · Enter to confirm · Esc to cancel"))
+	return BoxStyle.Render(b.String()) + "\n"
+}
+
+func (m Model) gentleAIView() string {
+	var b strings.Builder
+	status := "✓ Detected"
+	if !m.gentleAIInstalled {
+		status = "✗ Not detected"
+	}
+	b.WriteString(TitleStyle.Render("Gentle AI — Environment & Compatibility Layer") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("Gentle AI provides a compatibility layer for QuantLab, installing Engram (persistent memory)") + "\n")
+	b.WriteString(SubtitleStyle.Render("and configuring the environment for agent orchestration.") + "\n\n")
+	b.WriteString(BoxStyle.Render(fmt.Sprintf("Status: %s\n\n", status) +
+		"If Gentle AI is not detected, you can:\n" +
+		"  • Install automatically (same method as OpenCode)\n" +
+		"  • Install manually from Gentle AI documentation\n" +
+		"  • Skip (QuantLab will work but without persistent memory & review integration)\n"))
+	if m.err != nil {
+		b.WriteString("\n" + ErrorStyle.Render("✗ "+m.err.Error()) + "\n")
+	}
+	b.WriteString("\n" + BlurStyle.Render("↑/↓ to navigate · Enter to confirm · Esc to cancel"))
+	return BoxStyle.Render(b.String()) + "\n"
+}
+
+func (m Model) jforexView() string {
+	var b strings.Builder
+	status := "✓ Detected"
+	if !m.jforexDetected {
+		status = "✗ Not detected"
+	}
+	b.WriteString(TitleStyle.Render("JForex 4 — Deployment Platform (Dukascopy)") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("JForex 4 is the desktop trading platform from Dukascopy Bank.") + "\n")
+	b.WriteString(SubtitleStyle.Render("QuantLab compiles strategies to JForex for demo validation and live deployment.") + "\n\n")
+	b.WriteString(BoxStyle.Render(fmt.Sprintf("Status: %s\n\n", status) +
+		"What gets installed:\n" +
+		"  • JForex 4 Desktop Platform (graphical UI)\n" +
+		"  • Free 14-day demo account (Dukascopy)\n" +
+		"  • Strategy deployment via .jfx files\n\n" +
+		"How QuantLab uses it:\n" +
+		"  1. Strategies compiled from SQX → .jfx files\n" +
+		"  2. Copied to JForex strategies folder\n" +
+		"  3. Backtested in JForex to verify parity with SQX results\n" +
+		"  4. Deployed to demo account for forward testing\n" +
+		"  5. Promoted to live via JCloud\n\n" +
+		"Options:\n" +
+		"  • Auto-detect: searches /opt/JForex4, ~/JForex4, Applications, Program Files\n" +
+		"  • Manual: enter the JForex 4 installation directory\n" +
+		"  • Skip: configure later (required for demo/live phases)\n"))
+	if m.err != nil {
+		b.WriteString("\n" + ErrorStyle.Render("✗ "+m.err.Error()) + "\n")
+	}
+	b.WriteString("\n" + BlurStyle.Render("↑/↓ to navigate · Enter to confirm · Esc to cancel"))
+	return BoxStyle.Render(b.String()) + "\n"
+}
+
 func (m Model) apiKeyView() string {
 	var b strings.Builder
-	b.WriteString(TitleStyle.Render("API Key") + "\n\n")
-	b.WriteString(SubtitleStyle.Render("Enter your OpenCode API key:") + "\n\n")
+	b.WriteString(TitleStyle.Render("OpenCode API Key") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("Enter your OpenCode API key (starts with sk-):") + "\n\n")
 	b.WriteString(m.apiKeyInput.View() + "\n")
 	if m.err != nil {
 		b.WriteString("\n" + ErrorStyle.Render("✗ "+m.err.Error()) + "\n")
@@ -432,7 +684,7 @@ func (m Model) apiKeyView() string {
 func (m Model) modelView() string {
 	var b strings.Builder
 	b.WriteString(TitleStyle.Render("Model Selection") + "\n\n")
-	b.WriteString(SubtitleStyle.Render("Choose the default AI model:") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("Choose the default AI model for research:") + "\n\n")
 	b.WriteString(m.modelList.View())
 	b.WriteString("\n" + BlurStyle.Render("↑/↓ to navigate · Enter to confirm · Esc to cancel"))
 	return BoxStyle.Render(b.String()) + "\n"
@@ -440,9 +692,33 @@ func (m Model) modelView() string {
 
 func (m Model) sdkPathView() string {
 	var b strings.Builder
-	b.WriteString(TitleStyle.Render("SDK Path") + "\n\n")
+	b.WriteString(TitleStyle.Render("QuantLab SDK Path") + "\n\n")
 	b.WriteString(SubtitleStyle.Render("Path to the QuantLab SDK source (or 'auto' to detect):") + "\n\n")
 	b.WriteString(m.sdkPathInput.View() + "\n")
+	b.WriteString("\n" + BlurStyle.Render("Enter to confirm · Esc to cancel"))
+	return BoxStyle.Render(b.String()) + "\n"
+}
+
+func (m Model) sqxView() string {
+	var b strings.Builder
+	b.WriteString(TitleStyle.Render("StrategyQuant X (SQX)") + "\n\n")
+	b.WriteString(SubtitleStyle.Render("SQX is the strategy generation & backtesting engine (external dependency).") + "\n\n")
+	b.WriteString(BoxStyle.Render(
+		"License options:\n" +
+			"  • Paid license (full features)\n" +
+			"  • Free 30-day trial (from StrategyQuant website)\n\n" +
+			"Installation:\n" +
+			"  1. Download from https://strategyquant.com\n" +
+			"  2. Install to default location (/opt/StrategyQuantX on Linux)\n" +
+			"  3. Activate license\n\n" +
+			"QuantLab needs the SQX installation directory to:\n" +
+			"  • Launch CustomProjects via sqcli\n" +
+			"  • Read/generate .cfx configuration files\n" +
+			"  • Access databanks and historical data\n"))
+	b.WriteString(m.sqxPathInput.View() + "\n")
+	if m.err != nil {
+		b.WriteString("\n" + ErrorStyle.Render("✗ "+m.err.Error()) + "\n")
+	}
 	b.WriteString("\n" + BlurStyle.Render("Enter to confirm · Esc to cancel"))
 	return BoxStyle.Render(b.String()) + "\n"
 }
@@ -451,12 +727,15 @@ func (m Model) summaryView() string {
 	var b strings.Builder
 	b.WriteString(TitleStyle.Render("Configuration Summary") + "\n\n")
 	b.WriteString(BoxStyle.Render(
-		LabelStyle.Render("API Key:      ") + ValueStyle.Render(maskKey(m.apiKey)) + "\n"+
-			LabelStyle.Render("Model:        ") + ValueStyle.Render(m.selectedModel)+"\n"+
-			LabelStyle.Render("SDK Path:     ") + ValueStyle.Render(m.sdkPath)+"\n"+
-			LabelStyle.Render("Gentle AI:    ") + ValueStyle.Render(boolYesNo(m.gentleAIPresent))+"\n"+
-			LabelStyle.Render("SQX Path:     ") + ValueStyle.Render(m.sqxPath)+"\n"+
-			LabelStyle.Render("Deps Verified:") + ValueStyle.Render(boolYesNo(m.depsVerified))+"\n",
+		LabelStyle.Render("OpenCode:       ") + ValueStyle.Render(m.openCodeStatus()) + "\n"+
+			LabelStyle.Render("Gentle AI:      ") + ValueStyle.Render(m.gentleAIStatus()) + "\n"+
+			LabelStyle.Render("JForex 4:       ") + ValueStyle.Render(m.jforexStatus()) + "\n"+
+			LabelStyle.Render("API Key:        ") + ValueStyle.Render(maskKey(m.apiKey)) + "\n"+
+			LabelStyle.Render("Model:          ") + ValueStyle.Render(m.selectedModel)+"\n"+
+			LabelStyle.Render("SDK Path:       ") + ValueStyle.Render(m.sdkPath)+"\n"+
+			LabelStyle.Render("SQX Path:       ") + ValueStyle.Render(m.sqxPath)+"\n"+
+			LabelStyle.Render("JForex Path:    ") + ValueStyle.Render(m.jforexPath)+"\n"+
+			LabelStyle.Render("Deps Verified:  ") + ValueStyle.Render(boolYesNo(m.depsVerified))+"\n",
 	))
 	b.WriteString("\n" + FocusStyle.Render("Press Enter to continue") + "\n")
 	b.WriteString(BlurStyle.Render("Esc to cancel"))
@@ -469,17 +748,72 @@ func (m Model) confirmView() string {
 		TitleStyle.Render("Ready to Apply") + "\n\n"+
 			SubtitleStyle.Render("The installer will now:")+"\n"+
 			"  "+FocusStyle.Render("•")+" Install the QuantLab SDK\n"+
-			"  "+FocusStyle.Render("•")+" Configure OpenCode agents\n"+
-			"  "+FocusStyle.Render("•")+" Install skills and prompts\n\n"+
-			SubtitleStyle.Render("Ready to open OpenCode → select agent: ")+FocusStyle.Render("quantlab-orchestrator")+"\n\n"+
+			"  "+FocusStyle.Render("•")+" Configure OpenCode agents (quantlab-orchestrator, quantlab-phase-*, etc.)\n"+
+			"  "+FocusStyle.Render("•")+" Install skills and prompts\n"+
+			"  "+FocusStyle.Render("•")+" Write state.json with all configuration\n\n"+
+			SubtitleStyle.Render("After installation:")+"\n"+
+			"  1. Open OpenCode in your project: "+FocusStyle.Render("cd /path/to/project && opencode")+"\n"+
+			"  2. Select agent: "+FocusStyle.Render("quantlab-orchestrator")+"\n"+
+			"  3. Give an instruction, e.g.: "+FocusStyle.Render("\"Comienza una campaña para un portafolio de 100USD\"")+"\n\n"+
 			FocusStyle.Render("Press Enter to apply · Esc to cancel"),
 	))
 	return b.String() + "\n"
 }
 
+func (m Model) openCodeStatus() string {
+	switch m.opencodeChoice {
+	case "auto":
+		return "Auto-install"
+	case "manual":
+		return "Manual install"
+	case "skip":
+		return "Skipped"
+	default:
+		if m.opencodeInstalled {
+			return "Detected"
+		}
+		return "Not configured"
+	}
+}
+
+func (m Model) gentleAIStatus() string {
+	switch m.gentleAIChoice {
+	case "auto":
+		return "Auto-install"
+	case "manual":
+		return "Manual install"
+	case "skip":
+		return "Skipped"
+	default:
+		if m.gentleAIInstalled {
+			return "Detected"
+		}
+		return "Not configured"
+	}
+}
+
+func (m Model) jforexStatus() string {
+	switch m.jforexChoice {
+	case "auto":
+		if m.jforexDetected {
+			return "Auto-detected"
+		}
+		return "Auto-detect"
+	case "manual":
+		return "Manual path"
+	case "skip":
+		return "Skipped"
+	default:
+		if m.jforexDetected {
+			return "Detected"
+		}
+		return "Not configured"
+	}
+}
+
 // Result returns the collected configuration values after the wizard completes.
-func (m Model) Result() (apiKey, model, sdkPath, sqxPath string, gentleAIPresent, depsVerified bool) {
-	return m.apiKey, m.selectedModel, m.sdkPath, m.sqxPath, m.gentleAIPresent, m.depsVerified
+func (m Model) Result() (apiKey, model, sdkPath, sqxPath, jforexPath string, gentleAIPresent, depsVerified bool) {
+	return m.apiKey, m.selectedModel, m.sdkPath, m.sqxPath, m.jforexPath, m.gentleAIPresent, m.depsVerified
 }
 
 // maskKey shows only the first 4 and last 4 characters of a key.
@@ -504,10 +838,10 @@ type verifyItem struct {
 	note  string
 }
 
-func buildVerifyItems(sdkPath, sqxPath string, gentlePresent bool) []verifyItem {
+func buildVerifyItems(sdkPath, sqxPath, jforexPath string, gentlePresent, opencodePresent bool) []verifyItem {
 	items := []verifyItem{
 		{label: "Python 3.11+ available", ok: true, note: ""},
-		{label: "OpenCode settings accessible", ok: true, note: ""},
+		{label: "OpenCode accessible", ok: opencodePresent, note: mapBool(opencodePresent, "detected", "not detected — install or skip")},
 		{label: "Gentle AI present (compatible)", ok: gentlePresent, note: mapBool(gentlePresent, "detected", "not detected — compatibility expected but not found")},
 	}
 
@@ -518,6 +852,16 @@ func buildVerifyItems(sdkPath, sqxPath string, gentlePresent bool) []verifyItem 
 			items = append(items, verifyItem{label: "StrategyQuant X path valid", ok: false, note: err.Error()})
 		} else {
 			items = append(items, verifyItem{label: "StrategyQuant X path valid", ok: true, note: sqxPath})
+		}
+	}
+
+	if jforexPath == "" || jforexPath == "auto" {
+		items = append(items, verifyItem{label: "JForex 4 path valid", ok: false, note: "not configured (optional for research)"})
+	} else {
+		if err := validateJForexPath(jforexPath); err != nil {
+			items = append(items, verifyItem{label: "JForex 4 path valid", ok: false, note: err.Error()})
+		} else {
+			items = append(items, verifyItem{label: "JForex 4 path valid", ok: true, note: jforexPath})
 		}
 	}
 
@@ -546,6 +890,28 @@ func mapBool(b bool, t, f string) string {
 		return t
 	}
 	return f
+}
+
+// execLookPath is a wrapper for exec.LookPath to allow testing.
+func execLookPath(file string) error {
+	_, err := exec.LookPath(file)
+	return err
+}
+
+func detectOpenCode() bool {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return false
+	}
+	opencodePath := filepath.Join(home, ".config", "opencode", "opencode.json")
+	if _, err := os.Stat(opencodePath); err == nil {
+		return true
+	}
+	// Also check for opencode binary in PATH
+	e := execLookPath("opencode"); if e == nil {
+		return true
+	}
+	return false
 }
 
 func detectGentleAI() bool {
@@ -585,9 +951,38 @@ func autoDetectSQX() string {
 		"/opt/StrategyQuantX",
 		filepath.Join(home, "StrategyQuantX"),
 		"/Applications/StrategyQuantX",
-		"C:\\StrategyQuantX",
-		filepath.Join("C:\\", "Program Files", "StrategyQuantX"),
-		filepath.Join("C:\\", "Program Files (x86)", "StrategyQuantX"),
+	}
+	if runtime.GOOS == "windows" {
+		candidates = append(candidates,
+			"C:\\StrategyQuantX",
+			filepath.Join("C:\\", "Program Files", "StrategyQuantX"),
+			filepath.Join("C:\\", "Program Files (x86)", "StrategyQuantX"),
+		)
+	}
+	for _, p := range candidates {
+		if info, err := os.Stat(p); err == nil && info.IsDir() {
+			return p
+		}
+	}
+	return "auto"
+}
+
+func autoDetectJForex() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "auto"
+	}
+	candidates := []string{
+		"/opt/JForex4",
+		filepath.Join(home, "JForex4"),
+		"/Applications/JForex4",
+	}
+	if runtime.GOOS == "windows" {
+		candidates = append(candidates,
+			"C:\\JForex4",
+			filepath.Join("C:\\", "Program Files", "JForex4"),
+			filepath.Join("C:\\", "Program Files (x86)", "JForex4"),
+		)
 	}
 	for _, p := range candidates {
 		if info, err := os.Stat(p); err == nil && info.IsDir() {
@@ -611,31 +1006,18 @@ func validateSQXPath(p string) error {
 	return nil
 }
 
-func (m Model) gentleAIView() string {
-	var b strings.Builder
-	b.WriteString(TitleStyle.Render("Gentle AI Compatibility") + "\n\n")
-	b.WriteString(SubtitleStyle.Render("QuantLab coexists with Gentle AI. We never modify or delete gentle-* agents/skills.") + "\n\n")
-	status := "✗ Not detected"
-	if m.gentleAIPresent {
-		status = "✓ Detected"
+func validateJForexPath(p string) error {
+	if p == "" || p == "auto" {
+		return fmt.Errorf("JForex 4 path not configured")
 	}
-	b.WriteString(BoxStyle.Render(fmt.Sprintf("Status: %s\n\n", status) +
-		"If Gentle AI is not detected in ~/.config/opencode/, you can continue, but ensure compatibility is configured as needed.\n"))
-	b.WriteString("\n" + FocusStyle.Render("Press Enter to continue") + "\n")
-	b.WriteString(BlurStyle.Render("Esc to cancel"))
-	return BoxStyle.Render(b.String()) + "\n"
-}
-
-func (m Model) sqxView() string {
-	var b strings.Builder
-	b.WriteString(TitleStyle.Render("StrategyQuant X") + "\n\n")
-	b.WriteString(SubtitleStyle.Render("Path to StrategyQuant X installation (external dependency):") + "\n\n")
-	b.WriteString(m.sqxPathInput.View() + "\n")
-	if m.err != nil {
-		b.WriteString("\n" + ErrorStyle.Render("✗ "+m.err.Error()) + "\n")
+	info, err := os.Stat(p)
+	if err != nil {
+		return fmt.Errorf("path does not exist: %s", p)
 	}
-	b.WriteString("\n" + BlurStyle.Render("Enter to confirm · Esc to cancel"))
-	return BoxStyle.Render(b.String()) + "\n"
+	if !info.IsDir() {
+		return fmt.Errorf("path is not a directory: %s", p)
+	}
+	return nil
 }
 
 func (m Model) verifyView() string {

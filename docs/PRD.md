@@ -1,8 +1,8 @@
 # QuantLab AI — Product Requirements Document
 
-**Status**: Draft v0.1.0
+**Status**: v0.2.0 (2026-10-10 refresh — installer delivered and archived, SDD change backlog empty, ODD execution workflow)
 **Author**: QuantLab AI (inspired by the Gentle-AI ecosystem)
-**Date**: 2026-08-08
+**Date**: 2026-08-08 (refreshed 2026-10-10)
 **Scope**: Full implementation of the QuantLab AI research engine as a trading-domain port of the Gentle-AI architecture (orchestrator → sub-agents → skills → memory → gates → verification → install/TUI).
 
 ---
@@ -73,7 +73,7 @@ Guardian-Orchestrator (agent)
 
 - The SDK (`sdk/quantlab/`) already implements the canonical 14-phase pipeline (`campaign/flow.py`) and a large harness surface: `ResearchAgent`, `LLMResearchAgent`, `HypothesisBuilder` + `RefutationLayer`, `BuilderAgent` + `BuildConfig` (~90 fields), `ConfigReviewer`, `ReviewerAgent`, `RetesterStage`/`OptimizerStage`, `PortfolioComposer`/`PortfolioMaster`, `CompileStage`, `JForexDeployer` (export only), `DeploymentAgent` (placeholder), `CampaignMonitor` + `LLMGenerationMonitor`, `MetaGuardianOrchestrator` + `AutonomousMonitorDaemon`, gates with decision files, Knowledge Lake + Engram dual memory (REQ-102/103), `compose_prior_context` (REQ-104).
 - **Structural gap**: the "agents" are in-process Python stages executed by `PipelineRunner`; they are **not** real LLM sub-agents with fresh context, so their reasoning work is invisible and not delegatable. There is no per-phase delegation like Gentle-AI's orchestrator → sub-agent model.
-- **Functional gaps**: compiler pipeline incomplete (javac/.jfx need external JDK); demo deploy is a placeholder with a 14-business-day window and no renewal; **archive phase does not exist**; Guardian → generation feedback is not wired; `MetaGuardianOrchestrator` + `AutonomousMonitorDaemon` exist in the SDK but run as in-process Python, not as a first-class `guardian-orchestrator` LLM agent with its own routing, skills, and live gates; no detached monitor capable of weeks-long generation runs (`poll_timeout` default is 1 hour); no install/TUI distribution.
+- **Functional gaps**: compiler pipeline incomplete (javac/.jfx need external JDK); demo deploy is a placeholder with a 14-business-day window and no renewal; Guardian → generation feedback is not wired; `MetaGuardianOrchestrator` + `AutonomousMonitorDaemon` exist in the SDK but run as in-process Python, not as a first-class `guardian-orchestrator` LLM agent with its own routing, skills, and live gates; no detached monitor capable of weeks-long generation runs (`poll_timeout` default is 1 hour). Install/TUI distribution DELIVERED 2026-10-10 (`quantlab-installer`, archived: Go/Bubbletea `install/uninstall/sync/configure/update`, `install.sh` one-command).
 
 ### 3.2 The vision
 
@@ -343,10 +343,10 @@ QuantLab **does not fork** Gentle-AI. It is an **architecture port**:
 - [ ] Compiler slice produces `.jfx` and halts fail-closed on any compile error (REQ-29/30).
 - [ ] Archive phase writes a maintenance/replacement plan with account statistics.
 - [ ] Guardian live-ops metrics feed back into the generation flow (live → generation) and archive baselines onboard the Guardian (generation → live), verified findings only.
-- [ ] `quantlab install` completes with verify + rollback on a clean machine.
+- [x] `quantlab install` completes with verify + rollback on a clean machine (delivered 2026-10-10, 38/38 tasks, `go test -short` 363 green).
 
 ---
 
 ## 15. Next step
 
-Approve this PRD, then start S1 (Custom-project CFX generator) as the first SDD slice of the `full-campaign-flow` change. The exploration artifact (#723) and SQX custom-project analysis (#717) are the reference inputs.
+PRD direction is implemented (S1–S11 largely shipped; see `sdd/PROJECT_STATE.md` §6). Remaining work is tracked in `sdd/PROJECT_STATE.md` §10, executed via ODD with SDD specs as contracts.

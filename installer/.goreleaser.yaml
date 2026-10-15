@@ -20,9 +20,9 @@ builds:
     main: ./cmd/quantlab
     binary: quantlab
     ldflags:
-      - -X github.com/ogzuz/quantlab/internal/app.version={{ trimprefix "v" (trimprefix "installer/" .Version) }}
-      - -X github.com/ogzuz/quantlab/internal/app.commit={{ .Commit }}
-      - -X github.com/ogzuz/quantlab/internal/app.date={{ .Date }}
+      - -X github.com/andrikonbeat/quantlabai/internal/app.version={{ trimprefix "v" (trimprefix "installer/" .Version) }}
+      - -X github.com/andrikonbeat/quantlabai/internal/app.commit={{ .Commit }}
+      - -X github.com/andrikonbeat/quantlabai/internal/app.date={{ .Date }}
     goos:
       - linux
       - darwin
@@ -50,7 +50,7 @@ nfpms:
     file_name_template: >-
       quantlab_{{ trimprefix "v" (trimprefix "installer/" .Version) }}_{{ .Arch }}
     vendor: QuantLab AI
-    homepage: https://github.com/ogzuz/quantlab
+    homepage: https://github.com/andrikonbeat/quantlabai
     description: QuantLab AI — Installer & Lifecycle Manager
     maintainer: QuantLab Team
     license: MIT
@@ -71,8 +71,8 @@ snapshot:
 
 release:
   github:
-    owner: ogzuz
-    name: quantlab
+    owner: andrikonbeat
+    name: quantlabai
   draft: false
   prerelease: auto
   header: |

@@ -1,22 +1,17 @@
-"""Real SQX CLI wrapper — dispatches campaigns to a live SQX daemon.
+"""SQX CLI wrapper — new implementation delegating to SQXHttpClient when enabled.
 
-Architecture
-------------
-SQX runs as a persistent daemon (``sqcli`` with no arguments). All commands
-go through the HTTP API on port 5050 (``/call?cmd=<command>``).
+This module provides the same public API as ``cli_wrapper.py`` but can delegate
+command sending to :class:`quantlab.sqx.http_client.SQXHttpClient` when the
+``QUANTLAB_SQX_USE_HTTP`` environment variable is set to ``1``/``true``/``yes``.
 
-The dispatch flow:
-  1. Stop any existing daemon.
-  2. Create campaign project directory from template (``project_builder``).
-  3. Start daemon (scans projects at startup).
-  4. Start campaign via HTTP API (``-project action=start``).
-  5. Poll status until completion.
-  6. Stop project.
-  7. Export databanks.
-  8. Stop daemon.
+The feature flag is read at import time via ``quantlab.sqx.settings.sqx_use_http()``.
+When the flag is disabled (default), this module falls back to the original
+``_send_http`` implementation for full backward compatibility.
 
-When the real sqcli binary is unavailable, the wrapper falls back to a
-lightweight mock server (``MockSQXServer``) so demos can run end-to-end.
+Public API (unchanged from cli_wrapper.py):
+    - dispatch_campaign
+    - mock_mode_guard
+    - version_preflight
 """
 
 from __future__ import annotations
@@ -27,10 +22,8 @@ import os
 import sys
 import tempfile
 import time
-import urllib.parse
-from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, List
 
 import httpx
 
@@ -51,6 +44,10 @@ from quantlab.sqx.project_builder import (
     BuildConfig,
     create_project,
 )
+from quantlab.sqx.settings import sqx_use_http, jforex_bridge_enabled, jforex_bridge_base_url
+from quantlab.sqx.http_client import SQXHttpClient, SQXError, SQXCommandError
+from quantlab.costs.profiles import BrokerProfile
+from quantlab.costs.models import CommissionSchema, SlippageProfile, SpreadConfig, SwapRule, MarketSession
 
 logger = logging.getLogger(__name__)
 
@@ -64,14 +61,17 @@ _EXPORT_DIRS = [
     "/tmp/sqx-mock-exports/{campaign_id}",
 ]
 
-_COMMAND_ENDPOINT = "/call?cmd="
-
-# The sqcli daemon can take 90-105s to become ready on first launch (it
-# loads every legacy project under ``user/projects/`` at startup).  The
-# readiness deadline is resolved via QUANTLAB_SQCLI_TIMEOUT (default 180s)
-# in cli/runner.resolve_sqcli_timeout.
 _SQX_PORT = 5050
 _SQX_BASE_URL = f"http://127.0.0.1:{_SQX_PORT}"
+
+
+# ---------------------------------------------------------------------------
+# Feature flag check
+# ---------------------------------------------------------------------------
+
+_USE_HTTP = sqx_use_http()
+_USE_JFOREX_BRIDGE = jforex_bridge_enabled()
+_JFOREX_BRIDGE_BASE_URL = jforex_bridge_base_url()
 
 
 def mock_mode_guard(force_mock: bool = False) -> None:
@@ -173,7 +173,6 @@ async def dispatch_campaign(
         orchestrated: Orchestrated mode (REQ-20). Registers webhook + console
             notifiers and a gate writer on the spawned monitors, and appends
             a post-dispatch blocks-validation report (REQ-04) to the result.
-            ``False`` keeps the legacy dispatch path byte-identical.
         gate_event_dir: Base directory for gate decision files (REQ-20).
             Used to write stall/error gate events in orchestrated mode.
         webhook_url: Webhook URL for the webhook notifier (REQ-15). Falls
@@ -462,6 +461,15 @@ async def _dispatch_real(
         if build_config.rankings_enabled is None:
             build_config.rankings_enabled = False
 
+    # Create JForex Bridge broker profile with real market data (if enabled)
+    jforex_broker_profile = None
+    if _USE_JFOREX_BRIDGE:
+        from quantlab.jforex_bridge.client import JForexClient
+        jforex_client = JForexClient(base_url=_JFOREX_BRIDGE_BASE_URL)
+        jforex_broker_profile = await create_jforex_broker_profile(jforex_client)
+        if jforex_broker_profile:
+            logger.info("Using JForex Bridge broker profile with real market data")
+    
     try:
         create_project(
             sqx_install_path=sqx_install_path,
@@ -478,6 +486,7 @@ async def _dispatch_real(
             walk_forward=walk_forward,
             monte_carlo=monte_carlo,
             build_config=build_config,
+            broker_profile=jforex_broker_profile,
         )
     except Exception as e:
         logger.error("Failed to create project: %s", e)
@@ -511,12 +520,28 @@ async def _dispatch_real(
             "watcher_events": [],
         }
 
+    # ── HTTP client for command dispatch ──
+    http_client = SQXHttpClient(base_url=base_url) if _USE_HTTP else None
+
+    async def _send_cmd(cmd: str) -> str:
+        """Send command via HTTP client or legacy path."""
+        if _USE_HTTP and http_client is not None:
+            try:
+                result = await http_client.run(cmd)
+                return result.raw
+            except Exception as e:
+                logger.warning("HTTP client failed for '%s': %s, falling back", cmd, e)
+                return await _send_http(base_url, cmd)
+        return await _send_http(base_url, cmd)
+
     # ── Phase 1: Start campaign via HTTP API ──
     logger.info("Phase 1/6: Starting campaign '%s' ...", campaign_id)
-    start_resp = await _send_http(base_url, f"-project action=start name={campaign_id}")
+    start_resp = await _send_cmd(f"-project action=start name={campaign_id}")
     if "Error" in start_resp[:100] or "does not exist" in start_resp:
         logger.error("Start failed: %s", start_resp[:300])
         await daemon.stop()
+        if http_client:
+            await http_client.aclose()
         return {
             "status": "failed",
             "export_paths": [],
@@ -564,9 +589,7 @@ async def _dispatch_real(
     is_completed = False
     try:
         while time.monotonic() < deadline:
-            status_text = await _send_http(
-                base_url, f"-project action=status name={campaign_id}"
-            )
+            status_text = await _send_cmd(f"-project action=status name={campaign_id}")
             # Check if still running — if the "In databank" line shows strategies
             if "Project execution stopped" in status_text:
                 is_completed = True
@@ -598,7 +621,7 @@ async def _dispatch_real(
     # ── Phase 3: Stop project ──
     logger.info("Phase 3/6: Stopping campaign '%s' ...", campaign_id)
     try:
-        await _send_http(base_url, f"-project action=stop name={campaign_id}")
+        await _send_cmd(f"-project action=stop name={campaign_id}")
     except Exception as e:
         logger.warning("Stop failed: %s", e)
 
@@ -609,9 +632,8 @@ async def _dispatch_real(
         export_dir = Path(f"/tmp/sqx-exports/{campaign_id}")
         export_dir.mkdir(parents=True, exist_ok=True)
         export_file = str(export_dir / "strategies.csv")
-        await _send_http(
-            base_url,
-            f"-databank action=export project={campaign_id} name=Results file={export_file}",
+        await _send_cmd(
+            f"-databank action=export project={campaign_id} name=Results file={export_file}"
         )
         if os.path.isfile(export_file):
             export_paths.append(export_file)
@@ -629,6 +651,9 @@ async def _dispatch_real(
         await daemon.stop()
     except Exception as e:
         logger.warning("Daemon stop failed: %s", e)
+
+    if http_client:
+        await http_client.aclose()
 
     status = "completed" if is_completed else "timeout"
     result: dict[str, Any] = {
@@ -1131,14 +1156,16 @@ async def _ensure_mock_server() -> str:
 
 
 # ---------------------------------------------------------------------------
-# HTTP helpers
+# HTTP helpers (legacy path)
 # ---------------------------------------------------------------------------
 
 
 async def _send_http(base_url: str, command: str) -> str:
-    """Send a single command to the SQX HTTP API."""
+    """Send a single command to the SQX HTTP API (legacy path)."""
+    import urllib.parse
+
     encoded = urllib.parse.quote(command, safe="=")
-    url = f"{base_url}{_COMMAND_ENDPOINT}{encoded}"
+    url = f"{base_url}/call?cmd={encoded}"
     async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.get(url)
         resp.raise_for_status()
