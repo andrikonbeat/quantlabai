@@ -99,3 +99,6 @@ notifications.jsonl
 missing.jfx
 # Local Pi runtime state
 .atl/
+
+# Version sync artifacts
+*.version-sync

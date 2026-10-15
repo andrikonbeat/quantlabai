@@ -35,6 +35,14 @@ FORCE_MOCK=true
 CLONING=false
 CLONE_CREATED=false
 
+# Version file check
+VERSION_FILE="VERSION"
+if [ -f "$VERSION_FILE" ]; then
+    REPO_VERSION=$(cat "$VERSION_FILE")
+else
+    REPO_VERSION="unknown"
+fi
+
 # ──────────────────────────────────────────────────────────────────────
 # Helpers de presentación
 log()   { printf "\033[1;34m[INFO]\033[0m %s\n" "$*"; }
@@ -342,13 +350,26 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────────────
+# Version consistency check
+if [ -f "sdk/pyproject.toml" ]; then
+    PY_VERSION=$(grep '^version' sdk/pyproject.toml | head -1 | sed 's/.*= "\([^"]*\)".*/\1/')
+    if [ "$PY_VERSION" != "$REPO_VERSION" ]; then
+        warn "Version mismatch: VERSION=$REPO_VERSION but sdk/pyproject.toml=$PY_VERSION"
+        warn "Run: python3 sync_version.py"
+    else
+        ok "Version consistent: $REPO_VERSION (VERSION, pyproject.toml, Makefile)"
+    fi
+fi
+
+# ──────────────────────────────────────────────────────────────────────
 # Resumen
 cat <<EOF
 
 \033[1;32m═══════════════════════════════════════════════════════════════\033[0m
-\033[1;32m  QuantLab AI instalado en $(elapsed) ✓\033[0m
+\033[1;32m  QuantLab AI v$REPO_VERSION instalado en $(elapsed) ✓\033[0m
 \033[1;32m═══════════════════════════════════════════════════════════════\033[0m
 
+Versión:     $REPO_VERSION
 Repositorio: $(pwd)
 Venv dev:    $(pwd)/.venv  (activar: source .venv/bin/activate)
 Venv prod:   ~/.quantlab/venv

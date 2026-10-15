@@ -201,7 +201,7 @@ func isHexDigest(s string) bool {
 // nil, false if already up-to-date. The "dev" version is always considered
 // outdated (triggers an update check).
 func CheckForUpdate(currentVersion string) (*ReleaseInfo, bool, error) {
-	release, err := LatestGitHubRelease("ogzuz", "quantlab")
+	release, err := LatestGitHubRelease("andrikonbeat", "quantlabai")
 	if err != nil {
 		return nil, false, fmt.Errorf("check for update: %w", err)
 	}
